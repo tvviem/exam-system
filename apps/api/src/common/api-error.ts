@@ -1,19 +1,7 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-export type AuthErrorCode =
-  | 'INVALID_CREDENTIALS'
-  | 'LOGIN_TEMPORARILY_BLOCKED'
-  | 'ACCOUNT_LOCKED'
-  | 'TEMPORARY_PASSWORD_EXPIRED'
-  | 'RATE_LIMITED'
-  | 'UNAUTHENTICATED'
-  | 'PASSWORD_CHANGE_REQUIRED'
-  | 'FORBIDDEN_ORIGIN'
-  | 'WRONG_CURRENT_PASSWORD'
-  | 'PASSWORD_POLICY'
-  | 'NOT_FOUND';
-
-const STATUS: Record<AuthErrorCode, HttpStatus> = {
+/** Mã lỗi api trả cho client; web dịch qua `errors.<code>` trong vi.json. */
+export const API_ERROR_STATUS = {
   INVALID_CREDENTIALS: HttpStatus.UNAUTHORIZED,
   LOGIN_TEMPORARILY_BLOCKED: HttpStatus.TOO_MANY_REQUESTS,
   ACCOUNT_LOCKED: HttpStatus.FORBIDDEN,
@@ -24,15 +12,18 @@ const STATUS: Record<AuthErrorCode, HttpStatus> = {
   FORBIDDEN_ORIGIN: HttpStatus.FORBIDDEN,
   WRONG_CURRENT_PASSWORD: HttpStatus.BAD_REQUEST,
   PASSWORD_POLICY: HttpStatus.BAD_REQUEST,
+  VALIDATION_FAILED: HttpStatus.BAD_REQUEST,
   NOT_FOUND: HttpStatus.NOT_FOUND,
-};
+} as const;
 
-/** Lỗi trả cho client dạng `{ code, ...details }`; web dịch `code` sang tiếng Việt. */
-export class AuthError extends HttpException {
+export type ApiErrorCode = keyof typeof API_ERROR_STATUS;
+
+/** Lỗi trả cho client dạng `{ code, ...details }`. */
+export class ApiError extends HttpException {
   constructor(
-    readonly code: AuthErrorCode,
+    readonly code: ApiErrorCode,
     details: Record<string, unknown> = {},
   ) {
-    super({ code, ...details }, STATUS[code]);
+    super({ code, ...details }, API_ERROR_STATUS[code]);
   }
 }

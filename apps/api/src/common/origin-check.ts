@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { API_ERROR_STATUS, type ApiErrorCode } from './api-error';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -15,7 +16,8 @@ export function registerOriginCheck(
     if (SAFE_METHODS.has(request.method) || !request.url.startsWith('/api/')) return;
     const origin = request.headers.origin;
     if (!origin || !allowed.has(origin)) {
-      await reply.code(403).send({ code: 'FORBIDDEN_ORIGIN' });
+      const code: ApiErrorCode = 'FORBIDDEN_ORIGIN';
+      await reply.code(API_ERROR_STATUS[code]).send({ code });
     }
   });
 }

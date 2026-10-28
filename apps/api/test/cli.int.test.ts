@@ -81,6 +81,14 @@ describe('pnpm cli recover-admin', () => {
     expect((await call(t.app, 'GET', '/api/auth/me', { cookie: old.cookie })).statusCode).toBe(200);
   });
 
+  it('gỡ cả khóa tạm do đăng nhập sai nhiều lần', async () => {
+    await seedUser({ username: 'quantri', isAdmin: true });
+    for (let i = 0; i < 5; i++) await login(t.app, 'quantri', 'sai-mat-khau-roi');
+    const result = await runCli(['recover-admin', '--username', 'quantri'], {}, { clock: t.clock });
+    const { res } = await login(t.app, 'quantri', temporaryPasswordIn(result.output) as string);
+    expect(res.statusCode).toBe(200);
+  });
+
   it('phiên đang mở của tài khoản được khôi phục bị thu hồi', async () => {
     await seedUser({ username: 'quantri', isAdmin: true });
     const old = await login(t.app, 'quantri', DEFAULT_PASSWORD);

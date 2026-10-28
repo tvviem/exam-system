@@ -105,6 +105,15 @@ describe('khóa tạm sau 5 lần sai liên tiếp (Q47)', () => {
     expect((await login(t.app, 'b2103456', DEFAULT_PASSWORD)).res.statusCode).toBe(200);
   });
 
+  it('khi đang bị chặn, sai mật khẩu vẫn trả lỗi chung để không lộ tài khoản có tồn tại', async () => {
+    await seedUser({ username: 'b2103456' });
+    await failTimes(5);
+    const blocked = await login(t.app, 'b2103456', 'sai-mat-khau-roi');
+    const unknown = await login(t.app, 'khong-co-ai', 'sai-mat-khau-roi');
+    expect(blocked.res.json()).toEqual({ code: 'INVALID_CREDENTIALS' });
+    expect(unknown.res.json()).toEqual({ code: 'INVALID_CREDENTIALS' });
+  });
+
   it('đăng nhập đúng thì đếm lại từ đầu', async () => {
     await seedUser({ username: 'b2103456' });
     await failTimes(4);

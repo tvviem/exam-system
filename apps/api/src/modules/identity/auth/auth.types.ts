@@ -1,3 +1,7 @@
+import type { roleTagEnum } from '../identity.schema';
+
+export type RoleTag = (typeof roleTagEnum.enumValues)[number];
+
 export interface AuthenticatedUser {
   id: string;
   username: string | null;
@@ -5,7 +9,7 @@ export interface AuthenticatedUser {
   code: string | null;
   fullName: string;
   isAdmin: boolean;
-  tags: ('examiner' | 'candidate')[];
+  tags: RoleTag[];
   mustChangePassword: boolean;
 }
 

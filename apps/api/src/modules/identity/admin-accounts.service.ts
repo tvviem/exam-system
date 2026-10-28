@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { CLOCK, type Clock } from '../../common/clock';
 import { type Database, DB } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
+import { LoginBlock } from './auth/login-block';
 import { SessionStore } from './auth/session-store';
 import { users } from './identity.schema';
 import { hashPassword } from './password/password-hasher';
@@ -29,6 +30,7 @@ export class AdminAccountsService {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: AuditService,
     private readonly sessions: SessionStore,
+    private readonly loginBlock: LoginBlock,
   ) {}
 
   async bootstrapAdmin(input: BootstrapAdminInput): Promise<{ id: string }> {
@@ -39,6 +41,8 @@ export class AdminAccountsService {
     const passwordHash = await hashPassword(input.password);
 
     return this.db.transaction(async (tx) => {
+      // Khóa advisory theo giao dịch: hai lệnh chạy đồng thời không cùng tạo được Quản trị viên.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('cli.bootstrap-admin'))`);
       const [existing] = await tx
         .select({ id: users.id })
         .from(users)
@@ -80,7 +84,7 @@ export class AdminAccountsService {
     if (!user) throw new AdminAccountError(`Không tìm thấy người dùng "${username}".`);
     if (!user.isAdmin) {
       throw new AdminAccountError(
-        `"${username}" không phải tài khoản Quản trị viên (Q23: tài khoản quản trị tách riêng).`,
+        `"${username}" không phải tài khoản Quản trị viên ; tài khoản Quản trị viên được tách riêng khỏi tài khoản Người ra đề và Người dự thi.`,
       );
     }
 
@@ -113,6 +117,7 @@ export class AdminAccountsService {
         tx,
       );
     });
+    await this.loginBlock.clear(user.id);
     await this.sessions.revokeAllForUser(user.id, 'admin_recovered');
     return { temporaryPassword };
   }

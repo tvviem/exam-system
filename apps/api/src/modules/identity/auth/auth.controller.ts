@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   HttpCode,
-  Inject,
   Param,
   ParseUUIDPipe,
   Post,
@@ -13,8 +12,7 @@ import {
 } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { ENV } from '../../../config/config.module';
-import type { Env } from '../../../config/env';
+import { ApiError } from '../../../common/api-error';
 import {
   AllowPendingPasswordChange,
   CurrentSessionId,
@@ -23,7 +21,6 @@ import {
 } from './auth.decorators';
 import { AuthService } from './auth.service';
 import { type AuthenticatedUser, SESSION_COOKIE } from './auth.types';
-import { AuthError } from './auth-error';
 import { SessionStore } from './session-store';
 
 const changePasswordSchema = z.object({
@@ -41,7 +38,6 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly sessions: SessionStore,
-    @Inject(ENV) private readonly env: Env,
   ) {}
 
   @Public()
@@ -56,11 +52,11 @@ export class AuthController {
     const { token, maxAgeSeconds } = await this.auth.login(
       input.identifier,
       input.password,
-      metaOf(req),
+      sessionMetaFrom(req),
     );
     reply.setCookie(SESSION_COOKIE, token, {
       httpOnly: true,
-      secure: this.env.NODE_ENV === 'production',
+      secure: true, // ADR-0004; trình duyệt vẫn nhận cookie Secure trên http://localhost
       sameSite: 'lax',
       path: '/',
       maxAge: maxAgeSeconds,
@@ -99,8 +95,7 @@ export class AuthController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    if (!(await this.sessions.revokeOwnSession(user.id, id, 'logout_by_user')))
-      throw new AuthError('NOT_FOUND');
+    if (!(await this.sessions.revokeOwnSession(user.id, id))) throw new ApiError('NOT_FOUND');
     return { ok: true };
   }
 
@@ -130,7 +125,7 @@ export class AuthController {
   }
 }
 
-export function metaOf(req: FastifyRequest) {
+export function sessionMetaFrom(req: FastifyRequest) {
   const userAgent = req.headers['user-agent'];
   return {
     ip: req.ip ?? null,
