@@ -48,7 +48,7 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
 | Frontend | React 19 + Vite (PWA), TanStack Router/Query, Tailwind CSS, i18next |
 | Soạn nội dung | TipTap, MathLive (soạn công thức), KaTeX (hiển thị) |
 | Dữ liệu | PostgreSQL 17, Redis 7 |
-| Kiểm thử | Vitest, Testcontainers, Playwright (desktop và mobile) |
+| Kiểm thử | Vitest, Playwright (desktop và mobile); integration test chạy trên PostgreSQL và Redis thật trong pod |
 | Hạ tầng | Podman pod (rootless), Cloudflare Tunnel, GitHub Actions, GHCR |
 
 Lý do của từng lựa chọn nằm trong các ADR ở [docs/adr](docs/adr).
@@ -74,8 +74,7 @@ Backend chia module theo nghiệp vụ: `identity`, `audit`, `question-bank`, `e
 ```
 exam-system/
   apps/
-    api/          NestJS (HTTP + WebSocket)
-    worker/       tiến trình BullMQ, dùng chung mã với api
+    api/          NestJS (HTTP + WebSocket); worker BullMQ ở src/worker, cùng mã và cùng image
     web/          React PWA: /admin, /examiner, /take
   packages/
     shared/       schema Zod dùng chung: Câu hỏi, Câu trả lời, Quy tắc chấm, DTO
@@ -126,7 +125,7 @@ Mở http://localhost:5173: trang chủ hiển thị trạng thái PostgreSQL v�
 | `pnpm lint` / `pnpm format` | Kiểm tra / tự sửa lint và format (Biome) |
 | `pnpm typecheck` | Kiểm tra kiểu toàn monorepo |
 | `pnpm test` | Unit test |
-| `pnpm test:integration` | Integration test, cần pod `dev-exam` đang chạy |
+| `pnpm test:integration` | Integration test trên database `exam_test` và Redis DB 15 của pod `dev-exam`; không đụng dữ liệu dev |
 | `pnpm test:e2e` | Playwright (desktop + mobile), cần api đang chạy |
 | `pnpm db:generate` | Sinh migration từ `apps/api/src/db/schema.ts` |
 

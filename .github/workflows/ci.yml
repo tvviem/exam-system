@@ -54,6 +54,8 @@ jobs:
       PODMAN: sudo podman
       DATABASE_URL: postgres://exam:exam@127.0.0.1:5435/exam
       REDIS_URL: redis://127.0.0.1:6382/0
+      TEST_DATABASE_URL: postgres://exam:exam@127.0.0.1:5435/exam_test
+      TEST_REDIS_URL: redis://127.0.0.1:6382/15
       LOG_LEVEL: warn
     steps:
       - uses: actions/checkout@v7

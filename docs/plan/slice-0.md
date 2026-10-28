@@ -44,13 +44,16 @@ Máy đang có pod của plo-tracker: `prod-plotracker` dùng `:8000`, `:8080`; 
 | dev | `dev-exam` | `127.0.0.1:5434` | `127.0.0.1:6381` |
 | CI (cũng chạy được trên máy) | `ci-exam` | `127.0.0.1:5435` | `127.0.0.1:6382` |
 
+## Đã chốt (28/10/2026)
+
+- **Worker đặt chung trong `apps/api`** (`src/worker/main.ts`), cùng image, chạy bằng lệnh `node dist/worker/main.js`. Đã sửa architecture.md mục 10 và README.
+- **Integration test không đụng dữ liệu demo.** Test chạy trên PostgreSQL và Redis thật trong pod sẵn có (`dev-exam` trên máy, `ci-exam` trên CI), nhưng dùng database `exam_test` và Redis DB 15. Ở mỗi lượt chạy, `test/global-setup.ts` xóa rồi tạo lại `exam_test`, chạy migration và xóa sạch Redis DB 15. Có hai lớp chặn: từ chối database có tên không kết thúc bằng `_test`, và từ chối Redis DB 0. Đổi đích bằng `TEST_DATABASE_URL` và `TEST_REDIS_URL`. Không dùng Testcontainers, vì vậy không cần bật Podman socket. Đã sửa architecture.md mục 3 và README.
+
 ## Quyết định cần duyệt
 
-1. **Giữ NestJS 11.** npm đã có bản 12.x, nhưng tài liệu đã duyệt chốt bản 11. Nếu muốn nâng cấp thì viết ADR riêng.
-2. **Ghi đè phiên bản fastify lên `^5.12.7`** (`overrides` trong `pnpm-workspace.yaml`). `@nestjs/platform-fastify` 11 ghim fastify 5.11.3, bản này dính lỗ hổng mức high GHSA-9q9j-q6p8-xq58. Đã chạy lại test với bản mới, vẫn xanh. Bỏ phần ghi đè khi NestJS cập nhật.
-3. **Integration test chạy trên pod Podman, không dùng Testcontainers.** Mục 3 của architecture.md ghi Testcontainers, còn mục 9 ghi "integration (Podman: postgres + redis)". Đã chọn pod, giống plo-tracker: test đọc `DATABASE_URL` và `REDIS_URL`, trỏ vào `dev-exam` khi chạy trên máy và `ci-exam` khi chạy trên CI. Cách này không cần bật Podman socket. Nếu đồng ý, sửa mục 3.
-4. **Worker nằm trong `apps/api`, không tách ra `apps/worker`.** Architecture.md vẽ `apps/worker` riêng nhưng lại ghi "dùng chung mã với api, cùng image, lệnh khởi động khác". Tách thư mục thì api phải xuất module dưới dạng một gói có khai báo kiểu, mà builder SWC của Nest không sinh file khai báo. Để chung một chỗ thì worker dùng thẳng các module nghiệp vụ, image chỉ cần đổi lệnh `node dist/worker/main.js`. Nếu đồng ý, sửa mục 10 của architecture.md và cây thư mục trong README.
-5. **Biome** thay cho ESLint + Prettier. Một công cụ lo cả lint lẫn format, chỉ áp dụng cho file code; Markdown giữ nguyên.
-6. **Định dạng module:** api biên dịch ra CommonJS (mặc định của NestJS, dùng SWC). `packages/*` là ESM, build bằng `tsc`. Node 24 cho phép `require()` gói ESM. Vitest test code NestJS qua `unplugin-swc` để giữ decorator metadata.
-7. **Chưa bật CodeQL.** Architecture.md mục 9 có nhắc CodeQL, nhưng code scanning trên repo private cần GitHub Advanced Security (trả phí). Tạm thời chỉ dùng `pnpm audit --prod --audit-level high`.
-8. **Cổng PostgreSQL của `prod-exam`:** architecture.md mục 8 ghi `127.0.0.1:5433`, trùng với `devplotracker`. Đề xuất đổi sang `127.0.0.1:5436`. Việc này thuộc lát cắt 6.
+1. **Phiên bản NestJS: 11 hay 12.** Code hiện dùng 11 theo tài liệu đã duyệt. Đề xuất lên 12, xem phần trả lời trong phiên làm việc ngày 28/10/2026; đang chờ chủ dự án quyết định.
+2. **Ghi đè phiên bản fastify lên `^5.12.7`** (`overrides` trong `pnpm-workspace.yaml`). `@nestjs/platform-fastify` 11 ghim fastify 5.11.3, bản này dính lỗ hổng mức high GHSA-9q9j-q6p8-xq58. Đã chạy lại test với bản mới, vẫn xanh. Lên NestJS 12 (dùng fastify 5.12.7) thì bỏ được phần ghi đè này.
+3. **Biome** thay cho ESLint + Prettier. Một công cụ lo cả lint lẫn format, chỉ áp dụng cho file code; Markdown giữ nguyên.
+4. **Định dạng module:** api biên dịch ra CommonJS (mặc định của NestJS, dùng SWC). `packages/*` là ESM, build bằng `tsc`. Node 24 cho phép `require()` gói ESM. Vitest test code NestJS qua `unplugin-swc` để giữ decorator metadata.
+5. **Chưa bật CodeQL.** Architecture.md mục 9 có nhắc CodeQL, nhưng code scanning trên repo private cần GitHub Advanced Security (trả phí). Tạm thời chỉ dùng `pnpm audit --prod --audit-level high`.
+6. **Cổng PostgreSQL của `prod-exam`:** architecture.md mục 8 ghi `127.0.0.1:5433`, trùng với `devplotracker`. Đề xuất đổi sang `127.0.0.1:5436`. Việc này thuộc lát cắt 6.

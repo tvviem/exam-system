@@ -66,7 +66,7 @@
 | Ngôn ngữ giao diện | i18next | Giai đoạn 1 chỉ có tiếng Việt; chuỗi giao diện tách ra file |
 | Ảnh | sharp (trong worker) + lưu trên volume | Tạo biến thể WebP 480/960/1600 px để điện thoại tải nhanh. Việc lưu file nằm sau một interface `MediaStore`, hiện dùng filesystem, sau này đổi sang S3/R2 mà không sửa nghiệp vụ ([ADR-0006](./adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)) |
 | Mật khẩu | Argon2id | Chuẩn OWASP hiện hành |
-| Kiểm thử | Vitest, Testcontainers (Postgres + Redis thật), Playwright (gồm cả kích thước màn hình điện thoại) | |
+| Kiểm thử | Vitest, Playwright (gồm cả kích thước màn hình điện thoại) | Integration test dùng Postgres + Redis thật trong pod (`dev-exam` trên máy, `ci-exam` trên CI), nhưng trên database `exam_test` và Redis DB 15 riêng, được làm sạch mỗi lần chạy, nên không đụng dữ liệu demo |
 | Quan sát | pino (log JSON), OpenTelemetry, Sentry | |
 
 ## 4. Module backend
@@ -210,8 +210,7 @@ push main ──► build + push image lên GHCR (tag = commit SHA)
 ```
 exam-system/
   apps/
-    api/        NestJS (HTTP + WebSocket)
-    worker/     tiến trình BullMQ (dùng chung mã với api)
+    api/        NestJS (HTTP + WebSocket); worker BullMQ ở src/worker, cùng mã và cùng image, lệnh khởi động khác
     web/        React PWA (route /admin, /examiner, /take)
   packages/
     shared/     schema Zod: Câu hỏi, Câu trả lời, Quy tắc chấm, DTO

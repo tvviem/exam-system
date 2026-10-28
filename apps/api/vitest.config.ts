@@ -1,12 +1,10 @@
 import swc from 'unplugin-swc';
-import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
+import { testDatabaseUrl, testRedisUrl } from './test/test-env';
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [swc.vite()],
   test: {
-    // Đọc apps/api/.env khi chạy trên máy; trên CI biến môi trường được đặt sẵn và được ưu tiên.
-    env: { ...loadEnv(mode, process.cwd(), ''), ...process.env },
     projects: [
       {
         extends: true,
@@ -14,8 +12,19 @@ export default defineConfig(({ mode }) => ({
       },
       {
         extends: true,
-        test: { name: 'integration', include: ['test/**/*.int.test.ts'], testTimeout: 15000 },
+        test: {
+          name: 'integration',
+          include: ['test/**/*.int.test.ts'],
+          globalSetup: ['test/global-setup.ts'],
+          env: {
+            NODE_ENV: 'test',
+            LOG_LEVEL: 'warn',
+            DATABASE_URL: testDatabaseUrl,
+            REDIS_URL: testRedisUrl,
+          },
+          testTimeout: 15000,
+        },
       },
     ],
   },
-}));
+});
