@@ -38,9 +38,7 @@ function ChangePasswordPage() {
     <div className="mx-auto max-w-md">
       <Card>
         <h1 className="text-2xl font-semibold">{t('changePassword.heading')}</h1>
-        {me.mustChangePassword && (
-          <p className="mt-2 text-slate-600">{t('changePassword.intro')}</p>
-        )}
+        {me.mustChangePassword && <p className="mt-2 text-fg-muted">{t('changePassword.intro')}</p>}
         <form className="mt-5 flex flex-col gap-4" onSubmit={submit}>
           <TextField
             id="current-password"
@@ -69,7 +67,7 @@ function ChangePasswordPage() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
           />
-          <p className="text-sm text-slate-600">{t('changePassword.hint')}</p>
+          <p className="text-sm text-fg-muted">{t('changePassword.hint')}</p>
           <ErrorMessage>
             {mismatch
               ? t('changePassword.mismatch')

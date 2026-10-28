@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { login, meQuery, safeRedirect } from '../lib/auth';
 import { errorMessage } from '../lib/errors';
 import { Card, ErrorMessage, PrimaryButton, TextField } from '../lib/ui';
+import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -39,7 +40,10 @@ function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
-      <p className="mb-4 text-center text-sm font-medium text-blue-800">{t('app.title')}</p>
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <p className="text-sm font-semibold text-primary">{t('app.title')}</p>
+        <ThemeSwitcher />
+      </div>
       <Card>
         <h1 className="mb-5 text-2xl font-semibold">{t('login.heading')}</h1>
         <form className="flex flex-col gap-4" onSubmit={submit}>

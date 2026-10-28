@@ -76,7 +76,7 @@ Component chỉ dùng **token ngữ nghĩa** (`bg-surface`, `text-fg-muted`, `bo
 ```
 
 - `<html data-theme="light|dark">` là nguồn duy nhất. Lựa chọn "Theo hệ thống" được quy về `light` hoặc `dark` qua `matchMedia('(prefers-color-scheme: dark)')`, và đổi theo ngay khi hệ điều hành đổi chế độ.
-- **Không nháy trắng khi mở trang:** một đoạn script nhỏ đặt trong `<head>` của `index.html` đặt `data-theme` trước khi trang hiển thị. Nội dung script tĩnh, nên Content-Security-Policy cho phép nó qua mã băm `sha256-…`, không phải bật `unsafe-inline`.
+- **Không nháy trắng khi mở trang:** file tĩnh `public/theme-init.js` được tải đồng bộ trong `<head>` của `index.html` và đặt `data-theme` trước khi trang hiển thị. Vì là file riêng chứ không phải script nội tuyến, Content-Security-Policy sau này chỉ cần `script-src 'self'`, không phải bật `unsafe-inline` hay duy trì mã băm.
 - `color-scheme` giúp thanh cuộn, ô chọn ngày và các control gốc của trình duyệt đổi theo chế độ. Thẻ `<meta name="theme-color">` được cập nhật theo chế độ, để thanh địa chỉ trên điện thoại cùng màu với thanh trên cùng.
 - Chế độ tối không dùng đen tuyệt đối (`#000`), vì chữ trắng trên nền đen dễ bị lóa trên màn hình OLED. Thứ bậc của các lớp nền được thể hiện bằng độ sáng: lớp càng nổi càng sáng (slate-950 → 900 → 800), không dựa vào bóng đổ.
 - Hình minh họa trong câu hỏi giữ nguyên màu, đặt trên nền `white` có viền, vì hình vẽ nét đen trên nền trong suốt sẽ biến mất khi nền tối.

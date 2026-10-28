@@ -1,1 +1,112 @@
 @import "tailwindcss";
+@import "@fontsource/be-vietnam-pro/latin-400.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-400.css";
+@import "@fontsource/be-vietnam-pro/latin-500.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-500.css";
+@import "@fontsource/be-vietnam-pro/latin-600.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-600.css";
+@import "@fontsource/be-vietnam-pro/latin-700.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-700.css";
+
+/* docs/ui-design.md mục 3–4: component chỉ dùng token ngữ nghĩa; <html data-theme> chọn bộ giá trị. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  color-scheme: light;
+  --c-bg: var(--color-slate-50);
+  --c-surface: var(--color-white);
+  --c-surface-raised: var(--color-white);
+  --c-fg: var(--color-slate-900);
+  --c-fg-muted: var(--color-slate-600);
+  --c-border: var(--color-slate-200);
+  --c-border-strong: var(--color-slate-500);
+  --c-primary: var(--color-blue-700);
+  --c-primary-hover: var(--color-blue-800);
+  --c-on-primary: var(--color-white);
+  --c-primary-soft: var(--color-blue-50);
+  --c-on-primary-soft: var(--color-blue-800);
+  --c-danger: var(--color-red-700);
+  --c-on-danger: var(--color-white);
+  --c-danger-soft: var(--color-red-50);
+  --c-warning: var(--color-amber-800);
+  --c-warning-soft: var(--color-amber-50);
+  --c-success: var(--color-green-700);
+  --c-success-soft: var(--color-green-50);
+  --c-ring: var(--color-blue-600);
+  --c-scrim: rgb(15 23 42 / 0.5);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: var(--color-slate-950);
+  --c-surface: var(--color-slate-900);
+  --c-surface-raised: var(--color-slate-800);
+  --c-fg: var(--color-slate-100);
+  --c-fg-muted: var(--color-slate-400);
+  --c-border: var(--color-slate-800);
+  --c-border-strong: var(--color-slate-500);
+  --c-primary: var(--color-blue-400);
+  --c-primary-hover: var(--color-blue-300);
+  --c-on-primary: var(--color-slate-950);
+  --c-primary-soft: var(--color-blue-950);
+  --c-on-primary-soft: var(--color-blue-200);
+  --c-danger: var(--color-red-400);
+  --c-on-danger: var(--color-slate-950);
+  --c-danger-soft: rgb(127 29 29 / 0.35);
+  --c-warning: var(--color-amber-300);
+  --c-warning-soft: rgb(120 53 15 / 0.35);
+  --c-success: var(--color-green-400);
+  --c-success-soft: rgb(20 83 45 / 0.35);
+  --c-ring: var(--color-blue-300);
+  --c-scrim: rgb(2 6 23 / 0.7);
+}
+
+@theme inline {
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-raised: var(--c-surface-raised);
+  --color-fg: var(--c-fg);
+  --color-fg-muted: var(--c-fg-muted);
+  --color-border: var(--c-border);
+  --color-border-strong: var(--c-border-strong);
+  --color-primary: var(--c-primary);
+  --color-primary-hover: var(--c-primary-hover);
+  --color-on-primary: var(--c-on-primary);
+  --color-primary-soft: var(--c-primary-soft);
+  --color-on-primary-soft: var(--c-on-primary-soft);
+  --color-danger: var(--c-danger);
+  --color-on-danger: var(--c-on-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-warning: var(--c-warning);
+  --color-warning-soft: var(--c-warning-soft);
+  --color-success: var(--c-success);
+  --color-success-soft: var(--c-success-soft);
+  --color-ring: var(--c-ring);
+  --color-scrim: var(--c-scrim);
+}
+
+@layer base {
+  body {
+    @apply bg-bg font-sans text-fg antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  dialog::backdrop {
+    background: var(--c-scrim);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: phải thắng các lớp transition-* của Tailwind */
+      animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: như trên */
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

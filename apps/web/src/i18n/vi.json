@@ -64,5 +64,14 @@
     "lastSeen": "Hoạt động lúc {{time}}",
     "revoke": "Đăng xuất thiết bị này",
     "unknownDevice": "Thiết bị không rõ"
+  },
+  "common": {
+    "close": "Đóng"
+  },
+  "theme": {
+    "label": "Chế độ hiển thị",
+    "system": "Theo hệ thống",
+    "light": "Sáng",
+    "dark": "Tối"
   }
 }
