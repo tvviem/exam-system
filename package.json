@@ -15,7 +15,8 @@
     "test:integration": "pnpm -r test:integration",
     "test:e2e": "pnpm --filter @exam/web test:e2e",
     "db:generate": "pnpm --filter @exam/api db:generate",
-    "db:migrate": "pnpm --filter @exam/api... build && pnpm --filter @exam/api db:migrate"
+    "db:migrate": "pnpm --filter @exam/api... build && pnpm --filter @exam/api db:migrate",
+    "cli": "pnpm --filter @exam/api... build >/dev/null && pnpm --filter @exam/api --silent cli"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",

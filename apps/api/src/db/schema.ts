@@ -1,2 +1,2 @@
-// Các bảng nghiệp vụ được thêm từ lát cắt 1, theo docs/data-model.md.
-export {};
+export * from '../modules/audit/audit.schema';
+export * from '../modules/identity/identity.schema';

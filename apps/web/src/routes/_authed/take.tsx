@@ -1,7 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
-export const Route = createFileRoute('/take')({
+export const Route = createFileRoute('/_authed/take')({
+  beforeLoad: ({ context }) => {
+    if (!context.me.tags.includes('candidate')) throw redirect({ to: '/' });
+  },
   component: Page,
 });
 

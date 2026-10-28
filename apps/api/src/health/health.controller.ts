@@ -1,12 +1,14 @@
 import type { HealthResponse } from '@exam/shared';
 import { Controller, Get, Res } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
+import { Public } from '../modules/identity/auth/auth.decorators';
 import { HealthService } from './health.service';
 
 @Controller('health')
 export class HealthController {
   constructor(private readonly health: HealthService) {}
 
+  @Public()
   @Get()
   async get(@Res({ passthrough: true }) reply: FastifyReply): Promise<HealthResponse> {
     const result = await this.health.check();

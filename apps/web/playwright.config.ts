@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:4173';
+const baseURL = 'http://localhost:4173';
 
 export default defineConfig({
   testDir: './e2e',
@@ -12,10 +12,18 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
-  // Cần api đang chạy ở API_URL (mặc định http://localhost:3000); vite preview proxy /api tới đó.
-  webServer: {
-    command: 'pnpm build && pnpm preview',
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      // api riêng cho E2E (database exam_e2e, Redis DB 14), cần `pnpm build` trước.
+      command: 'node e2e/prepare-api.cjs',
+      url: 'http://localhost:3100/api/health',
+      reuseExistingServer: false,
+    },
+    {
+      command: 'pnpm build && pnpm preview',
+      url: baseURL,
+      env: { API_URL: 'http://localhost:3100' },
+      reuseExistingServer: false,
+    },
+  ],
 });

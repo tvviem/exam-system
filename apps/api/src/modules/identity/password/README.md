@@ -1,0 +1,1 @@
+`common-passwords.txt`: 10.000 mật khẩu phổ biến nhất dài từ 10 ký tự, lọc từ `xato-net-10-million-passwords-1000000.txt` của [SecLists](https://github.com/danielmiessler/SecLists) (giấy phép MIT), viết thường; thêm vài mật khẩu tiếng Việt hay gặp ở cuối file.

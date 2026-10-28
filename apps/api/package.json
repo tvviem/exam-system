@@ -14,13 +14,16 @@
     "test": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node dist/db/migrate.js"
+    "db:migrate": "node dist/db/migrate.js",
+    "cli": "node dist/cli/main.js"
   },
   "dependencies": {
     "@exam/shared": "workspace:*",
+    "@fastify/cookie": "^11.1.5",
     "@nestjs/common": "^12.2.0",
     "@nestjs/core": "^12.2.0",
     "@nestjs/platform-fastify": "^12.2.0",
+    "@node-rs/argon2": "^2.2.2",
     "drizzle-orm": "^0.45.4",
     "ioredis": "^6.0.0",
     "nestjs-pino": "^5.3.1",
@@ -29,6 +32,7 @@
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "uuid": "^14.0.3",
     "zod": "^4.6.7"
   },
   "devDependencies": {

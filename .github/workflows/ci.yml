@@ -56,6 +56,8 @@ jobs:
       REDIS_URL: redis://127.0.0.1:6382/0
       TEST_DATABASE_URL: postgres://exam:exam@127.0.0.1:5435/exam_test
       TEST_REDIS_URL: redis://127.0.0.1:6382/15
+      E2E_DATABASE_URL: postgres://exam:exam@127.0.0.1:5435/exam_e2e
+      E2E_REDIS_URL: redis://127.0.0.1:6382/14
       LOG_LEVEL: warn
     steps:
       - uses: actions/checkout@v7
@@ -91,13 +93,6 @@ jobs:
       - name: Integration tests
         run: pnpm test:integration
 
-      - name: Start api
-        working-directory: apps/api
-        run: |
-          nohup node dist/main.js > api.log 2>&1 &
-          for i in $(seq 1 30); do curl -fs http://localhost:3000/api/health && exit 0; sleep 1; done
-          cat api.log; exit 1
-
       - name: Install Playwright browser
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps chromium
@@ -109,9 +104,7 @@ jobs:
         if: failure()
         with:
           name: e2e-report
-          path: |
-            apps/web/playwright-report
-            apps/api/api.log
+          path: apps/web/playwright-report
           retention-days: 7
 
       - name: Stop pod ci-exam

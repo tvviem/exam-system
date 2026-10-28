@@ -1,0 +1,43 @@
+import { expect, test } from '@playwright/test';
+
+test('chưa đăng nhập thì bị chuyển về trang đăng nhập', async ({ page }) => {
+  await page.goto('/admin');
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole('heading', { name: 'Đăng nhập' })).toBeVisible();
+});
+
+test('Quản trị viên đăng nhập lần đầu phải đổi mật khẩu rồi mới vào trang quản trị', async ({
+  page,
+}, testInfo) => {
+  const username = `e2e-quantri-${testInfo.project.name}`;
+
+  await page.goto('/admin');
+  await page.getByLabel('Tên đăng nhập hoặc email').fill(username);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill('khoi-tao-lan-dau');
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Đổi mật khẩu' })).toBeVisible();
+  await page.getByLabel('Mật khẩu hiện tại').fill('khoi-tao-lan-dau');
+  await page.getByLabel('Mật khẩu mới', { exact: true }).fill('ngan');
+  await page.getByLabel('Nhập lại mật khẩu mới').fill('ngan');
+  await page.getByRole('button', { name: 'Đổi mật khẩu' }).click();
+  await expect(page.getByRole('alert')).toContainText('ít nhất 10 ký tự');
+
+  await page.getByLabel('Mật khẩu mới', { exact: true }).fill('hoa-sen-no-sang');
+  await page.getByLabel('Nhập lại mật khẩu mới').fill('hoa-sen-no-sang');
+  await page.getByRole('button', { name: 'Đổi mật khẩu' }).click();
+
+  await expect(page).toHaveURL(/\/admin/);
+  await expect(page.getByRole('heading', { name: 'Quản trị' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(/\/login/);
+});
+
+test('sai mật khẩu hiển thị lỗi chung', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Tên đăng nhập hoặc email').fill('khong-co-ai');
+  await page.getByLabel('Mật khẩu', { exact: true }).fill('sai-mat-khau-roi');
+  await page.getByRole('button', { name: 'Đăng nhập' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Tên đăng nhập hoặc mật khẩu không đúng.');
+});
