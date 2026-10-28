@@ -43,8 +43,8 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
 
 | Lớp | Lựa chọn |
 |---|---|
-| Ngôn ngữ | TypeScript (Node.js 24 LTS) |
-| Backend | NestJS 11 (Fastify), Drizzle ORM, Socket.IO, BullMQ |
+| Ngôn ngữ | TypeScript 6 (Node.js 24 LTS) |
+| Backend | NestJS 12 (Fastify), Drizzle ORM, Socket.IO, BullMQ |
 | Frontend | React 19 + Vite (PWA), TanStack Router/Query, Tailwind CSS, i18next |
 | Soạn nội dung | TipTap, MathLive (soạn công thức), KaTeX (hiển thị) |
 | Dữ liệu | PostgreSQL 17, Redis 7 |

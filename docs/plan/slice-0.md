@@ -10,8 +10,8 @@ Người mới clone repo chạy được các lệnh trong mục "Bắt đầu 
 
 | Hạng mục | Nội dung |
 |---|---|
-| Monorepo | pnpm workspace: `apps/api`, `apps/web`, `packages/shared`, `packages/scoring`. Node 24, TypeScript 5.9 |
-| api | NestJS 11 + Fastify. Env được kiểm tra bằng Zod (`src/config/env.ts`) và tự nạp `.env` nếu có. Log pino (che cookie, authorization). `GET /api/health` kiểm tra PostgreSQL và Redis, trả 200 khi cả hai chạy, 503 khi có thành phần lỗi |
+| Monorepo | pnpm workspace: `apps/api`, `apps/web`, `packages/shared`, `packages/scoring`. Node 24, TypeScript 6.0 |
+| api | NestJS 12 + Fastify 5.12. Env được kiểm tra bằng Zod (`src/config/env.ts`) và tự nạp `.env` nếu có. Log pino (che cookie, authorization). `GET /api/health` kiểm tra PostgreSQL và Redis, trả 200 khi cả hai chạy, 503 khi có thành phần lỗi |
 | worker | `apps/api/src/worker/main.ts`: NestJS application context, dùng chung module cấu hình, DB, Redis với api. Chưa có job. Tắt êm khi nhận SIGTERM |
 | DB | Drizzle + drizzle-kit, thư mục `apps/api/drizzle`. `pnpm db:migrate`, `pnpm db:generate`. Chưa có bảng |
 | web | React 19 + Vite 8, TanStack Router (định tuyến theo file, tách code tự động) + Query, Tailwind 4, i18next (`src/i18n/vi.json`). Route rỗng `/admin`, `/examiner`, `/take`. Trang chủ hiển thị kết quả `/api/health` |
@@ -47,13 +47,12 @@ Máy đang có pod của plo-tracker: `prod-plotracker` dùng `:8000`, `:8080`; 
 ## Đã chốt (28/10/2026)
 
 - **Worker đặt chung trong `apps/api`** (`src/worker/main.ts`), cùng image, chạy bằng lệnh `node dist/worker/main.js`. Đã sửa architecture.md mục 10 và README.
+- **NestJS 12** (12.2.0; ràng buộc `^12.2.0` sẽ nhận bản 12.3.x khi cập nhật lockfile, vì pnpm 11 chưa cài bản mới ra dưới một ngày), kèm Nest CLI 12 và TypeScript 6.0. NestJS 12 dùng sẵn fastify 5.12.7 nên đã bỏ phần `overrides` vá GHSA-9q9j-q6p8-xq58. Bản 11 không còn được dùng. Đã chạy lại toàn bộ test: unit, integration, e2e, audit, image, worker và `pnpm dev`.
 - **Integration test không đụng dữ liệu demo.** Test chạy trên PostgreSQL và Redis thật trong pod sẵn có (`dev-exam` trên máy, `ci-exam` trên CI), nhưng dùng database `exam_test` và Redis DB 15. Ở mỗi lượt chạy, `test/global-setup.ts` xóa rồi tạo lại `exam_test`, chạy migration và xóa sạch Redis DB 15. Có hai lớp chặn: từ chối database có tên không kết thúc bằng `_test`, và từ chối Redis DB 0. Đổi đích bằng `TEST_DATABASE_URL` và `TEST_REDIS_URL`. Không dùng Testcontainers, vì vậy không cần bật Podman socket. Đã sửa architecture.md mục 3 và README.
 
 ## Quyết định cần duyệt
 
-1. **Phiên bản NestJS: 11 hay 12.** Code hiện dùng 11 theo tài liệu đã duyệt. Đề xuất lên 12, xem phần trả lời trong phiên làm việc ngày 28/10/2026; đang chờ chủ dự án quyết định.
-2. **Ghi đè phiên bản fastify lên `^5.12.7`** (`overrides` trong `pnpm-workspace.yaml`). `@nestjs/platform-fastify` 11 ghim fastify 5.11.3, bản này dính lỗ hổng mức high GHSA-9q9j-q6p8-xq58. Đã chạy lại test với bản mới, vẫn xanh. Lên NestJS 12 (dùng fastify 5.12.7) thì bỏ được phần ghi đè này.
-3. **Biome** thay cho ESLint + Prettier. Một công cụ lo cả lint lẫn format, chỉ áp dụng cho file code; Markdown giữ nguyên.
-4. **Định dạng module:** api biên dịch ra CommonJS (mặc định của NestJS, dùng SWC). `packages/*` là ESM, build bằng `tsc`. Node 24 cho phép `require()` gói ESM. Vitest test code NestJS qua `unplugin-swc` để giữ decorator metadata.
-5. **Chưa bật CodeQL.** Architecture.md mục 9 có nhắc CodeQL, nhưng code scanning trên repo private cần GitHub Advanced Security (trả phí). Tạm thời chỉ dùng `pnpm audit --prod --audit-level high`.
-6. **Cổng PostgreSQL của `prod-exam`:** architecture.md mục 8 ghi `127.0.0.1:5433`, trùng với `devplotracker`. Đề xuất đổi sang `127.0.0.1:5436`. Việc này thuộc lát cắt 6.
+1. **Biome** thay cho ESLint + Prettier. Một công cụ lo cả lint lẫn format, chỉ áp dụng cho file code; Markdown giữ nguyên.
+2. **Định dạng module:** api biên dịch ra CommonJS (dùng SWC), còn NestJS 12 chỉ có ESM. `packages/*` là ESM, build bằng `tsc`. Node 24 cho phép `require()` gói ESM. Vitest test code NestJS qua `unplugin-swc` để giữ decorator metadata.
+3. **Chưa bật CodeQL.** Architecture.md mục 9 có nhắc CodeQL, nhưng code scanning trên repo private cần GitHub Advanced Security (trả phí). Tạm thời chỉ dùng `pnpm audit --prod --audit-level high`.
+4. **Cổng PostgreSQL của `prod-exam`:** architecture.md mục 8 ghi `127.0.0.1:5433`, trùng với `devplotracker`. Đề xuất đổi sang `127.0.0.1:5436`. Việc này thuộc lát cắt 6.

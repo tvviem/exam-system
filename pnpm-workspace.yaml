@@ -6,6 +6,3 @@ allowBuilds:
   "@swc/core": true
   esbuild: true
 
-# @nestjs/platform-fastify 11 ghim fastify 5.11.3, dính GHSA-9q9j-q6p8-xq58 (sửa ở 5.12.2).
-overrides:
-  fastify: ^5.12.7

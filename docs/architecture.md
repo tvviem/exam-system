@@ -54,7 +54,7 @@
 |---|---|---|
 | Ngôn ngữ | **TypeScript** cả frontend lẫn backend | Một ngôn ngữ; schema Zod dùng chung cho Câu hỏi và Câu trả lời ([ADR-0003](./adr/0003-modular-monolith-typescript.md)) |
 | Runtime | Node.js LTS (24.x) | Ổn định, tối ưu cho tác vụ I/O |
-| Backend | **NestJS 11** (adapter Fastify) | Chia module theo nghiệp vụ, có sẵn DI, guard và interceptor cho phân quyền |
+| Backend | **NestJS 12** (adapter Fastify) | Chia module theo nghiệp vụ, có sẵn DI, guard và interceptor cho phân quyền. Đây là NestJS, framework backend, không phải Next.js (Next.js đã bị loại ở [ADR-0003](./adr/0003-modular-monolith-typescript.md)). Gói NestJS 12 chỉ có ESM; api biên dịch ra CommonJS và nạp các gói này qua `require(esm)` của Node 24 |
 | Truy cập DB | **Drizzle ORM** + node-postgres | Gần với SQL, hỗ trợ tốt JSONB và partial index; migration sinh dạng file SQL dễ review |
 | CSDL | **PostgreSQL 17/18** (managed) | [ADR-0001](./adr/0001-postgresql-la-noi-luu-tru-goc.md) |
 | Cache / hàng đợi | **Redis 7+** + **BullMQ** | [ADR-0002](./adr/0002-redis-chi-chua-du-lieu-tam.md) |
