@@ -1,6 +1,6 @@
 # Thiết kế giao diện
 
-> Trạng thái: **proposed** (29/10/2026). Bổ sung cho [architecture.md](architecture.md) mục 7 (trải nghiệm làm bài trên điện thoại), không thay đổi các quyết định ở đó. Câu hỏi cần chốt nằm ở [mục cuối](#câu-hỏi-cần-chốt-q71q75).
+> Trạng thái: **accepted** (29/10/2026, Q71–Q75 theo khuyến nghị). Bổ sung cho [architecture.md](architecture.md) mục 7 (trải nghiệm làm bài trên điện thoại), không thay đổi các quyết định ở đó. Các quyết định nằm ở [mục cuối](#quyết-định-q71q75).
 
 Các quy tắc dưới đây áp dụng cho mọi trang, từ PR 1b trở đi. Nguồn tham khảo: skill UI UX Pro Max (bộ quy tắc UX và kiểm tra trước khi giao), [WCAG 2.2](https://www.w3.org/TR/WCAG22/) mức AA và tài liệu dark mode của Tailwind CSS v4.
 
@@ -16,7 +16,7 @@ Các quy tắc dưới đây áp dụng cho mọi trang, từ PR 1b trở đi. N
 
 | Mục | Quy định |
 |---|---|
-| Font | **Be Vietnam Pro**, thiết kế riêng cho tiếng Việt nên dấu chồng (ặ, ổ, ữ) không bị dính dòng. Tự host bằng gói `@fontsource/be-vietnam-pro`, chỉ lấy bộ ký tự `latin` + `vietnamese`, các độ đậm 400/500/600/700, `font-display: swap`. Không gọi Google Fonts (Q72) |
+| Font | **Be Vietnam Pro**, thiết kế riêng cho tiếng Việt nên dấu chồng (ặ, ổ, ữ) không bị dính dòng. Tự host bằng gói `@fontsource/be-vietnam-pro`, chỉ lấy bộ ký tự `latin` + `vietnamese`, các độ đậm 400/500/600/700, `font-display: swap`. Không gọi Google Fonts. Giấy phép SIL Open Font License 1.1, miễn phí, được phép tự host và đóng gói (Q72) |
 | Font dự phòng | `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` |
 | Cỡ chữ | Chữ thường 16 px, dòng 1,5. Phần dẫn và Phương án khi làm bài 17 px, dòng 1,6. Không dùng chữ nhỏ hơn 14 px, trừ chú thích phụ (13 px) |
 | Số | Đồng hồ, điểm, số câu dùng `tabular-nums` để chữ số không nhảy khi đổi giá trị |
@@ -117,9 +117,9 @@ Component chỉ dùng **token ngữ nghĩa** (`bg-surface`, `text-fg-muted`, `bo
 - [ ] Mọi chuỗi giao diện nằm trong `vi.json`
 - [ ] Trạng thái đang tải, lỗi và danh sách trống đều đã có thiết kế
 
-## Câu hỏi cần chốt (Q71–Q75)
+## Quyết định (Q71–Q75)
 
-| Câu | Câu hỏi | Khuyến nghị |
+| Câu | Câu hỏi | Quyết định |
 |---|---|---|
 | Q71 | Lưu lựa chọn sáng/tối ở đâu? | Trên từng thiết bị (`localStorage`), mặc định theo hệ thống. Không cần cột mới trong DB |
 | Q72 | Font? | Be Vietnam Pro tự host, chỉ lấy bộ ký tự latin + vietnamese (woff2, khoảng 33 KB mỗi độ đậm: latin 21 KB + vietnamese 12 KB; trình duyệt chỉ tải bộ nào trang cần) |
