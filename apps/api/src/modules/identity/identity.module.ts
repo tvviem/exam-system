@@ -5,9 +5,9 @@ import { AdminAccountsService } from './admin-accounts.service';
 import { AuthController } from './auth/auth.controller';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
+import { AuthSessionStore } from './auth/auth-session-store';
 import { LoginBlock } from './auth/login-block';
 import { LoginRateLimiter } from './auth/login-rate-limiter';
-import { SessionStore } from './auth/session-store';
 import { UsersRepository } from './users.repository';
 
 @Module({
@@ -15,7 +15,7 @@ import { UsersRepository } from './users.repository';
   controllers: [AuthController],
   providers: [
     AuthService,
-    SessionStore,
+    AuthSessionStore,
     LoginRateLimiter,
     LoginBlock,
     UsersRepository,
@@ -23,6 +23,6 @@ import { UsersRepository } from './users.repository';
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
   // CLI và các module khác chỉ dùng những gì được xuất ở đây.
-  exports: [SessionStore, AdminAccountsService],
+  exports: [AuthSessionStore, AdminAccountsService],
 })
 export class IdentityModule {}

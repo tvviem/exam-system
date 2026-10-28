@@ -6,10 +6,10 @@ import { CLOCK, type Clock } from '../../../common/clock';
 import { type Database, DB } from '../../../db/db.module';
 import { REDIS } from '../../../redis/redis.module';
 import { authSessions } from '../identity.schema';
-import { sessionLifetimeFor } from './session-policy';
+import { authSessionLifetimeFor } from './auth-session-policy';
 
-export interface SessionRecord {
-  sessionId: string;
+export interface AuthSessionRecord {
+  authSessionId: string;
   userId: string;
   createdAt: number;
   lastSeenAt: number;
@@ -19,12 +19,12 @@ export interface SessionRecord {
   userAgent: string | null;
 }
 
-export interface SessionMeta {
+export interface AuthSessionMeta {
   ip: string | null;
   userAgent: string | null;
 }
 
-export type SessionRevokeReason =
+export type AuthSessionRevokeReason =
   | 'logout'
   | 'logout_by_user'
   | 'expired'
@@ -33,9 +33,9 @@ export type SessionRevokeReason =
   | 'password_changed'
   | 'admin_recovered';
 
-type StoredSession = SessionRecord & { tokenHash: string };
+type StoredAuthSession = AuthSessionRecord & { tokenHash: string };
 
-const isExpired = (record: SessionRecord, now: number) =>
+const isExpired = (record: AuthSessionRecord, now: number) =>
   now >= record.absoluteExpiresAt || now >= record.lastSeenAt + record.idleMs;
 
 const sessionKey = (tokenHash: string) => `auth:session:${tokenHash}`;
@@ -47,18 +47,18 @@ const hashToken = (token: string) => createHash('sha256').update(token).digest('
  * Thời hạn được so với Clock; TTL của Redis chỉ để dọn rác.
  */
 @Injectable()
-export class SessionStore {
+export class AuthSessionStore {
   constructor(
     @Inject(REDIS) private readonly redis: Redis,
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  async create(user: { id: string; isAdmin: boolean }, meta: SessionMeta) {
+  async create(user: { id: string; isAdmin: boolean }, meta: AuthSessionMeta) {
     const token = randomBytes(32).toString('base64url');
     const tokenHash = hashToken(token);
     const now = this.clock.now().getTime();
-    const lifetime = sessionLifetimeFor(user);
+    const lifetime = authSessionLifetimeFor(user);
     const absoluteExpiresAt = now + lifetime.absoluteMs;
 
     const [row] = await this.db
@@ -73,8 +73,8 @@ export class SessionStore {
       .returning({ id: authSessions.id });
     if (!row) throw new Error('Không tạo được phiên đăng nhập');
 
-    const record: SessionRecord = {
-      sessionId: row.id,
+    const record: AuthSessionRecord = {
+      authSessionId: row.id,
       userId: user.id,
       createdAt: now,
       lastSeenAt: now,
@@ -92,11 +92,11 @@ export class SessionStore {
   }
 
   /** Trả về phiên còn hiệu lực và gia hạn thời gian không hoạt động; hết hạn thì thu hồi. */
-  async resolve(token: string): Promise<SessionRecord | null> {
+  async resolve(token: string): Promise<AuthSessionRecord | null> {
     const tokenHash = hashToken(token);
     const raw = await this.redis.get(sessionKey(tokenHash));
     if (!raw) return null;
-    const record = JSON.parse(raw) as SessionRecord;
+    const record = JSON.parse(raw) as AuthSessionRecord;
     const now = this.clock.now().getTime();
 
     if (isExpired(record, now)) {
@@ -110,52 +110,52 @@ export class SessionStore {
     return record;
   }
 
-  async revokeToken(token: string, reason: SessionRevokeReason): Promise<void> {
+  async revokeToken(token: string, reason: AuthSessionRevokeReason): Promise<void> {
     const tokenHash = hashToken(token);
     const raw = await this.redis.get(sessionKey(tokenHash));
-    if (raw) await this.revoke({ ...(JSON.parse(raw) as SessionRecord), tokenHash }, reason);
+    if (raw) await this.revoke({ ...(JSON.parse(raw) as AuthSessionRecord), tokenHash }, reason);
   }
 
   /** Thu hồi mọi phiên của một người (Khóa đăng nhập, Xóa người dùng, đổi mật khẩu). */
   async revokeAllForUser(
     userId: string,
-    reason: SessionRevokeReason,
+    reason: AuthSessionRevokeReason,
     exceptSessionId?: string,
   ): Promise<void> {
     for (const record of await this.listForUser(userId)) {
-      if (record.sessionId !== exceptSessionId) await this.revoke(record, reason);
+      if (record.authSessionId !== exceptSessionId) await this.revoke(record, reason);
     }
   }
 
   /** Thu hồi một phiên của chính người dùng; false nếu không tìm thấy phiên đó trong số phiên của họ. */
-  async revokeOwnSession(userId: string, sessionId: string): Promise<boolean> {
-    const record = (await this.listForUser(userId)).find((r) => r.sessionId === sessionId);
+  async revokeOwnAuthSession(userId: string, authSessionId: string): Promise<boolean> {
+    const record = (await this.listForUser(userId)).find((r) => r.authSessionId === authSessionId);
     if (!record) return false;
     await this.revoke(record, 'logout_by_user');
     return true;
   }
 
   /** Các phiên còn hiệu lực của một người, mới nhất trước. */
-  async listForUser(userId: string): Promise<StoredSession[]> {
+  async listForUser(userId: string): Promise<StoredAuthSession[]> {
     const hashes = await this.redis.smembers(userSessionsKey(userId));
     if (hashes.length === 0) return [];
     const raws = await this.redis.mget(hashes.map(sessionKey));
     const now = this.clock.now().getTime();
-    const result: StoredSession[] = [];
+    const result: StoredAuthSession[] = [];
     for (const [i, raw] of raws.entries()) {
       const tokenHash = hashes[i] as string;
       if (!raw) {
         await this.redis.srem(userSessionsKey(userId), tokenHash);
         continue;
       }
-      const record = JSON.parse(raw) as SessionRecord;
+      const record = JSON.parse(raw) as AuthSessionRecord;
       if (!isExpired(record, now)) result.push({ ...record, tokenHash });
     }
     return result.sort((a, b) => b.createdAt - a.createdAt);
   }
 
   /** Xóa phiên khỏi Redis và ghi lý do thu hồi vào bản sao trong PostgreSQL. */
-  private async revoke(record: StoredSession, reason: SessionRevokeReason) {
+  private async revoke(record: StoredAuthSession, reason: AuthSessionRevokeReason) {
     await this.redis
       .multi()
       .del(sessionKey(record.tokenHash))
@@ -164,6 +164,6 @@ export class SessionStore {
     await this.db
       .update(authSessions)
       .set({ revokedAt: this.clock.now(), revokedReason: reason })
-      .where(and(eq(authSessions.id, record.sessionId), isNull(authSessions.revokedAt)));
+      .where(and(eq(authSessions.id, record.authSessionId), isNull(authSessions.revokedAt)));
   }
 }

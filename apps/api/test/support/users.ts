@@ -9,7 +9,7 @@ export interface SeedUser {
   fullName?: string;
   password?: string;
   isAdmin?: boolean;
-  tags?: ('examiner' | 'candidate')[];
+  roleTags?: ('examiner' | 'candidate')[];
   mustChangePassword?: boolean;
   passwordExpiresAt?: Date | null;
   status?: 'active' | 'locked';
@@ -45,7 +45,7 @@ export async function seedUser(
         input.removed ? new Date() : null,
       ],
     );
-    for (const tag of input.tags ?? []) {
+    for (const tag of input.roleTags ?? []) {
       await pg.query('INSERT INTO user_role_tags (user_id, tag) VALUES ($1, $2)', [id, tag]);
     }
   } finally {

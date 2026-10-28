@@ -7,7 +7,7 @@ export interface Me {
   id: string;
   fullName: string;
   isAdmin: boolean;
-  tags: RoleTag[];
+  roleTags: RoleTag[];
   mustChangePassword: boolean;
 }
 
@@ -34,9 +34,9 @@ export const meQuery = queryOptions({
   staleTime: 60_000,
 });
 
-export const sessionsQuery = queryOptions({
-  queryKey: ['auth', 'sessions'],
-  queryFn: () => apiFetch<AuthSession[]>('/auth/sessions'),
+export const authSessionsQuery = queryOptions({
+  queryKey: ['auth', 'auth-sessions'],
+  queryFn: () => apiFetch<AuthSession[]>('/auth/auth-sessions'),
 });
 
 export const login = (identifier: string, password: string) =>
@@ -47,13 +47,14 @@ export const logout = () => apiFetch('/auth/logout', { method: 'POST' });
 export const changePassword = (currentPassword: string, newPassword: string) =>
   apiFetch('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } });
 
-export const revokeSession = (id: string) => apiFetch(`/auth/sessions/${id}`, { method: 'DELETE' });
+export const revokeAuthSession = (id: string) =>
+  apiFetch(`/auth/auth-sessions/${id}`, { method: 'DELETE' });
 
 /** Trang đầu tiên theo vai trò sau khi đăng nhập. */
 export function homePathFor(me: Me): '/admin' | '/examiner' | '/take' | null {
   if (me.isAdmin) return '/admin';
-  if (me.tags.includes('examiner')) return '/examiner';
-  if (me.tags.includes('candidate')) return '/take';
+  if (me.roleTags.includes('examiner')) return '/examiner';
+  if (me.roleTags.includes('candidate')) return '/take';
   return null;
 }
 

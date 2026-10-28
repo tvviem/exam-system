@@ -31,7 +31,7 @@ export class UsersRepository {
   }
 
   async toAuthenticated(user: UserRow): Promise<AuthenticatedUser> {
-    const tags = await this.db
+    const roleTags = await this.db
       .select({ tag: userRoleTags.tag })
       .from(userRoleTags)
       .where(eq(userRoleTags.userId, user.id))
@@ -43,7 +43,7 @@ export class UsersRepository {
       code: user.code,
       fullName: user.fullName,
       isAdmin: user.isAdmin,
-      tags: tags.map((t) => t.tag),
+      roleTags: roleTags.map((t) => t.tag),
       mustChangePassword: user.mustChangePassword,
     };
   }

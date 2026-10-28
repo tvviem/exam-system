@@ -9,8 +9,8 @@ export interface AuthenticatedUser {
   code: string | null;
   fullName: string;
   isAdmin: boolean;
-  tags: RoleTag[];
+  roleTags: RoleTag[];
   mustChangePassword: boolean;
 }
 
-export const SESSION_COOKIE = 'exam_sid';
+export const AUTH_SESSION_COOKIE = 'exam_sid';

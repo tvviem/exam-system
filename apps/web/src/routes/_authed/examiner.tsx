@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 export const Route = createFileRoute('/_authed/examiner')({
   beforeLoad: ({ context }) => {
-    if (!context.me.tags.includes('examiner')) throw redirect({ to: '/' });
+    if (!context.me.roleTags.includes('examiner')) throw redirect({ to: '/' });
   },
   component: Page,
 });

@@ -38,8 +38,8 @@ function AuthedLayout() {
           </Link>
           <span className="ml-auto truncate text-sm text-slate-600">{me.fullName}</span>
           {!me.mustChangePassword && (
-            <Link to="/account/sessions" className="text-sm [&.active]:font-semibold">
-              {t('nav.sessions')}
+            <Link to="/account/auth-sessions" className="text-sm [&.active]:font-semibold">
+              {t('nav.authSessions')}
             </Link>
           )}
           <button

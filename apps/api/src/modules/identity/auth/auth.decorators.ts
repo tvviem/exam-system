@@ -15,6 +15,6 @@ export const CurrentUser = createParamDecorator(
     ctx.switchToHttp().getRequest().auth.user,
 );
 
-export const CurrentSessionId = createParamDecorator(
-  (_: unknown, ctx: ExecutionContext): string => ctx.switchToHttp().getRequest().auth.sessionId,
+export const CurrentAuthSessionId = createParamDecorator(
+  (_: unknown, ctx: ExecutionContext): string => ctx.switchToHttp().getRequest().auth.authSessionId,
 );

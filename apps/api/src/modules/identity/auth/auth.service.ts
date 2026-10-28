@@ -8,9 +8,9 @@ import { hashPassword, verifyPassword } from '../password/password-hasher';
 import { checkPasswordPolicy } from '../password/password-policy';
 import { UsersRepository } from '../users.repository';
 import type { AuthenticatedUser } from './auth.types';
+import { type AuthSessionMeta, AuthSessionStore } from './auth-session-store';
 import { LoginBlock } from './login-block';
 import { LoginRateLimiter } from './login-rate-limiter';
-import { type SessionMeta, SessionStore } from './session-store';
 
 @Injectable()
 export class AuthService {
@@ -18,12 +18,12 @@ export class AuthService {
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly usersRepo: UsersRepository,
-    private readonly sessions: SessionStore,
+    private readonly authSessions: AuthSessionStore,
     private readonly rateLimiter: LoginRateLimiter,
     private readonly loginBlock: LoginBlock,
   ) {}
 
-  async login(rawIdentifier: string, password: string, meta: SessionMeta) {
+  async login(rawIdentifier: string, password: string, meta: AuthSessionMeta) {
     const identifier = rawIdentifier.trim();
     if (!(await this.rateLimiter.allow(meta.ip, identifier))) {
       await this.recordLogin({ userId: null, identifier, failureReason: 'RATE_LIMITED', meta });
@@ -52,14 +52,14 @@ export class AuthService {
 
     await this.loginBlock.clear(user.id);
     await this.db.update(users).set({ lastLoginAt: this.clock.now() }).where(eq(users.id, user.id));
-    const session = await this.sessions.create(user, meta);
+    const session = await this.authSessions.create(user, meta);
     await this.recordLogin({ userId: user.id, identifier, failureReason: null, meta });
     return { token: session.token, maxAgeSeconds: session.maxAgeSeconds };
   }
 
   async changePassword(
     user: AuthenticatedUser,
-    sessionId: string,
+    authSessionId: string,
     currentPassword: string,
     newPassword: string,
   ) {
@@ -78,7 +78,7 @@ export class AuthService {
         passwordExpiresAt: null,
       })
       .where(eq(users.id, user.id));
-    await this.sessions.revokeAllForUser(user.id, 'password_changed', sessionId);
+    await this.authSessions.revokeAllForUser(user.id, 'password_changed', authSessionId);
   }
 
   /** Ghi lịch sử đăng nhập; `failureReason` null nghĩa là thành công. */
@@ -86,7 +86,7 @@ export class AuthService {
     userId: string | null;
     identifier: string;
     failureReason: ApiErrorCode | null;
-    meta: SessionMeta;
+    meta: AuthSessionMeta;
   }): Promise<void> {
     await this.db.insert(loginEvents).values({
       userId: event.userId,

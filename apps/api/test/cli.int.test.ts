@@ -105,7 +105,7 @@ describe('pnpm cli recover-admin', () => {
   });
 
   it('không áp dụng cho tài khoản không phải Quản trị viên (Q23)', async () => {
-    await seedUser({ username: 'gv.an', tags: ['examiner'] });
+    await seedUser({ username: 'gv.an', roleTags: ['examiner'] });
     const result = await runCli(['recover-admin', '--username', 'gv.an'], {});
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain('không phải tài khoản Quản trị viên');

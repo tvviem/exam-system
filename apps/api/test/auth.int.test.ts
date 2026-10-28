@@ -17,7 +17,7 @@ beforeEach(resetState);
 
 describe('đăng nhập', () => {
   it('đăng nhập bằng tên đăng nhập trả cookie phiên, /me trả thông tin người dùng', async () => {
-    await seedUser({ username: 'b2103456', fullName: 'Trần Thị Bình', tags: ['candidate'] });
+    await seedUser({ username: 'b2103456', fullName: 'Trần Thị Bình', roleTags: ['candidate'] });
 
     const { res, cookie } = await login(t.app, 'b2103456', DEFAULT_PASSWORD);
     expect(res.statusCode).toBe(200);
@@ -28,7 +28,7 @@ describe('đăng nhập', () => {
     expect(me.json()).toMatchObject({
       fullName: 'Trần Thị Bình',
       isAdmin: false,
-      tags: ['candidate'],
+      roleTags: ['candidate'],
       mustChangePassword: false,
     });
   });
@@ -225,7 +225,7 @@ describe('phiên đăng nhập (Q44, Q45, Q51)', () => {
   });
 
   it('Người dự thi: hết hạn sau 12 giờ không hoạt động', async () => {
-    await seedUser({ username: 'b2103456', tags: ['candidate'] });
+    await seedUser({ username: 'b2103456', roleTags: ['candidate'] });
     const { cookie } = await login(t.app, 'b2103456', DEFAULT_PASSWORD);
     t.clock.advance(hours(11));
     expect((await me(cookie)).statusCode).toBe(200);
@@ -236,7 +236,7 @@ describe('phiên đăng nhập (Q44, Q45, Q51)', () => {
   });
 
   it('Người dự thi: hoạt động liên tục vẫn hết hạn sau 7 ngày', async () => {
-    await seedUser({ username: 'b2103456', tags: ['candidate'] });
+    await seedUser({ username: 'b2103456', roleTags: ['candidate'] });
     const { cookie } = await login(t.app, 'b2103456', DEFAULT_PASSWORD);
     // 14 lần × 11 giờ 59 phút = 167 giờ 46 phút: chưa tới 7 ngày, chưa lần nào quá 12 giờ không hoạt động.
     for (let i = 0; i < 14; i++) {
@@ -274,7 +274,7 @@ describe('phiên đăng nhập (Q44, Q45, Q51)', () => {
     t.clock.advance(minutes(5));
     await login(t.app, 'b2103456', DEFAULT_PASSWORD, '10.0.0.8');
 
-    const res = await call(t.app, 'GET', '/api/auth/sessions', { cookie: phone.cookie });
+    const res = await call(t.app, 'GET', '/api/auth/auth-sessions', { cookie: phone.cookie });
     expect(res.statusCode).toBe(200);
     const sessions = res.json() as { ip: string; current: boolean }[];
     expect(sessions.map((s) => [s.ip, s.current])).toEqual([
@@ -287,10 +287,12 @@ describe('phiên đăng nhập (Q44, Q45, Q51)', () => {
     await seedUser({ username: 'b2103456' });
     const phone = await login(t.app, 'b2103456', DEFAULT_PASSWORD);
     const laptop = await login(t.app, 'b2103456', DEFAULT_PASSWORD);
-    const list = (await call(t.app, 'GET', '/api/auth/sessions', { cookie: phone.cookie })).json();
+    const list = (
+      await call(t.app, 'GET', '/api/auth/auth-sessions', { cookie: phone.cookie })
+    ).json();
     const laptopSession = list.find((s: { current: boolean }) => !s.current);
 
-    const res = await call(t.app, 'DELETE', `/api/auth/sessions/${laptopSession.id}`, {
+    const res = await call(t.app, 'DELETE', `/api/auth/auth-sessions/${laptopSession.id}`, {
       cookie: phone.cookie,
     });
     expect(res.statusCode).toBe(200);
@@ -304,10 +306,10 @@ describe('phiên đăng nhập (Q44, Q45, Q51)', () => {
     const mine = await login(t.app, 'b2103456', DEFAULT_PASSWORD);
     const other = await login(t.app, 'b2103457', DEFAULT_PASSWORD);
     const [otherSession] = (
-      await call(t.app, 'GET', '/api/auth/sessions', { cookie: other.cookie })
+      await call(t.app, 'GET', '/api/auth/auth-sessions', { cookie: other.cookie })
     ).json();
 
-    const res = await call(t.app, 'DELETE', `/api/auth/sessions/${otherSession.id}`, {
+    const res = await call(t.app, 'DELETE', `/api/auth/auth-sessions/${otherSession.id}`, {
       cookie: mine.cookie,
     });
     expect(res.statusCode).toBe(404);
@@ -317,7 +319,7 @@ describe('phiên đăng nhập (Q44, Q45, Q51)', () => {
   it('chưa đổi mật khẩu tạm thì chưa dùng được chức năng khác', async () => {
     await seedUser({ username: 'b2103456', mustChangePassword: true });
     const { cookie } = await login(t.app, 'b2103456', DEFAULT_PASSWORD);
-    const res = await call(t.app, 'GET', '/api/auth/sessions', { cookie });
+    const res = await call(t.app, 'GET', '/api/auth/auth-sessions', { cookie });
     expect(res.statusCode).toBe(403);
     expect(res.json()).toEqual({ code: 'PASSWORD_CHANGE_REQUIRED' });
   });

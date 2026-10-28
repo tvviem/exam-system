@@ -15,13 +15,13 @@ import { z } from 'zod';
 import { ApiError } from '../../../common/api-error';
 import {
   AllowPendingPasswordChange,
-  CurrentSessionId,
+  CurrentAuthSessionId,
   CurrentUser,
   Public,
 } from './auth.decorators';
 import { AuthService } from './auth.service';
-import { type AuthenticatedUser, SESSION_COOKIE } from './auth.types';
-import { SessionStore } from './session-store';
+import { AUTH_SESSION_COOKIE, type AuthenticatedUser } from './auth.types';
+import { AuthSessionStore } from './auth-session-store';
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(1024),
@@ -37,7 +37,7 @@ const loginSchema = z.object({
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
-    private readonly sessions: SessionStore,
+    private readonly authSessions: AuthSessionStore,
   ) {}
 
   @Public()
@@ -52,9 +52,9 @@ export class AuthController {
     const { token, maxAgeSeconds } = await this.auth.login(
       input.identifier,
       input.password,
-      sessionMetaFrom(req),
+      authSessionMetaFrom(req),
     );
-    reply.setCookie(SESSION_COOKIE, token, {
+    reply.setCookie(AUTH_SESSION_COOKIE, token, {
       httpOnly: true,
       secure: true, // ADR-0004; trình duyệt vẫn nhận cookie Secure trên http://localhost
       sameSite: 'lax',
@@ -68,34 +68,35 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   async logout(@Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const token = req.cookies[SESSION_COOKIE];
-    if (token) await this.sessions.revokeToken(token, 'logout');
-    reply.clearCookie(SESSION_COOKIE, { path: '/' });
+    const token = req.cookies[AUTH_SESSION_COOKIE];
+    if (token) await this.authSessions.revokeToken(token, 'logout');
+    reply.clearCookie(AUTH_SESSION_COOKIE, { path: '/' });
     return { ok: true };
   }
 
-  @Get('sessions')
+  @Get('auth-sessions')
   async listSessions(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSessionId() sessionId: string,
+    @CurrentAuthSessionId() authSessionId: string,
   ) {
-    const records = await this.sessions.listForUser(user.id);
+    const records = await this.authSessions.listForUser(user.id);
     return records.map((r) => ({
-      id: r.sessionId,
+      id: r.authSessionId,
       ip: r.ip,
       userAgent: r.userAgent,
       createdAt: new Date(r.createdAt).toISOString(),
       lastSeenAt: new Date(r.lastSeenAt).toISOString(),
-      current: r.sessionId === sessionId,
+      current: r.authSessionId === authSessionId,
     }));
   }
 
-  @Delete('sessions/:id')
-  async revokeSession(
+  @Delete('auth-sessions/:id')
+  async revokeAuthSession(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    if (!(await this.sessions.revokeOwnSession(user.id, id))) throw new ApiError('NOT_FOUND');
+    if (!(await this.authSessions.revokeOwnAuthSession(user.id, id)))
+      throw new ApiError('NOT_FOUND');
     return { ok: true };
   }
 
@@ -105,10 +106,10 @@ export class AuthController {
   async changePassword(
     @Body() body: unknown,
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSessionId() sessionId: string,
+    @CurrentAuthSessionId() authSessionId: string,
   ) {
     const input = changePasswordSchema.parse(body ?? {});
-    await this.auth.changePassword(user, sessionId, input.currentPassword, input.newPassword);
+    await this.auth.changePassword(user, authSessionId, input.currentPassword, input.newPassword);
     return { ok: true };
   }
 
@@ -119,13 +120,13 @@ export class AuthController {
       id: user.id,
       fullName: user.fullName,
       isAdmin: user.isAdmin,
-      tags: user.tags,
+      roleTags: user.roleTags,
       mustChangePassword: user.mustChangePassword,
     };
   }
 }
 
-export function sessionMetaFrom(req: FastifyRequest) {
+export function authSessionMetaFrom(req: FastifyRequest) {
   const userAgent = req.headers['user-agent'];
   return {
     ip: req.ip ?? null,

@@ -3,8 +3,8 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { CLOCK, type Clock } from '../../common/clock';
 import { type Database, DB } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
+import { AuthSessionStore } from './auth/auth-session-store';
 import { LoginBlock } from './auth/login-block';
-import { SessionStore } from './auth/session-store';
 import { users } from './identity.schema';
 import { hashPassword } from './password/password-hasher';
 import { checkPasswordPolicy } from './password/password-policy';
@@ -29,7 +29,7 @@ export class AdminAccountsService {
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: AuditService,
-    private readonly sessions: SessionStore,
+    private readonly authSessions: AuthSessionStore,
     private readonly loginBlock: LoginBlock,
   ) {}
 
@@ -118,7 +118,7 @@ export class AdminAccountsService {
       );
     });
     await this.loginBlock.clear(user.id);
-    await this.sessions.revokeAllForUser(user.id, 'admin_recovered');
+    await this.authSessions.revokeAllForUser(user.id, 'admin_recovered');
     return { temporaryPassword };
   }
 }

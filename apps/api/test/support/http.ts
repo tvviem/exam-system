@@ -1,7 +1,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { ORIGIN } from './app';
 
-export const SESSION_COOKIE = 'exam_sid';
+export const AUTH_SESSION_COOKIE = 'exam_sid';
 
 type Method = 'GET' | 'POST' | 'DELETE';
 
@@ -20,7 +20,7 @@ export async function call(
 ) {
   const headers: Record<string, string> = {};
   if (options.origin !== null) headers.origin = options.origin ?? ORIGIN;
-  if (options.cookie) headers.cookie = `${SESSION_COOKIE}=${options.cookie}`;
+  if (options.cookie) headers.cookie = `${AUTH_SESSION_COOKIE}=${options.cookie}`;
   const res = await app.inject({
     method,
     url,
@@ -34,7 +34,7 @@ export async function call(
 export function sessionCookieOf(res: {
   cookies: { name: string; value: string }[];
 }): string | undefined {
-  return res.cookies.find((c) => c.name === SESSION_COOKIE)?.value;
+  return res.cookies.find((c) => c.name === AUTH_SESSION_COOKIE)?.value;
 }
 
 export async function login(
