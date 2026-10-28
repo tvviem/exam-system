@@ -1,6 +1,6 @@
 # Lát cắt 0: khung monorepo, hạ tầng dev/CI, pipeline
 
-> Trạng thái: **proposed**. Code đã có trên nhánh `feat/slice-0` để duyệt cùng tài liệu này; chỉ merge sau khi chủ dự án đồng ý. Phần cấu trúc làm theo [architecture.md](../architecture.md) và các ADR đã duyệt. Những lựa chọn tài liệu chưa nói tới, hoặc lệch so với tài liệu, nằm ở mục [Quyết định cần duyệt](#quyết-định-cần-duyệt).
+> Trạng thái: **accepted** (28/10/2026). Code nằm trên nhánh `feat/slice-0`. Phần cấu trúc làm theo [architecture.md](../architecture.md) và các ADR đã duyệt. Các lựa chọn mới hoặc lệch so với tài liệu cũ được ghi ở mục [Đã chốt](#đã-chốt-28102026).
 
 ## Mục tiêu
 
@@ -28,7 +28,6 @@ Người mới clone repo chạy được các lệnh trong mục "Bắt đầu 
 - Image api chạy trong pod: health trả `ok`, migration chạy được.
 - `pnpm dev` qua proxy của Vite.
 
-Workflow chưa chạy thật trên GitHub.
 
 **Để lát cắt sau:**
 - Lát cắt 1: `bootstrap-admin`.
@@ -49,10 +48,7 @@ Máy đang có pod của plo-tracker: `prod-plotracker` dùng `:8000`, `:8080`; 
 - **Worker đặt chung trong `apps/api`** (`src/worker/main.ts`), cùng image, chạy bằng lệnh `node dist/worker/main.js`. Đã sửa architecture.md mục 10 và README.
 - **NestJS 12** (12.2.0; ràng buộc `^12.2.0` sẽ nhận bản 12.3.x khi cập nhật lockfile, vì pnpm 11 chưa cài bản mới ra dưới một ngày), kèm Nest CLI 12 và TypeScript 6.0. NestJS 12 dùng sẵn fastify 5.12.7 nên đã bỏ phần `overrides` vá GHSA-9q9j-q6p8-xq58. Bản 11 không còn được dùng. Đã chạy lại toàn bộ test: unit, integration, e2e, audit, image, worker và `pnpm dev`.
 - **Integration test không đụng dữ liệu demo.** Test chạy trên PostgreSQL và Redis thật trong pod sẵn có (`dev-exam` trên máy, `ci-exam` trên CI), nhưng dùng database `exam_test` và Redis DB 15. Ở mỗi lượt chạy, `test/global-setup.ts` xóa rồi tạo lại `exam_test`, chạy migration và xóa sạch Redis DB 15. Có hai lớp chặn: từ chối database có tên không kết thúc bằng `_test`, và từ chối Redis DB 0. Đổi đích bằng `TEST_DATABASE_URL` và `TEST_REDIS_URL`. Không dùng Testcontainers, vì vậy không cần bật Podman socket. Đã sửa architecture.md mục 3 và README.
-
-## Quyết định cần duyệt
-
-1. **Biome** thay cho ESLint + Prettier. Một công cụ lo cả lint lẫn format, chỉ áp dụng cho file code; Markdown giữ nguyên.
-2. **Định dạng module:** api biên dịch ra CommonJS (dùng SWC), còn NestJS 12 chỉ có ESM. `packages/*` là ESM, build bằng `tsc`. Node 24 cho phép `require()` gói ESM. Vitest test code NestJS qua `unplugin-swc` để giữ decorator metadata.
-3. **Chưa bật CodeQL.** Architecture.md mục 9 có nhắc CodeQL, nhưng code scanning trên repo private cần GitHub Advanced Security (trả phí). Tạm thời chỉ dùng `pnpm audit --prod --audit-level high`.
-4. **Cổng PostgreSQL của `prod-exam`:** architecture.md mục 8 ghi `127.0.0.1:5433`, trùng với `devplotracker`. Đề xuất đổi sang `127.0.0.1:5436`. Việc này thuộc lát cắt 6.
+- **Biome** thay cho ESLint + Prettier. Một công cụ lo cả lint lẫn format, chỉ áp dụng cho file code; Markdown giữ nguyên.
+- **Định dạng module:** api biên dịch ra CommonJS (dùng SWC), còn NestJS 12 chỉ có ESM. `packages/*` là ESM, build bằng `tsc`. Node 24 cho phép `require()` gói ESM. Vitest test code NestJS qua `unplugin-swc` để giữ decorator metadata.
+- **Chưa bật CodeQL.** Code scanning trên repo private cần GitHub Advanced Security (trả phí). Tạm thời chỉ dùng `pnpm audit --prod --audit-level high`.
+- **Cổng PostgreSQL của `prod-exam`:** trước đây ghi `127.0.0.1:5433`, trùng với `devplotracker`. Đổi sang `127.0.0.1:5436` (đã sửa architecture.md mục 8); áp dụng khi làm lát cắt 6.

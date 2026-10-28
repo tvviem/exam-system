@@ -43,7 +43,7 @@
                     ▼     ▼      ▼
    ┌──────────────────────┐   ┌────────────────────────┐
    │ postgres :5432       │   │ volume `exam_media`    │  ảnh gốc + biến thể WebP
-   │ → host 127.0.0.1:5433│   │ (mount vào api, worker,│
+   │ → host 127.0.0.1:5436│   │ (mount vào api, worker,│
    │ volume `exam_pgdata` │   │  web)                  │
    └──────────────────────┘   └────────────────────────┘
 ```
@@ -175,7 +175,7 @@ Làm theo cùng mô hình đã chạy ổn định ở `plo-tracker-bluni` ([ADR
 | web | nginx (image tự build) | Cổng duy nhất mở ra host: `:8180` (tránh `:8080` và `:8000` của plo-tracker) |
 | api | NestJS | Chỉ nghe trong pod, `localhost:3000` |
 | worker | cùng image với api, lệnh khởi động khác | |
-| postgres | PostgreSQL 17 | `127.0.0.1:5433` trên host để quản trị; volume `exam_pgdata` |
+| postgres | PostgreSQL 17 | `127.0.0.1:5436` trên host để quản trị (5433 đã có `devplotracker` dùng); volume `exam_pgdata` |
 | redis | Redis 7 | Chỉ trong pod |
 
 - **Ra Internet:** dùng chung `cloudflared` đang chạy trên máy. Thêm một ingress rule `exam.<tên-miền>` → `http://localhost:8180`. Tunnel hỗ trợ WebSocket nên Socket.IO chạy được.
@@ -189,7 +189,7 @@ Làm theo cùng mô hình đã chạy ổn định ở `plo-tracker-bluni` ([ADR
 ```
 Pull request / push ──► lint · typecheck · unit test · integration (Podman: postgres + redis)
                      ──► build SPA · Playwright e2e (desktop + mobile viewport)
-                     ──► kiểm tra migration drift · quét bảo mật (CodeQL, pnpm audit)
+                     ──► kiểm tra migration drift · quét bảo mật (pnpm audit; CodeQL khi có GitHub Advanced Security)
 
 push main ──► build + push image lên GHCR (tag = commit SHA)
           ──► job deploy chạy trên runner [self-hosted, wsl-exam]
