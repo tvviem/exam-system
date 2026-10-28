@@ -5,7 +5,9 @@
   "nav": {
     "admin": "Quản trị",
     "examiner": "Người ra đề",
-    "take": "Vào thi"
+    "take": "Vào thi",
+    "logout": "Đăng xuất",
+    "authSessions": "Phiên đăng nhập"
   },
   "health": {
     "heading": "Trạng thái hệ thống",
@@ -16,5 +18,51 @@
     "up": "chạy",
     "down": "lỗi"
   },
-  "placeholder": "Chức năng này đang được xây dựng."
+  "placeholder": "Chức năng này đang được xây dựng.",
+  "login": {
+    "heading": "Đăng nhập",
+    "identifier": "Tên đăng nhập hoặc email",
+    "password": "Mật khẩu",
+    "submit": "Đăng nhập",
+    "submitting": "Đang đăng nhập…"
+  },
+  "changePassword": {
+    "heading": "Đổi mật khẩu",
+    "intro": "Bạn cần đặt mật khẩu mới trước khi tiếp tục.",
+    "current": "Mật khẩu hiện tại",
+    "new": "Mật khẩu mới",
+    "confirm": "Nhập lại mật khẩu mới",
+    "hint": "Ít nhất 10 ký tự. Nên dùng một cụm từ dễ nhớ, ví dụ \"hoa-sen-no-sang\".",
+    "submit": "Đổi mật khẩu",
+    "mismatch": "Hai lần nhập mật khẩu mới không khớp.",
+    "done": "Đã đổi mật khẩu."
+  },
+  "home": {
+    "noRole": "Tài khoản của bạn chưa được gắn Nhãn vai trò. Hãy liên hệ Quản trị viên."
+  },
+  "errors": {
+    "INVALID_CREDENTIALS": "Tên đăng nhập hoặc mật khẩu không đúng.",
+    "LOGIN_TEMPORARILY_BLOCKED": "Tạm thời không đăng nhập được do nhập sai nhiều lần. Thử lại sau 15 phút.",
+    "ACCOUNT_LOCKED": "Tài khoản đã bị Khóa đăng nhập. Hãy liên hệ Quản trị viên.",
+    "TEMPORARY_PASSWORD_EXPIRED": "Mật khẩu tạm đã hết hạn. Hãy liên hệ người đã cấp tài khoản để được cấp lại.",
+    "RATE_LIMITED": "Bạn thử đăng nhập quá nhiều lần. Hãy đợi vài phút rồi thử lại.",
+    "WRONG_CURRENT_PASSWORD": "Mật khẩu hiện tại không đúng.",
+    "FORBIDDEN_ORIGIN": "Yêu cầu bị từ chối. Hãy tải lại trang.",
+    "UNKNOWN": "Có lỗi xảy ra. Hãy thử lại."
+  },
+  "passwordPolicy": {
+    "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
+    "too_long": "Mật khẩu mới không được dài quá 128 ký tự.",
+    "common": "Mật khẩu này quá phổ biến, dễ bị đoán. Hãy chọn mật khẩu khác.",
+    "contains_identity": "Mật khẩu không được chứa tên đăng nhập, email hoặc Mã định danh."
+  },
+  "authSessions": {
+    "heading": "Phiên đăng nhập",
+    "intro": "Các thiết bị đang đăng nhập bằng tài khoản của bạn.",
+    "current": "Thiết bị này",
+    "started": "Đăng nhập lúc {{time}}",
+    "lastSeen": "Hoạt động lúc {{time}}",
+    "revoke": "Đăng xuất thiết bị này",
+    "unknownDevice": "Thiết bị không rõ"
+  }
 }

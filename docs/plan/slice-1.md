@@ -1,6 +1,6 @@
 # Lát cắt 1: Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản
 
-> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58 ở [mục Quyết định](#quyết-định-q43q58). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
+> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58 và review PR 1a (Q59–Q60) ở [mục Quyết định](#quyết-định-q43q60). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
 
 ## Mục tiêu
 
@@ -44,7 +44,7 @@ Hai module chỉ giao tiếp qua service công khai, đúng như architecture.md
 |---|---|
 | Cookie | `exam_sid`, gồm `HttpOnly`, `Secure` (trừ khi chạy dev), `SameSite=Lax`, `Path=/` |
 | Mã phiên | 32 byte ngẫu nhiên. Cookie giữ mã gốc; PostgreSQL (`auth_sessions.token_hash`) và Redis chỉ giữ SHA-256 của mã |
-| Redis | `auth:session:<hash>` chứa `{ userId, isAdmin, tags, mustChangePassword }`, TTL bằng thời hạn phiên. Bộ `auth:user-sessions:<userId>` dùng để thu hồi mọi phiên của một người |
+| Redis | `auth:session:<hash>` chỉ chứa dữ liệu của phiên (`userId`, các mốc thời gian, IP, user agent), TTL bằng thời hạn phiên. Trạng thái, Nhãn vai trò và `mustChangePassword` đọc từ PostgreSQL ở mỗi request, nên Khóa đăng nhập có hiệu lực ngay. Bộ `auth:user-sessions:<userId>` dùng để thu hồi mọi phiên của một người |
 | Thời hạn (Q44, Q45) | Người ra đề và Người dự thi: hết hạn sau 12 giờ không hoạt động (mỗi request gia hạn lại), tối đa 7 ngày kể từ lúc đăng nhập. Quản trị viên: 30 phút và 12 giờ |
 | Nhiều thiết bị (Q51) | Được đăng nhập đồng thời; người dùng xem danh sách phiên đang mở của mình và đăng xuất từng phiên |
 | Thu hồi | Khóa đăng nhập, Xóa người dùng, đổi mật khẩu (trừ phiên đang dùng), đăng xuất: xóa trong Redis và ghi `revoked_at`, `revoked_reason` vào PostgreSQL |
@@ -71,7 +71,7 @@ Hai module chỉ giao tiếp qua service công khai, đúng như architecture.md
 
 ### Giao diện (web)
 
-- Route `/login` và `/change-password` đặt ngoài layout chính.
+- Route `/login` đặt ngoài layout chính. `/change-password` nằm trong layout để vẫn có nút Đăng xuất, nhưng người chưa đổi mật khẩu tạm không vào được trang nào khác.
 - Route `/admin/*` chỉ cho Quản trị viên. `/examiner/*` và `/take/*` kiểm tra Nhãn vai trò.
 - Mọi route đều gọi `GET /api/auth/me` qua TanStack Query. Nếu `mustChangePassword = true`, người dùng bị chuyển tới `/change-password` cho tới khi đổi xong.
 - Thiết kế cho điện thoại trước, vùng chạm tối thiểu 48 px. Mọi chuỗi giao diện nằm trong `vi.json`.
@@ -81,8 +81,8 @@ Hai module chỉ giao tiếp qua service công khai, đúng như architecture.md
 **Bảng:** `users`, `units`, `user_role_tags`, `examiner_profiles`, `auth_sessions`, `login_events`, `audit_logs`. Các bảng dùng ở 1c và 1d (`invitations`, `account_requests`, `account_request_items`, `notifications`) được thêm bằng migration trong PR tương ứng.
 
 **CLI** (`apps/api/src/cli/main.ts`, chạy bằng `pnpm cli <lệnh>`, trong image là `node dist/cli/main.js <lệnh>`):
-- `bootstrap-admin`: đọc `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_FULL_NAME`, `BOOTSTRAP_ADMIN_PASSWORD`. Chỉ chạy khi chưa có Quản trị viên nào. Đặt `must_change_password = true`.
-- `recover-admin --username <u>`: cấp lại quyền Quản trị viên cho một người dùng có sẵn, và mở Khóa đăng nhập nếu đang bị khóa. Ghi `audit_logs` với `actor_id = NULL`, `action = 'cli.recover-admin'`.
+- `bootstrap-admin`: đọc `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_FULL_NAME`, `BOOTSTRAP_ADMIN_PASSWORD`. Chỉ chạy khi không còn Quản trị viên nào chưa bị Xóa (Q60); có khóa advisory để hai lệnh chạy cùng lúc không cùng tạo được. Đặt `must_change_password = true`.
+- `recover-admin --username <u>` (Q60): chỉ nhận tài khoản đã là Quản trị viên và chưa bị Xóa. Lệnh mở Khóa đăng nhập, gỡ khóa tạm, cấp mật khẩu tạm mới (in ra một lần, hạn 7 ngày) và thu hồi mọi Phiên đăng nhập. Ghi `audit_logs` với `actor_id = NULL`, `action = 'cli.recover-admin'`.
 
 **API:**
 
@@ -90,17 +90,17 @@ Hai module chỉ giao tiếp qua service công khai, đúng như architecture.md
 |---|---|---|
 | POST | `/api/auth/login` | `{ identifier, password }`. `identifier` là tên đăng nhập hoặc email |
 | POST | `/api/auth/logout` | Thu hồi phiên hiện tại |
-| GET | `/api/auth/me` | `{ id, fullName, isAdmin, tags, mustChangePassword }` |
+| GET | `/api/auth/me` | `{ id, fullName, isAdmin, roleTags, mustChangePassword }` |
 | POST | `/api/auth/change-password` | `{ currentPassword, newPassword }`, thu hồi mọi phiên khác |
-| GET | `/api/auth/sessions` | Danh sách phiên đang mở của chính mình (Q51) |
-| DELETE | `/api/auth/sessions/:id` | Đăng xuất một phiên của chính mình |
+| GET | `/api/auth/auth-sessions` | Danh sách Phiên đăng nhập đang mở của chính mình (Q51) |
+| DELETE | `/api/auth/auth-sessions/:id` | Đăng xuất một Phiên đăng nhập của chính mình |
 
 **Web:** trang đăng nhập, trang đổi mật khẩu, nút đăng xuất, chặn route theo vai trò.
 
 **Test:**
-- Unit: chính sách mật khẩu; logic khóa tạm (lần sai thứ 5, hết 15 phút, đếm lại sau khi đăng nhập thành công).
+- Unit: chính sách mật khẩu. Logic khóa tạm được test qua seam HTTP (integration) với `Clock` giả.
 - Integration: đăng nhập đúng/sai; khóa tạm; phiên bị thu hồi thì trả 401; bắt buộc đổi mật khẩu; thiếu hoặc sai `Origin` thì trả 403.
-- E2E (desktop + mobile): `bootstrap-admin` → đăng nhập → bị buộc đổi mật khẩu → vào được `/admin`.
+- E2E (desktop + mobile), chạy trên database `exam_e2e` riêng: Quản trị viên đăng nhập → bị buộc đổi mật khẩu → vào được `/admin`. `bootstrap-admin` được test ở integration.
 
 ## PR 1b: Quản lý Người dùng và nhật ký thao tác
 
@@ -199,7 +199,7 @@ Q2 và Q37 trước đây chốt rằng email dùng cho Lời mời và link đ�
 - Người dùng tự đặt lại mật khẩu khi quên: cần email, nằm trong backlog. Giai đoạn 1 dùng "Cấp lại mật khẩu tạm".
 - Xác thực hai lớp (TOTP) cho Quản trị viên: backlog (Q45).
 
-## Quyết định (Q43–Q58)
+## Quyết định (Q43–Q60)
 
 Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất vấn đặc tả. Mọi câu đều chấp nhận khuyến nghị.
 
@@ -221,3 +221,5 @@ Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất v�
 | Q56 | Phiếu tài khoản mã hóa AES-256-GCM trên volume, tự xóa sau 7 ngày, khóa trong env file |
 | Q57 | Thông báo: client hỏi server mỗi 60 giây; từ lát cắt 4 chuyển sang Socket.IO |
 | Q58 | Thêm `account_request_items.match_status` |
+| Q59 | Thuật ngữ **Phiên đăng nhập** (`AuthSession`) trong GLOSSARY; code không dùng "session" đứng một mình |
+| Q60 | `recover-admin` chỉ khôi phục tài khoản Quản trị viên chưa bị Xóa và cấp mật khẩu tạm mới; `bootstrap-admin` chạy khi không còn Quản trị viên chưa bị Xóa |

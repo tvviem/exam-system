@@ -1,0 +1,14 @@
+[
+  {
+    "username": "e2e-quantri-desktop",
+    "fullName": "Quản trị E2E",
+    "password": "khoi-tao-lan-dau",
+    "isAdmin": true
+  },
+  {
+    "username": "e2e-quantri-mobile",
+    "fullName": "Quản trị E2E",
+    "password": "khoi-tao-lan-dau",
+    "isAdmin": true
+  }
+]

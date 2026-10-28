@@ -10,6 +10,12 @@
     },
     "typeCheck": false,
     "deleteOutDir": true,
-    "tsConfigPath": "tsconfig.build.json"
+    "tsConfigPath": "tsconfig.build.json",
+    "assets": [
+      {
+        "include": "**/*.txt",
+        "outDir": "dist"
+      }
+    ]
   }
 }

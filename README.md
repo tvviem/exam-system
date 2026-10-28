@@ -2,7 +2,7 @@
 
 Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên điện thoại. Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi tại lớp hoặc phòng máy. Người dự thi đăng nhập, nhập Mã vào thi và làm bài ngay trên điện thoại hoặc máy tính.
 
-> **Trạng thái:** đã xong giai đoạn đặc tả nghiệp vụ và kiến trúc; đang làm lát cắt 0 (khung monorepo, hạ tầng, CI), kế hoạch ở [docs/plan/slice-0.md](docs/plan/slice-0.md).
+> **Trạng thái:** đã xong giai đoạn đặc tả nghiệp vụ và kiến trúc; xong lát cắt 0; đang làm lát cắt 1 (Người dùng, đăng nhập), kế hoạch ở [docs/plan/slice-1.md](docs/plan/slice-1.md).
 
 ## Tính năng giai đoạn 1
 
@@ -113,10 +113,15 @@ pnpm db:migrate
 ```
 
 ```bash
+BOOTSTRAP_ADMIN_USERNAME=quantri BOOTSTRAP_ADMIN_FULL_NAME="Quản trị hệ thống" \
+BOOTSTRAP_ADMIN_PASSWORD='mot-cum-tu-de-nho' pnpm cli bootstrap-admin
+```
+
+```bash
 pnpm dev
 ```
 
-Mở http://localhost:5173: trang chủ hiển thị trạng thái PostgreSQL và Redis. Lệnh tạo Quản trị viên đầu tiên (`pnpm cli bootstrap-admin`) có từ lát cắt 1.
+Mở http://localhost:5173 và đăng nhập bằng tài khoản vừa tạo; lần đầu phải đổi mật khẩu. Trang http://localhost:5173/status hiển thị trạng thái PostgreSQL và Redis. Mất quyền quản trị thì chạy `pnpm cli recover-admin --username <tên>` trên máy chủ: lệnh mở khóa và in ra mật khẩu tạm mới.
 
 `make -C infra dev-up` tạo pod `dev-exam` gồm PostgreSQL (`127.0.0.1:5434`) và Redis (`127.0.0.1:6381`). Pod `ci-exam` dùng cổng 5435 và 6382. Tên pod và volume của dev, CI và production được tách riêng.
 
@@ -126,7 +131,7 @@ Mở http://localhost:5173: trang chủ hiển thị trạng thái PostgreSQL v�
 | `pnpm typecheck` | Kiểm tra kiểu toàn monorepo |
 | `pnpm test` | Unit test |
 | `pnpm test:integration` | Integration test trên database `exam_test` và Redis DB 15 của pod `dev-exam`; không đụng dữ liệu dev |
-| `pnpm test:e2e` | Playwright (desktop + mobile), cần api đang chạy |
+| `pnpm test:e2e` | Playwright (desktop + mobile), tự dựng api riêng trên database `exam_e2e` và Redis DB 14; cần `pnpm build` trước |
 | `pnpm db:generate` | Sinh migration từ `apps/api/src/db/schema.ts` |
 
 ## Quy trình phát triển

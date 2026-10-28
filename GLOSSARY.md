@@ -44,6 +44,10 @@ _Avoid_: nhóm học, cohort
 Nơi công tác của Người ra đề, ví dụ một khoa hoặc phòng ban.
 _Avoid_: khoa, department
 
+**Phiên đăng nhập** (`AuthSession`):
+Khoảng thời gian một Người dùng đăng nhập trên một thiết bị, từ lúc đăng nhập tới khi đăng xuất, hết hạn hoặc bị thu hồi. Một Người dùng có thể có nhiều Phiên đăng nhập cùng lúc.
+_Avoid_: session (đứng một mình, dễ nhầm với Phiên thi), phiên
+
 **Khóa đăng nhập** (`Lock`):
 Trạng thái tạm thời không cho Người dùng đăng nhập; Quản trị viên có thể mở lại.
 _Avoid_: cấm, ban, vô hiệu hóa
