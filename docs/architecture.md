@@ -39,7 +39,7 @@
                     │     │      │
                     │     │  ┌───┴────────┐
                     │     │  │ worker     │  tự Nộp bài · xử lý ảnh · import Excel
-                    │     │  └───┬────────┘  gửi email · Chốt kết quả
+                    │     │  └───┬────────┘  Phiếu tài khoản · Chốt kết quả
                     ▼     ▼      ▼
    ┌──────────────────────┐   ┌────────────────────────┐
    │ postgres :5432       │   │ volume `exam_media`    │  ảnh gốc + biến thể WebP
@@ -131,8 +131,11 @@ Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pu
 - **Xác thực:**
   - Dùng opaque session cookie ([ADR-0004](./adr/0004-phien-dang-nhap-opaque-cookie.md)).
   - Băm mật khẩu bằng Argon2id.
-  - Khóa tạm sau 5 lần đăng nhập sai liên tiếp.
-  - Buộc đổi mật khẩu ở lần đăng nhập đầu tiên.
+  - Khóa tạm 15 phút sau 5 lần đăng nhập sai liên tiếp.
+  - Buộc đổi mật khẩu ở lần đăng nhập đầu tiên. Mật khẩu dài 10–128 ký tự, chặn mật khẩu phổ biến; mật khẩu tạm hết hạn sau 7 ngày.
+  - Phiên hết hạn sau 12 giờ không hoạt động, tối đa 7 ngày; với Quản trị viên là 30 phút và 12 giờ. Được đăng nhập nhiều thiết bị cùng lúc.
+  - Chống CSRF: ngoài `SameSite=Lax`, mọi request đổi dữ liệu phải có header `Origin` đúng.
+  - Giai đoạn 1 không gửi email: Lời mời là link do Quản trị viên tự gửi, mật khẩu tạm giao qua Phiếu tài khoản.
 - **Phân quyền:**
   - Kiểm tra vai trò bằng guard.
   - Kiểm tra quyền sở hữu ở tầng service: Người ra đề chỉ thấy Chủ đề, Bộ đề và Phiên thi của mình.
@@ -247,3 +250,5 @@ Một container api (Node.js) trên máy WSL hiện tại đủ đáp ứng vớ
 - Tải ảnh hoặc file trong Câu tự luận.
 - Giao diện tiếng Anh.
 - Chuyển hạ tầng sang VPS.
+- Gửi email (Lời mời, link đặt mật khẩu, tự đặt lại mật khẩu khi quên) qua interface `MailSender`; chọn nhà cung cấp bằng ADR.
+- Xác thực hai lớp (TOTP) cho Quản trị viên.

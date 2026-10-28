@@ -8,7 +8,7 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
 
 **Quản trị viên**
 - Tạo Quản trị viên đầu tiên khi triển khai; chỉ định thêm Quản trị viên khác.
-- Gửi Lời mời để một người trở thành Người ra đề; duyệt Yêu cầu cấp tài khoản và xuất Phiếu tài khoản có mật khẩu tạm.
+- Tạo link Lời mời để một người trở thành Người ra đề; duyệt Yêu cầu cấp tài khoản và xuất Phiếu tài khoản có mật khẩu tạm.
 - Gắn Nhãn vai trò (Người ra đề, Người dự thi); Khóa đăng nhập, Xóa người dùng, xem lịch sử đăng nhập và nhật ký thao tác.
 - Chuyển giao Chủ đề khi Người ra đề nghỉ việc.
 
@@ -62,7 +62,7 @@ Lý do của từng lựa chọn nằm trong các ADR ở [docs/adr](docs/adr).
 Cloudflare Tunnel ──► Podman pod `prod-exam`
                         ├─ web     nginx: SPA tĩnh, proxy /api và /ws, phục vụ ảnh
                         ├─ api     NestJS modular monolith (HTTP + WebSocket)
-                        ├─ worker  BullMQ: tự nộp bài, xử lý ảnh, Excel, email, chốt kết quả
+                        ├─ worker  BullMQ: tự nộp bài, xử lý ảnh, Excel, Phiếu tài khoản, chốt kết quả
                         ├─ postgres  nơi lưu trữ gốc
                         └─ redis     phiên đăng nhập, hàng đợi, trạng thái online, cache
 ```
@@ -168,7 +168,7 @@ Pipeline không deploy khi đang có Phiên thi diễn ra. Khi hệ thống ổn
 | 5 | Chấm, Công bố kết quả, Phúc khảo, Đính chính đáp án, xuất Excel |
 | 6 | Triển khai production lên pod `prod-exam` |
 
-Để giai đoạn sau: rút ngẫu nhiên câu hỏi, thống kê câu hỏi, nhập câu hỏi từ Word, tải ảnh vào Câu tự luận, giao diện tiếng Anh, chuyển sang VPS.
+Để giai đoạn sau: rút ngẫu nhiên câu hỏi, thống kê câu hỏi, nhập câu hỏi từ Word, tải ảnh vào Câu tự luận, giao diện tiếng Anh, gửi email, xác thực hai lớp cho Quản trị viên, chuyển sang VPS.
 
 ## Bản quyền
 
