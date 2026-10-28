@@ -180,7 +180,12 @@
   .A .nav-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .A .grid-btn { display: grid; justify-items: center; gap: 2px; min-width: 76px; padding: 4px 10px; border: 0; background: transparent; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+  .mode { flex: none; display: inline-grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+  .mode button { min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .mode button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
+
   /* ── Variant B · Cuộn liên tục ────────────────── */
+  .B .chip-submit { flex: none; height: 38px; margin-left: 6px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
   .B .top { background: var(--surface); border-bottom: 1px solid var(--line); }
   .B .top-in { display: flex; align-items: center; gap: 12px; min-height: 54px; }
   .B .top-in .save { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -299,7 +304,7 @@ const EXAM = {
 };
 const ITEMS = EXAM.items, SECS = EXAM.sections;
 const KEY = 'ABCDEFGH', SUBK = 'abcdefgh';
-const VARIANTS = ['A', 'B', 'C'];
+const VARIANTS = ['A', 'B']; // C (Vùng ngón cái) bị loại sau vòng thử đầu tiên
 const VNAMES = { A: 'Từng câu một', B: 'Cuộn liên tục', C: 'Vùng ngón cái' };
 const HASH = { A: 'tung-cau', B: 'cuon', C: 'ngon-cai' };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -316,7 +321,14 @@ function initial() {
   };
 }
 let S = initial();
-{ const h = location.hash.slice(1); const v = VARIANTS.find(k => HASH[k] === h); if (v) S.variant = v; }
+const MODE_KEY = 'exam.viewMode';
+function preferredMode() {
+  const h = location.hash.slice(1), v = VARIANTS.find(k => HASH[k] === h);
+  if (v) return v;
+  try { const m = localStorage.getItem(MODE_KEY); if (VARIANTS.includes(m)) return m; } catch (e) {}
+  return innerWidth >= 900 ? 'B' : 'A';
+}
+S.variant = preferredMode();
 
 // ── Tiện ích ──────────────────────────────────────
 const $ = s => document.querySelector(s);
@@ -407,6 +419,8 @@ function essayBox(it) {
 const qs = (it, base, cur) => `data-base="${base}" data-qstate="${it.id}" data-cur="${cur ? 1 : 0}" class="${base} ${qClass(it)} ${cur ? 'cur' : ''}"`;
 const tile = (it, i) => `<button ${qs(it, 'tile', i === S.idx && S.variant !== 'B')} data-act="go" data-i="${i}" aria-label="Câu ${i + 1}">${i + 1}</button>`;
 
+const modeToggle = () => `<div class="mode" role="group" aria-label="Chế độ xem">${[['A', '1 câu'], ['B', 'Cả đề']].map(([m, label]) => `<button data-act="mode" data-m="${m}" aria-pressed="${S.variant === m}">${label}</button>`).join('')}</div>`;
+
 // ── Biến thể A · Từng câu một ─────────────────────
 function tfRows(it) {
   const v = S.responses[it.id] || {};
@@ -422,7 +436,7 @@ function renderA() {
   return `<div class="va A">
     <header class="top"><div class="top-in gut">
       <div class="timer" data-timer aria-label="Thời gian còn lại"></div>
-      <div class="ttl"><b>${EXAM.title}</b><div class="save" data-save></div></div>
+      <div class="ttl"><b>${EXAM.title}</b><div class="save" data-save></div></div>${modeToggle()}
     </div><div class="prog"><i data-prog></i></div></header>
     <main class="main" data-scroll><div class="main-in gut">
       <div class="eyebrow">${secOf(it).title}</div>
@@ -449,10 +463,9 @@ function tfTable(it) {
 function renderB() {
   return `<div class="va B">
     <header class="top"><div class="top-in gut">
-      <div class="timer" data-timer aria-label="Thời gian còn lại"></div><div class="save" data-save></div>
-      <button class="link" data-act="submit">Nộp bài</button>
+      <div class="timer" data-timer aria-label="Thời gian còn lại"></div><div class="save" data-save></div>${modeToggle()}
     </div><nav class="chips" aria-label="Danh sách câu"><div class="chips-in gut">
-      ${ITEMS.map((it, i) => `<button ${qs(it, 'chip', i === S.idx)} data-act="jump" data-i="${i}" aria-label="Câu ${i + 1}">${i + 1}</button>`).join('')}
+      ${ITEMS.map((it, i) => `<button ${qs(it, 'chip', i === S.idx)} data-act="jump" data-i="${i}" aria-label="Câu ${i + 1}">${i + 1}</button>`).join('')}<button class="chip-submit" data-act="submit">Nộp bài</button>
     </div></nav></header>
     <main class="main" data-scroll><div class="main-in gut">
       <div class="paper-head"><h1>${EXAM.title}</h1><p>${EXAM.session}</p><p>${EXAM.candidate}</p></div>
@@ -650,12 +663,14 @@ function go(i) {
   S.idx = i; render();
 }
 function switchVariant(d) {
+  const idx0 = S.idx;
   S.variant = VARIANTS[(VARIANTS.indexOf(S.variant) + d + VARIANTS.length) % VARIANTS.length];
   S.sheet = null; S.zoom = null;
   try { history.replaceState(null, '', '#' + HASH[S.variant]); } catch (e) {}
   render();
-  if (S.variant === 'B') requestAnimationFrame(() => jumpB(S.idx));
-  toast(`Biến thể ${S.variant} · ${VNAMES[S.variant]}`);
+  if (S.variant === 'B') requestAnimationFrame(() => jumpB(idx0));
+  try { localStorage.setItem(MODE_KEY, S.variant); } catch (e) {}
+  toast(`Chế độ xem: ${S.variant === 'A' ? 'từng câu một' : 'cả đề'}`);
 }
 function toggleNet() {
   S.online = !S.online;
@@ -709,6 +724,7 @@ document.addEventListener('click', e => {
     case 'zoom': S.zoom = { scale: 1.6 }; renderOverlays(); break;
     case 'zoom-in': S.zoom.scale = Math.min(4, S.zoom.scale + 0.5); renderOverlays(); break;
     case 'zoom-out': S.zoom.scale = Math.max(1, S.zoom.scale - 0.5); renderOverlays(); break;
+    case 'mode': if (b.dataset.m !== S.variant) switchVariant(1); break;
     case 'vprev': switchVariant(-1); break;
     case 'vnext': switchVariant(1); break;
     case 'net': toggleNet(); break;
