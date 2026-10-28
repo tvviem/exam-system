@@ -161,3 +161,7 @@ Pipeline không deploy khi đang có Phiên thi diễn ra. Khi hệ thống ổn
 | 6 | Triển khai production lên pod `prod-exam` |
 
 Để giai đoạn sau: rút ngẫu nhiên câu hỏi, thống kê câu hỏi, nhập câu hỏi từ Word, tải ảnh vào Câu tự luận, giao diện tiếng Anh, chuyển sang VPS.
+
+## Bản quyền
+
+Mã nguồn đóng. © 2026 tvviem. Mọi quyền được bảo lưu; không được sao chép, phân phối hoặc sử dụng khi chưa có sự đồng ý bằng văn bản.
