@@ -1,0 +1,20 @@
+{
+  "app": {
+    "title": "Hệ thống thi trực tuyến"
+  },
+  "nav": {
+    "admin": "Quản trị",
+    "examiner": "Người ra đề",
+    "take": "Vào thi"
+  },
+  "health": {
+    "heading": "Trạng thái hệ thống",
+    "checking": "Đang kiểm tra…",
+    "ok": "Hoạt động bình thường",
+    "degraded": "Một số thành phần đang lỗi",
+    "unreachable": "Không kết nối được máy chủ",
+    "up": "chạy",
+    "down": "lỗi"
+  },
+  "placeholder": "Chức năng này đang được xây dựng."
+}
