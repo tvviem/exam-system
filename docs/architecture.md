@@ -157,8 +157,10 @@ Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pu
 
 ## 7. Trải nghiệm làm bài trên điện thoại
 
-- Mỗi màn hình hiển thị một câu. Thanh trên cùng có đồng hồ và trạng thái lưu. Thanh dưới có nút "Trước / Sau".
-- Có lưới số câu (bottom sheet) cho biết câu đã làm, chưa làm và câu được đánh dấu xem lại.
+Đã chốt sau khi thử prototype (nhánh `prototype/exam-taking-ui`): có **hai chế độ xem**, Người dự thi chuyển qua lại bất cứ lúc nào bằng nút gạt "1 câu | Cả đề" ở đầu màn hình. Hai chế độ dùng chung Lượt làm bài: Câu trả lời, đánh dấu, đồng hồ và trạng thái lưu. Chuyển chế độ luôn giữ đúng câu đang làm. Lựa chọn được nhớ trên thiết bị; mặc định điện thoại mở chế độ 1 câu, màn hình rộng (≥ 900 px) mở chế độ Cả đề. Phương án "vùng ngón cái" (vuốt ngang, đáp án dồn xuống đáy) bị loại.
+
+- **Chế độ 1 câu:** mỗi màn hình một câu. Thanh trên cùng có đồng hồ và trạng thái lưu. Thanh dưới có nút "Trước / Sau" và nút mở lưới số câu (bottom sheet) cho biết câu đã làm, làm dở, chưa làm, đánh dấu xem lại, chưa lưu.
+- **Chế độ Cả đề:** toàn bộ Bộ đề cuộn liên tục theo Phần, giống đề giấy. Dải số câu dính ở trên, tự sáng theo câu đang đọc và chạm vào để nhảy tới câu đó; nút Nộp bài nằm cuối dải.
 - Vùng chạm tối thiểu 48 px. Cả dòng Phương án đều bấm được. Chùm đúng/sai hiển thị dạng bảng với 2 nút Đ/S cỡ lớn cho mỗi Mệnh đề.
 - Ảnh tải lười (lazy load) theo câu kế tiếp, chạm để phóng to và kéo bằng hai ngón.
 - Ngân sách hiệu năng: JS ban đầu của trang làm bài dưới 150 KB (gzip); LCP dưới 2,5 giây trên mạng 4G.
