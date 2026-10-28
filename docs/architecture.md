@@ -43,7 +43,7 @@
                     ▼     ▼      ▼
    ┌──────────────────────┐   ┌────────────────────────┐
    │ postgres :5432       │   │ volume `exam_media`    │  ảnh gốc + biến thể WebP
-   │ → host 127.0.0.1:5433│   │ (mount vào api, worker,│
+   │ → host 127.0.0.1:5436│   │ (mount vào api, worker,│
    │ volume `exam_pgdata` │   │  web)                  │
    └──────────────────────┘   └────────────────────────┘
 ```
@@ -54,7 +54,7 @@
 |---|---|---|
 | Ngôn ngữ | **TypeScript** cả frontend lẫn backend | Một ngôn ngữ; schema Zod dùng chung cho Câu hỏi và Câu trả lời ([ADR-0003](./adr/0003-modular-monolith-typescript.md)) |
 | Runtime | Node.js LTS (24.x) | Ổn định, tối ưu cho tác vụ I/O |
-| Backend | **NestJS 11** (adapter Fastify) | Chia module theo nghiệp vụ, có sẵn DI, guard và interceptor cho phân quyền |
+| Backend | **NestJS 12** (adapter Fastify) | Chia module theo nghiệp vụ, có sẵn DI, guard và interceptor cho phân quyền. Đây là NestJS, framework backend, không phải Next.js (Next.js đã bị loại ở [ADR-0003](./adr/0003-modular-monolith-typescript.md)). Gói NestJS 12 chỉ có ESM; api biên dịch ra CommonJS và nạp các gói này qua `require(esm)` của Node 24 |
 | Truy cập DB | **Drizzle ORM** + node-postgres | Gần với SQL, hỗ trợ tốt JSONB và partial index; migration sinh dạng file SQL dễ review |
 | CSDL | **PostgreSQL 17/18** (managed) | [ADR-0001](./adr/0001-postgresql-la-noi-luu-tru-goc.md) |
 | Cache / hàng đợi | **Redis 7+** + **BullMQ** | [ADR-0002](./adr/0002-redis-chi-chua-du-lieu-tam.md) |
@@ -66,7 +66,7 @@
 | Ngôn ngữ giao diện | i18next | Giai đoạn 1 chỉ có tiếng Việt; chuỗi giao diện tách ra file |
 | Ảnh | sharp (trong worker) + lưu trên volume | Tạo biến thể WebP 480/960/1600 px để điện thoại tải nhanh. Việc lưu file nằm sau một interface `MediaStore`, hiện dùng filesystem, sau này đổi sang S3/R2 mà không sửa nghiệp vụ ([ADR-0006](./adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)) |
 | Mật khẩu | Argon2id | Chuẩn OWASP hiện hành |
-| Kiểm thử | Vitest, Testcontainers (Postgres + Redis thật), Playwright (gồm cả kích thước màn hình điện thoại) | |
+| Kiểm thử | Vitest, Playwright (gồm cả kích thước màn hình điện thoại) | Integration test dùng Postgres + Redis thật trong pod (`dev-exam` trên máy, `ci-exam` trên CI), nhưng trên database `exam_test` và Redis DB 15 riêng, được làm sạch mỗi lần chạy, nên không đụng dữ liệu demo |
 | Quan sát | pino (log JSON), OpenTelemetry, Sentry | |
 
 ## 4. Module backend
@@ -175,7 +175,7 @@ Làm theo cùng mô hình đã chạy ổn định ở `plo-tracker-bluni` ([ADR
 | web | nginx (image tự build) | Cổng duy nhất mở ra host: `:8180` (tránh `:8080` và `:8000` của plo-tracker) |
 | api | NestJS | Chỉ nghe trong pod, `localhost:3000` |
 | worker | cùng image với api, lệnh khởi động khác | |
-| postgres | PostgreSQL 17 | `127.0.0.1:5433` trên host để quản trị; volume `exam_pgdata` |
+| postgres | PostgreSQL 17 | `127.0.0.1:5436` trên host để quản trị (5433 đã có `devplotracker` dùng); volume `exam_pgdata` |
 | redis | Redis 7 | Chỉ trong pod |
 
 - **Ra Internet:** dùng chung `cloudflared` đang chạy trên máy. Thêm một ingress rule `exam.<tên-miền>` → `http://localhost:8180`. Tunnel hỗ trợ WebSocket nên Socket.IO chạy được.
@@ -189,7 +189,7 @@ Làm theo cùng mô hình đã chạy ổn định ở `plo-tracker-bluni` ([ADR
 ```
 Pull request / push ──► lint · typecheck · unit test · integration (Podman: postgres + redis)
                      ──► build SPA · Playwright e2e (desktop + mobile viewport)
-                     ──► kiểm tra migration drift · quét bảo mật (CodeQL, pnpm audit)
+                     ──► kiểm tra migration drift · quét bảo mật (pnpm audit; CodeQL khi có GitHub Advanced Security)
 
 push main ──► build + push image lên GHCR (tag = commit SHA)
           ──► job deploy chạy trên runner [self-hosted, wsl-exam]
@@ -210,8 +210,7 @@ push main ──► build + push image lên GHCR (tag = commit SHA)
 ```
 exam-system/
   apps/
-    api/        NestJS (HTTP + WebSocket)
-    worker/     tiến trình BullMQ (dùng chung mã với api)
+    api/        NestJS (HTTP + WebSocket); worker BullMQ ở src/worker, cùng mã và cùng image, lệnh khởi động khác
     web/        React PWA (route /admin, /examiner, /take)
   packages/
     shared/     schema Zod: Câu hỏi, Câu trả lời, Quy tắc chấm, DTO

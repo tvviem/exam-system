@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint · typecheck · unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build packages
+        run: pnpm --filter "./packages/**" build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Audit dependencies
+        run: pnpm audit --prod --audit-level high
+
+  integration:
+    name: Integration · e2e · migration drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PODMAN: sudo podman
+      DATABASE_URL: postgres://exam:exam@127.0.0.1:5435/exam
+      REDIS_URL: redis://127.0.0.1:6382/0
+      TEST_DATABASE_URL: postgres://exam:exam@127.0.0.1:5435/exam_test
+      TEST_REDIS_URL: redis://127.0.0.1:6382/15
+      LOG_LEVEL: warn
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Start pod ci-exam
+        run: |
+          sudo mount --make-rshared /
+          make -C infra ci-up
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Wait for PostgreSQL and Redis
+        run: make -C infra ci-wait
+
+      - name: Migrate
+        run: pnpm db:migrate
+
+      - name: Check migration drift
+        run: |
+          pnpm db:generate
+          test -z "$(git status --porcelain apps/api/drizzle)" || { git status --porcelain apps/api/drizzle; echo "Schema thay đổi nhưng chưa có migration: chạy pnpm db:generate rồi commit."; exit 1; }
+
+      - name: Integration tests
+        run: pnpm test:integration
+
+      - name: Start api
+        working-directory: apps/api
+        run: |
+          nohup node dist/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://localhost:3000/api/health && exit 0; sleep 1; done
+          cat api.log; exit 1
+
+      - name: Install Playwright browser
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E tests (desktop + mobile)
+        run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-report
+          path: |
+            apps/web/playwright-report
+            apps/api/api.log
+          retention-days: 7
+
+      - name: Stop pod ci-exam
+        if: always()
+        run: make -C infra ci-down
+
+  images:
+    name: Image ${{ matrix.image }}${{ github.event_name == 'push' && ' · push GHCR' || '' }}
+    needs: [check, integration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image: [api, web]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/login-action@v4
+        if: github.event_name == 'push'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: infra/containers/${{ matrix.image }}.Containerfile
+          build-args: APP_VERSION=${{ github.sha }}
+          push: ${{ github.event_name == 'push' }}
+          tags: ghcr.io/${{ github.repository_owner }}/exam-${{ matrix.image }}:${{ github.sha }}

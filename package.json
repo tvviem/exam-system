@@ -1,0 +1,25 @@
+{
+  "name": "exam-system",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter \"./packages/**\" build && pnpm --parallel --filter \"./apps/**\" dev",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm -r test:integration",
+    "test:e2e": "pnpm --filter @exam/web test:e2e",
+    "db:generate": "pnpm --filter @exam/api db:generate",
+    "db:migrate": "pnpm --filter @exam/api... build && pnpm --filter @exam/api db:migrate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.3",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}

@@ -8,3 +8,6 @@ coverage/
 CLAUDE.local.md
 playwright-report/
 test-results/
+!.env.*.example
+*.tsbuildinfo
+apps/web/src/routeTree.gen.ts
