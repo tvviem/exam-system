@@ -14,12 +14,20 @@ import {
   sql,
 } from 'drizzle-orm';
 import { ApiError } from '../../../common/api-error';
+import { CLOCK, type Clock } from '../../../common/clock';
 import type { Page } from '../../../common/pagination';
 import { uniqueViolationOf } from '../../../common/pg-error';
 import { type Database, DB } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
 import type { RoleTag } from '../auth/auth.types';
+import { AuthSessionStore } from '../auth/auth-session-store';
+import { LoginBlock } from '../auth/login-block';
 import { examinerProfiles, units, userRoleTags, users } from '../identity.schema';
+import { hashPassword } from '../password/password-hasher';
+import {
+  generateTemporaryPassword,
+  TEMPORARY_PASSWORD_TTL_MS,
+} from '../password/temporary-password';
 import type { UserRow } from '../users.repository';
 
 export type UserStatus = 'active' | 'locked' | 'removed';
@@ -70,7 +78,10 @@ const validationFailed = (path: string, code: string) =>
 export class UserManagementService {
   constructor(
     @Inject(DB) private readonly db: Database,
+    @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: AuditService,
+    private readonly authSessions: AuthSessionStore,
+    private readonly loginBlock: LoginBlock,
   ) {}
 
   async list({ page, pageSize, ...filter }: Page & UserFilter) {
@@ -209,6 +220,224 @@ export class UserManagementService {
       if (field) throw new ApiError('CONFLICT', { field });
       throw error;
     }
+  }
+
+  /** Khóa đăng nhập: bắt buộc lý do, thu hồi mọi Phiên đăng nhập. */
+  async lock(actor: Actor, id: string, reason: string): Promise<void> {
+    const user = await this.findTargetOrThrow(actor, id);
+    if (user.status === 'locked') throw new ApiError('INVALID_STATE');
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({
+          status: 'locked',
+          lockedAt: this.clock.now(),
+          lockedBy: actor.id,
+          lockedReason: reason,
+        })
+        .where(eq(users.id, id));
+      await this.audit.record(
+        {
+          actorId: actor.id,
+          action: 'user.lock',
+          entityType: 'user',
+          entityId: id,
+          before: { status: 'active' },
+          after: { status: 'locked', reason },
+          ip: actor.ip,
+        },
+        tx,
+      );
+    });
+    await this.authSessions.revokeAllForUser(id, 'user_locked');
+  }
+
+  /** Mở Khóa đăng nhập; lý do không bắt buộc (Q63). */
+  async unlock(actor: Actor, id: string, reason: string | null): Promise<void> {
+    const user = await this.findTargetOrThrow(actor, id);
+    if (user.status !== 'locked') throw new ApiError('INVALID_STATE');
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ status: 'active', lockedAt: null, lockedBy: null, lockedReason: null })
+        .where(eq(users.id, id));
+      await this.audit.record(
+        {
+          actorId: actor.id,
+          action: 'user.unlock',
+          entityType: 'user',
+          entityId: id,
+          before: { status: 'locked', reason: user.lockedReason },
+          after: { status: 'active', ...(reason ? { reason } : {}) },
+          ip: actor.ip,
+        },
+        tx,
+      );
+    });
+  }
+
+  /**
+   * Xóa người dùng (soft-delete), thu hồi mọi Phiên đăng nhập. Ở lát cắt 1 Người ra đề chưa sở hữu
+   * Chủ đề, Bộ đề hay Phiên thi nên xóa thẳng; việc chọn người nhận làm ở lát cắt 2–4.
+   */
+  async remove(actor: Actor, id: string): Promise<void> {
+    await this.findTargetOrThrow(actor, id);
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ removedAt: this.clock.now(), removedBy: actor.id })
+        .where(eq(users.id, id));
+      await this.audit.record(
+        {
+          actorId: actor.id,
+          action: 'user.remove',
+          entityType: 'user',
+          entityId: id,
+          ip: actor.ip,
+        },
+        tx,
+      );
+    });
+    await this.authSessions.revokeAllForUser(id, 'user_removed');
+  }
+
+  /** Gắn Nhãn vai trò; gắn `examiner` thì tạo hồ sơ Người ra đề trống nếu chưa có (Q64). */
+  async grantRoleTag(actor: Actor, id: string, tag: RoleTag): Promise<void> {
+    const user = await this.findTaggableOrThrow(id);
+    await this.db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(userRoleTags)
+        .values({ userId: user.id, tag, grantedBy: actor.id, grantedAt: this.clock.now() })
+        .onConflictDoNothing()
+        .returning({ tag: userRoleTags.tag });
+      if (inserted.length === 0) return;
+      if (tag === 'examiner') {
+        await tx.insert(examinerProfiles).values({ userId: user.id }).onConflictDoNothing();
+      }
+      await this.audit.record(
+        {
+          actorId: actor.id,
+          action: 'user.role-tag.grant',
+          entityType: 'user',
+          entityId: id,
+          after: { tag },
+          ip: actor.ip,
+        },
+        tx,
+      );
+    });
+  }
+
+  /** Gỡ Nhãn vai trò; hồ sơ Người ra đề được giữ lại (Q64). */
+  async revokeRoleTag(actor: Actor, id: string, tag: RoleTag): Promise<void> {
+    await this.findTaggableOrThrow(id);
+    await this.db.transaction(async (tx) => {
+      const deleted = await tx
+        .delete(userRoleTags)
+        .where(and(eq(userRoleTags.userId, id), eq(userRoleTags.tag, tag)))
+        .returning({ tag: userRoleTags.tag });
+      if (deleted.length === 0) return;
+      await this.audit.record(
+        {
+          actorId: actor.id,
+          action: 'user.role-tag.revoke',
+          entityType: 'user',
+          entityId: id,
+          before: { tag },
+          ip: actor.ip,
+        },
+        tx,
+      );
+    });
+  }
+
+  /**
+   * Cấp lại mật khẩu tạm (Q61): hạn 7 ngày, buộc đổi khi đăng nhập, thu hồi mọi phiên và gỡ khóa tạm.
+   * Không mở Khóa đăng nhập. Mật khẩu chỉ trả về một lần, không ghi vào DB hay nhật ký.
+   */
+  async reissueTemporaryPassword(actor: Actor, id: string) {
+    await this.findTargetOrThrow(actor, id);
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await hashPassword(temporaryPassword);
+    const passwordExpiresAt = new Date(this.clock.now().getTime() + TEMPORARY_PASSWORD_TTL_MS);
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ passwordHash, mustChangePassword: true, passwordExpiresAt })
+        .where(eq(users.id, id));
+      await this.audit.record(
+        {
+          actorId: actor.id,
+          action: 'user.temporary-password.reissue',
+          entityType: 'user',
+          entityId: id,
+          after: { passwordExpiresAt },
+          ip: actor.ip,
+        },
+        tx,
+      );
+    });
+    await this.loginBlock.clear(id);
+    await this.authSessions.revokeAllForUser(id, 'password_reissued');
+    return { temporaryPassword, passwordExpiresAt };
+  }
+
+  /** Chỉ định Quản trị viên = tạo tài khoản Quản trị viên riêng, không mang Nhãn vai trò (Q23, Q70). */
+  async createAdmin(
+    actor: Actor,
+    input: { username: string; email: string | null; fullName: string },
+  ) {
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await hashPassword(temporaryPassword);
+    const passwordExpiresAt = new Date(this.clock.now().getTime() + TEMPORARY_PASSWORD_TTL_MS);
+    try {
+      const created = await this.db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(users)
+          .values({
+            ...input,
+            passwordHash,
+            isAdmin: true,
+            mustChangePassword: true,
+            passwordExpiresAt,
+            createdBy: actor.id,
+          })
+          .returning({ id: users.id });
+        if (!row) throw new Error('Không tạo được Quản trị viên');
+        await this.audit.record(
+          {
+            actorId: actor.id,
+            action: 'admin.create',
+            entityType: 'user',
+            entityId: row.id,
+            after: input,
+            ip: actor.ip,
+          },
+          tx,
+        );
+        return row;
+      });
+      return { id: created.id, temporaryPassword, passwordExpiresAt };
+    } catch (error) {
+      const field = UNIQUE_FIELDS[uniqueViolationOf(error) ?? ''];
+      if (field) throw new ApiError('CONFLICT', { field });
+      throw error;
+    }
+  }
+
+  /** Người dùng chưa bị Xóa và không phải Quản trị viên. */
+  private async findTaggableOrThrow(id: string): Promise<UserRow> {
+    const user = await this.findOrThrow(id);
+    if (user.removedAt || user.isAdmin) throw new ApiError('INVALID_STATE');
+    return user;
+  }
+
+  /** Người dùng chưa bị Xóa và không phải chính người thực hiện. */
+  private async findTargetOrThrow(actor: Actor, id: string): Promise<UserRow> {
+    if (actor.id === id) throw new ApiError('CANNOT_TARGET_SELF');
+    const user = await this.findOrThrow(id);
+    if (user.removedAt) throw new ApiError('INVALID_STATE');
+    return user;
   }
 
   private async assertCanHaveExaminerProfile(userId: string, unitId: string | null | undefined) {

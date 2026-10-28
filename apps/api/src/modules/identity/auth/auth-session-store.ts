@@ -31,7 +31,8 @@ export type AuthSessionRevokeReason =
   | 'user_locked'
   | 'user_removed'
   | 'password_changed'
-  | 'admin_recovered';
+  | 'admin_recovered'
+  | 'password_reissued';
 
 type StoredAuthSession = AuthSessionRecord & { tokenHash: string };
 
