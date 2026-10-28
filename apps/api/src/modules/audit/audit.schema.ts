@@ -1,7 +1,7 @@
 import { bigserial, inet, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { users } from '../identity/identity.schema';
 
-// Chỉ INSERT. Trigger chặn UPDATE/DELETE được thêm ở PR 1b.
+// Chỉ INSERT: trigger audit_logs_append_only (migration 0002) chặn UPDATE/DELETE.
 export const auditLogs = pgTable('audit_logs', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   actorId: uuid('actor_id').references(() => users.id), // NULL: thao tác do hệ thống (CLI, worker)
