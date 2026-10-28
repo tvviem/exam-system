@@ -24,6 +24,7 @@ users (
   status        enum('active','locked') DEFAULT 'active',
   locked_at, locked_by → users, locked_reason,
   must_change_password bool DEFAULT true,
+  password_expires_at  timestamptz NULL,  -- hạn của mật khẩu tạm (7 ngày); NULL sau khi người dùng đổi mật khẩu
   failed_login_count   int DEFAULT 0,
   last_login_at,
   created_by → users,
@@ -58,8 +59,9 @@ account_requests (                        -- Yêu cầu cấp tài khoản
 account_request_items (
   id, request_id → account_requests,
   full_name, code, email, class_label, date_of_birth, gender,   -- dữ liệu thô từ Excel/CSV
+  match_status enum('new','exact','name_mismatch','blocked'), -- kết quả kiểm tra trùng lúc đọc file
   outcome enum('pending','created','tag_added','skipped','rejected'),
-  user_id → users NULL,                   -- tài khoản được tạo, hoặc tài khoản đã có sẵn
+  user_id → users NULL,                   -- tài khoản bị khớp lúc kiểm tra trùng, hoặc tài khoản được tạo
   outcome_note
 )
 
@@ -82,7 +84,8 @@ login_events (                            -- lịch sử đăng nhập
 )
 
 audit_logs (                              -- chỉ INSERT, không UPDATE/DELETE
-  id bigserial, actor_id → users, action text,      -- 'user.lock', 'exam.publish', ...
+  id bigserial, actor_id → users NULL,              -- NULL: thao tác do hệ thống (CLI, worker)
+  action text,                                      -- 'user.lock', 'exam.publish', 'cli.recover-admin', ...
   entity_type text, entity_id uuid,
   before jsonb, after jsonb, ip inet, at timestamptz
 )
@@ -93,14 +96,16 @@ Quy tắc ràng buộc ở tầng service:
 - Khóa đăng nhập hoặc Xóa người dùng sẽ thu hồi mọi `auth_sessions` của người đó, xóa luôn trong Redis.
 - Mỗi người dùng phải có ít nhất một trong hai: `username` hoặc `email`.
 - Quản trị viên đầu tiên được tạo bằng lệnh `pnpm cli bootstrap-admin`, thông tin lấy từ biến môi trường. Lệnh chỉ chạy được khi chưa có `users.is_admin = true`.
-- **Lời mời:** Quản trị viên gửi Lời mời → người nhận mở link (dùng một lần, hết hạn sau 7 ngày) và đặt mật khẩu → tạo `users` và gắn nhãn `examiner`. Nếu email đã có tài khoản thì chỉ thêm nhãn.
-- **Yêu cầu cấp tài khoản:** Người ra đề tải lên Excel/CSV → hệ thống kiểm tra trùng theo `code`/`email` → Quản trị viên duyệt từng dòng hoặc cả lô. Người đã có tài khoản thì chỉ được thêm nhãn `candidate` (`tag_added`), người chưa có thì tạo tài khoản mới (`created`) kèm mật khẩu tạm ngẫu nhiên và Phiếu tài khoản. Người có email nhận thêm link đặt mật khẩu.
+- **Lời mời:** Quản trị viên tạo Lời mời (họ tên, email, Đơn vị) → hệ thống hiển thị link một lần, Quản trị viên tự gửi cho người được mời (giai đoạn 1 không gửi email) → người nhận mở link (dùng một lần, hết hạn sau 7 ngày), chọn học vị, học hàm và đặt mật khẩu → tạo `users`, gắn nhãn `examiner` và `examiner_profiles`. Nếu email đã có tài khoản thì người nhận phải đăng nhập bằng tài khoản đó, rồi chỉ được thêm nhãn. Không được tạo Lời mời tới email của một tài khoản Quản trị viên.
+- **Yêu cầu cấp tài khoản:** Người ra đề tải lên Excel/CSV → hệ thống kiểm tra trùng theo `code`/`email` → Quản trị viên duyệt từng dòng hoặc cả lô. Người đã có tài khoản thì chỉ được thêm nhãn `candidate` (`tag_added`), người chưa có thì tạo tài khoản mới (`created`) kèm mật khẩu tạm ngẫu nhiên và Phiếu tài khoản. Giai đoạn 1 không gửi email; Phiếu tài khoản là kênh duy nhất giao mật khẩu.
+- **Kiểm tra trùng khi đọc file:** xét `code` trước, rồi đến `email`. `exact`: khớp mã và họ tên, đề xuất `tag_added`. `name_mismatch`: khớp mã hoặc email nhưng khác họ tên, Quản trị viên tự quyết. `blocked`: khớp tài khoản Quản trị viên hoặc người đã bị Xóa, luôn `rejected`.
+- **Phiếu tài khoản:** PDF A4, 8 phiếu mỗi trang, gồm họ tên, Mã định danh, Lớp, tên đăng nhập, mật khẩu tạm và mã QR mở trang đăng nhập; kèm file Excel danh sách không có mật khẩu. File PDF được mã hóa AES-256-GCM (khóa trong env file), lưu sau `MediaStore` và tự xóa sau 7 ngày. Quản trị viên và Người ra đề gửi yêu cầu tải được trong 7 ngày đó, mỗi lần tải ghi `audit_logs`. Mật khẩu dạng rõ không bao giờ được ghi vào PostgreSQL hay vào log.
 - **Quản trị viên:** có thể có nhiều người. Lệnh `pnpm cli recover-admin` trên máy chủ cấp lại quyền khi mất hết tài khoản quản trị.
 - **Chuyển giao Chủ đề:** đổi `topics.owner_id` và `questions.owner_id`, kèm các Bộ đề **nháp** đang dùng câu của Chủ đề đó, trong cùng một giao dịch, rồi ghi `audit_logs`.
 - **Xóa người dùng là Người ra đề:** bắt buộc chọn người nhận cho mọi Chủ đề, Bộ đề và Phiên thi chưa Chốt của người đó.
 - **Tên đăng nhập mặc định:** `lower(code)`, nếu không có mã thì dùng email. Mật khẩu tạm hết hạn sau 7 ngày nếu chưa dùng.
 - **Người ra đề cấp lại mật khẩu tạm:** chỉ cho người có tên trong Danh sách dự thi của một Phiên thi chưa Chốt của mình, có ghi `audit_logs`.
-- **Tài khoản Quản trị viên** (`is_admin = true`) không có dòng nào trong `user_role_tags`.
+- **Tài khoản Quản trị viên** (`is_admin = true`) không có dòng nào trong `user_role_tags`. Chỉ định thêm Quản trị viên nghĩa là tạo một tài khoản Quản trị viên mới; không gắn `is_admin` cho tài khoản đang mang Nhãn vai trò.
 - **Dữ liệu cá nhân** (Nghị định 13/2023): `date_of_birth` và `gender` không bắt buộc, chỉ Quản trị viên xem được. `login_events` được xóa sau 12 tháng bằng job của worker. `audit_logs` và Kết quả giữ lâu dài.
 - **Khóa đăng nhập khi đang làm bài:** tự động Nộp bài (`submit_reason = 'account_locked'`) và báo cho Người ra đề.
 
