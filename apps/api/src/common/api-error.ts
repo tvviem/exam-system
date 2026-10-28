@@ -15,6 +15,8 @@ export const API_ERROR_STATUS = {
   PASSWORD_POLICY: HttpStatus.BAD_REQUEST,
   VALIDATION_FAILED: HttpStatus.BAD_REQUEST,
   NOT_FOUND: HttpStatus.NOT_FOUND,
+  CONFLICT: HttpStatus.CONFLICT,
+  INVALID_STATE: HttpStatus.CONFLICT,
 } as const;
 
 export type ApiErrorCode = keyof typeof API_ERROR_STATUS;

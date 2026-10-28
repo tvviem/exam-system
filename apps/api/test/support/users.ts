@@ -18,7 +18,7 @@ export interface SeedUser {
 
 export const DEFAULT_PASSWORD = 'mat-khau-on-dinh';
 
-/** Tạo sẵn Người dùng cho phần chuẩn bị của test (lát cắt 1a chưa có API quản lý Người dùng). */
+/** Tạo sẵn Người dùng cho phần chuẩn bị của test, không đi qua API. */
 export async function seedUser(
   input: SeedUser = {},
 ): Promise<{ id: string; username: string | null }> {
