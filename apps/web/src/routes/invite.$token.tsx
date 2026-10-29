@@ -16,7 +16,15 @@ import {
   type InvitationPreview,
   invitationPreviewQuery,
 } from '../lib/invitation';
-import { Button, Card, ErrorMessage, PrimaryButton, SelectField, TextField } from '../lib/ui';
+import {
+  Button,
+  buttonClass,
+  Card,
+  ErrorMessage,
+  PrimaryButton,
+  SelectField,
+  TextField,
+} from '../lib/ui';
 import { ListSkeleton } from '../lib/ui/admin';
 import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
@@ -93,7 +101,7 @@ function InviteContent({ token, invitation }: { token: string; invitation: Invit
         <Link
           to="/login"
           search={{ redirect: `/invite/${token}` }}
-          className="inline-flex min-h-12 items-center justify-center rounded-lg bg-primary px-4 text-base font-semibold text-on-primary hover:bg-primary-hover"
+          className={buttonClass('primary')}
         >
           {t('invite.login')}
         </Link>

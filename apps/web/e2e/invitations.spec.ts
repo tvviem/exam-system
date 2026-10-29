@@ -12,7 +12,9 @@ async function signIn(page: Page, username: string) {
 test('Quản trị viên tạo Lời mời, người được mời mở link, đặt mật khẩu và vào hệ thống với vai trò Người ra đề', async ({
   page,
   browser,
+  context,
 }, testInfo) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const project = testInfo.project.name;
   const email = `giang-vien-${project}@example.edu.vn`;
 
@@ -39,6 +41,9 @@ test('Quản trị viên tạo Lời mời, người được mời mở link, �
 
   const link = (await page.getByTestId('invitation-link').textContent())?.trim() as string;
   expect(link).toMatch(/\/invite\/[A-Za-z0-9_-]{43}$/);
+  // Nút Sao chép đưa đúng link vào clipboard.
+  await page.getByRole('button', { name: 'Sao chép link', exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
   await page.getByRole('button', { name: 'Tôi đã sao chép link' }).click();
   // Hai project (desktop, mobile) dùng chung database nên chỉ nhìn dòng của email này.
   const row = page.getByRole('listitem').filter({ hasText: email });
@@ -54,7 +59,7 @@ test('Quản trị viên tạo Lời mời, người được mời mở link, �
   await invitee.getByLabel('Học vị').selectOption({ label: 'Thạc sĩ' });
   await invitee.getByRole('button', { name: 'Tạo tài khoản và vào hệ thống' }).click();
   await expect(invitee).toHaveURL(/\/examiner/);
-  await expect(invitee.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(invitee.getByRole('heading', { name: 'Người ra đề', level: 1 })).toBeVisible();
 
   // Link dùng một lần.
   await invitee.goto(link);

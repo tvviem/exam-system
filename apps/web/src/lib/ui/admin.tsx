@@ -108,9 +108,64 @@ export function ListSkeleton({ rows = 5 }: { rows?: number }) {
 }
 
 /**
- * Mật khẩu tạm chỉ hiển thị một lần: chữ đơn cách cỡ lớn, nút Sao chép, phải xác nhận đã lưu mới
+ * Giá trị bí mật chỉ hiển thị một lần (mật khẩu tạm, link mời): nút Sao chép, phải xác nhận đã lưu mới
  * đóng được (không đóng bằng Esc hay bấm ra ngoài).
  */
+export function ShowOnceDialog({
+  title,
+  warning,
+  copyLabel,
+  note,
+  confirmLabel,
+  testId,
+  display,
+  copyText,
+  onClose,
+}: {
+  title: string;
+  warning: string;
+  copyLabel: string;
+  note: string;
+  confirmLabel: string;
+  testId: string;
+  /** Nội dung hiển thị trong ô giá trị (có thể kèm biểu tượng). */
+  display: ReactNode;
+  copyText: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(copyText);
+    setCopied(true);
+  };
+  return (
+    <Dialog open dismissible={false} onClose={onClose} title={title}>
+      <p className="flex items-start gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
+        <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+        {warning}
+      </p>
+      <div className="flex items-center gap-2">
+        <output
+          data-testid={testId}
+          className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-border-strong bg-bg px-3 py-3 break-all select-all"
+        >
+          {display}
+        </output>
+        <Button onClick={copy} aria-label={copyLabel}>
+          {copied ? (
+            <Check aria-hidden className="size-5" />
+          ) : (
+            <Copy aria-hidden className="size-5" />
+          )}
+        </Button>
+      </div>
+      <p className="text-sm text-fg-muted">{note}</p>
+      <PrimaryButton onClick={onClose}>{confirmLabel}</PrimaryButton>
+    </Dialog>
+  );
+}
+
+/** Mật khẩu tạm: chữ đơn cách cỡ lớn. */
 export function TemporaryPasswordDialog({
   value,
   onClose,
@@ -119,48 +174,20 @@ export function TemporaryPasswordDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    if (!value) return;
-    await navigator.clipboard.writeText(value.temporaryPassword);
-    setCopied(true);
-  };
+  if (!value) return null;
   return (
-    <Dialog open={value !== null} dismissible={false} onClose={onClose} title={value?.title ?? ''}>
-      {value && (
-        <>
-          <p className="flex items-start gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
-            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {t('temporaryPassword.onlyOnce')}
-          </p>
-          <div className="flex items-center gap-2">
-            <output
-              data-testid="temporary-password"
-              className="flex-1 rounded-lg border border-border-strong bg-bg px-3 py-3 text-center font-mono text-2xl tracking-widest select-all"
-            >
-              {value.temporaryPassword}
-            </output>
-            <Button onClick={copy} aria-label={t('temporaryPassword.copy')}>
-              {copied ? (
-                <Check aria-hidden className="size-5" />
-              ) : (
-                <Copy aria-hidden className="size-5" />
-              )}
-            </Button>
-          </div>
-          <p className="text-sm text-fg-muted">
-            {t('temporaryPassword.expires', { time: formatDateTime(value.passwordExpiresAt) })}
-          </p>
-          <PrimaryButton
-            onClick={() => {
-              setCopied(false);
-              onClose();
-            }}
-          >
-            {t('temporaryPassword.saved')}
-          </PrimaryButton>
-        </>
-      )}
-    </Dialog>
+    <ShowOnceDialog
+      title={value.title}
+      warning={t('temporaryPassword.onlyOnce')}
+      copyLabel={t('temporaryPassword.copy')}
+      note={t('temporaryPassword.expires', { time: formatDateTime(value.passwordExpiresAt) })}
+      confirmLabel={t('temporaryPassword.saved')}
+      testId="temporary-password"
+      display={
+        <span className="font-mono text-2xl tracking-widest">{value.temporaryPassword}</span>
+      }
+      copyText={value.temporaryPassword}
+      onClose={onClose}
+    />
   );
 }

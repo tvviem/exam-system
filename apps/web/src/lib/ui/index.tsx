@@ -124,19 +124,17 @@ const buttonVariants = {
   'danger-ghost': 'text-danger hover:bg-danger-soft',
 } as const;
 
+/** Class của nút, cho phần tử không phải <button> (ví dụ <Link> trông như nút). */
+export const buttonClass = (variant: keyof typeof buttonVariants = 'secondary', extra = '') =>
+  `${buttonBase} ${buttonVariants[variant]} ${extra}`;
+
 export function Button({
   variant = 'secondary',
   className = '',
   type = 'button',
   ...button
 }: { variant?: keyof typeof buttonVariants } & ComponentProps<'button'>) {
-  return (
-    <button
-      type={type}
-      className={`${buttonBase} ${buttonVariants[variant]} ${className}`}
-      {...button}
-    />
-  );
+  return <button type={type} className={buttonClass(variant, className)} {...button} />;
 }
 
 export function PrimaryButton(props: ComponentProps<'button'>) {

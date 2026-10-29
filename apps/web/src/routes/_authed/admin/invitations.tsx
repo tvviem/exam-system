@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Check, Copy, Link2, Plus, RefreshCw, TriangleAlert } from 'lucide-react';
+import { Link2, Plus, RefreshCw } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,7 +28,7 @@ import {
   SelectField,
   TextField,
 } from '../../../lib/ui';
-import { EmptyState, ListSkeleton, Pagination } from '../../../lib/ui/admin';
+import { EmptyState, ListSkeleton, Pagination, ShowOnceDialog } from '../../../lib/ui/admin';
 
 export const Route = createFileRoute('/_authed/admin/invitations')({
   validateSearch: (search: Record<string, unknown>): InvitationParams => ({
@@ -323,7 +323,6 @@ function ConfirmDialog({
   );
 }
 
-/** Link chỉ hiển thị một lần; phải bấm xác nhận mới đóng được (không đóng bằng Esc hay bấm ra ngoài). */
 function InvitationLinkDialog({
   value,
   onClose,
@@ -332,49 +331,24 @@ function InvitationLinkDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const url = value ? invitationUrl(value.token) : '';
-  const copy = async () => {
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-  };
+  if (!value) return null;
+  const url = invitationUrl(value.token);
   return (
-    <Dialog open={value !== null} dismissible={false} onClose={onClose} title={value?.title ?? ''}>
-      {value && (
+    <ShowOnceDialog
+      title={value.title}
+      warning={t('admin.invitations.linkOnlyOnce')}
+      copyLabel={t('admin.invitations.copyLink')}
+      note={t('admin.invitations.linkExpires', { time: formatDateTime(value.expiresAt) })}
+      confirmLabel={t('admin.invitations.linkSaved')}
+      testId="invitation-link"
+      display={
         <>
-          <p className="flex items-start gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
-            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {t('admin.invitations.linkOnlyOnce')}
-          </p>
-          <div className="flex items-center gap-2">
-            <output
-              data-testid="invitation-link"
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border-strong bg-bg px-3 py-3 text-sm break-all select-all"
-            >
-              <Link2 aria-hidden className="size-4 shrink-0 text-fg-muted" />
-              {url}
-            </output>
-            <Button onClick={copy} aria-label={t('admin.invitations.copyLink')}>
-              {copied ? (
-                <Check aria-hidden className="size-5" />
-              ) : (
-                <Copy aria-hidden className="size-5" />
-              )}
-            </Button>
-          </div>
-          <p className="text-sm text-fg-muted">
-            {t('admin.invitations.linkExpires', { time: formatDateTime(value.expiresAt) })}
-          </p>
-          <PrimaryButton
-            onClick={() => {
-              setCopied(false);
-              onClose();
-            }}
-          >
-            {t('admin.invitations.linkSaved')}
-          </PrimaryButton>
+          <Link2 aria-hidden className="size-4 shrink-0 text-fg-muted" />
+          <span className="text-sm">{url}</span>
         </>
-      )}
-    </Dialog>
+      }
+      copyText={url}
+      onClose={onClose}
+    />
   );
 }
