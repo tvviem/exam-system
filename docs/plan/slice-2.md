@@ -1,6 +1,6 @@
 # Lát cắt 2: Ngân hàng câu hỏi
 
-> Trạng thái: **proposed** (29/10/2026), chờ chủ dự án duyệt trước khi viết code. Làm theo [data-model.md](../data-model.md) mục 2, [architecture.md](../architecture.md) mục 3 và 6, [GLOSSARY.md](../../GLOSSARY.md) mục Ngân hàng câu hỏi, [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md) và [ui-design.md](../ui-design.md) (khung ứng dụng, mẫu "Soạn", Q100–Q110). Quyết định đánh số tiếp từ Q111 ([lát cắt 1](slice-1.md) dừng ở Q99; Q100–Q110 là của giao diện).
+> Trạng thái: **accepted** (29/10/2026): chủ dự án đã duyệt Q111–Q126 (Q112 giữ Chủ đề phẳng) và các seam test. Làm theo [data-model.md](../data-model.md) mục 2, [architecture.md](../architecture.md) mục 3 và 6, [GLOSSARY.md](../../GLOSSARY.md) mục Ngân hàng câu hỏi, [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md) và [ui-design.md](../ui-design.md) (khung ứng dụng, mẫu "Soạn", Q100–Q110). Quyết định đánh số tiếp từ Q111 ([lát cắt 1](slice-1.md) dừng ở Q99; Q100–Q110 là của giao diện).
 
 ## Mục tiêu
 
@@ -154,9 +154,9 @@ Không test từng nút của TipTap: chỉ kiểm các luồng chính qua E2E, 
 - Rút ngẫu nhiên câu hỏi theo Chủ đề, thống kê câu hỏi, nhập từ Word, ảnh trong Câu tự luận: giai đoạn sau (architecture.md mục 9).
 - Chia sẻ Chủ đề giữa các Người ra đề: ngoài giai đoạn 1 (GLOSSARY: mỗi Chủ đề chỉ có một chủ).
 
-## Quyết định (Q111–Q126, đề xuất)
+## Quyết định (Q111–Q126, đã duyệt)
 
-| Câu | Quyết định đề xuất |
+| Câu | Quyết định |
 |---|---|
 | Q111 | Chia lát cắt 2 thành 4 PR: 2a Chủ đề + Câu hỏi, 2b công thức, 2c Hình minh họa, 2d nhập Excel + Chuyển giao + Xóa người dùng chọn người nhận |
 | Q112 | Chủ đề phẳng, tên không trùng trong cùng chủ; còn Câu hỏi thì không xóa được, có Lưu trữ Chủ đề; phân nhóm nhỏ bằng `tags` |
