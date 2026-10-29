@@ -97,6 +97,7 @@ describe('tải lên và phân tích', () => {
       rowCount: 1,
       requesterName: 'Lê Giảng Viên',
       counts: { new: 1, exact: 0, name_mismatch: 0, blocked: 0 },
+      pendingValid: 1,
     });
   });
 

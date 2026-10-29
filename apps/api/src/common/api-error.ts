@@ -18,6 +18,7 @@ export const API_ERROR_STATUS = {
   NOT_FOUND: HttpStatus.NOT_FOUND,
   INVITATION_UNAVAILABLE: HttpStatus.NOT_FOUND,
   CONFLICT: HttpStatus.CONFLICT,
+  SLIP_EXPIRED: HttpStatus.GONE,
   INVALID_STATE: HttpStatus.CONFLICT,
 } as const;
 

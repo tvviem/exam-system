@@ -7,6 +7,10 @@ const envSchema = z.object({
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
   APP_VERSION: z.string().default('dev'),
+  // Khóa AES-256-GCM mã hóa Phiếu tài khoản (32 byte, base64). Tạo bằng: openssl rand -base64 32
+  SLIP_ENCRYPTION_KEY: z.string().refine((value) => Buffer.from(value, 'base64').length === 32, {
+    message: 'phải là 32 byte mã hóa base64 (openssl rand -base64 32)',
+  }),
   // Thư mục lưu file (MediaStore): file tải lên tạm, Phiếu tài khoản. Trên production là volume.
   MEDIA_DIR: z.string().default('./media-data'),
   // Origin được phép gửi request đổi dữ liệu (chống CSRF), cách nhau bằng dấu phẩy.

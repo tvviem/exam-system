@@ -22,6 +22,11 @@ export class BullMqJobQueue implements JobQueue, OnApplicationShutdown {
     });
   }
 
+  async schedule<N extends JobName>(name: N, cron: string, payload: JobPayloads[N]): Promise<void> {
+    this.queue ??= new Queue(JOB_QUEUE_NAME, { connection: bullmqConnection(this.env.REDIS_URL) });
+    await this.queue.upsertJobScheduler(name, { pattern: cron }, { name, data: payload });
+  }
+
   async onApplicationShutdown() {
     await this.queue?.close();
   }

@@ -33,7 +33,7 @@ describe('BullMQ job queue', () => {
       received.push(requestId);
     });
     queue = new BullMqJobQueue(env);
-    worker = new JobWorker(env, registry);
+    worker = new JobWorker(env, registry, queue);
     worker.onApplicationBootstrap();
 
     await queue.enqueue('account-request.parse', { requestId: 'req-1' });
@@ -49,7 +49,7 @@ describe('BullMQ job queue', () => {
       received.push(requestId);
     });
     queue = new BullMqJobQueue(env);
-    worker = new JobWorker(env, registry);
+    worker = new JobWorker(env, registry, queue);
     worker.onApplicationBootstrap();
 
     await queue.enqueue('account-request.parse', { requestId: 'bad' });

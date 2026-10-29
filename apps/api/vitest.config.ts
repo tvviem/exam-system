@@ -26,6 +26,7 @@ export default defineConfig({
             DATABASE_URL: testDatabaseUrl,
             REDIS_URL: testRedisUrl,
             APP_ORIGINS: 'http://localhost:5173',
+            SLIP_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'),
             MEDIA_DIR: path.join(tmpdir(), 'exam-test-media'),
           },
           testTimeout: 15000,

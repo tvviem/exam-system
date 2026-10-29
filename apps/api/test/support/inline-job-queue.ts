@@ -10,12 +10,20 @@ export class InlineJobQueue implements JobQueue {
   /** Đặt true để lần `enqueue` kế tiếp ném lỗi (giả lập Redis hỏng). */
   failNextEnqueue = false;
 
+  /** Test gọi job định kỳ trực tiếp qua JobRegistry, nên ở đây không cần lịch. */
+  async schedule(): Promise<void> {}
+
   async enqueue<N extends JobName>(name: N, payload: JobPayloads[N]): Promise<void> {
     if (this.failNextEnqueue) {
       this.failNextEnqueue = false;
       throw new Error('Redis không sẵn sàng');
     }
     this.jobs.push({ name, payload });
+  }
+
+  /** Bỏ hết job đang chờ, như thể worker không bao giờ nhận được chúng. */
+  discard(): void {
+    this.jobs = [];
   }
 
   get pending(): number {
