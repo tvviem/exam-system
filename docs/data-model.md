@@ -53,16 +53,20 @@ invitations (                             -- Lời mời trở thành Người r
 
 account_requests (                        -- Yêu cầu cấp tài khoản
   id, requested_by → users (examiner), note text,
-  status enum('pending','approved','partially_approved','rejected'),
+  original_filename text,                 -- tên file người dùng tải lên, chỉ để hiển thị
+  upload_key text NULL,                   -- khóa file tải lên trong MediaStore; xóa sau khi phân tích
+  status enum('parsing','parse_failed','pending','approving','approved','partially_approved','rejected'),
+  parse_error text NULL,                  -- mã lỗi khi status = parse_failed
+  row_count int NULL,
   reviewed_by → users (admin), reviewed_at, review_note
 )
 account_request_items (
-  id, request_id → account_requests,
-  full_name, code, email, class_label, date_of_birth, gender,   -- dữ liệu thô từ Excel/CSV
+  id, request_id → account_requests, row_number int,   -- số dòng trong file, để Người ra đề tìm lại
+  full_name, code, email, class_label, date_of_birth, gender,   -- dữ liệu từ Excel/CSV, NULL nếu dòng lỗi ở trường đó
   match_status enum('new','exact','name_mismatch','blocked'), -- kết quả kiểm tra trùng lúc đọc file
   outcome enum('pending','created','tag_added','skipped','rejected'),
   user_id → users NULL,                   -- tài khoản bị khớp lúc kiểm tra trùng, hoặc tài khoản được tạo
-  outcome_note
+  outcome_note                            -- mã lỗi của dòng (blocked) hoặc lý do bỏ qua
 )
 
 examiner_profiles (                       -- thông tin riêng của Người ra đề
@@ -253,9 +257,9 @@ appeals (                                 -- Phúc khảo: mỗi đối tượng
 --   final = base × (1 − min(100, Σ penalty_percent) / 100)
 --   Điểm quy đổi = round(final / max_score × 10, 2)
 
-notifications (                           -- thông báo trong ứng dụng
+notifications (                           -- thông báo trong ứng dụng; module `notifications`
   id, user_id → users, type text, data jsonb, created_at, read_at
-)
+)  -- INDEX (user_id, created_at DESC)
 
 key_corrections (                         -- Đính chính đáp án → chấm lại câu đó cho mọi Lượt làm bài
   id, exam_item_id → exam_items, old_key jsonb, new_key jsonb,

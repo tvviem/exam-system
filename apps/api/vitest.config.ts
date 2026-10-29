@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 import { testDatabaseUrl, testRedisUrl } from './test/test-env';
@@ -24,6 +26,7 @@ export default defineConfig({
             DATABASE_URL: testDatabaseUrl,
             REDIS_URL: testRedisUrl,
             APP_ORIGINS: 'http://localhost:5173',
+            MEDIA_DIR: path.join(tmpdir(), 'exam-test-media'),
           },
           testTimeout: 15000,
         },

@@ -58,8 +58,10 @@ test('Quản trị viên tạo Lời mời, người được mời mở link, �
   await invitee.getByLabel('Nhập lại mật khẩu').fill('mat-khau-moi-rat-dai');
   await invitee.getByLabel('Học vị').selectOption({ label: 'Thạc sĩ' });
   await invitee.getByRole('button', { name: 'Tạo tài khoản và vào hệ thống' }).click();
-  await expect(invitee).toHaveURL(/\/examiner/);
-  await expect(invitee.getByRole('heading', { name: 'Người ra đề', level: 1 })).toBeVisible();
+  await expect(invitee).toHaveURL(/\/examiner\/account-requests/);
+  await expect(
+    invitee.getByRole('heading', { name: 'Yêu cầu cấp tài khoản', level: 1 }),
+  ).toBeVisible();
 
   // Link dùng một lần.
   await invitee.goto(link);

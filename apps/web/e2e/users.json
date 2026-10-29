@@ -68,5 +68,35 @@
     "password": "mat-khau-on-dinh",
     "isAdmin": true,
     "mustChangePassword": false
+  },
+  {
+    "username": "e2e-yc-qt-desktop",
+    "fullName": "Quản trị Yêu cầu desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-yc-gv-desktop",
+    "fullName": "Giảng viên E2E desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-yc-qt-mobile",
+    "fullName": "Quản trị Yêu cầu mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-yc-gv-mobile",
+    "fullName": "Giảng viên E2E mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]

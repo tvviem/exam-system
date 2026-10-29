@@ -10,6 +10,7 @@ const PAGES = [
   ['nguoi-dung', '/admin/users'],
   ['don-vi', '/admin/units'],
   ['loi-moi', '/admin/invitations'],
+  ['yeu-cau-cap-tai-khoan', '/admin/account-requests'],
   ['lich-su-dang-nhap', '/admin/login-events'],
   ['nhat-ky-thao-tac', '/admin/audit-logs'],
 ] as const;

@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AuditModule } from '../audit/audit.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { AccountRequestParseJob } from './account-requests/account-request-parse.job';
+import { AccountRequestsController } from './account-requests/account-requests.controller';
+import { AccountRequestsService } from './account-requests/account-requests.service';
 import { AdminAccountsService } from './admin-accounts.service';
 import { AuditLogsController } from './audit-logs/audit-logs.controller';
 import { AuthController } from './auth/auth.controller';
@@ -23,7 +27,7 @@ import { UserManagementService } from './users/user-management.service';
 import { UsersRepository } from './users.repository';
 
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, NotificationsModule],
   controllers: [
     AuthController,
     UserManagementController,
@@ -33,6 +37,7 @@ import { UsersRepository } from './users.repository';
     AuditLogsController,
     InvitationsController,
     PublicInvitationsController,
+    AccountRequestsController,
   ],
   providers: [
     AuthService,
@@ -47,6 +52,8 @@ import { UsersRepository } from './users.repository';
     InvitationsService,
     InvitationAcceptanceService,
     InvitationRateLimiter,
+    AccountRequestsService,
+    AccountRequestParseJob,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
   // CLI và các module khác chỉ dùng những gì được xuất ở đây.

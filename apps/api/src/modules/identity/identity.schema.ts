@@ -160,3 +160,71 @@ export const invitations = pgTable(
   },
   (t) => [index('invitations_email_idx').on(t.email)],
 );
+
+export const accountRequestStatusEnum = pgEnum('account_request_status', [
+  'parsing',
+  'parse_failed',
+  'pending',
+  'approving',
+  'approved',
+  'partially_approved',
+  'rejected',
+]);
+export const matchStatusEnum = pgEnum('account_request_match_status', [
+  'new',
+  'exact',
+  'name_mismatch',
+  'blocked',
+]);
+export const itemOutcomeEnum = pgEnum('account_request_item_outcome', [
+  'pending',
+  'created',
+  'tag_added',
+  'skipped',
+  'rejected',
+]);
+
+/** Yêu cầu cấp tài khoản Người dự thi do Người ra đề gửi từ file Excel/CSV (docs/data-model.md). */
+export const accountRequests = pgTable(
+  'account_requests',
+  {
+    id: idColumn(),
+    requestedBy: uuid('requested_by')
+      .notNull()
+      .references(() => users.id),
+    note: text('note'),
+    originalFilename: text('original_filename').notNull(),
+    uploadKey: text('upload_key'),
+    status: accountRequestStatusEnum('status').notNull().default('parsing'),
+    parseError: text('parse_error'),
+    rowCount: integer('row_count'),
+    reviewedBy: uuid('reviewed_by').references(() => users.id),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    reviewNote: text('review_note'),
+    ...timestamps,
+  },
+  (t) => [index('account_requests_requested_by_idx').on(t.requestedBy, t.createdAt)],
+);
+
+export const accountRequestItems = pgTable(
+  'account_request_items',
+  {
+    id: idColumn(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => accountRequests.id),
+    rowNumber: integer('row_number').notNull(),
+    fullName: text('full_name'),
+    code: text('code'),
+    email: text('email'),
+    classLabel: text('class_label'),
+    dateOfBirth: date('date_of_birth'),
+    gender: genderEnum('gender'),
+    matchStatus: matchStatusEnum('match_status').notNull(),
+    outcome: itemOutcomeEnum('outcome').notNull().default('pending'),
+    userId: uuid('user_id').references(() => users.id),
+    outcomeNote: text('outcome_note'),
+    ...timestamps,
+  },
+  (t) => [index('account_request_items_request_idx').on(t.requestId, t.rowNumber)],
+);

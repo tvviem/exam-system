@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { logout, meQuery } from '../lib/auth';
 import { Button, Dialog } from '../lib/ui';
+import { NotificationBell } from '../lib/ui/notification-bell';
 import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
 /** Layout cho mọi trang cần đăng nhập. Chưa đổi mật khẩu tạm thì chỉ vào được trang đổi mật khẩu. */
@@ -41,16 +42,19 @@ function AuthedLayout() {
           <Link to="/" className="flex min-h-12 min-w-0 items-center font-semibold">
             <span className="truncate">{t('app.title')}</span>
           </Link>
-          <button
-            type="button"
-            aria-label={t('nav.accountMenu')}
-            aria-haspopup="dialog"
-            className="ml-auto inline-flex min-h-12 min-w-12 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-2 text-sm text-fg-muted hover:bg-primary-soft hover:text-fg"
-            onClick={() => setMenuOpen(true)}
-          >
-            <span className="hidden max-w-48 truncate sm:inline">{me.fullName}</span>
-            <CircleUserRound aria-hidden className="size-6" />
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            {!me.mustChangePassword && <NotificationBell isAdmin={me.isAdmin} />}
+            <button
+              type="button"
+              aria-label={t('nav.accountMenu')}
+              aria-haspopup="dialog"
+              className="inline-flex min-h-12 min-w-12 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-2 text-sm text-fg-muted hover:bg-primary-soft hover:text-fg"
+              onClick={() => setMenuOpen(true)}
+            >
+              <span className="hidden max-w-48 truncate sm:inline">{me.fullName}</span>
+              <CircleUserRound aria-hidden className="size-6" />
+            </button>
+          </div>
         </nav>
       </header>
       <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} title={me.fullName}>

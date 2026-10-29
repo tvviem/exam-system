@@ -8,7 +8,9 @@
     "take": "Vào thi",
     "logout": "Đăng xuất",
     "authSessions": "Phiên đăng nhập",
-    "accountMenu": "Tài khoản"
+    "accountMenu": "Tài khoản",
+    "accountRequests": "Yêu cầu cấp tài khoản",
+    "notifications": "Thông báo"
   },
   "health": {
     "heading": "Trạng thái hệ thống",
@@ -65,7 +67,10 @@
     "VALIDATION_email_belongs_to_admin": "Email này thuộc một tài khoản Quản trị viên. Hãy dùng email khác.",
     "VALIDATION_already_examiner": "Người này đã là Người ra đề.",
     "VALIDATION_unit_not_found": "Đơn vị không tồn tại.",
-    "CONFLICT_email_invitation": "Email này đã có Lời mời còn hạn. Hãy dùng \"Tạo lại link\" trong danh sách."
+    "CONFLICT_email_invitation": "Email này đã có Lời mời còn hạn. Hãy dùng \"Tạo lại link\" trong danh sách.",
+    "VALIDATION_required": "Hãy chọn một file.",
+    "VALIDATION_unsupported_file": "File không đọc được. Chỉ nhận file .xlsx hoặc .csv (UTF-8), hãy dùng file mẫu.",
+    "VALIDATION_file_too_large": "File quá lớn. Tối đa 2 MB."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -143,7 +148,8 @@
       "units": "Đơn vị",
       "loginEvents": "Lịch sử đăng nhập",
       "auditLogs": "Nhật ký thao tác",
-      "invitations": "Lời mời"
+      "invitations": "Lời mời",
+      "accountRequests": "Yêu cầu cấp tài khoản"
     },
     "users": {
       "heading": "Người dùng",
@@ -308,5 +314,105 @@
     "otherAccount": "Bạn đang đăng nhập bằng một tài khoản khác. Nhận lời mời này sẽ tạo tài khoản mới và chuyển sang tài khoản đó.",
     "wrongAccount": "Lời mời này dành cho tài khoản có email {{email}}. Hãy đăng xuất rồi đăng nhập bằng tài khoản đó.",
     "logout": "Đăng xuất"
+  },
+  "accountRequestStatus": {
+    "parsing": "Đang đọc file",
+    "parse_failed": "File lỗi",
+    "pending": "Chờ duyệt",
+    "approving": "Đang tạo tài khoản",
+    "approved": "Đã duyệt",
+    "partially_approved": "Duyệt một phần",
+    "rejected": "Đã từ chối"
+  },
+  "matchStatus": {
+    "new": "Người mới",
+    "exact": "Khớp tài khoản có sẵn",
+    "name_mismatch": "Khớp nhưng khác họ tên",
+    "blocked": "Không duyệt được"
+  },
+  "matchStatusHint": {
+    "new": "Chưa có tài khoản; sẽ được tạo khi duyệt.",
+    "exact": "Đã có tài khoản; chỉ thêm vai trò Người dự thi khi duyệt.",
+    "name_mismatch": "Mã hoặc email trùng tài khoản có sẵn nhưng họ tên khác. Quản trị viên quyết định.",
+    "blocked": "Dòng này không thể duyệt."
+  },
+  "itemOutcome": {
+    "pending": "Chờ duyệt",
+    "created": "Đã tạo tài khoản",
+    "tag_added": "Đã thêm vai trò",
+    "skipped": "Đã bỏ qua",
+    "rejected": "Bị từ chối"
+  },
+  "accountRequestFileError": {
+    "unsupported_file": "File không đọc được (không phải .xlsx hoặc .csv UTF-8 hợp lệ).",
+    "missing_columns": "File thiếu cột \"Họ tên\". Hãy dùng file mẫu.",
+    "empty_file": "File không có dòng dữ liệu nào.",
+    "too_many_rows": "File có quá 2.000 dòng.",
+    "internal_error": "Hệ thống gặp lỗi khi đọc file. Hãy thử lại hoặc báo Quản trị viên."
+  },
+  "accountRequestRowError": {
+    "missing_full_name": "Thiếu họ tên.",
+    "missing_code_and_email": "Cần ít nhất Mã định danh hoặc Email.",
+    "field_too_long": "Có ô quá dài.",
+    "invalid_email": "Email không đúng định dạng.",
+    "invalid_date_of_birth": "Ngày sinh không hợp lệ (dùng dd/mm/yyyy).",
+    "invalid_gender": "Giới tính phải là Nam, Nữ hoặc Khác.",
+    "duplicate_in_file": "Trùng với một dòng phía trên trong file.",
+    "matches_admin": "Trùng tài khoản Quản trị viên.",
+    "matches_removed_user": "Trùng tài khoản đã bị Xóa.",
+    "code_email_conflict": "Mã và email thuộc hai tài khoản khác nhau.",
+    "request_rejected": "Yêu cầu đã bị từ chối.",
+    "account_conflict": "Mã hoặc email trùng một tài khoản không thể dùng nên dòng này không cấp được."
+  },
+  "accountRequests": {
+    "heading": "Yêu cầu cấp tài khoản",
+    "intro": "Tải danh sách Người dự thi lên để Quản trị viên cấp tài khoản. Hãy dùng file mẫu.",
+    "downloadTemplate": "Tải file mẫu",
+    "chooseFile": "File danh sách (.xlsx hoặc .csv)",
+    "note": "Ghi chú (không bắt buộc)",
+    "submit": "Gửi yêu cầu",
+    "submitting": "Đang gửi…",
+    "empty": "Chưa có yêu cầu nào.",
+    "rows": "{{count}} dòng",
+    "sentBy": "Gửi bởi {{name}}",
+    "sentAt": "Gửi lúc {{time}}",
+    "filterStatus": "Trạng thái",
+    "allStatuses": "Tất cả",
+    "back": "Danh sách yêu cầu",
+    "requester": "Người gửi",
+    "file": "File",
+    "noteLabel": "Ghi chú",
+    "reviewedBy": "{{name}} xử lý lúc {{time}}",
+    "reviewNote": "Ghi chú của Quản trị viên",
+    "parsingHint": "Hệ thống đang đọc file. Trang tự cập nhật.",
+    "filterRows": "Lọc dòng",
+    "allRows": "Tất cả ({{count}})",
+    "row": "Dòng {{n}}",
+    "itemsEmpty": "Không có dòng nào.",
+    "matchedAccount": "Tài khoản có sẵn",
+    "reject": "Từ chối yêu cầu",
+    "rejectTitle": "Từ chối cả yêu cầu?",
+    "rejectIntro": "Mọi dòng đang chờ sẽ bị từ chối và người gửi được báo.",
+    "rejectNote": "Lý do (không bắt buộc)",
+    "rejectConfirm": "Từ chối",
+    "approveSoon": "Việc duyệt và tạo tài khoản chưa có trong bản này.",
+    "columns": {
+      "row": "Dòng",
+      "fullName": "Họ tên",
+      "identity": "Mã · Email",
+      "classLabel": "Lớp",
+      "match": "Kết quả kiểm tra"
+    }
+  },
+  "notification": {
+    "account_request.submitted": "{{requesterName}} gửi yêu cầu cấp tài khoản ({{rowCount}} dòng).",
+    "account_request.parse_failed": "Không đọc được file yêu cầu của bạn.",
+    "account_request.reviewed_rejected": "Yêu cầu cấp tài khoản của bạn đã bị từ chối.",
+    "unknown": "Thông báo mới.",
+    "empty": "Chưa có thông báo nào.",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "bell": "Thông báo ({{count}} chưa đọc)",
+    "bellNone": "Thông báo",
+    "unread": "Chưa đọc"
   }
 }

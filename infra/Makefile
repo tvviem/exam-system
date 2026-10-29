@@ -72,7 +72,7 @@ postgres: pod
 redis: pod
 	@if ! $(PODMAN) container exists $(REDIS_CONTAINER); then \
 		echo ">>> Chạy Redis trong pod $(POD_NAME)"; \
-		$(PODMAN) run -d --name $(REDIS_CONTAINER) --pod $(POD_NAME) $(REDIS_IMAGE) >/dev/null; \
+		$(PODMAN) run -d --name $(REDIS_CONTAINER) --pod $(POD_NAME) $(REDIS_IMAGE) redis-server --maxmemory-policy noeviction >/dev/null; \
 	else \
 		$(PODMAN) start $(REDIS_CONTAINER) >/dev/null; \
 	fi

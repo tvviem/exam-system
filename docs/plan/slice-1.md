@@ -1,6 +1,6 @@
 # Lát cắt 1: Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản
 
-> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58, review PR 1a (Q59–Q60) và chốt chi tiết PR 1b (Q61–Q70), review PR 1b (Q76) ở [mục Quyết định](#quyết-định-q43q86). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
+> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58, review PR 1a (Q59–Q60) và chốt chi tiết PR 1b (Q61–Q70), review PR 1b (Q76) ở [mục Quyết định](#quyết-định-q43q99). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
 
 ## Mục tiêu
 
@@ -10,11 +10,12 @@ Sau lát cắt 1:
 - Người ra đề gửi được Yêu cầu cấp tài khoản từ file Excel.
 - Quản trị viên duyệt yêu cầu và xuất Phiếu tài khoản cho Người dự thi.
 
-Lát cắt chia thành 4 PR. Merge xong PR nào thì hệ thống chạy được tới đó.
+Lát cắt chia thành 5 PR (PR 1d tách thành 1d và 1e, Q99). Merge xong PR nào thì hệ thống chạy được tới đó.
 
 ```text
 1a đăng nhập ──► 1b quản lý Người dùng + nhật ký ──► 1c Lời mời
-                                     └──────────────► 1d Yêu cầu cấp tài khoản (worker đầu tiên)
+                                     └──────────────► 1d Gửi/xem Yêu cầu cấp tài khoản (worker đầu tiên)
+                                                          └──► 1e Duyệt + Phiếu tài khoản
 ```
 
 ## Thiết kế chung
@@ -227,6 +228,39 @@ Xuất Phiếu tài khoản (job "credential-slip.export") ─► PDF A4, 8 phi�
 - Integration: luồng duyệt có dòng `created`, `tag_added`, `rejected`; đủ 4 giá trị `match_status`; tải phiếu sau 7 ngày bị từ chối; thông báo được tạo đúng người.
 - E2E: Người ra đề tải lên → Quản trị viên duyệt → tải Phiếu tài khoản.
 
+### Chi tiết PR 1d–1e (Q87–Q99)
+
+PR 1d gom quá nhiều việc cho một lần review (hàng đợi, đọc Excel, duyệt, tạo hàng loạt tài khoản, PDF, mã hóa, thông báo, dọn dẹp). Đề xuất tách làm hai PR; tài khoản chỉ được tạo ở PR 1e, cùng lúc có Phiếu tài khoản để giao mật khẩu, nên không có tình huống tạo tài khoản mà không ai biết mật khẩu.
+
+```text
+PR 1d  hàng đợi + thông báo + gửi và xem Yêu cầu cấp tài khoản
+         JobQueue (BullMQ) · notifications + chuông · file mẫu · tải lên · worker phân tích · bảng dòng
+         Quản trị viên chỉ xem và Từ chối cả yêu cầu; chưa tạo tài khoản
+PR 1e  duyệt + Phiếu tài khoản + dọn dẹp
+         duyệt (worker tạo tài khoản) · PDF/Excel mã hóa · tải phiếu · job dọn hằng ngày
+```
+
+**Nền tảng (PR 1d)**
+- **Hàng đợi (Q87):** nghiệp vụ gọi một cổng `JobQueue` (`enqueue(name, payload)`); bản thật dùng BullMQ trên Redis, test tích hợp dùng bản chạy tại chỗ nên không phải chờ. Payload của job chỉ mang id, không mang dữ liệu bí mật. Redis của pod phải đặt `maxmemory-policy noeviction` (BullMQ yêu cầu): đã đặt trong `infra/Makefile` (pod dev và CI); cấu hình production làm ở lát cắt 6 phải giữ đúng tùy chọn này.
+- **Trạng thái yêu cầu (Q89):** thêm `parsing`, `parse_failed`, `approving` vào `account_requests.status` (migration). PR 1d dùng `parsing → pending | parse_failed` và `pending → rejected`; `approving`, `approved`, `partially_approved` dùng ở PR 1e. Giao diện hỏi lại mỗi 2 giây khi đang `parsing`.
+- **File mẫu và phân tích (Q88):** cột *Họ tên* (bắt buộc), *Mã định danh*, *Email*, *Lớp*, *Ngày sinh* (dd/mm/yyyy), *Giới tính* (Nam/Nữ/Khác). Mỗi dòng cần họ tên và ít nhất một trong mã hoặc email (để có tên đăng nhập). Dòng lỗi (thiếu họ tên, thiếu cả mã và email, email sai, ngày sinh sai, giới tính lạ, trùng trong file với dòng trước) vẫn được lưu với `match_status = blocked`, `outcome = rejected`, `outcome_note` là mã lỗi; Quản trị viên thấy nhưng không duyệt được. Tải lên `.xlsx` hoặc `.csv` UTF-8, tối đa 2 MB và 2.000 dòng; kiểm tra nội dung thật (xlsx phải là ZIP có `xl/workbook.xml`; csv phải là UTF-8 hợp lệ, không có byte NUL), không tin đuôi file hay MIME do client gửi.
+- **Kiểm tra trùng (Q90, theo Q54):** xét mã trước rồi email. Mã và email trỏ tới hai người khác nhau: `blocked`. Khớp tài khoản Quản trị viên hoặc người đã bị Xóa: `blocked`. Khớp họ tên (bỏ dấu, không phân biệt hoa thường, gộp khoảng trắng) là `exact`, khác là `name_mismatch`, không khớp ai là `new`. Tài khoản đang bị Khóa đăng nhập vẫn khớp như bình thường.
+- **Thông báo (Q95):** bảng `notifications`. Loại: `account_request.submitted` (tới mọi Quản trị viên chưa bị Xóa), `account_request.parse_failed` và `account_request.reviewed` (tới người gửi), `credential_slip.ready` (PR 1e). API: `GET /api/notifications` (50 mới nhất kèm số chưa đọc), `POST /api/notifications/read` (một hoặc tất cả). Chuông ở thanh trên cùng, hỏi mỗi 60 giây và khi tab hiện lại.
+- **Quyền (Q97):** Người ra đề chỉ thấy và gửi yêu cầu của mình; Quản trị viên thấy tất cả; chỉ Quản trị viên duyệt hoặc từ chối.
+- **Giao diện (Q98):** `/examiner/account-requests` (tải file mẫu, tải lên, danh sách, chi tiết với bảng dòng) và `/admin/account-requests` (danh sách lọc trạng thái, chi tiết lọc theo `match_status`, Từ chối cả yêu cầu kèm ghi chú).
+
+**Duyệt và Phiếu tài khoản (PR 1e)**
+- **Duyệt (Q91):** một nút duyệt cả lô các dòng `new` và `exact`, hoặc chọn từng dòng. Dòng `name_mismatch` phải quyết từng dòng: "Đúng là người này" (`tag_added`) hoặc Từ chối. Dòng `blocked` không duyệt được. Duyệt nhiều đợt được. Khi không còn dòng `pending`: `approved` nếu mọi dòng đều `created` hoặc `tag_added`, `rejected` nếu không dòng nào thành công, còn lại `partially_approved`.
+- **Tạo tài khoản (Q92):** việc nặng (băm Argon2 cho hàng nghìn mật khẩu) nên chạy trong worker, không chạy trong request. Tên đăng nhập `lower(code)` hoặc email; trùng với người khác trong lúc chờ thì dòng thành `skipped` kèm `outcome_note` (`username_taken`, `code_taken`, `email_taken`). Mật khẩu tạm 10 ký tự, hạn 7 ngày, buộc đổi khi đăng nhập. Nhật ký ghi một dòng cho mỗi đợt duyệt (`account-request.approve`, `after` là số lượng từng kết quả), không ghi từng tài khoản.
+- **Bảo vệ mật khẩu tạm (Q93, cụ thể hóa Q56):** mật khẩu dạng rõ chỉ tồn tại trong bộ nhớ worker. Worker mã hóa danh sách phiếu bằng AES-256-GCM (khóa `SLIP_ENCRYPTION_KEY` 32 byte trong env file) rồi dựng PDF và Excel, mã hóa cả hai và lưu qua `MediaStore` (thư mục trên volume). Bảng mới `credential_slips` (`id`, `request_id`, `created_by`, `item_count`, `status` `processing|ready|failed|expired`, `pdf_key`, `xlsx_key`, `expires_at`, `created_at`); mỗi đợt duyệt sinh một phiếu.
+- **Tải phiếu (Q94):** `GET /api/credential-slips/:id/pdf` và `/xlsx`: Quản trị viên hoặc người gửi yêu cầu, trong 7 ngày; quá hạn trả `410 SLIP_EXPIRED`; chưa xong trả `409 INVALID_STATE`; mỗi lần tải ghi `credential-slip.download`. PDF dựng bằng `pdfkit` + `qrcode` (không cần trình duyệt), font Be Vietnam Pro (OFL, file TTF đặt trong `apps/api/assets/fonts`), QR mở `<APP_ORIGIN>/login`.
+- **Dọn dẹp (Q96):** job lặp hằng ngày: xóa `login_events` quá 12 tháng, xóa file phiếu hết hạn (đặt `expired`), xóa file tải lên tạm. Thêm: yêu cầu kẹt ở `parsing` quá 15 phút (worker chết giữa chừng) chuyển sang `parse_failed` với `internal_error`.
+
+**Test (seam đã chốt)**
+1. *Unit* (không DB): bộ phân tích file với các file mẫu lỗi (xlsx dựng bằng ExcelJS trong test, csv); mã hóa/giải mã AES-GCM (đi về nguyên vẹn, sai khóa hoặc bị sửa thì lỗi).
+2. *Tích hợp* (HTTP + PostgreSQL + Redis, `JobQueue` chạy tại chỗ, `MediaStore` trỏ thư mục tạm): tải lên → bốn giá trị `match_status` + dòng lỗi; quyền xem; thông báo tới đúng người. PR 1e: duyệt tạo `created`, `tag_added`, `skipped`, `rejected`; tải phiếu (kiểm tra là PDF hợp lệ và đủ số trang, không so hình); quá 7 ngày bị từ chối; mỗi lần tải có nhật ký; mật khẩu dạng rõ không có trong DB. Một test duy nhất đi qua BullMQ và Redis thật để kiểm tra bản adapter.
+3. *E2E*: PR 1d: Người ra đề tải lên file mẫu → Quản trị viên thấy bảng dòng và thông báo. PR 1e: Quản trị viên duyệt → tải Phiếu tài khoản.
+
 ## Gửi email (để sau)
 
 Q2 và Q37 trước đây chốt rằng email dùng cho Lời mời và link đặt mật khẩu. Q43 thay đổi điều này: **cả giai đoạn 1 không gửi email**, việc gửi email chuyển vào backlog. Khi cần gửi email, việc gửi đặt sau một interface `MailSender`, giống cách làm với `MediaStore`. Lúc đó chỉ phải viết thêm một adapter, không sửa nghiệp vụ. Khuyến nghị khi làm: dịch vụ gửi email giao dịch (ví dụ Brevo, Resend) gửi từ tên miền của hệ thống, hoặc một tài khoản Gmail riêng của hệ thống. Không dùng Gmail cá nhân của Quản trị viên, vì app password mở được cả hộp thư và hệ thống sẽ phụ thuộc vào một người. Chốt bằng ADR.
@@ -239,7 +273,7 @@ Q2 và Q37 trước đây chốt rằng email dùng cho Lời mời và link đ�
 - Người dùng tự đặt lại mật khẩu khi quên: cần email, nằm trong backlog. Giai đoạn 1 dùng "Cấp lại mật khẩu tạm".
 - Xác thực hai lớp (TOTP) cho Quản trị viên: backlog (Q45).
 
-## Quyết định (Q43–Q86)
+## Quyết định (Q43–Q99)
 
 Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất vấn đặc tả. Mọi câu đều chấp nhận khuyến nghị.
 
@@ -284,3 +318,16 @@ Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất v�
 | Q84 | Bốn hành động nhật ký `invitation.*`; `accept` có người thực hiện là người nhận |
 | Q85 | API Quản trị viên: liệt kê, tạo, revoke, regenerate; chỉ tạo và regenerate trả token |
 | Q86 | Trang quản trị "Lời mời" và trang công khai `/invite/$token` ngoài `_authed` |
+| Q87 | Nghiệp vụ gọi cổng `JobQueue`; BullMQ là adapter, test dùng bản chạy tại chỗ; Redis đặt `noeviction` |
+| Q88 | File mẫu 6 cột; dòng lỗi vẫn lưu nhưng không duyệt được; kiểm nội dung thật của file |
+| Q89 | Thêm trạng thái `parsing`, `parse_failed`, `approving` cho `account_requests` |
+| Q90 | Khớp tài khoản có sẵn: mã trước, email sau; hai người khác nhau hoặc Quản trị viên hoặc đã Xóa là `blocked` |
+| Q91 | Duyệt cả lô `new` + `exact` hoặc từng dòng; `name_mismatch` phải quyết từng dòng |
+| Q92 | Tạo tài khoản chạy trong worker; trùng giữa chừng thì `skipped`; một dòng nhật ký mỗi đợt duyệt |
+| Q93 | Mật khẩu dạng rõ chỉ ở bộ nhớ worker; phiếu mã hóa AES-256-GCM; bảng `credential_slips` |
+| Q94 | Tải phiếu: Quản trị viên hoặc người gửi, 7 ngày, `410` khi quá hạn, mỗi lần tải ghi nhật ký; `pdfkit` + `qrcode` |
+| Q95 | Bảng `notifications`, bốn loại thông báo, chuông hỏi mỗi 60 giây |
+| Q96 | Job dọn hằng ngày: `login_events` > 12 tháng, phiếu hết hạn, file tạm |
+| Q97 | Người ra đề chỉ thấy yêu cầu của mình; chỉ Quản trị viên duyệt |
+| Q98 | Hai khu giao diện `/examiner/account-requests` và `/admin/account-requests` |
+| Q99 | Tách PR 1d thành 1d (nền tảng + gửi/xem yêu cầu) và 1e (duyệt + Phiếu tài khoản + dọn dẹp) |

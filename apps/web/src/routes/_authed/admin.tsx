@@ -12,6 +12,7 @@ const SECTIONS = [
   { to: '/admin/users', key: 'users' },
   { to: '/admin/units', key: 'units' },
   { to: '/admin/invitations', key: 'invitations' },
+  { to: '/admin/account-requests', key: 'accountRequests' },
   { to: '/admin/login-events', key: 'loginEvents' },
   { to: '/admin/audit-logs', key: 'auditLogs' },
 ] as const;
