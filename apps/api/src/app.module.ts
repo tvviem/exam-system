@@ -8,6 +8,7 @@ import { MediaModule } from './media/media-store';
 import { AuditModule } from './modules/audit/audit.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { QuestionBankModule } from './modules/question-bank/question-bank.module';
 import { QueueModule } from './queue/job-queue';
 import { RedisModule } from './redis/redis.module';
 
@@ -23,6 +24,7 @@ import { RedisModule } from './redis/redis.module';
     AuditModule,
     NotificationsModule,
     IdentityModule,
+    QuestionBankModule,
     HealthModule,
   ],
 })
