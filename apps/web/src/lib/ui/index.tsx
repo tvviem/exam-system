@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 // Component dùng chung (docs/ui-design.md mục 6): phần tử HTML gốc, chỉ dùng token màu.
 
 const fieldClass =
-  'h-12 w-full rounded-lg border border-border-strong bg-surface px-3 text-base text-fg outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/40 aria-invalid:border-danger';
+  'h-12 pointer-fine:h-11 w-full rounded-lg border border-border-strong bg-surface px-3 text-base text-fg outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/40 aria-invalid:border-danger';
 
 function FieldShell({
   id,
@@ -114,7 +114,7 @@ export function SelectField({
 }
 
 const buttonBase =
-  'inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg px-4 text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg px-4 text-base font-semibold transition-colors pointer-fine:min-h-10 disabled:cursor-not-allowed disabled:opacity-60';
 
 const buttonVariants = {
   primary: 'bg-primary text-on-primary hover:bg-primary-hover',
@@ -181,7 +181,7 @@ export function Badge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${badgeTones[tone]}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[13px] font-medium whitespace-nowrap ${badgeTones[tone]}`}
     >
       {icon}
       {children}

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { logout, meQuery } from '../lib/auth';
 import { Button, Dialog } from '../lib/ui';
+import { AppShell, navFor } from '../lib/ui/app-shell';
 import { NotificationBell } from '../lib/ui/notification-bell';
 import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
@@ -37,12 +38,10 @@ function AuthedLayout() {
 
   return (
     <>
-      <header className="border-b border-border bg-surface">
-        <nav className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2">
-          <Link to="/" className="flex min-h-12 min-w-0 items-center font-semibold">
-            <span className="truncate">{t('app.title')}</span>
-          </Link>
-          <div className="ml-auto flex items-center gap-1">
+      <AppShell
+        items={navFor(me)}
+        actions={
+          <>
             {!me.mustChangePassword && <NotificationBell isAdmin={me.isAdmin} />}
             <button
               type="button"
@@ -54,9 +53,11 @@ function AuthedLayout() {
               <span className="hidden max-w-48 truncate sm:inline">{me.fullName}</span>
               <CircleUserRound aria-hidden className="size-6" />
             </button>
-          </div>
-        </nav>
-      </header>
+          </>
+        }
+      >
+        <Outlet />
+      </AppShell>
       <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} title={me.fullName}>
         <div className="flex flex-col gap-4">
           {!me.mustChangePassword && (
@@ -86,9 +87,6 @@ function AuthedLayout() {
           </Button>
         </div>
       </Dialog>
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <Outlet />
-      </main>
     </>
   );
 }

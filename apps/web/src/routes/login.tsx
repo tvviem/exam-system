@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { GraduationCap } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { login, meQuery, safeRedirect } from '../lib/auth';
@@ -41,7 +42,15 @@ function LoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <p className="text-sm font-semibold text-primary">{t('app.title')}</p>
+        <p className="flex items-center gap-2.5 text-sm font-semibold">
+          <span
+            aria-hidden
+            className="inline-flex size-8 items-center justify-center rounded-lg bg-primary text-on-primary"
+          >
+            <GraduationCap className="size-5" />
+          </span>
+          {t('app.title')}
+        </p>
         <ThemeSwitcher />
       </div>
       <Card>

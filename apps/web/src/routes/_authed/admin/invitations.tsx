@@ -29,6 +29,7 @@ import {
   TextField,
 } from '../../../lib/ui';
 import { EmptyState, ListSkeleton, Pagination, ShowOnceDialog } from '../../../lib/ui/admin';
+import { useToast } from '../../../lib/ui/toast';
 
 export const Route = createFileRoute('/_authed/admin/invitations')({
   validateSearch: (search: Record<string, unknown>): InvitationParams => ({
@@ -286,6 +287,7 @@ function ConfirmDialog({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const mutation = useMutation({
     // Chỉ Tạo lại link trả link mới; Thu hồi trả null.
     mutationFn: async (): Promise<InvitationLink | null> => {
@@ -296,7 +298,10 @@ function ConfirmDialog({
     onSuccess: async (regenerated) => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'invitations'] });
       if (regenerated) onRegenerated(regenerated);
-      else onClose();
+      else {
+        toast(t('toast.invitationRevoked'));
+        onClose();
+      }
     },
   });
   return (

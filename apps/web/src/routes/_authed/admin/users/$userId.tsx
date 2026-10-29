@@ -35,6 +35,7 @@ import {
   TextField,
 } from '../../../../lib/ui';
 import { StatusBadge, TemporaryPasswordDialog } from '../../../../lib/ui/admin';
+import { useToast } from '../../../../lib/ui/toast';
 
 export const Route = createFileRoute('/_authed/admin/users/$userId')({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(userQuery(params.userId)),
@@ -135,16 +136,15 @@ function ProfileForm({ user, editable }: { user: UserDetail; editable: boolean }
         }),
   };
   const [form, setForm] = useState<Record<string, string>>(initial);
-  const [saved, setSaved] = useState(false);
+  const toast = useToast();
   const mutation = useUserMutation(user.id, (body: UserUpdate) => updateUser(user.id, body));
   const changes = changedFields(user, form);
   const set = (key: string) => (e: { target: { value: string } }) => {
-    setSaved(false);
     setForm({ ...form, [key]: e.target.value });
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    mutation.mutate(changes, { onSuccess: () => setSaved(true) });
+    mutation.mutate(changes, { onSuccess: () => toast(t('toast.profileSaved')) });
   };
 
   return (
@@ -212,11 +212,6 @@ function ProfileForm({ user, editable }: { user: UserDetail; editable: boolean }
           )}
         </fieldset>
         <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
-        {saved && (
-          <p role="status" className="text-sm text-success">
-            {t('common.saved')}
-          </p>
-        )}
         {editable && (
           <PrimaryButton
             type="submit"
@@ -238,6 +233,7 @@ function RoleTagsCard({ user, editable }: { user: UserDetail; editable: boolean 
     ({ tag, granted }: { tag: (typeof ROLE_TAGS)[number]; granted: boolean }) =>
       setRoleTag(user.id, tag, granted),
   );
+  const toast = useToast();
   return (
     <SectionCard title={t('admin.users.roleTags')}>
       <fieldset className="flex flex-col gap-2" disabled={!editable || mutation.isPending}>
@@ -251,7 +247,12 @@ function RoleTagsCard({ user, editable }: { user: UserDetail; editable: boolean 
               type="checkbox"
               className="size-5 accent-primary"
               checked={user.roleTags.includes(tag)}
-              onChange={(e) => mutation.mutate({ tag, granted: e.target.checked })}
+              onChange={(e) =>
+                mutation.mutate(
+                  { tag, granted: e.target.checked },
+                  { onSuccess: () => toast(t('toast.roleTagSaved')) },
+                )
+              }
             />
             <span className="font-medium">{t(`roleTag.${tag}`)}</span>
           </label>
@@ -274,7 +275,7 @@ function ExaminerProfileForm({ user, editable }: { user: UserDetail; editable: b
     academicTitle: profile?.academicTitle ?? '',
     unitId: profile?.unitId ?? '',
   });
-  const [saved, setSaved] = useState(false);
+  const toast = useToast();
   const mutation = useUserMutation(user.id, () =>
     updateUser(user.id, {
       examinerProfile: {
@@ -285,12 +286,11 @@ function ExaminerProfileForm({ user, editable }: { user: UserDetail; editable: b
     }),
   );
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) => {
-    setSaved(false);
     setForm({ ...form, [key]: e.target.value });
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    mutation.mutate(undefined, { onSuccess: () => setSaved(true) });
+    mutation.mutate(undefined, { onSuccess: () => toast(t('toast.examinerProfileSaved')) });
   };
 
   return (
@@ -340,11 +340,6 @@ function ExaminerProfileForm({ user, editable }: { user: UserDetail; editable: b
           </div>
         </fieldset>
         <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
-        {saved && (
-          <p role="status" className="text-sm text-success">
-            {t('common.saved')}
-          </p>
-        )}
         {editable && (
           <PrimaryButton type="submit" className="sm:w-fit" disabled={mutation.isPending}>
             {t('common.save')}
