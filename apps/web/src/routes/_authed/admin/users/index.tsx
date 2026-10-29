@@ -186,8 +186,15 @@ function RoleTags({ user }: { user: UserListItem }) {
   );
 }
 
-const identityLine = (user: UserListItem) =>
-  [user.code, user.username, user.email].filter(Boolean).join(' · ');
+/** Mã, tên đăng nhập, email; bỏ tên đăng nhập khi chỉ lặp lại mã hoặc email (hay gặp ở tài khoản Người dự thi). */
+const identityLine = (user: UserListItem) => {
+  const lower = (value: string | null) => value?.toLowerCase() ?? null;
+  const username =
+    lower(user.username) === lower(user.code) || lower(user.username) === lower(user.email)
+      ? null
+      : user.username;
+  return [user.code, username, user.email].filter(Boolean).join(' · ');
+};
 
 function UserCards({ items }: { items: UserListItem[] }) {
   return (
@@ -223,8 +230,12 @@ function UserTable({ items }: { items: UserListItem[] }) {
         <thead className="border-b border-border text-fg-muted">
           <tr>
             <th className="px-4 py-3 font-medium">{t('admin.users.fullName')}</th>
-            <th className="px-4 py-3 font-medium">{t('admin.users.identity')}</th>
-            <th className="px-4 py-3 font-medium">{t('admin.users.classLabel')}</th>
+            <th className="hidden px-4 py-3 font-medium lg:table-cell">
+              {t('admin.users.identity')}
+            </th>
+            <th className="hidden px-4 py-3 font-medium lg:table-cell">
+              {t('admin.users.classLabel')}
+            </th>
             <th className="px-4 py-3 font-medium">{t('admin.users.roleTags')}</th>
             <th className="px-4 py-3 font-medium">{t('admin.users.status')}</th>
           </tr>
@@ -240,9 +251,13 @@ function UserTable({ items }: { items: UserListItem[] }) {
                 >
                   {user.fullName}
                 </Link>
+                {/* 768–1023 px: cột Mã và Lớp ẩn đi, gộp thành một dòng phụ dưới tên */}
+                <p className="mt-0.5 text-fg-muted lg:hidden">
+                  {[identityLine(user), user.classLabel].filter(Boolean).join(' · ')}
+                </p>
               </td>
-              <td className="px-4 py-3 text-fg-muted">{identityLine(user)}</td>
-              <td className="px-4 py-3 text-fg-muted">{user.classLabel}</td>
+              <td className="hidden px-4 py-3 text-fg-muted lg:table-cell">{identityLine(user)}</td>
+              <td className="hidden px-4 py-3 text-fg-muted lg:table-cell">{user.classLabel}</td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-1">
                   <RoleTags user={user} />

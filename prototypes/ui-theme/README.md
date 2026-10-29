@@ -8,3 +8,7 @@ Nhánh thử, **không merge vào `main`**. Đề xuất chính thức nằm ở
 - `prototypes/exam-taking-ui/index.html`: prototype Người dự thi cũ, thêm nút **Aa** mở bảng "Hiển thị" (chế độ xem 1 câu / Cả đề, giao diện sáng/tối/theo máy, cỡ chữ, kiểu chữ có chân/không chân). Mở file này trực tiếp bằng trình duyệt (cần mạng để tải font và MathJax).
 
 Ảnh "sau" mới chỉ đổi màu và thêm biểu tượng thương hiệu; các lỗi bố cục ở mục 0 của `docs/ui-design.md` (thanh điều hướng 3 hàng, câu gợi ý cũ, thanh hành động dính đáy...) chưa sửa vì thuộc đề xuất Q103.
+
+## Khung ứng dụng thích ứng (bản thử)
+
+`apps/web/src/lib/ui/app-shell.tsx` + `routes/_authed.tsx`: từ 1024 px thanh bên cố định; dưới 1024 px thanh tab dưới đáy (tối đa 5 mục, mục thứ 5 là "Thêm"). Bỏ thanh tab ngang của khu quản trị. Bảng Người dùng ở 768–1023 px ẩn cột Mã và Lớp, gộp thành dòng phụ dưới tên. Ảnh ghép ở `khung-moi/`, ảnh gốc 390/768/1024/1440 px sáng và tối ở `anh-goc/khung-moi/`.

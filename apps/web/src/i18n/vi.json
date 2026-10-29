@@ -10,7 +10,17 @@
     "authSessions": "Phiên đăng nhập",
     "accountMenu": "Tài khoản",
     "accountRequests": "Yêu cầu cấp tài khoản",
-    "notifications": "Thông báo"
+    "notifications": "Thông báo",
+    "main": "Điều hướng chính",
+    "more": "Thêm",
+    "short": {
+      "users": "Người dùng",
+      "accountRequests": "Yêu cầu",
+      "invitations": "Lời mời",
+      "units": "Đơn vị",
+      "loginEvents": "Đăng nhập",
+      "auditLogs": "Nhật ký"
+    }
   },
   "health": {
     "heading": "Trạng thái hệ thống",
