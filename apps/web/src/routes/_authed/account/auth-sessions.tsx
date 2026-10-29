@@ -2,6 +2,7 @@ import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-q
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { type AuthSession, authSessionsQuery, revokeAuthSession } from '../../../lib/auth';
+import { Badge } from '../../../lib/ui';
 
 export const Route = createFileRoute('/_authed/account/auth-sessions')({
   loader: ({ context }) => context.queryClient.ensureQueryData(authSessionsQuery),
@@ -29,19 +30,19 @@ function AuthSessionsPage() {
   return (
     <section>
       <h1 className="text-lg font-semibold">{t('authSessions.heading')}</h1>
-      <p className="mt-1 text-slate-600">{t('authSessions.intro')}</p>
+      <p className="mt-1 text-fg-muted">{t('authSessions.intro')}</p>
       <ul className="mt-4 flex flex-col gap-3">
         {sessions.map((s) => (
-          <li key={s.id} className="rounded-xl border border-slate-200 bg-white p-4">
+          <li key={s.id} className="rounded-xl border border-border bg-surface p-4">
             <p className="font-medium">
               {deviceName(s, t('authSessions.unknownDevice'))}
               {s.current && (
-                <span className="ml-2 rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">
-                  {t('authSessions.current')}
+                <span className="ml-2">
+                  <Badge tone="success">{t('authSessions.current')}</Badge>
                 </span>
               )}
             </p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-fg-muted">
               {s.ip} ·{' '}
               {t('authSessions.started', { time: timeFormat.format(new Date(s.createdAt)) })} ·{' '}
               {t('authSessions.lastSeen', { time: timeFormat.format(new Date(s.lastSeenAt)) })}
@@ -49,7 +50,7 @@ function AuthSessionsPage() {
             {!s.current && (
               <button
                 type="button"
-                className="mt-2 min-h-12 rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+                className="mt-2 min-h-12 cursor-pointer rounded-lg px-3 text-sm font-medium text-danger hover:bg-danger-soft"
                 onClick={() => revoke.mutate(s.id)}
               >
                 {t('authSessions.revoke')}

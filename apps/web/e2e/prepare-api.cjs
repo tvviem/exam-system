@@ -34,11 +34,20 @@ async function main() {
   const db = new Client({ connectionString: databaseUrl });
   await db.connect();
   for (const user of users) {
-    await db.query(
+    const { rows } = await db.query(
       `INSERT INTO users (id, username, full_name, password_hash, is_admin, must_change_password)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, true)`,
-      [user.username, user.fullName, await hashPassword(user.password), user.isAdmin],
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING id`,
+      [
+        user.username,
+        user.fullName,
+        await hashPassword(user.password),
+        user.isAdmin,
+        user.mustChangePassword ?? true,
+      ],
     );
+    for (const tag of user.roleTags ?? []) {
+      await db.query('INSERT INTO user_role_tags (user_id, tag) VALUES ($1, $2)', [rows[0].id, tag]);
+    }
   }
   await db.end();
 

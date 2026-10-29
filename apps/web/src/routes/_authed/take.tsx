@@ -13,7 +13,7 @@ function Page() {
   return (
     <section>
       <h1 className="text-lg font-semibold">{t('nav.take')}</h1>
-      <p className="mt-2 text-slate-600">{t('placeholder')}</p>
+      <p className="mt-2 text-fg-muted">{t('placeholder')}</p>
     </section>
   );
 }

@@ -19,7 +19,7 @@ function StatusPage() {
 
   return (
     <main className="mx-auto max-w-md px-4 py-10">
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
+      <section className="rounded-lg border border-border bg-surface p-4">
         <h1 className="text-lg font-semibold">{t('health.heading')}</h1>
         <p data-testid="health-status" className="mt-2">
           {health.isPending
@@ -29,7 +29,7 @@ function StatusPage() {
               : t(`health.${health.data.status}`)}
         </p>
         {health.data && (
-          <ul className="mt-2 text-sm text-slate-600">
+          <ul className="mt-2 text-sm text-fg-muted">
             <li>PostgreSQL: {t(`health.${health.data.checks.postgres}`)}</li>
             <li>Redis: {t(`health.${health.data.checks.redis}`)}</li>
           </ul>

@@ -12,5 +12,5 @@ export const Route = createFileRoute('/_authed/')({
 
 function NoRolePage() {
   const { t } = useTranslation();
-  return <p className="text-slate-700">{t('home.noRole')}</p>;
+  return <p className="text-fg-muted">{t('home.noRole')}</p>;
 }

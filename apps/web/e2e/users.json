@@ -10,5 +10,49 @@
     "fullName": "Quản trị E2E",
     "password": "khoi-tao-lan-dau",
     "isAdmin": true
+  },
+  {
+    "username": "e2e-khoa-qt-desktop",
+    "fullName": "Quản trị Khóa desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-khoa-ndt-desktop",
+    "fullName": "Nguyễn Văn Khóa desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"]
+  },
+  {
+    "username": "e2e-khoa-qt-mobile",
+    "fullName": "Quản trị Khóa mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-khoa-ndt-mobile",
+    "fullName": "Nguyễn Văn Khóa mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"]
+  },
+  {
+    "username": "e2e-giao-dien-desktop",
+    "fullName": "Quản trị giao diện desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-giao-dien-mobile",
+    "fullName": "Quản trị giao diện mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
   }
 ]

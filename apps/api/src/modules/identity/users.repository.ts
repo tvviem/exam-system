@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { type Database, DB } from '../../db/db.module';
 import type { AuthenticatedUser } from './auth/auth.types';
 import { userRoleTags, users } from './identity.schema';
@@ -28,6 +28,16 @@ export class UsersRepository {
   async findById(id: string): Promise<UserRow | undefined> {
     const [row] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
     return row;
+  }
+
+  /** Họ tên theo id, kể cả người đã bị Xóa (để hiển thị lịch sử). */
+  async fullNamesOf(ids: string[]): Promise<Map<string, string>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({ id: users.id, fullName: users.fullName })
+      .from(users)
+      .where(inArray(users.id, [...new Set(ids)]));
+    return new Map(rows.map((r) => [r.id, r.fullName]));
   }
 
   async toAuthenticated(user: UserRow): Promise<AuthenticatedUser> {

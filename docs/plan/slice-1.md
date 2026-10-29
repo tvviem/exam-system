@@ -1,6 +1,6 @@
 # Lát cắt 1: Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản
 
-> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58 và review PR 1a (Q59–Q60) ở [mục Quyết định](#quyết-định-q43q60). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
+> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58, review PR 1a (Q59–Q60) và chốt chi tiết PR 1b (Q61–Q70), review PR 1b (Q76) ở [mục Quyết định](#quyết-định-q43q76). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
 
 ## Mục tiêu
 
@@ -35,7 +35,7 @@ Hai module chỉ giao tiếp qua service công khai, đúng như architecture.md
 
 | Module | Xuất ra cho module khác |
 |---|---|
-| `identity` | `AuthGuard` (bắt buộc đăng nhập), decorator `@AdminOnly()`, `@RequireTag('examiner' \| 'candidate')`, `@CurrentUser()`; `IdentityService.revokeAllSessions(userId, reason)` |
+| `identity` | `AuthGuard` (bắt buộc đăng nhập), decorator `@AdminOnly()`, `@RequireTag('examiner' \| 'candidate')`, `@CurrentUser()`; `IdentityService.revokeAllSessions(userId, reason)` (để tới lát cắt 4, Q76) |
 | `audit` | `AuditService.record({ actorId, action, entity, before, after, ip })` |
 
 ### Phiên đăng nhập (ADR-0004)
@@ -123,7 +123,22 @@ Hai module chỉ giao tiếp qua service công khai, đúng như architecture.md
 
 **Web:** `/admin/users` (danh sách + chi tiết), `/admin/units`, `/admin/login-events`, `/admin/audit-logs`.
 
-**Test:** integration cho từng quy tắc ràng buộc ở tầng service (data-model mục 1), cho việc thu hồi phiên ngay lập tức, và cho việc `audit_logs` từ chối UPDATE.
+**Chi tiết (Q61–Q70):**
+- Cấp lại mật khẩu tạm thu hồi mọi Phiên đăng nhập và gỡ khóa tạm, nhưng không mở Khóa đăng nhập. Không tự cấp cho chính mình (Q61).
+- Quản trị viên được Khóa, Xóa, cấp lại mật khẩu tạm cho Quản trị viên khác; chỉ cấm làm với chính mình (Q62).
+- Mở khóa không bắt buộc lý do; có thì ghi vào `audit_logs` (Q63). Khóa người đang bị khóa, hoặc mở khóa người chưa bị khóa, trả `INVALID_STATE` (409).
+- Gắn nhãn `examiner` thì tạo `examiner_profiles` trống; gỡ nhãn thì giữ hồ sơ. Người dùng được phép không còn nhãn nào (Q64).
+- Sửa được: họ tên, tên đăng nhập, email, Mã định danh, Lớp, ngày sinh, giới tính, và học vị, học hàm, Đơn vị nếu là Người ra đề. Tài khoản Quản trị viên chỉ sửa họ tên, tên đăng nhập, email. Trùng thì trả `CONFLICT` (409) kèm tên trường. Đổi tên đăng nhập hoặc email không thu hồi phiên (Q65).
+- Người đã bị Xóa không khôi phục được; vẫn xem được qua bộ lọc "Đã xóa" nhưng không sửa được (Q66).
+- Phân trang `page`, `pageSize` (mặc định 20, tối đa 100), trả `total`. Người dùng sắp theo ngày tạo mới nhất; lịch sử đăng nhập và nhật ký thao tác theo `at` giảm dần (Q67).
+- `before`/`after` của nhật ký chỉ chứa trường thay đổi, không bao giờ chứa `password_hash` hay mật khẩu tạm (Q68).
+- Tìm không dấu, không phân biệt hoa thường: migration bật extension `unaccent` (Q69).
+- Tạo Quản trị viên mới: hệ thống sinh mật khẩu tạm, hiển thị một lần, hạn 7 ngày (Q70).
+
+**Test (seam đã chốt):**
+- Integration qua HTTP `/api/admin/*`: `@AdminOnly()`, từng quy tắc ở tầng service, thu hồi phiên ngay (cookie của người bị Khóa hoặc bị Xóa nhận 401), nhật ký kiểm tra qua `GET /api/admin/audit-logs`, `login_events` kiểm tra qua `GET /api/admin/login-events`.
+- Integration bằng SQL trực tiếp: `UPDATE` và `DELETE` trên `audit_logs` báo lỗi.
+- E2E (desktop + mobile): Quản trị viên tìm một người → Khóa đăng nhập → người đó đăng nhập thì thấy báo bị khóa.
 
 ## PR 1c: Lời mời (chỉ tạo link)
 
@@ -199,7 +214,7 @@ Q2 và Q37 trước đây chốt rằng email dùng cho Lời mời và link đ�
 - Người dùng tự đặt lại mật khẩu khi quên: cần email, nằm trong backlog. Giai đoạn 1 dùng "Cấp lại mật khẩu tạm".
 - Xác thực hai lớp (TOTP) cho Quản trị viên: backlog (Q45).
 
-## Quyết định (Q43–Q60)
+## Quyết định (Q43–Q76)
 
 Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất vấn đặc tả. Mọi câu đều chấp nhận khuyến nghị.
 
@@ -223,3 +238,14 @@ Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất v�
 | Q58 | Thêm `account_request_items.match_status` |
 | Q59 | Thuật ngữ **Phiên đăng nhập** (`AuthSession`) trong GLOSSARY; code không dùng "session" đứng một mình |
 | Q60 | `recover-admin` chỉ khôi phục tài khoản Quản trị viên chưa bị Xóa và cấp mật khẩu tạm mới; `bootstrap-admin` chạy khi không còn Quản trị viên chưa bị Xóa |
+| Q61 | Cấp lại mật khẩu tạm: thu hồi mọi phiên, gỡ khóa tạm, không mở Khóa đăng nhập, không tự cấp cho mình |
+| Q62 | Quản trị viên thao tác được trên Quản trị viên khác, trừ chính mình |
+| Q63 | Mở khóa không bắt buộc lý do |
+| Q64 | Gắn nhãn `examiner` thì tạo `examiner_profiles` trống; gỡ nhãn giữ hồ sơ; cho phép không còn nhãn nào |
+| Q65 | Danh sách trường sửa được; trùng thì `CONFLICT` (409); đổi tên đăng nhập/email không thu hồi phiên |
+| Q66 | Xóa người dùng không khôi phục được; vẫn xem được qua bộ lọc "Đã xóa" |
+| Q67 | Phân trang `page`/`pageSize` (20, tối đa 100) kèm `total` |
+| Q68 | Nhật ký chỉ ghi trường thay đổi, không ghi mật khẩu |
+| Q69 | Tìm kiếm không dấu bằng extension `unaccent` |
+| Q70 | Tạo Quản trị viên mới bằng mật khẩu tạm sinh ngẫu nhiên, hiển thị một lần |
+| Q76 | `IdentityService.revokeAllSessions` chưa làm ở lát cắt 1 vì chưa module nào dùng; thêm ở lát cắt 4 cùng việc tự động Nộp bài khi bị Khóa đăng nhập |

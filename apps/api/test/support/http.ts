@@ -3,7 +3,7 @@ import { ORIGIN } from './app';
 
 export const AUTH_SESSION_COOKIE = 'exam_sid';
 
-type Method = 'GET' | 'POST' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 export interface CallOptions {
   cookie?: string;

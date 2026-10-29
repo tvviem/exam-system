@@ -3,11 +3,16 @@ import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 import { ApiError } from '../../../common/api-error';
 import { UsersRepository } from '../users.repository';
-import { ALLOW_PENDING_PASSWORD_CHANGE, IS_PUBLIC } from './auth.decorators';
-import { AUTH_SESSION_COOKIE } from './auth.types';
+import {
+  ADMIN_ONLY,
+  ALLOW_PENDING_PASSWORD_CHANGE,
+  IS_PUBLIC,
+  REQUIRED_TAG,
+} from './auth.decorators';
+import { AUTH_SESSION_COOKIE, type RoleTag } from './auth.types';
 import { AuthSessionStore } from './auth-session-store';
 
-/** Guard toàn cục: mọi route cần phiên hợp lệ, trừ route gắn @Public(). */
+/** Guard toàn cục: mọi route cần phiên hợp lệ, trừ route gắn @Public(); kiểm tra @AdminOnly(), @RequireTag(). */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
@@ -39,6 +44,11 @@ export class AuthGuard implements CanActivate {
     ) {
       throw new ApiError('PASSWORD_CHANGE_REQUIRED');
     }
+    if (this.reflector.getAllAndOverride<boolean>(ADMIN_ONLY, targets) && !user.isAdmin) {
+      throw new ApiError('FORBIDDEN');
+    }
+    const requiredTag = this.reflector.getAllAndOverride<RoleTag>(REQUIRED_TAG, targets);
+    if (requiredTag && !user.roleTags.includes(requiredTag)) throw new ApiError('FORBIDDEN');
     return true;
   }
 }
