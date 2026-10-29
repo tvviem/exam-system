@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Ellipsis,
   History,
+  Library,
   type LucideIcon,
   MailPlus,
   ScrollText,
@@ -58,6 +59,12 @@ export function navFor(me: Me): NavItem[] {
   }
   if (me.roleTags.includes('examiner')) {
     return [
+      {
+        to: '/examiner/questions',
+        label: 'nav.questionBank',
+        short: 'nav.short.questionBank',
+        icon: Library,
+      },
       {
         to: '/examiner/account-requests',
         label: 'nav.accountRequests',

@@ -14,6 +14,11 @@ export function errorMessage(t: TFunction, error: unknown): string {
     if (error.code === 'CONFLICT') {
       return t(`errors.CONFLICT_${error.details.field}`, { defaultValue: t('errors.CONFLICT') });
     }
+    if (error.code === 'INVALID_STATE' && error.details.reason) {
+      return t(`errors.INVALID_STATE_${error.details.reason}`, {
+        defaultValue: t('errors.INVALID_STATE'),
+      });
+    }
     return t(`errors.${error.code}`, { defaultValue: t('errors.UNKNOWN') });
   }
   return t('errors.UNKNOWN');

@@ -112,5 +112,37 @@
     "password": "mat-khau-on-dinh",
     "isAdmin": true,
     "mustChangePassword": false
+  },
+  {
+    "username": "e2e-ch-soan-desktop",
+    "fullName": "Giảng viên Soạn desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ch-soan-mobile",
+    "fullName": "Giảng viên Soạn mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ch-rong-desktop",
+    "fullName": "Giảng viên Bố cục desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ch-rong-mobile",
+    "fullName": "Giảng viên Bố cục mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]
