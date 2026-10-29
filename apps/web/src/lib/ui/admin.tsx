@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { UserStatus } from '../admin';
 import { formatDateTime } from '../format';
 import { Badge, Button, Dialog, PrimaryButton } from '.';
-import { useToast } from './toast';
 
 // Mẫu dùng cho trang quản trị (docs/ui-design.md mục 7).
 
@@ -134,13 +133,10 @@ export function ShowOnceDialog({
   copyText: string;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
-  const toast = useToast();
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     await navigator.clipboard.writeText(copyText);
     setCopied(true);
-    toast(t('toast.linkCopied'));
   };
   return (
     <Dialog open dismissible={false} onClose={onClose} title={title}>

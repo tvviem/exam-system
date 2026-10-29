@@ -82,3 +82,84 @@ test('thao tác thành công hiện thông báo nổi rồi tự mất', async (
   await expect(toast).toBeVisible();
   await expect(toast).toBeHidden({ timeout: 8000 });
 });
+
+// Q106/Q107: các điểm gãy sát ranh giới, quy tắc 5 mục, mục đang chọn trong "Thêm", trạng thái trên URL, mật độ theo thiết bị trỏ.
+test.describe('khung ứng dụng: biên và quy tắc', () => {
+  test('1023 px vẫn là thanh tab dưới đáy, 1440 px là thanh bên và nội dung không rộng quá 1152 px', async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1023, height: 800 });
+    await signIn(page, `e2e-khung-${testInfo.project.name}`);
+    await expect(main(page).getByRole('button', { name: 'Thêm' })).toBeVisible();
+    await expect(page.locator('aside')).toBeHidden();
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator('aside')).toBeVisible();
+    await expect(main(page).getByRole('button', { name: 'Thêm' })).toBeHidden();
+    const content = await page.locator('main').boundingBox();
+    expect(content?.width).toBeLessThanOrEqual(1152 + 1);
+  });
+
+  test('quá 5 mục thì 4 mục + "Thêm"; "Thêm" sáng lên khi đang ở một mục trong đó', async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page, `e2e-khung-${testInfo.project.name}`);
+    const nav = main(page);
+    await expect(nav.getByRole('link')).toHaveCount(4);
+    await expect(nav.getByRole('button', { name: 'Thêm' })).not.toHaveClass(/text-primary/);
+
+    await page.goto('/admin/audit-logs');
+    await expect(page.getByRole('heading', { name: 'Nhật ký thao tác', level: 1 })).toBeVisible();
+    await expect(nav.getByRole('button', { name: 'Thêm' })).toHaveClass(/text-primary/);
+  });
+
+  test('tìm kiếm nằm trên URL: mở một người rồi Quay lại vẫn giữ từ khóa', async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await signIn(page, `e2e-khung-${testInfo.project.name}`);
+    await page.getByRole('searchbox', { name: 'Tìm Người dùng' }).fill('quản trị khung');
+    await expect(page).toHaveURL(
+      /q=qu%E1%BA%A3n\+tr%E1%BB%8B\+khung|q=qu%E1%BA%A3n%20tr%E1%BB%8B%20khung/,
+    );
+    await page
+      .getByRole('link', { name: /Quản trị khung/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/admin\/users\/[0-9a-f-]{36}/);
+    await page.goBack();
+    await expect(page.getByRole('searchbox', { name: 'Tìm Người dùng' })).toHaveValue(
+      'quản trị khung',
+    );
+  });
+
+  test('mật độ theo thiết bị trỏ: chuột 36 px, cảm ứng 48 px (Q109)', async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await signIn(page, `e2e-khung-${testInfo.project.name}`);
+    await page.getByRole('link', { name: 'Đơn vị' }).click();
+    const box = await page.getByRole('button', { name: 'Thêm Đơn vị' }).boundingBox();
+    if (testInfo.project.name === 'desktop') expect(box?.height).toBeLessThanOrEqual(37);
+    else expect(box?.height).toBeGreaterThanOrEqual(48);
+  });
+});
+
+// §11: thông báo lỗi ở lại cho tới khi đóng; thông báo không che thanh hành động.
+test('thông báo nổi nằm phía trên, không đè lên thanh tab hay thanh hành động dính đáy', async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, `e2e-khung-${project}`);
+  await page.getByRole('link', { name: 'Đơn vị' }).click();
+  await page.getByRole('button', { name: 'Thêm Đơn vị' }).click();
+  await page.getByLabel('Mã Đơn vị').fill(`VT-${project}`);
+  await page.getByLabel('Tên Đơn vị').fill(`Khoa vị trí ${project}`);
+  await page.getByRole('dialog').getByRole('button', { name: 'Lưu thay đổi' }).click();
+  const toast = page.getByRole('status').filter({ hasText: 'Đã thêm Đơn vị' });
+  await expect(toast).toBeVisible();
+  const box = await toast.boundingBox();
+  expect(box?.y).toBeLessThan(200); // ở phía trên màn hình, cách xa thanh tab dưới đáy
+});

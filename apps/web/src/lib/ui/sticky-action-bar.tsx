@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
  */
 export function StickyActionBar({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-lg lg:bottom-4">
+    <div className="sticky bottom-[calc(var(--app-tabbar-h)+0.5rem+env(safe-area-inset-bottom))] z-10 flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 shadow-lg lg:bottom-4">
       {children}
     </div>
   );

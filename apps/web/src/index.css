@@ -13,6 +13,9 @@
 
 :root {
   color-scheme: light;
+  /* Kích thước khung ứng dụng: một nguồn cho thanh trên, thanh tab, thanh hành động và thông báo nổi. */
+  --app-header-h: 4rem;
+  --app-tabbar-h: 4rem;
   --c-bg: #edf1f3;
   --c-surface: #ffffff;
   --c-surface-raised: #ffffff;

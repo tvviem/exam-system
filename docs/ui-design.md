@@ -196,8 +196,8 @@ Một khung dùng chung cho Quản trị viên và Người ra đề; Người d
 
 - **Mục theo vai trò.** Quản trị viên: Người dùng, Yêu cầu cấp tài khoản, Lời mời, Đơn vị, Lịch sử đăng nhập, Nhật ký thao tác (4 đầu + "Thêm" trên điện thoại). Người ra đề (từ lát cắt 2): Ngân hàng câu hỏi, Bộ đề, Phiên thi, Chấm bài, Yêu cầu cấp tài khoản. Thứ tự theo tần suất dùng; nhãn đầy đủ ở thanh bên, nhãn ngắn ở thanh tab (nhãn dài được phép xuống 2 dòng, không bị cắt).
 - **Không trộn kiểu điều hướng** ở cùng một cấp: không tab ngang, không thanh bên và thanh tab cùng lúc. Điều hướng trong một mục (ví dụ các tab của một Phiên thi) là tab cuộn ngang trong nội dung trang.
-- **Vùng nội dung.** Mặc định rộng tối đa 1152 px (`max-w-6xl`), lề 16/24/32 px theo cỡ màn hình, chừa đáy 112 px cho thanh tab. Các màn hình **rộng** (theo dõi phòng thi, chấm bài, soạn câu hỏi, bảng kết quả) được tràn tới 1600 px.
-- **Đầu trang:** tiêu đề H1 và hành động chính cùng một hàng; hành động phụ trong menu "…". Trang nằm sâu từ 3 cấp trở lên có **đường dẫn** (breadcrumb) ở trên tiêu đề; trang 2 cấp có liên kết "← Danh sách".
+- **Vùng nội dung.** Mặc định rộng tối đa 1152 px (`max-w-6xl`), lề 16/24/32 px theo cỡ màn hình, chừa đáy cho thanh tab. Các màn hình **rộng** (theo dõi phòng thi, chấm bài, soạn câu hỏi, bảng kết quả) được tràn tới 1600 px: route khai báo `staticData: { wide: true }` (kiểu ở `src/lib/static-data.ts`), khung ứng dụng tự nới. Chưa trang nào hiện có dùng cờ này. Kích thước khung (`--app-header-h`, `--app-tabbar-h`) là biến CSS ở `index.css`, dùng chung cho thanh trên, thanh tab, thanh hành động dính đáy và thông báo nổi.
+- **Đầu trang:** thành phần `PageHeader`: tiêu đề H1 và hành động chính cùng một hàng; hành động phụ trong menu "…" (xây khi có trang đầu tiên cần). Trang nằm sâu từ 3 cấp trở lên có **đường dẫn** (breadcrumb) ở trên tiêu đề, **xây cùng lát cắt 2** khi có trang sâu 3 cấp đầu tiên (Chủ đề → Câu hỏi → Phiên bản); hiện mọi trang chỉ sâu 2 cấp nên dùng liên kết "← Danh sách".
 - **Trạng thái nằm trên URL:** bộ lọc, trang, tab đang mở; nút Quay lại khôi phục đúng vị trí cuộn và bộ lọc.
 - Thông báo trên chuông là một vùng `aria-live="polite"` riêng, nói nội dung có ngữ cảnh ("3 thông báo chưa đọc"), không đọc số trần.
 
@@ -218,10 +218,10 @@ Mẫu **Theo dõi** và **Chấm** cần prototype riêng để chủ dự án c
 
 **Xây trong PR giao diện (Q105):** khung ứng dụng (mục 9), bảng thích ứng `DataList` (thẻ dưới 768 px, bảng từ 768 px, cột ưu tiên ẩn dần ở 768–1023 px, dòng phụ dưới tên thay cho các cột bị ẩn), `FilterBar`, chip số liệu, thanh hành động dính đáy, thông báo nổi (toast), huy hiệu trạng thái đúng nghĩa biểu tượng. **Xây cùng lát cắt cần đến chúng:** ngăn bên/ngăn kéo (2), bước (4), cây Chủ đề (2), trình soạn (2), kéo thả (3).
 
-- **Thông báo nổi:** thao tác thành công hiện 3–5 giây rồi tự mất, không chiếm focus; lỗi cần hành động thì ở lại cho tới khi đóng.
+- **Thông báo nổi:** nằm phía trên màn hình (dưới thanh trên cùng) để không che thanh tab hay thanh hành động dính đáy; vùng chứa là vùng `aria-live` cố định. Thao tác thành công hiện 4 giây rồi tự mất, không chiếm focus; lỗi cần hành động (`role="alert"`) ở lại cho tới khi bấm đóng. Hộp thoại modal che thông báo nổi, nên phản hồi ngay trong hộp thoại (ví dụ nút Sao chép đổi biểu tượng) không dùng toast.
 - **Huy hiệu:** chữ ≥ 13 px, không bị bẻ dòng (`whitespace-nowrap`), luôn có chữ; nhóm chip tự xuống dòng thay vì co nhãn.
 - **Mật độ theo thiết bị trỏ (Q109):** thiết bị cảm ứng (`pointer: coarse`) giữ vùng chạm ≥ 48 px; chuột (`pointer: fine`) cho phép hàng bảng cao 40 px và nút 36 px (trên mức tối thiểu 24 px của WCAG 2.2). Không có công tắc mật độ cho người dùng ở giai đoạn này.
-- **Cuộn:** tránh vùng cuộn lồng nhau; bảng rộng cuộn ngang trong chính nó và cố định cột tên.
+- **Cuộn:** tránh vùng cuộn lồng nhau; bảng rộng cuộn ngang trong chính nó và cột đầu (tên) đứng yên. Tiêu đề bảng dính khi cuộn dọc **chưa làm**: danh sách đang phân trang 20 dòng; làm cùng bảng kết quả (lát cắt 5), vì tiêu đề dính cần bảng không nằm trong vùng cuộn ngang.
 
 ## 12. Phù hợp theo vai trò
 

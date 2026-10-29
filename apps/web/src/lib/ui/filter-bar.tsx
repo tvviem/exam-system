@@ -21,7 +21,7 @@ export function FilterBar({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <div className="sticky top-16 z-10 -mx-4 flex flex-col gap-3 bg-bg px-4 py-2 md:-mx-6 md:flex-row md:items-end md:px-6 lg:-mx-8 lg:px-8">
+      <div className="sticky top-(--app-header-h) z-10 -mx-4 flex flex-col gap-3 bg-bg px-4 py-2 md:-mx-6 md:flex-row md:items-end md:px-6 lg:-mx-8 lg:px-8">
         <div className="flex-1">{search}</div>
         <div className="hidden gap-3 md:flex md:w-96">{filters}</div>
         <Button className="md:hidden" onClick={() => setOpen(true)}>

@@ -84,7 +84,7 @@ export function MatchBadge({ status }: { status: MatchStatus }) {
     ) : status === 'blocked' ? (
       <Ban aria-hidden className="size-3" />
     ) : (
-      <Hourglass aria-hidden className="size-3" />
+      <CircleAlert aria-hidden className="size-3.5" />
     );
   return (
     <Badge tone={matchTone[status]} icon={icon}>
@@ -372,7 +372,15 @@ function ItemList({ items, admin, selection }: ItemListProps) {
           key: 'name',
           header: t('accountRequests.columns.fullName'),
           className: 'font-medium',
-          cell: (item) => item.fullName ?? '—',
+          cell: (item) => (
+            <>
+              {item.fullName ?? '—'}
+              {/* 768–1023 px: cột Mã/Email và Lớp ẩn đi, gộp thành dòng phụ dưới tên */}
+              <p className="mt-0.5 text-sm font-normal text-fg-muted lg:hidden">
+                {[identityOf(item), item.classLabel].filter(Boolean).join(' · ')}
+              </p>
+            </>
+          ),
         },
         {
           key: 'identity',

@@ -33,6 +33,7 @@ import {
 } from '../../../../lib/ui/admin';
 import { DataList } from '../../../../lib/ui/data-list';
 import { FilterBar } from '../../../../lib/ui/filter-bar';
+import { PageHeader } from '../../../../lib/ui/page-header';
 
 const STATUSES: UserStatus[] = ['active', 'locked', 'removed'];
 
@@ -109,13 +110,15 @@ function UsersPage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t('admin.users.heading')}</h1>
-        <Button onClick={() => setCreatingAdmin(true)}>
-          <ShieldPlus aria-hidden className="size-5" />
-          {t('admin.users.createAdmin')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('admin.users.heading')}
+        actions={
+          <Button onClick={() => setCreatingAdmin(true)}>
+            <ShieldPlus aria-hidden className="size-5" />
+            {t('admin.users.createAdmin')}
+          </Button>
+        }
+      />
 
       <FilterBar
         activeCount={activeFilters}

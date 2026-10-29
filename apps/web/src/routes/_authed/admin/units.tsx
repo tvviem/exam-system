@@ -7,6 +7,7 @@ import { createUnit, type Unit, unitsQuery, updateUnit } from '../../../lib/admi
 import { errorMessage } from '../../../lib/errors';
 import { Button, Dialog, ErrorMessage, PrimaryButton, TextField } from '../../../lib/ui';
 import { EmptyState, ListSkeleton } from '../../../lib/ui/admin';
+import { PageHeader } from '../../../lib/ui/page-header';
 import { useToast } from '../../../lib/ui/toast';
 
 export const Route = createFileRoute('/_authed/admin/units')({
@@ -21,13 +22,15 @@ function UnitsPage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t('admin.units.heading')}</h1>
-        <Button variant="primary" onClick={() => setEditing('new')}>
-          <Plus aria-hidden className="size-5" />
-          {t('admin.units.add')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('admin.units.heading')}
+        actions={
+          <Button variant="primary" onClick={() => setEditing('new')}>
+            <Plus aria-hidden className="size-5" />
+            {t('admin.units.add')}
+          </Button>
+        }
+      />
       {units.isPending ? (
         <ListSkeleton rows={3} />
       ) : units.isError ? (

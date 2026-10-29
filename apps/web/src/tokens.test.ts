@@ -86,3 +86,23 @@ describe('bản sắc teal (Q100)', () => {
     expect(tokensOf('[data-theme="dark"]').primary).toBe('#41c2a1');
   });
 });
+
+// Màu thanh địa chỉ trên điện thoại phải trùng màu `surface` (docs/ui-design.md mục 4); một nguồn token, ba nơi chép lại.
+describe('theme-color khớp token surface', () => {
+  const themeInit = readFileSync(path.resolve(__dirname, '../public/theme-init.js'), 'utf8');
+  const html = readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
+  const fromInit = (mode: 'light' | 'dark') =>
+    new RegExp(`${mode}:\\s*'(#[0-9a-fA-F]{6})'`).exec(themeInit)?.[1]?.toLowerCase();
+
+  it('theme-init.js dùng đúng màu surface của từng chế độ', () => {
+    expect(fromInit('light')).toBe(tokensOf(':root').surface?.toLowerCase());
+    expect(fromInit('dark')).toBe(tokensOf('[data-theme="dark"]').surface?.toLowerCase());
+  });
+
+  it('index.html mở trang bằng màu surface của chế độ sáng', () => {
+    const initial = /<meta name="theme-color" content="(#[0-9a-fA-F]{6})"/
+      .exec(html)?.[1]
+      ?.toLowerCase();
+    expect(initial).toBe(tokensOf(':root').surface?.toLowerCase());
+  });
+});

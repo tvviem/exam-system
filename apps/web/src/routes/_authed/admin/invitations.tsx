@@ -29,6 +29,7 @@ import {
   TextField,
 } from '../../../lib/ui';
 import { EmptyState, ListSkeleton, Pagination, ShowOnceDialog } from '../../../lib/ui/admin';
+import { PageHeader } from '../../../lib/ui/page-header';
 import { useToast } from '../../../lib/ui/toast';
 
 export const Route = createFileRoute('/_authed/admin/invitations')({
@@ -67,13 +68,15 @@ function InvitationsPage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t('admin.invitations.heading')}</h1>
-        <Button variant="primary" onClick={() => setCreating(true)}>
-          <Plus aria-hidden className="size-5" />
-          {t('admin.invitations.add')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('admin.invitations.heading')}
+        actions={
+          <Button variant="primary" onClick={() => setCreating(true)}>
+            <Plus aria-hidden className="size-5" />
+            {t('admin.invitations.add')}
+          </Button>
+        }
+      />
       <p className="text-sm text-fg-muted">{t('admin.invitations.intro')}</p>
       <div className="sm:w-64">
         <SelectField

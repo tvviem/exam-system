@@ -26,7 +26,7 @@ export function Chip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`inline-flex min-h-12 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium whitespace-nowrap pointer-fine:min-h-10 ${
+      className={`inline-flex min-h-12 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium whitespace-nowrap pointer-fine:min-h-9 ${
         active
           ? 'border-primary bg-primary-soft text-on-primary-soft'
           : 'border-border-strong bg-surface text-fg hover:bg-primary-soft'

@@ -47,7 +47,7 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
     <>
       {/* Vùng thông báo riêng, nói số chưa đọc có ngữ cảnh khi chuông đổi (không đọc số trần) */}
       <span role="status" className="sr-only">
-        {unread > 0 ? t('notification.bell', { count: unread }) : ''}
+        {unread > 0 ? t('notification.bell', { count: unread }) : t('notification.bellNone')}
       </span>
       <button
         type="button"

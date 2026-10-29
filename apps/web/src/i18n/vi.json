@@ -3,8 +3,6 @@
     "title": "Hệ thống thi trực tuyến"
   },
   "nav": {
-    "admin": "Quản trị",
-    "examiner": "Người ra đề",
     "take": "Vào thi",
     "logout": "Đăng xuất",
     "authSessions": "Phiên đăng nhập",
@@ -105,7 +103,6 @@
     "close": "Đóng",
     "done": "Xong",
     "save": "Lưu thay đổi",
-    "saved": "Đã lưu.",
     "cancel": "Hủy",
     "notSet": "Chưa đặt",
     "none": "Không có",
@@ -162,8 +159,7 @@
       "units": "Đơn vị",
       "loginEvents": "Lịch sử đăng nhập",
       "auditLogs": "Nhật ký thao tác",
-      "invitations": "Lời mời",
-      "accountRequests": "Yêu cầu cấp tài khoản"
+      "invitations": "Lời mời"
     },
     "users": {
       "heading": "Người dùng",
@@ -171,7 +167,6 @@
       "searchPlaceholder": "Tên, mã, email, lớp…",
       "filters_zero": "Lọc",
       "filters_other": "Lọc ({{count}})",
-      "filtersTitle": "Lọc Người dùng",
       "filterStatus": "Trạng thái",
       "statusNotRemoved": "Chưa bị xóa",
       "filterRoleTag": "Nhãn vai trò",
@@ -467,7 +462,6 @@
     "examinerProfileSaved": "Đã lưu hồ sơ Người ra đề",
     "requestRejected": "Đã từ chối yêu cầu",
     "approvalStarted": "Đang tạo tài khoản…",
-    "linkCopied": "Đã sao chép",
     "invitationRevoked": "Đã thu hồi Lời mời",
     "roleTagSaved": "Đã cập nhật Nhãn vai trò"
   }
