@@ -6,9 +6,16 @@ export const IS_PUBLIC = 'auth:public';
 export const ALLOW_PENDING_PASSWORD_CHANGE = 'auth:allow-pending-password-change';
 export const ADMIN_ONLY = 'auth:admin-only';
 export const REQUIRED_TAG = 'auth:required-tag';
+export const OPTIONAL_AUTH = 'auth:optional';
 
 /** Không cần đăng nhập. Mặc định mọi route đều cần. */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
+
+/**
+ * Dùng cùng @Public(): ai cũng gọi được, nhưng nếu có phiên hợp lệ thì handler biết người gọi là ai
+ * (@CurrentUserOrNull). Phiên không hợp lệ được coi như chưa đăng nhập.
+ */
+export const OptionalAuth = () => SetMetadata(OPTIONAL_AUTH, true);
 
 /** Vẫn gọi được khi người dùng chưa đổi mật khẩu tạm. */
 export const AllowPendingPasswordChange = () => SetMetadata(ALLOW_PENDING_PASSWORD_CHANGE, true);
@@ -33,3 +40,8 @@ export const CurrentActor = createParamDecorator((_: unknown, ctx: ExecutionCont
   const req = ctx.switchToHttp().getRequest();
   return { id: req.auth.user.id, ip: req.ip ?? null };
 });
+
+export const CurrentUserOrNull = createParamDecorator(
+  (_: unknown, ctx: ExecutionContext): AuthenticatedUser | null =>
+    ctx.switchToHttp().getRequest().auth?.user ?? null,
+);

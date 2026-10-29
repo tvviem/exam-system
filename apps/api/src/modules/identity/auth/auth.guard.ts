@@ -7,6 +7,7 @@ import {
   ADMIN_ONLY,
   ALLOW_PENDING_PASSWORD_CHANGE,
   IS_PUBLIC,
+  OPTIONAL_AUTH,
   REQUIRED_TAG,
 } from './auth.decorators';
 import { AUTH_SESSION_COOKIE, type RoleTag } from './auth.types';
@@ -23,20 +24,18 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const targets = [context.getHandler(), context.getClass()];
-    if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, targets)) return true;
-
     const request = context.switchToHttp().getRequest<FastifyRequest & { auth?: unknown }>();
-    const token = request.cookies?.[AUTH_SESSION_COOKIE];
-    const session = token ? await this.authSessions.resolve(token) : null;
-    if (!token || !session) throw new ApiError('UNAUTHENTICATED');
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, targets);
+    if (isPublic && !this.reflector.getAllAndOverride<boolean>(OPTIONAL_AUTH, targets)) return true;
 
-    const row = await this.usersRepo.findById(session.userId);
-    if (!row || row.removedAt || row.status === 'locked') {
-      await this.authSessions.revokeToken(token, row?.removedAt ? 'user_removed' : 'user_locked');
-      throw new ApiError('UNAUTHENTICATED');
+    const auth = await this.authenticate(request);
+    if (isPublic) {
+      if (auth) request.auth = auth;
+      return true;
     }
-    const user = await this.usersRepo.toAuthenticated(row);
-    request.auth = { user, authSessionId: session.authSessionId, token };
+    if (!auth) throw new ApiError('UNAUTHENTICATED');
+    request.auth = auth;
+    const { user } = auth;
 
     if (
       user.mustChangePassword &&
@@ -50,5 +49,20 @@ export class AuthGuard implements CanActivate {
     const requiredTag = this.reflector.getAllAndOverride<RoleTag>(REQUIRED_TAG, targets);
     if (requiredTag && !user.roleTags.includes(requiredTag)) throw new ApiError('FORBIDDEN');
     return true;
+  }
+
+  /** Người dùng của phiên hợp lệ (chưa Khóa, chưa Xóa), hoặc null. Phiên của người đã Khóa/Xóa bị thu hồi. */
+  private async authenticate(request: FastifyRequest) {
+    const token = request.cookies?.[AUTH_SESSION_COOKIE];
+    const session = token ? await this.authSessions.resolve(token) : null;
+    if (!token || !session) return null;
+
+    const row = await this.usersRepo.findById(session.userId);
+    if (!row || row.removedAt || row.status === 'locked') {
+      await this.authSessions.revokeToken(token, row?.removedAt ? 'user_removed' : 'user_locked');
+      return null;
+    }
+    const user = await this.usersRepo.toAuthenticated(row);
+    return { user, authSessionId: session.authSessionId, token };
   }
 }
