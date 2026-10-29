@@ -6,6 +6,8 @@ import type { JobName, JobPayloads, JobQueue, JobRegistry } from '../../src/queu
  */
 export class InlineJobQueue implements JobQueue {
   private jobs: { name: JobName; payload: JobPayloads[JobName] }[] = [];
+  /** Mọi job đã xếp, để test chạy lại một job như BullMQ giao lại sau khi worker chết. */
+  readonly history: { name: JobName; payload: JobPayloads[JobName] }[] = [];
   registry?: JobRegistry;
   /** Đặt true để lần `enqueue` kế tiếp ném lỗi (giả lập Redis hỏng). */
   failNextEnqueue = false;
@@ -19,6 +21,7 @@ export class InlineJobQueue implements JobQueue {
       throw new Error('Redis không sẵn sàng');
     }
     this.jobs.push({ name, payload });
+    this.history.push({ name, payload });
   }
 
   /** Bỏ hết job đang chờ, như thể worker không bao giờ nhận được chúng. */

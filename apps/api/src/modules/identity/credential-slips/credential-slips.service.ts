@@ -81,6 +81,8 @@ export class CredentialSlipsService {
       entityId: slip.id,
       after: { format },
     });
-    return { content, contentType: FORMATS[format].contentType };
+    // Ngày theo Clock dùng làm tên file tải về.
+    const date = this.clock.now().toISOString().slice(0, 10).replaceAll('-', '');
+    return { content, contentType: FORMATS[format].contentType, date };
   }
 }

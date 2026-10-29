@@ -1,4 +1,4 @@
-import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { and, eq, lt } from 'drizzle-orm';
 import { CLOCK, type Clock } from '../../../common/clock';
 import { type Database, DB } from '../../../db/db.module';
@@ -15,6 +15,8 @@ const DAILY_CRON = '0 3 * * *';
 /** Job "maintenance.cleanup" hằng ngày (Q96). */
 @Injectable()
 export class IdentityMaintenanceJob implements OnModuleInit {
+  private readonly logger = new Logger(IdentityMaintenanceJob.name);
+
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -27,10 +29,20 @@ export class IdentityMaintenanceJob implements OnModuleInit {
     this.registry.register('maintenance.cleanup', () => this.run(), { cron: DAILY_CRON });
   }
 
+  /** Mỗi bước độc lập: một bước lỗi chỉ được ghi log, các bước còn lại vẫn chạy trong ngày. */
   async run(): Promise<void> {
-    await this.deleteOldLoginEvents();
-    await this.expireSlips();
-    await this.failStuckParsing();
+    const steps = [
+      ['login_events', () => this.deleteOldLoginEvents()],
+      ['phiếu hết hạn', () => this.expireSlips()],
+      ['yêu cầu kẹt ở parsing', () => this.failStuckParsing()],
+    ] as const;
+    for (const [name, step] of steps) {
+      try {
+        await step();
+      } catch (error) {
+        this.logger.error(`Dọn dẹp "${name}" lỗi`, error);
+      }
+    }
   }
 
   private async deleteOldLoginEvents() {

@@ -1,6 +1,10 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import ExcelJS from 'exceljs';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MEDIA_STORE, type MediaStore } from '../src/media/media-store';
+import { AuditService } from '../src/modules/audit/audit.service';
+import { NotificationsService } from '../src/modules/notifications/notifications.service';
 import { JobRegistry } from '../src/queue/job-queue';
 import { createTestApp, type TestApp } from './support/app';
 import { FAKE_PDF, FAKE_XLSX } from './support/capturing-slip-renderer';
@@ -276,6 +280,19 @@ describe('duyệt Yêu cầu cấp tài khoản (PR 1e)', () => {
       });
     });
 
+    it('hai Quản trị viên duyệt cùng lúc: chỉ một lần thành công', async () => {
+      const id = await pending(csvFile('Một,B1,,,,', 'Hai,B2,,,,'));
+      const other = await signedIn({ isAdmin: true });
+      const results = await Promise.all([
+        approve(id, { allValid: true }),
+        approve(id, { allValid: true }, other.cookie),
+      ]);
+      expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
+      await t.queue.drain();
+      expect(await sql("SELECT 1 FROM users WHERE code IN ('B1', 'B2')")).toHaveLength(2);
+      expect(t.slips.calls).toHaveLength(1);
+    });
+
     it('xếp job lỗi thì yêu cầu trở lại "chờ duyệt", không kẹt', async () => {
       const id = await pending(csvFile('Một,B1,,,,'));
       t.queue.failNextEnqueue = true;
@@ -363,7 +380,7 @@ describe('duyệt Yêu cầu cấp tài khoản (PR 1e)', () => {
       ]);
 
       const dir = path.join(process.env.MEDIA_DIR as string, 'slips');
-      const files = await readdir(dir);
+      const files = (await readdir(dir)).filter((f) => f.endsWith('.enc'));
       expect(files.sort()).toEqual([`${slips[0].id}.pdf.enc`, `${slips[0].id}.xlsx.enc`]);
       const onDisk = await readFile(path.join(dir, `${slips[0].id}.pdf.enc`));
       expect(onDisk.includes(FAKE_PDF)).toBe(false);
@@ -459,6 +476,91 @@ describe('duyệt Yêu cầu cấp tài khoản (PR 1e)', () => {
     });
   });
 
+  describe('an toàn khi worker chết giữa chừng (Q93)', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('chết sau khi tạo tài khoản mà chưa lưu phiếu: job chạy lại dựng đủ phiếu với đúng mật khẩu, không nhân đôi', async () => {
+      const id = await pending(csvFile('Mới Một,B500,,,,', 'Mới Hai,B501,,,,'));
+      await approve(id, { allValid: true });
+
+      // Lần chạy đầu: lưu phiếu thất bại (như worker chết ngay lúc đó), job ném lỗi.
+      const notifications = t.app.get(NotificationsService);
+      const original = notifications.notify.bind(notifications);
+      vi.spyOn(notifications, 'notify').mockImplementation(async (input, tx) => {
+        if (input.type === 'credential_slip.ready') throw new Error('worker chết');
+        return original(input, tx);
+      });
+      await expect(t.queue.drain()).rejects.toThrow('worker chết');
+      expect(await sql('SELECT 1 FROM credential_slips')).toHaveLength(0);
+      expect(await sql("SELECT 1 FROM users WHERE code IN ('B500', 'B501')")).toHaveLength(2);
+      expect(await statusOf(admin.cookie, id)).toBe('approving');
+      vi.restoreAllMocks();
+
+      // BullMQ giao lại job: các dòng đã tạo, phiếu được dựng từ thông tin đã mã hóa lưu lúc tạo tài khoản.
+      const job = t.queue.history.at(-1);
+      await t.app.get(JobRegistry).run('account-request.approve', job?.payload as never);
+
+      expect(await sql('SELECT 1 FROM credential_slips')).toHaveLength(1);
+      expect(await statusOf(admin.cookie, id)).toBe('approved');
+      const finalEntries = t.slips.calls.at(-1)?.entries ?? [];
+      expect(finalEntries.map((e) => e.username)).toEqual(['b500', 'b501']);
+      for (const entry of finalEntries) {
+        expect((await login(t.app, entry.username, entry.temporaryPassword)).res.statusCode).toBe(
+          200,
+        );
+      }
+      const logs = (
+        await get(
+          admin.cookie,
+          `/api/admin/audit-logs?entityId=${id}&action=account-request.approve`,
+        )
+      ).json();
+      expect(logs.items).toHaveLength(1);
+      expect(logs.items[0].after).toMatchObject({ approved: 2, created: 2 });
+      // Không còn file thông tin tạm sau khi phiếu đã lưu.
+      const leftovers = await readdir(
+        path.join(process.env.MEDIA_DIR as string, 'slips', 'pending', id),
+      ).catch(() => []);
+      expect(leftovers).toEqual([]);
+    });
+
+    it('chết sau khi chốt phiếu mà chưa ghi trạng thái: chạy lại chỉ chốt nốt, không dựng phiếu thứ hai', async () => {
+      const id = await pending(csvFile('Mới,B500,,,,'));
+      await approve(id, { allValid: true });
+      const audit = t.app.get(AuditService);
+      const original = audit.record.bind(audit);
+      vi.spyOn(audit, 'record').mockImplementation(async (entry, tx) => {
+        if (entry.action === 'account-request.approve') throw new Error('worker chết');
+        return original(entry, tx);
+      });
+      await expect(t.queue.drain()).rejects.toThrow('worker chết');
+      vi.restoreAllMocks();
+
+      await t.app
+        .get(JobRegistry)
+        .run('account-request.approve', t.queue.history.at(-1)?.payload as never);
+      expect(await sql('SELECT 1 FROM credential_slips')).toHaveLength(1);
+      expect(t.slips.calls).toHaveLength(1);
+      expect(await statusOf(admin.cookie, id)).toBe('approved');
+      const types = (await get(examiner.cookie, '/api/notifications'))
+        .json()
+        .items.map((n: { type: string }) => n.type);
+      expect(types.filter((x: string) => x === 'credential_slip.ready')).toHaveLength(1);
+    });
+
+    it('hạn mật khẩu từng tài khoản trùng với hạn của phiếu (Q21)', async () => {
+      const id = await pending(csvFile('Một,B1,,,,', 'Hai,B2,,,,'));
+      await approved(id, { allValid: true });
+      const [slip] = await sql<{ expires_at: Date }>('SELECT expires_at FROM credential_slips');
+      const expiries = await sql<{ password_expires_at: Date }>(
+        "SELECT password_expires_at FROM users WHERE code IN ('B1', 'B2')",
+      );
+      for (const row of expiries) {
+        expect(row.password_expires_at.getTime()).toBe(slip?.expires_at.getTime());
+      }
+    });
+  });
+
   describe('thông báo và nhật ký', () => {
     it('báo phiếu sẵn sàng cho người duyệt và người gửi, báo kết quả cho người gửi', async () => {
       const id = await pending(csvFile('Một,B1,,,,'));
@@ -467,10 +569,10 @@ describe('duyệt Yêu cầu cấp tài khoản (PR 1e)', () => {
       const types = async (cookie: string) =>
         (await get(cookie, '/api/notifications')).json().items.map((n: { type: string }) => n.type);
       expect(await types(examiner.cookie)).toEqual([
-        'credential_slip.ready',
         'account_request.reviewed',
+        'credential_slip.ready',
       ]);
-      expect((await get(examiner.cookie, '/api/notifications')).json().items[1]).toMatchObject({
+      expect((await get(examiner.cookie, '/api/notifications')).json().items[0]).toMatchObject({
         data: { requestId: id, status: 'approved' },
       });
       expect(await types(admin.cookie)).toContain('credential_slip.ready');
@@ -500,6 +602,53 @@ describe('duyệt Yêu cầu cấp tài khoản (PR 1e)', () => {
   });
 });
 
+describe('tải phiếu với bộ dựng PDF thật', () => {
+  let real: TestApp;
+  beforeAll(async () => {
+    real = await createTestApp({ realSlips: true });
+  });
+  afterAll(async () => {
+    await real.app.close();
+  });
+
+  it('PDF hợp lệ, đủ số trang (8 phiếu/trang); Excel không chứa mật khẩu', async () => {
+    await resetState();
+    const examiner = await seedUser({ roleTags: ['examiner'] });
+    await seedUser({ username: 'qt-that', isAdmin: true });
+    const examinerCookie = (await login(real.app, examiner.username as string, DEFAULT_PASSWORD))
+      .cookie as string;
+    const adminCookie = (await login(real.app, 'qt-that', DEFAULT_PASSWORD)).cookie as string;
+    const rows = Array.from({ length: 9 }, (_, i) => `Người Số ${i},B9${i},,CNTT,,`);
+    const sent = await upload(real.app, '/api/account-requests', csvFile(...rows), {
+      cookie: examinerCookie,
+    });
+    await real.queue.drain();
+    await call(real.app, 'POST', `/api/account-requests/${sent.json().id}/approve`, {
+      cookie: adminCookie,
+      body: { allValid: true },
+    });
+    await real.queue.drain();
+
+    const [slip] = (
+      await call(real.app, 'GET', `/api/account-requests/${sent.json().id}/slips`, {
+        cookie: adminCookie,
+      })
+    ).json();
+    const pdf = await call(real.app, 'GET', `/api/credential-slips/${slip.id}/pdf`, {
+      cookie: examinerCookie,
+    });
+    expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
+    expect((pdf.rawPayload.toString('latin1').match(/\/Type \/Page(?!s)/g) ?? []).length).toBe(2);
+
+    const xlsx = await call(real.app, 'GET', `/api/credential-slips/${slip.id}/xlsx`, {
+      cookie: adminCookie,
+    });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(xlsx.rawPayload as unknown as ArrayBuffer);
+    expect(workbook.worksheets[0]?.rowCount).toBe(10); // tiêu đề + 9 người
+  });
+});
+
 describe('dọn dẹp hằng ngày (Q96)', () => {
   const cleanup = () => t.app.get(JobRegistry).run('maintenance.cleanup', {});
 
@@ -517,6 +666,31 @@ describe('dọn dẹp hằng ngày (Q96)', () => {
     expect(await sql('SELECT 1 FROM login_events')).toHaveLength(1);
   });
 
+  it('một bước dọn dẹp lỗi không làm dừng các bước còn lại', async () => {
+    const user = await seedUser({});
+    await sql(
+      "INSERT INTO login_events (id, user_id, identifier_tried, success, at) VALUES (gen_random_uuid(), $1, 'x', true, $2)",
+      [user.id, new Date(t.clock.now().getTime() - days(400))],
+    );
+    const examiner = await signedIn({ roleTags: ['examiner'] });
+    const admin = await signedIn({ isAdmin: true });
+    const res = await upload(t.app, '/api/account-requests', csvFile('Một,B1,,,,'), {
+      cookie: examiner.cookie,
+    });
+    await t.queue.drain();
+    await post(admin.cookie, `/api/account-requests/${res.json().id}/approve`, { allValid: true });
+    await t.queue.drain();
+    t.clock.advance(days(8));
+
+    const media = t.app.get<MediaStore>(MEDIA_STORE);
+    vi.spyOn(media, 'delete').mockRejectedValue(new Error('ổ đĩa lỗi'));
+    await cleanup(); // bước xóa file phiếu lỗi nhưng không ném ra ngoài
+    vi.restoreAllMocks();
+    expect(await sql('SELECT 1 FROM login_events WHERE identifier_tried = $1', ['x'])).toHaveLength(
+      0,
+    );
+  });
+
   it('phiếu hết hạn bị xóa file và đặt "hết hạn"', async () => {
     const examiner = await signedIn({ roleTags: ['examiner'] });
     const admin = await signedIn({ isAdmin: true });
@@ -528,13 +702,14 @@ describe('dọn dẹp hằng ngày (Q96)', () => {
     await t.queue.drain();
 
     const dir = path.join(process.env.MEDIA_DIR as string, 'slips');
-    expect(await readdir(dir)).toHaveLength(2);
+    const slipFiles = async () => (await readdir(dir)).filter((f) => f.endsWith('.enc'));
+    expect(await slipFiles()).toHaveLength(2);
     await cleanup();
-    expect(await readdir(dir)).toHaveLength(2); // chưa hết hạn
+    expect(await slipFiles()).toHaveLength(2); // chưa hết hạn
 
     t.clock.advance(days(8));
     await cleanup();
-    expect(await readdir(dir)).toEqual([]);
+    expect(await slipFiles()).toEqual([]);
     expect(await sql<{ status: string }>('SELECT status::text FROM credential_slips')).toEqual([
       { status: 'expired' },
     ]);

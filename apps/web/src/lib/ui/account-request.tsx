@@ -383,7 +383,11 @@ function ItemTable({ items, admin, selection }: ItemListProps) {
       <table className="w-full text-left text-sm">
         <thead className="border-b border-border text-fg-muted">
           <tr>
-            {selection && <th className="w-12 px-2 py-3" />}
+            {selection && (
+              <th className="w-12 px-2 py-3">
+                <span className="sr-only">{t('accountRequests.columns.select')}</span>
+              </th>
+            )}
             <th className="px-4 py-3 font-medium">{t('accountRequests.columns.row')}</th>
             <th className="px-4 py-3 font-medium">{t('accountRequests.columns.fullName')}</th>
             <th className="px-4 py-3 font-medium">{t('accountRequests.columns.identity')}</th>

@@ -20,18 +20,18 @@ export interface TestApp {
   slips: CapturingSlipRenderer;
 }
 
-export async function createTestApp(): Promise<TestApp> {
+/** `realSlips`: dùng bộ dựng PDF thật thay cho bản ghi lại dữ liệu. */
+export async function createTestApp(options: { realSlips?: boolean } = {}): Promise<TestApp> {
   const clock = new FakeClock();
   const queue = new InlineJobQueue();
   const slips = new CapturingSlipRenderer();
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+  const builder = Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(CLOCK)
     .useValue(clock)
     .overrideProvider(JOB_QUEUE)
-    .useValue(queue)
-    .overrideProvider(SLIP_RENDERER)
-    .useValue(slips)
-    .compile();
+    .useValue(queue);
+  if (!options.realSlips) builder.overrideProvider(SLIP_RENDERER).useValue(slips);
+  const moduleRef = await builder.compile();
   queue.registry = moduleRef.get(JobRegistry);
   const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
     logger: false,

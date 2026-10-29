@@ -39,8 +39,7 @@ export class CredentialSlipsController {
     reply: FastifyReply,
   ) {
     if (!canViewAccountRequests(user)) throw new ApiError('FORBIDDEN');
-    const { content, contentType } = await this.slips.download(user, actor, id, format);
-    const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+    const { content, contentType, date } = await this.slips.download(user, actor, id, format);
     reply
       .header('content-type', contentType)
       .header('content-disposition', `attachment; filename="phieu-tai-khoan-${date}.${format}"`)
