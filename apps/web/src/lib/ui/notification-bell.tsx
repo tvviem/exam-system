@@ -21,17 +21,20 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
   });
 
   const textOf = (n: AppNotification) => {
-    const key =
-      n.type === 'account_request.reviewed'
-        ? `notification.account_request.reviewed_${String(n.data.status)}`
-        : `notification.${n.type}`;
+    // Một số loại có nhiều nội dung theo `status` kèm theo (đã duyệt, bị từ chối...).
+    const key = ['account_request.reviewed', 'credential_slip.ready'].includes(n.type)
+      ? `notification.${n.type}_${String(n.data.status)}`
+      : `notification.${n.type}`;
     return t(key, { ...n.data, defaultValue: t('notification.unknown') });
   };
   const openNotification = async (n: AppNotification) => {
     if (!n.readAt) markRead.mutate([n.id]);
     setOpen(false);
     const requestId = typeof n.data.requestId === 'string' ? n.data.requestId : null;
-    if (n.type.startsWith('account_request.') && requestId) {
+    if (
+      (n.type.startsWith('account_request.') || n.type.startsWith('credential_slip.')) &&
+      requestId
+    ) {
       await navigate(
         isAdmin
           ? { to: '/admin/account-requests/$requestId', params: { requestId } }

@@ -7,6 +7,9 @@ const envSchema = z.object({
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
   APP_VERSION: z.string().default('dev'),
+  // Số lần thử đăng nhập tối đa mỗi IP trong 10 phút (Q47). Cả lớp dùng chung Wi-Fi nên không đặt thấp;
+  // E2E nâng cao vì mọi test đăng nhập từ cùng một IP.
+  LOGIN_MAX_PER_IP: z.coerce.number().int().positive().default(20),
   // Khóa AES-256-GCM mã hóa Phiếu tài khoản (32 byte, base64). Tạo bằng: openssl rand -base64 32
   SLIP_ENCRYPTION_KEY: z.string().refine((value) => Buffer.from(value, 'base64').length === 32, {
     message: 'phải là 32 byte mã hóa base64 (openssl rand -base64 32)',

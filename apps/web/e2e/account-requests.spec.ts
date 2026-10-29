@@ -79,3 +79,62 @@ test('Người ra đề tải file mẫu và gửi yêu cầu; Quản trị viê
     page.getByRole('dialog').getByText('Yêu cầu cấp tài khoản của bạn đã bị từ chối.'),
   ).toBeVisible();
 });
+
+test('Quản trị viên duyệt yêu cầu; Phiếu tài khoản PDF và Excel tải được cho cả Quản trị viên lẫn Người ra đề', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const fileName = `duyet-${project}.csv`;
+  const csv = [
+    'Họ tên,Mã định danh,Email,Lớp,Ngày sinh,Giới tính',
+    `Phạm Văn Một,E2E-D-${project}-1,,CNTT-K22,01/02/2006,Nam`,
+    `Lê Thị Hai,E2E-D-${project}-2,,CNTT-K22,,Nữ`,
+  ].join('\n');
+
+  // Người ra đề gửi yêu cầu.
+  await signIn(page, `e2e-yc-gv-${project}`);
+  await page.getByLabel('File danh sách').setInputFiles({
+    name: fileName,
+    mimeType: 'text/csv',
+    buffer: Buffer.from(csv, 'utf8'),
+  });
+  await page.getByRole('button', { name: 'Gửi yêu cầu' }).click();
+  await expect(page.getByText('Chờ duyệt').first()).toBeVisible({ timeout: 15_000 });
+
+  // Quản trị viên duyệt cả lô hợp lệ.
+  const admin = await browser.newPage();
+  await signIn(admin, `e2e-yc-qt-${project}`);
+  await expect(admin.getByRole('heading', { name: 'Người dùng' })).toBeVisible();
+  await admin.goto('/admin/account-requests');
+  await admin.getByRole('link', { name: new RegExp(fileName) }).click();
+  await admin.getByRole('button', { name: /^Duyệt các dòng hợp lệ \(2\)$/ }).click();
+  await expect(admin.getByText('Đã duyệt', { exact: true }).first()).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(admin.getByRole('heading', { name: 'Phiếu tài khoản' })).toBeVisible();
+  await expect(admin.getByText('2 tài khoản')).toBeVisible();
+
+  // Tải PDF: file hợp lệ và đã được giải mã.
+  const pdfDownload = admin.waitForEvent('download');
+  await admin.getByRole('link', { name: /Tải PDF/ }).click();
+  const pdf = await pdfDownload;
+  expect(pdf.suggestedFilename()).toMatch(/^phieu-tai-khoan-\d{8}\.pdf$/);
+  const pdfBytes = await (await import('node:fs/promises')).readFile(await pdf.path());
+  expect(pdfBytes.subarray(0, 5).toString()).toBe('%PDF-');
+
+  const xlsxDownload = admin.waitForEvent('download');
+  await admin.getByRole('link', { name: /Tải Excel/ }).click();
+  expect((await xlsxDownload).suggestedFilename()).toMatch(/\.xlsx$/);
+  await admin.close();
+
+  // Người ra đề cũng thấy và tải được phiếu của yêu cầu mình gửi.
+  await page.reload();
+  await expect(page.getByText('Đã duyệt', { exact: true }).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByRole('heading', { name: 'Phiếu tài khoản' })).toBeVisible();
+  const examinerDownload = page.waitForEvent('download');
+  await page.getByRole('link', { name: /Tải PDF/ }).click();
+  expect((await examinerDownload).suggestedFilename()).toMatch(/\.pdf$/);
+});

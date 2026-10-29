@@ -62,6 +62,7 @@ async function main() {
     DATABASE_URL: databaseUrl,
     REDIS_URL: redisUrl,
     APP_ORIGINS: 'http://localhost:4173',
+    LOGIN_MAX_PER_IP: '1000',
     SLIP_ENCRYPTION_KEY: Buffer.alloc(32, 5).toString('base64'),
     MEDIA_DIR: path.join(require('node:os').tmpdir(), 'exam-e2e-media'),
   });

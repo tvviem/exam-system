@@ -395,14 +395,19 @@
     "rejectIntro": "Mọi dòng đang chờ sẽ bị từ chối và người gửi được báo.",
     "rejectNote": "Lý do (không bắt buộc)",
     "rejectConfirm": "Từ chối",
-    "approveSoon": "Việc duyệt và tạo tài khoản chưa có trong bản này.",
     "columns": {
       "row": "Dòng",
       "fullName": "Họ tên",
       "identity": "Mã · Email",
       "classLabel": "Lớp",
       "match": "Kết quả kiểm tra"
-    }
+    },
+    "approveValid": "Duyệt các dòng hợp lệ ({{count}})",
+    "approveSelected": "Duyệt dòng đã chọn ({{count}})",
+    "rejectSelected": "Từ chối dòng đã chọn ({{count}})",
+    "selectRow": "Chọn dòng {{n}}",
+    "selectHint": "Dòng \"khớp nhưng khác họ tên\" chỉ được duyệt khi bạn chọn riêng: hãy kiểm tra đúng là người đó.",
+    "approvingHint": "Đang tạo tài khoản. Trang tự cập nhật."
   },
   "notification": {
     "account_request.submitted": "{{requesterName}} gửi yêu cầu cấp tài khoản ({{rowCount}} dòng).",
@@ -413,6 +418,25 @@
     "markAllRead": "Đánh dấu tất cả đã đọc",
     "bell": "Thông báo ({{count}} chưa đọc)",
     "bellNone": "Thông báo",
-    "unread": "Chưa đọc"
+    "unread": "Chưa đọc",
+    "account_request.reviewed_approved": "Yêu cầu cấp tài khoản của bạn đã được duyệt.",
+    "account_request.reviewed_partially_approved": "Yêu cầu cấp tài khoản của bạn đã được duyệt một phần.",
+    "credential_slip.ready_ready": "Phiếu tài khoản đã sẵn sàng để tải.",
+    "credential_slip.ready_failed": "Không dựng được Phiếu tài khoản. Hãy cấp lại mật khẩu tạm."
+  },
+  "credentialSlips": {
+    "heading": "Phiếu tài khoản",
+    "item": "{{count}} tài khoản · tạo lúc {{time}}",
+    "expires": "Tải được đến {{time}}",
+    "expired": "Đã hết hạn tải. Dùng \"Cấp lại mật khẩu tạm\" ở trang Người dùng nếu cần.",
+    "failed": "Không dựng được phiếu. Tài khoản đã được tạo: hãy dùng \"Cấp lại mật khẩu tạm\" ở trang Người dùng.",
+    "downloadPdf": "Tải PDF (in phát)",
+    "downloadXlsx": "Tải Excel (tra cứu)",
+    "status": {
+      "ready": "Sẵn sàng",
+      "failed": "Lỗi",
+      "expired": "Hết hạn"
+    },
+    "hint": "Phiếu chứa mật khẩu tạm: chỉ phát cho đúng người, không lưu hay chuyển tiếp."
   }
 }
