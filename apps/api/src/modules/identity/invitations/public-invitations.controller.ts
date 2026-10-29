@@ -1,10 +1,9 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { authSessionMetaFrom } from '../auth/auth.controller';
 import { CurrentUserOrNull, OptionalAuth, Public } from '../auth/auth.decorators';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { setAuthSessionCookie } from '../auth/auth-cookie';
+import { authSessionMetaFrom, setAuthSessionCookie } from '../auth/auth-request';
 import { academicDegreeEnum, academicTitleEnum } from '../identity.schema';
 import { InvitationAcceptanceService } from './invitation-acceptance.service';
 

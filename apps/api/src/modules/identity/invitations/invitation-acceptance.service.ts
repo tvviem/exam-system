@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull, sql } from 'drizzle-orm';
-import { ApiError } from '../../../common/api-error';
+import { eq, sql } from 'drizzle-orm';
+import { ApiError, validationFailed } from '../../../common/api-error';
 import { CLOCK, type Clock } from '../../../common/clock';
-import { type Database, DB } from '../../../db/db.module';
+import { mapUniqueToConflict } from '../../../common/pg-error';
+import { type Database, DB, type Transaction as Tx } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
 import { AuthService } from '../auth/auth.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -18,11 +19,10 @@ import {
 } from '../identity.schema';
 import { hashPassword } from '../password/password-hasher';
 import { checkPasswordPolicy } from '../password/password-policy';
+import { findActiveUserByEmail } from '../users.repository';
 import { InvitationRateLimiter } from './invitation-rate-limiter';
 import { invitationStatusOf } from './invitation-status';
 import { hashInvitationToken } from './invitation-token';
-
-type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 export interface AcceptInput {
   /** Bắt buộc khi email chưa có tài khoản. */
@@ -49,7 +49,7 @@ export class InvitationAcceptanceService {
       .select({ name: units.name })
       .from(units)
       .where(eq(units.id, invitation.unitId));
-    const account = await this.activeAccountOf(this.db, invitation.email);
+    const account = await findActiveUserByEmail(this.db, invitation.email);
     return {
       email: invitation.email,
       fullName: invitation.fullName,
@@ -67,29 +67,32 @@ export class InvitationAcceptanceService {
   ) {
     await this.limit(meta.ip);
     const now = this.clock.now();
-    const result = await this.db.transaction(async (tx) => {
-      // Khóa dòng: hai người nhận cùng lúc thì người sau thấy Lời mời đã `accepted` và bị từ chối.
-      const invitation = await this.findPendingOrThrow(tx, token, true);
-      const account = await this.activeAccountOf(tx, invitation.email);
-      const user = account
-        ? await this.addExaminerTag(tx, invitation, account, input, current, now)
-        : await this.createExaminer(tx, invitation, input, now);
-      await tx
-        .update(invitations)
-        .set({ acceptedAt: now, acceptedUserId: user.id })
-        .where(eq(invitations.id, invitation.id));
-      await this.audit.record(
-        {
-          actor: { id: user.id, ip: meta.ip },
-          action: 'invitation.accept',
-          entityType: 'invitation',
-          entityId: invitation.id,
-          after: { userId: user.id, createdAccount: !account },
-        },
-        tx,
-      );
-      return { user, email: invitation.email, createdAccount: !account };
-    });
+    // Đua với việc tạo tài khoản cùng email ở chỗ khác: báo trùng email thay vì lỗi 500.
+    const result = await mapUniqueToConflict({ users_email_active_key: 'email' }, () =>
+      this.db.transaction(async (tx) => {
+        // Khóa dòng: hai người nhận cùng lúc thì người sau thấy Lời mời đã `accepted` và bị từ chối.
+        const invitation = await this.findPendingOrThrow(tx, token, true);
+        const account = await findActiveUserByEmail(tx, invitation.email);
+        const user = account
+          ? await this.addExaminerTag(tx, invitation, account, input, current, now)
+          : await this.createExaminer(tx, invitation, input, now);
+        await tx
+          .update(invitations)
+          .set({ acceptedAt: now, acceptedUserId: user.id })
+          .where(eq(invitations.id, invitation.id));
+        await this.audit.record(
+          {
+            actor: { id: user.id, ip: meta.ip },
+            action: 'invitation.accept',
+            entityType: 'invitation',
+            entityId: invitation.id,
+            after: { userId: user.id, createdAccount: !account },
+          },
+          tx,
+        );
+        return { user, email: invitation.email, createdAccount: !account };
+      }),
+    );
 
     const session = result.createdAccount
       ? await this.auth.startSession(result.user, result.email, meta)
@@ -104,9 +107,7 @@ export class InvitationAcceptanceService {
     now: Date,
   ) {
     if (!input.password) {
-      throw new ApiError('VALIDATION_FAILED', {
-        issues: [{ path: 'password', code: 'required' }],
-      });
+      throw validationFailed('password', 'required');
     }
     const violations = checkPasswordPolicy(input.password, {
       username: null,
@@ -197,14 +198,6 @@ export class InvitationAcceptanceService {
       throw new ApiError('INVITATION_UNAVAILABLE');
     }
     return invitation;
-  }
-
-  private async activeAccountOf(db: Pick<Database, 'select'>, email: string) {
-    const [account] = await db
-      .select({ id: users.id, isAdmin: users.isAdmin })
-      .from(users)
-      .where(and(eq(users.email, email), isNull(users.removedAt)));
-    return account;
   }
 
   private async limit(ip: string | null) {

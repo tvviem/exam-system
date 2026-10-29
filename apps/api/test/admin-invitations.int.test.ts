@@ -174,10 +174,25 @@ describe('Thu hồi và Tạo lại link (Q80)', () => {
       expiresAt: new Date(t.clock.now().getTime() + days(7)).toISOString(),
     });
     expect(again.token).not.toBe(first.token);
+    expect((await call(t.app, 'GET', `/api/invitations/${first.token}`)).statusCode).toBe(404);
+    expect((await call(t.app, 'GET', `/api/invitations/${again.token}`)).statusCode).toBe(200);
     expect((await listOf()).total).toBe(1);
     const logs = (await as('GET', `/api/admin/audit-logs?entityId=${first.id}`)).json();
     expect(logs.items[0].action).toBe('invitation.regenerate');
     expect(JSON.stringify(logs)).not.toContain(again.token);
+  });
+
+  it('Tạo lại link bị từ chối nếu email đó đã trở thành Người ra đề hoặc Quản trị viên trong lúc chờ', async () => {
+    const first = await created({ email: 'a@example.edu.vn' });
+    const second = await created({ email: 'b@example.edu.vn' });
+    await advance(days(8));
+    await seedUser({ email: 'a@example.edu.vn', roleTags: ['examiner'] });
+    await seedUser({ email: 'b@example.edu.vn', isAdmin: true });
+    for (const { id } of [first, second]) {
+      const res = await as('POST', `/api/admin/invitations/${id}/regenerate`);
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ code: 'VALIDATION_FAILED' });
+    }
   });
 
   it('đã thu hồi thì không Tạo lại link được; Lời mời khác nhận nhầm id trả NOT_FOUND', async () => {

@@ -89,12 +89,36 @@ describe('xem Lời mời bằng link (không cần đăng nhập)', () => {
     expect((await preview(expiring.token)).json()).toEqual(unavailable);
   });
 
+  it('nhận bằng link hết hạn, đã thu hồi hoặc đã bị thay bằng link mới đều bị từ chối', async () => {
+    const revoked = await invite('a@example.edu.vn');
+    await asAdmin('POST', `/api/admin/invitations/${revoked.id}/revoke`);
+    const replaced = await invite('b@example.edu.vn');
+    await asAdmin('POST', `/api/admin/invitations/${replaced.id}/regenerate`);
+    const expiring = await invite('c@example.edu.vn');
+    await advance(days(7));
+    for (const { token } of [revoked, replaced, expiring]) {
+      const res = await accept(token, { password: NEW_PASSWORD });
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toEqual(unavailable);
+    }
+    expect((await asAdmin('GET', '/api/admin/users')).json().total).toBe(1);
+  });
+
   it('giới hạn 30 lần mỗi 10 phút mỗi IP', async () => {
     for (let i = 0; i < 30; i++) await preview('x'.repeat(43), '10.9.9.9');
     const res = await preview('x'.repeat(43), '10.9.9.9');
     expect(res.statusCode).toBe(429);
     expect(res.json()).toMatchObject({ code: 'RATE_LIMITED' });
     expect((await preview('x'.repeat(43), '10.9.9.10')).statusCode).toBe(404);
+  });
+
+  it('POST accept dùng chung bộ đếm với GET', async () => {
+    for (let i = 0; i < 30; i++) await preview('x'.repeat(43), '10.9.9.9');
+    const res = await call(t.app, 'POST', `/api/invitations/${'x'.repeat(43)}/accept`, {
+      body: { password: NEW_PASSWORD },
+      ip: '10.9.9.9',
+    });
+    expect(res.statusCode).toBe(429);
   });
 });
 

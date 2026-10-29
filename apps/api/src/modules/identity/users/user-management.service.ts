@@ -14,11 +14,11 @@ import {
   sql,
 } from 'drizzle-orm';
 import type { Actor } from '../../../common/actor';
-import { ApiError } from '../../../common/api-error';
+import { ApiError, validationFailed } from '../../../common/api-error';
 import { CLOCK, type Clock } from '../../../common/clock';
 import { type Page, paginate } from '../../../common/pagination';
 import { mapUniqueToConflict } from '../../../common/pg-error';
-import { type Database, DB } from '../../../db/db.module';
+import { type Database, DB, type Transaction as Tx } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
 import type { RoleTag } from '../auth/auth.types';
 import { type AuthSessionRevokeReason, AuthSessionStore } from '../auth/auth-session-store';
@@ -41,7 +41,6 @@ export interface UserFilter {
 }
 
 type ExaminerProfileRow = typeof examinerProfiles.$inferSelect;
-type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 /** Kết nối thường hoặc transaction đang mở. */
 type Executor = Pick<Database, 'select'>;
 
@@ -68,9 +67,6 @@ const UNIQUE_FIELDS: Record<string, string> = {
 };
 
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
-
-const validationFailed = (path: string, code: string) =>
-  new ApiError('VALIDATION_FAILED', { issues: [{ path, code }] });
 
 /** Quản lý Người dùng của Quản trị viên (PR 1b). */
 @Injectable()

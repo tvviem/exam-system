@@ -21,7 +21,7 @@ import {
 } from './auth.decorators';
 import { AuthService } from './auth.service';
 import { AUTH_SESSION_COOKIE, type AuthenticatedUser } from './auth.types';
-import { setAuthSessionCookie } from './auth-cookie';
+import { authSessionMetaFrom, setAuthSessionCookie } from './auth-request';
 import { AuthSessionStore } from './auth-session-store';
 
 const changePasswordSchema = z.object({
@@ -119,12 +119,4 @@ export class AuthController {
       mustChangePassword: user.mustChangePassword,
     };
   }
-}
-
-export function authSessionMetaFrom(req: FastifyRequest) {
-  const userAgent = req.headers['user-agent'];
-  return {
-    ip: req.ip ?? null,
-    userAgent: typeof userAgent === 'string' ? userAgent.slice(0, 512) : null,
-  };
 }

@@ -32,3 +32,7 @@ export class ApiError extends HttpException {
     super({ code, ...details }, API_ERROR_STATUS[code]);
   }
 }
+
+/** Một lỗi dữ liệu ở trường `path`; `code` để giao diện chọn thông báo (`errors.VALIDATION_<code>`). */
+export const validationFailed = (path: string, code: string) =>
+  new ApiError('VALIDATION_FAILED', { issues: [{ path, code }] });

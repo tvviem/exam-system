@@ -1,12 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, isNull, ne, sql } from 'drizzle-orm';
+import { and, count, desc, eq, ne, sql } from 'drizzle-orm';
 import type { Actor } from '../../../common/actor';
-import { ApiError } from '../../../common/api-error';
+import { ApiError, validationFailed } from '../../../common/api-error';
 import { CLOCK, type Clock } from '../../../common/clock';
 import { type Page, paginate } from '../../../common/pagination';
-import { type Database, DB } from '../../../db/db.module';
+import { type Database, DB, type Transaction as Tx } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
 import { invitations, units, userRoleTags, users } from '../identity.schema';
+import { findActiveUserByEmail } from '../users.repository';
 import {
   type InvitationStatus,
   invitationStatusCondition,
@@ -14,9 +15,8 @@ import {
 } from './invitation-status';
 import { generateInvitationToken } from './invitation-token';
 
-export const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 type InvitationRow = typeof invitations.$inferSelect;
 
 export interface InvitationInput {
@@ -24,9 +24,6 @@ export interface InvitationInput {
   fullName: string;
   unitId: string;
 }
-
-const validationFailed = (path: string, code: string) =>
-  new ApiError('VALIDATION_FAILED', { issues: [{ path, code }] });
 
 /** Lời mời trở thành Người ra đề: phần Quản trị viên (PR 1c). */
 @Injectable()
@@ -81,8 +78,7 @@ export class InvitationsService {
     const { token, tokenHash } = generateInvitationToken();
     const now = this.clock.now();
     const row = await this.db.transaction(async (tx) => {
-      // Hai Quản trị viên cùng mời một email: tuần tự hóa để kiểm tra "đã có Lời mời còn hạn" không bị lọt.
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${email.toLowerCase()}))`);
+      await this.lockEmail(tx, email);
       const [unit] = await tx
         .select({ id: units.id })
         .from(units)
@@ -144,9 +140,8 @@ export class InvitationsService {
       const invitation = await this.lockOrThrow(tx, id);
       const status = invitationStatusOf(invitation, now);
       if (status !== 'pending' && status !== 'expired') throw new ApiError('INVALID_STATE');
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${invitation.email.toLowerCase()}))`,
-      );
+      await this.lockEmail(tx, invitation.email);
+      await this.assertEmailInvitable(tx, invitation.email);
       await this.assertNoOpenInvitation(tx, invitation.email, now, id);
       const expiresAt = new Date(now.getTime() + INVITATION_TTL_MS);
       const [updated] = await tx
@@ -169,12 +164,14 @@ export class InvitationsService {
     return { ...this.present(row, now), token };
   }
 
+  /** Hai Quản trị viên cùng mời hoặc Tạo lại link cho một email: tuần tự hóa để kiểm tra không bị lọt. */
+  private lockEmail(tx: Tx, email: string) {
+    return tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${email.toLowerCase()}))`);
+  }
+
   /** Q79: không mời Quản trị viên, không mời người đã là Người ra đề. */
   private async assertEmailInvitable(tx: Tx, email: string) {
-    const [account] = await tx
-      .select({ id: users.id, isAdmin: users.isAdmin })
-      .from(users)
-      .where(and(eq(users.email, email), isNull(users.removedAt)));
+    const account = await findActiveUserByEmail(tx, email);
     if (!account) return;
     if (account.isAdmin) throw validationFailed('email', 'email_belongs_to_admin');
     const [tag] = await tx

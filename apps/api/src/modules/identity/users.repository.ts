@@ -6,6 +6,15 @@ import { userRoleTags, users } from './identity.schema';
 
 export type UserRow = typeof users.$inferSelect;
 
+/** Tài khoản chưa bị Xóa có email này (citext: không phân biệt hoa thường). */
+export async function findActiveUserByEmail(db: Pick<Database, 'select'>, email: string) {
+  const [account] = await db
+    .select({ id: users.id, isAdmin: users.isAdmin })
+    .from(users)
+    .where(and(eq(users.email, email), isNull(users.removedAt)));
+  return account;
+}
+
 @Injectable()
 export class UsersRepository {
   constructor(@Inject(DB) private readonly db: Database) {}
