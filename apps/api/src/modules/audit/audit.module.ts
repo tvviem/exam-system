@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
-import { AuditController } from './audit.controller';
 import { AuditService } from './audit.service';
 
+// Endpoint đọc nhật ký nằm ở module identity (audit-logs.controller) vì cần gắn tên người thực hiện.
 @Module({
-  controllers: [AuditController],
   providers: [AuditService],
   exports: [AuditService],
 })

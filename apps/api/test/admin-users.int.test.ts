@@ -331,6 +331,29 @@ describe('Khóa đăng nhập và Xóa người dùng', () => {
     expect(await auditActions(user.id)).toEqual(['user.remove']);
   });
 
+  it('nhật ký Khóa đăng nhập và Xóa người dùng ghi theo tên trường (Q68)', async () => {
+    const user = await seedUser({});
+    await post(`/api/admin/users/${user.id}/lock`, { reason: 'Nghi lộ mật khẩu' });
+    await call(t.app, 'DELETE', `/api/admin/users/${user.id}`, { cookie: admin.cookie });
+    const logs = (
+      await call(t.app, 'GET', `/api/admin/audit-logs?entityId=${user.id}`, {
+        cookie: admin.cookie,
+      })
+    ).json().items;
+    expect(logs).toMatchObject([
+      {
+        action: 'user.remove',
+        before: { removedAt: null },
+        after: { removedAt: expect.any(String) },
+      },
+      {
+        action: 'user.lock',
+        before: { status: 'active', lockedReason: null },
+        after: { status: 'locked', lockedReason: 'Nghi lộ mật khẩu' },
+      },
+    ]);
+  });
+
   it('người đã bị Xóa không Xóa lại hay Khóa được', async () => {
     const user = await seedUser({ removed: true });
     const remove = await call(t.app, 'DELETE', `/api/admin/users/${user.id}`, {

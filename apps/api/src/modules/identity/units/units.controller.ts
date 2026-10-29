@@ -1,9 +1,7 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { z } from 'zod';
-import { AdminOnly, CurrentUser } from '../auth/auth.decorators';
-import type { AuthenticatedUser } from '../auth/auth.types';
-import { actorOf } from '../users/user-management.controller';
+import type { Actor } from '../../../common/actor';
+import { AdminOnly, CurrentActor } from '../auth/auth.decorators';
 import { UnitsService } from './units.service';
 
 const unitSchema = z
@@ -24,21 +22,16 @@ export class UnitsController {
   }
 
   @Post()
-  create(
-    @Body() body: unknown,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
-  ) {
-    return this.units.create(actorOf(user, req), unitSchema.parse(body ?? {}));
+  create(@Body() body: unknown, @CurrentActor() actor: Actor) {
+    return this.units.create(actor, unitSchema.parse(body ?? {}));
   }
 
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
+    @CurrentActor() actor: Actor,
   ) {
-    return this.units.update(actorOf(user, req), id, unitSchema.partial().parse(body ?? {}));
+    return this.units.update(actor, id, unitSchema.partial().parse(body ?? {}));
   }
 }

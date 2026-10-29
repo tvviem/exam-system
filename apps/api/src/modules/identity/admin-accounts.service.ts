@@ -64,7 +64,7 @@ export class AdminAccountsService {
         .returning({ id: users.id });
       if (!created) throw new Error('Không tạo được Quản trị viên');
       await this.audit.record(
-        { actorId: null, action: 'cli.bootstrap-admin', entityType: 'user', entityId: created.id },
+        { actor: null, action: 'cli.bootstrap-admin', entityType: 'user', entityId: created.id },
         tx,
       );
       return created;
@@ -107,7 +107,7 @@ export class AdminAccountsService {
         .where(eq(users.id, user.id));
       await this.audit.record(
         {
-          actorId: null,
+          actor: null,
           action: 'cli.recover-admin',
           entityType: 'user',
           entityId: user.id,

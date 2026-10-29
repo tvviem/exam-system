@@ -1,6 +1,6 @@
 # Lát cắt 1: Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản
 
-> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58, review PR 1a (Q59–Q60) và chốt chi tiết PR 1b (Q61–Q70) ở [mục Quyết định](#quyết-định-q43q70). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
+> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58, review PR 1a (Q59–Q60) và chốt chi tiết PR 1b (Q61–Q70), review PR 1b (Q76) ở [mục Quyết định](#quyết-định-q43q76). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
 
 ## Mục tiêu
 
@@ -35,7 +35,7 @@ Hai module chỉ giao tiếp qua service công khai, đúng như architecture.md
 
 | Module | Xuất ra cho module khác |
 |---|---|
-| `identity` | `AuthGuard` (bắt buộc đăng nhập), decorator `@AdminOnly()`, `@RequireTag('examiner' \| 'candidate')`, `@CurrentUser()`; `IdentityService.revokeAllSessions(userId, reason)` |
+| `identity` | `AuthGuard` (bắt buộc đăng nhập), decorator `@AdminOnly()`, `@RequireTag('examiner' \| 'candidate')`, `@CurrentUser()`; `IdentityService.revokeAllSessions(userId, reason)` (để tới lát cắt 4, Q76) |
 | `audit` | `AuditService.record({ actorId, action, entity, before, after, ip })` |
 
 ### Phiên đăng nhập (ADR-0004)
@@ -214,7 +214,7 @@ Q2 và Q37 trước đây chốt rằng email dùng cho Lời mời và link đ�
 - Người dùng tự đặt lại mật khẩu khi quên: cần email, nằm trong backlog. Giai đoạn 1 dùng "Cấp lại mật khẩu tạm".
 - Xác thực hai lớp (TOTP) cho Quản trị viên: backlog (Q45).
 
-## Quyết định (Q43–Q70)
+## Quyết định (Q43–Q76)
 
 Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất vấn đặc tả. Mọi câu đều chấp nhận khuyến nghị.
 
@@ -248,3 +248,4 @@ Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất v�
 | Q68 | Nhật ký chỉ ghi trường thay đổi, không ghi mật khẩu |
 | Q69 | Tìm kiếm không dấu bằng extension `unaccent` |
 | Q70 | Tạo Quản trị viên mới bằng mật khẩu tạm sinh ngẫu nhiên, hiển thị một lần |
+| Q76 | `IdentityService.revokeAllSessions` chưa làm ở lát cắt 1 vì chưa module nào dùng; thêm ở lát cắt 4 cùng việc tự động Nộp bài khi bị Khóa đăng nhập |

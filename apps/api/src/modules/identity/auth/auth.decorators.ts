@@ -1,4 +1,5 @@
 import { createParamDecorator, type ExecutionContext, SetMetadata } from '@nestjs/common';
+import type { Actor } from '../../../common/actor';
 import type { AuthenticatedUser, RoleTag } from './auth.types';
 
 export const IS_PUBLIC = 'auth:public';
@@ -26,3 +27,9 @@ export const CurrentUser = createParamDecorator(
 export const CurrentAuthSessionId = createParamDecorator(
   (_: unknown, ctx: ExecutionContext): string => ctx.switchToHttp().getRequest().auth.authSessionId,
 );
+
+/** Người thực hiện thao tác (id + IP), để ghi nhật ký thao tác. */
+export const CurrentActor = createParamDecorator((_: unknown, ctx: ExecutionContext): Actor => {
+  const req = ctx.switchToHttp().getRequest();
+  return { id: req.auth.user.id, ip: req.ip ?? null };
+});

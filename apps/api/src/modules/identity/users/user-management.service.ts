@@ -13,14 +13,15 @@ import {
   type SQL,
   sql,
 } from 'drizzle-orm';
+import type { Actor } from '../../../common/actor';
 import { ApiError } from '../../../common/api-error';
 import { CLOCK, type Clock } from '../../../common/clock';
-import type { Page } from '../../../common/pagination';
-import { uniqueViolationOf } from '../../../common/pg-error';
+import { type Page, paginate } from '../../../common/pagination';
+import { mapUniqueToConflict } from '../../../common/pg-error';
 import { type Database, DB } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
 import type { RoleTag } from '../auth/auth.types';
-import { AuthSessionStore } from '../auth/auth-session-store';
+import { type AuthSessionRevokeReason, AuthSessionStore } from '../auth/auth-session-store';
 import { LoginBlock } from '../auth/login-block';
 import { examinerProfiles, units, userRoleTags, users } from '../identity.schema';
 import { hashPassword } from '../password/password-hasher';
@@ -28,9 +29,10 @@ import {
   generateTemporaryPassword,
   TEMPORARY_PASSWORD_TTL_MS,
 } from '../password/temporary-password';
-import type { UserRow } from '../users.repository';
+import { type UserRow, UsersRepository } from '../users.repository';
 
-export type UserStatus = 'active' | 'locked' | 'removed';
+export const USER_STATUSES = ['active', 'locked', 'removed'] as const;
+export type UserStatus = (typeof USER_STATUSES)[number];
 
 export interface UserFilter {
   q?: string;
@@ -39,6 +41,9 @@ export interface UserFilter {
 }
 
 type ExaminerProfileRow = typeof examinerProfiles.$inferSelect;
+type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
+/** Kết nối thường hoặc transaction đang mở. */
+type Executor = Pick<Database, 'select'>;
 
 export interface UserUpdate {
   fullName?: string;
@@ -51,12 +56,6 @@ export interface UserUpdate {
   examinerProfile?: Partial<
     Pick<ExaminerProfileRow, 'academicDegree' | 'academicTitle' | 'unitId'>
   >;
-}
-
-/** Người thực hiện thao tác quản trị, để ghi nhật ký. */
-export interface Actor {
-  id: string;
-  ip: string | null;
 }
 
 // Q65: tài khoản Quản trị viên chỉ có thông tin đăng nhập và họ tên.
@@ -82,24 +81,27 @@ export class UserManagementService {
     private readonly audit: AuditService,
     private readonly authSessions: AuthSessionStore,
     private readonly loginBlock: LoginBlock,
+    private readonly usersRepository: UsersRepository,
   ) {}
 
   async list({ page, pageSize, ...filter }: Page & UserFilter) {
-    const where = this.whereOf(filter);
-    const [totalRow] = await this.db.select({ total: count() }).from(users).where(where);
-    const rows = await this.db
-      .select()
-      .from(users)
-      .where(where)
-      .orderBy(desc(users.createdAt), desc(users.id))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
-    const tags = await this.roleTagsOf(rows.map((r) => r.id));
+    const where = this.listCondition(filter);
+    const result = await paginate(
+      { page, pageSize },
+      () => this.db.select({ total: count() }).from(users).where(where),
+      (limit, offset) =>
+        this.db
+          .select()
+          .from(users)
+          .where(where)
+          .orderBy(desc(users.createdAt), desc(users.id))
+          .limit(limit)
+          .offset(offset),
+    );
+    const tags = await this.roleTagsOf(result.items.map((r) => r.id));
     return {
-      total: totalRow?.total ?? 0,
-      page,
-      pageSize,
-      items: rows.map((r) => ({
+      ...result,
+      items: result.items.map((r) => ({
         id: r.id,
         fullName: r.fullName,
         username: r.username,
@@ -153,46 +155,48 @@ export class UserManagementService {
   }
 
   async update(actor: Actor, id: string, input: UserUpdate): Promise<void> {
-    const user = await this.findOrThrow(id);
-    if (user.removedAt) throw new ApiError('INVALID_STATE');
-    if (user.isAdmin) {
-      const notAllowed = (Object.keys(input) as (keyof UserUpdate)[]).find(
-        (k) => !ADMIN_EDITABLE.has(k),
-      );
-      if (notAllowed) throw validationFailed(notAllowed, 'not_allowed_for_admin');
-    }
-    const username = input.username === undefined ? user.username : input.username;
-    const email = input.email === undefined ? user.email : input.email;
-    if (!username && !email) throw validationFailed('username', 'username_or_email_required');
-
     const { examinerProfile, ...fields } = input;
-    if (examinerProfile) await this.assertCanHaveExaminerProfile(id, examinerProfile.unitId);
-
-    // Q68: nhật ký chỉ ghi các trường thật sự thay đổi.
-    const before: Record<string, unknown> = {};
-    const after: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(fields) as [keyof typeof fields, unknown][]) {
-      if (user[key] !== value) {
-        before[key] = user[key];
-        after[key] = value;
-      }
-    }
-    if (examinerProfile) {
-      const old = await this.profileOf(id);
-      for (const [key, value] of Object.entries(examinerProfile) as [
-        keyof typeof examinerProfile,
-        unknown,
-      ][]) {
-        if ((old?.[key] ?? null) !== value) {
-          before[`examinerProfile.${key}`] = old?.[key] ?? null;
-          after[`examinerProfile.${key}`] = value;
+    await mapUniqueToConflict(UNIQUE_FIELDS, () =>
+      this.db.transaction(async (tx) => {
+        // Khóa dòng để `before` trong nhật ký đúng với giá trị bị ghi đè khi hai người cùng sửa.
+        const user = await this.lockRowOrThrow(tx, id);
+        if (user.removedAt) throw new ApiError('INVALID_STATE');
+        if (user.isAdmin) {
+          const notAllowed = (Object.keys(input) as (keyof UserUpdate)[]).find(
+            (k) => !ADMIN_EDITABLE.has(k),
+          );
+          if (notAllowed) throw validationFailed(notAllowed, 'not_allowed_for_admin');
         }
-      }
-    }
-    if (Object.keys(after).length === 0) return;
+        const username = input.username === undefined ? user.username : input.username;
+        const email = input.email === undefined ? user.email : input.email;
+        if (!username && !email) throw validationFailed('username', 'username_or_email_required');
+        if (examinerProfile) {
+          await this.assertCanHaveExaminerProfile(tx, id, examinerProfile.unitId);
+        }
 
-    try {
-      await this.db.transaction(async (tx) => {
+        // Q68: nhật ký chỉ ghi các trường thật sự thay đổi.
+        const before: Record<string, unknown> = {};
+        const after: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(fields) as [keyof typeof fields, unknown][]) {
+          if (user[key] !== value) {
+            before[key] = user[key];
+            after[key] = value;
+          }
+        }
+        if (examinerProfile) {
+          const old = await this.profileOf(tx, id);
+          for (const [key, value] of Object.entries(examinerProfile) as [
+            keyof typeof examinerProfile,
+            unknown,
+          ][]) {
+            if ((old?.[key] ?? null) !== value) {
+              before[`examinerProfile.${key}`] = old?.[key] ?? null;
+              after[`examinerProfile.${key}`] = value;
+            }
+          }
+        }
+        if (Object.keys(after).length === 0) return;
+
         if (Object.keys(fields).length > 0) {
           await tx.update(users).set(fields).where(eq(users.id, id));
         }
@@ -203,30 +207,18 @@ export class UserManagementService {
             .onConflictDoUpdate({ target: examinerProfiles.userId, set: examinerProfile });
         }
         await this.audit.record(
-          {
-            actorId: actor.id,
-            action: 'user.update',
-            entityType: 'user',
-            entityId: id,
-            before,
-            after,
-            ip: actor.ip,
-          },
+          { actor, action: 'user.update', entityType: 'user', entityId: id, before, after },
           tx,
         );
-      });
-    } catch (error) {
-      const field = UNIQUE_FIELDS[uniqueViolationOf(error) ?? ''];
-      if (field) throw new ApiError('CONFLICT', { field });
-      throw error;
-    }
+      }),
+    );
   }
 
   /** Khóa đăng nhập: bắt buộc lý do, thu hồi mọi Phiên đăng nhập. */
   async lock(actor: Actor, id: string, reason: string): Promise<void> {
-    const user = await this.findTargetOrThrow(actor, id);
-    if (user.status === 'locked') throw new ApiError('INVALID_STATE');
     await this.db.transaction(async (tx) => {
+      const user = await this.lockTargetOrThrow(tx, actor, id);
+      if (user.status === 'locked') throw new ApiError('INVALID_STATE');
       await tx
         .update(users)
         .set({
@@ -238,38 +230,41 @@ export class UserManagementService {
         .where(eq(users.id, id));
       await this.audit.record(
         {
-          actorId: actor.id,
+          actor,
           action: 'user.lock',
           entityType: 'user',
           entityId: id,
-          before: { status: 'active' },
-          after: { status: 'locked', reason },
-          ip: actor.ip,
+          before: { status: user.status, lockedReason: user.lockedReason },
+          after: { status: 'locked', lockedReason: reason },
         },
         tx,
       );
+      await this.revokeBeforeCommit(id, 'user_locked');
     });
-    await this.authSessions.revokeAllForUser(id, 'user_locked');
   }
 
   /** Mở Khóa đăng nhập; lý do không bắt buộc (Q63). */
   async unlock(actor: Actor, id: string, reason: string | null): Promise<void> {
-    const user = await this.findTargetOrThrow(actor, id);
-    if (user.status !== 'locked') throw new ApiError('INVALID_STATE');
     await this.db.transaction(async (tx) => {
+      const user = await this.lockTargetOrThrow(tx, actor, id);
+      if (user.status !== 'locked') throw new ApiError('INVALID_STATE');
       await tx
         .update(users)
         .set({ status: 'active', lockedAt: null, lockedBy: null, lockedReason: null })
         .where(eq(users.id, id));
       await this.audit.record(
         {
-          actorId: actor.id,
+          actor,
           action: 'user.unlock',
           entityType: 'user',
           entityId: id,
-          before: { status: 'locked', reason: user.lockedReason },
-          after: { status: 'active', ...(reason ? { reason } : {}) },
-          ip: actor.ip,
+          before: { status: 'locked', lockedReason: user.lockedReason },
+          // Lý do mở khóa không lưu ở bảng users nên chỉ có trong nhật ký.
+          after: {
+            status: 'active',
+            lockedReason: null,
+            ...(reason ? { unlockReason: reason } : {}),
+          },
         },
         tx,
       );
@@ -281,24 +276,23 @@ export class UserManagementService {
    * Chủ đề, Bộ đề hay Phiên thi nên xóa thẳng; việc chọn người nhận làm ở lát cắt 2–4.
    */
   async remove(actor: Actor, id: string): Promise<void> {
-    await this.findTargetOrThrow(actor, id);
     await this.db.transaction(async (tx) => {
-      await tx
-        .update(users)
-        .set({ removedAt: this.clock.now(), removedBy: actor.id })
-        .where(eq(users.id, id));
+      await this.lockTargetOrThrow(tx, actor, id);
+      const removedAt = this.clock.now();
+      await tx.update(users).set({ removedAt, removedBy: actor.id }).where(eq(users.id, id));
       await this.audit.record(
         {
-          actorId: actor.id,
+          actor,
           action: 'user.remove',
           entityType: 'user',
           entityId: id,
-          ip: actor.ip,
+          before: { removedAt: null },
+          after: { removedAt },
         },
         tx,
       );
+      await this.revokeBeforeCommit(id, 'user_removed');
     });
-    await this.authSessions.revokeAllForUser(id, 'user_removed');
   }
 
   /** Gắn Nhãn vai trò; gắn `examiner` thì tạo hồ sơ Người ra đề trống nếu chưa có (Q64). */
@@ -315,14 +309,7 @@ export class UserManagementService {
         await tx.insert(examinerProfiles).values({ userId: user.id }).onConflictDoNothing();
       }
       await this.audit.record(
-        {
-          actorId: actor.id,
-          action: 'user.role-tag.grant',
-          entityType: 'user',
-          entityId: id,
-          after: { tag },
-          ip: actor.ip,
-        },
+        { actor, action: 'user.role-tag.grant', entityType: 'user', entityId: id, after: { tag } },
         tx,
       );
     });
@@ -339,12 +326,11 @@ export class UserManagementService {
       if (deleted.length === 0) return;
       await this.audit.record(
         {
-          actorId: actor.id,
+          actor,
           action: 'user.role-tag.revoke',
           entityType: 'user',
           entityId: id,
           before: { tag },
-          ip: actor.ip,
         },
         tx,
       );
@@ -356,29 +342,28 @@ export class UserManagementService {
    * Không mở Khóa đăng nhập. Mật khẩu chỉ trả về một lần, không ghi vào DB hay nhật ký.
    */
   async reissueTemporaryPassword(actor: Actor, id: string) {
-    await this.findTargetOrThrow(actor, id);
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
     const passwordExpiresAt = new Date(this.clock.now().getTime() + TEMPORARY_PASSWORD_TTL_MS);
     await this.db.transaction(async (tx) => {
+      await this.lockTargetOrThrow(tx, actor, id);
       await tx
         .update(users)
         .set({ passwordHash, mustChangePassword: true, passwordExpiresAt })
         .where(eq(users.id, id));
       await this.audit.record(
         {
-          actorId: actor.id,
+          actor,
           action: 'user.temporary-password.reissue',
           entityType: 'user',
           entityId: id,
           after: { passwordExpiresAt },
-          ip: actor.ip,
         },
         tx,
       );
+      await this.revokeBeforeCommit(id, 'password_reissued');
     });
     await this.loginBlock.clear(id);
-    await this.authSessions.revokeAllForUser(id, 'password_reissued');
     return { temporaryPassword, passwordExpiresAt };
   }
 
@@ -390,8 +375,8 @@ export class UserManagementService {
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
     const passwordExpiresAt = new Date(this.clock.now().getTime() + TEMPORARY_PASSWORD_TTL_MS);
-    try {
-      const created = await this.db.transaction(async (tx) => {
+    const created = await mapUniqueToConflict(UNIQUE_FIELDS, () =>
+      this.db.transaction(async (tx) => {
         const [row] = await tx
           .insert(users)
           .values({
@@ -405,24 +390,13 @@ export class UserManagementService {
           .returning({ id: users.id });
         if (!row) throw new Error('Không tạo được Quản trị viên');
         await this.audit.record(
-          {
-            actorId: actor.id,
-            action: 'admin.create',
-            entityType: 'user',
-            entityId: row.id,
-            after: input,
-            ip: actor.ip,
-          },
+          { actor, action: 'admin.create', entityType: 'user', entityId: row.id, after: input },
           tx,
         );
         return row;
-      });
-      return { id: created.id, temporaryPassword, passwordExpiresAt };
-    } catch (error) {
-      const field = UNIQUE_FIELDS[uniqueViolationOf(error) ?? ''];
-      if (field) throw new ApiError('CONFLICT', { field });
-      throw error;
-    }
+      }),
+    );
+    return { id: created.id, temporaryPassword, passwordExpiresAt };
   }
 
   /** Người dùng chưa bị Xóa và không phải Quản trị viên. */
@@ -432,27 +406,45 @@ export class UserManagementService {
     return user;
   }
 
-  /** Người dùng chưa bị Xóa và không phải chính người thực hiện. */
-  private async findTargetOrThrow(actor: Actor, id: string): Promise<UserRow> {
+  /** Khóa dòng Người dùng tới hết transaction; người đó chưa bị Xóa và không phải chính người thực hiện. */
+  private async lockTargetOrThrow(tx: Tx, actor: Actor, id: string): Promise<UserRow> {
     if (actor.id === id) throw new ApiError('CANNOT_TARGET_SELF');
-    const user = await this.findOrThrow(id);
+    const user = await this.lockRowOrThrow(tx, id);
     if (user.removedAt) throw new ApiError('INVALID_STATE');
     return user;
   }
 
-  private async assertCanHaveExaminerProfile(userId: string, unitId: string | null | undefined) {
-    const tags = (await this.roleTagsOf([userId])).get(userId) ?? [];
+  private async lockRowOrThrow(tx: Tx, id: string): Promise<UserRow> {
+    const [user] = await tx.select().from(users).where(eq(users.id, id)).for('update');
+    if (!user) throw new ApiError('NOT_FOUND');
+    return user;
+  }
+
+  /**
+   * Gọi ở cuối transaction: Redis lỗi thì transaction rollback và API báo lỗi, không có chuyện thay đổi
+   * đã lưu mà phiên cũ vẫn sống. Commit lỗi sau khi đã thu hồi thì chỉ là đăng xuất thừa, vẫn an toàn.
+   */
+  private revokeBeforeCommit(userId: string, reason: AuthSessionRevokeReason) {
+    return this.authSessions.revokeAllForUser(userId, reason);
+  }
+
+  private async assertCanHaveExaminerProfile(
+    db: Executor,
+    userId: string,
+    unitId: string | null | undefined,
+  ) {
+    const tags = (await this.roleTagsOf([userId], db)).get(userId) ?? [];
     if (!tags.includes('examiner')) {
       throw validationFailed('examinerProfile', 'requires_examiner_tag');
     }
     if (unitId) {
-      const [unit] = await this.db.select({ id: units.id }).from(units).where(eq(units.id, unitId));
+      const [unit] = await db.select({ id: units.id }).from(units).where(eq(units.id, unitId));
       if (!unit) throw validationFailed('examinerProfile.unitId', 'unit_not_found');
     }
   }
 
-  private async profileOf(userId: string): Promise<ExaminerProfileRow | undefined> {
-    const [row] = await this.db
+  private async profileOf(db: Executor, userId: string): Promise<ExaminerProfileRow | undefined> {
+    const [row] = await db
       .select()
       .from(examinerProfiles)
       .where(eq(examinerProfiles.userId, userId));
@@ -460,13 +452,13 @@ export class UserManagementService {
   }
 
   private async findOrThrow(id: string): Promise<UserRow> {
-    const [user] = await this.db.select().from(users).where(eq(users.id, id));
+    const user = await this.usersRepository.findById(id);
     if (!user) throw new ApiError('NOT_FOUND');
     return user;
   }
 
   /** Mặc định ẩn người đã bị Xóa (Q66). Từ khóa so khớp không dấu, không phân biệt hoa thường (Q69). */
-  private whereOf({ q, status, roleTag }: UserFilter): SQL | undefined {
+  private listCondition({ q, status, roleTag }: UserFilter): SQL | undefined {
     const conditions: (SQL | undefined)[] = [
       status === 'removed' ? isNotNull(users.removedAt) : isNull(users.removedAt),
     ];
@@ -494,10 +486,13 @@ export class UserManagementService {
     return and(...conditions);
   }
 
-  private async roleTagsOf(userIds: string[]): Promise<Map<string, RoleTag[]>> {
+  private async roleTagsOf(
+    userIds: string[],
+    db: Executor = this.db,
+  ): Promise<Map<string, RoleTag[]>> {
     const result = new Map<string, RoleTag[]>();
     if (userIds.length === 0) return result;
-    const rows = await this.db
+    const rows = await db
       .select()
       .from(userRoleTags)
       .where(inArray(userRoleTags.userId, userIds))

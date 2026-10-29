@@ -10,19 +10,17 @@ import {
   Post,
   Put,
   Query,
-  Req,
 } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import type { Actor } from '../../../common/actor';
 import { pageSchema } from '../../../common/pagination';
-import { AdminOnly, CurrentUser } from '../auth/auth.decorators';
-import type { AuthenticatedUser } from '../auth/auth.types';
+import { AdminOnly, CurrentActor } from '../auth/auth.decorators';
 import { academicDegreeEnum, academicTitleEnum, genderEnum, roleTagEnum } from '../identity.schema';
-import { type Actor, UserManagementService } from './user-management.service';
+import { USER_STATUSES, UserManagementService } from './user-management.service';
 
 const listSchema = pageSchema.extend({
   q: z.string().trim().max(100).optional(),
-  status: z.enum(['active', 'locked', 'removed']).optional(),
+  status: z.enum(USER_STATUSES).optional(),
   roleTag: z.enum(roleTagEnum.enumValues).optional(),
 });
 
@@ -69,11 +67,6 @@ const createAdminSchema = z
 
 const roleTagParam = z.enum(roleTagEnum.enumValues);
 
-export const actorOf = (user: AuthenticatedUser, req: FastifyRequest): Actor => ({
-  id: user.id,
-  ip: req.ip ?? null,
-});
-
 @AdminOnly()
 @Controller('admin/users')
 export class UserManagementController {
@@ -93,10 +86,9 @@ export class UserManagementController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
+    @CurrentActor() actor: Actor,
   ) {
-    await this.users.update(actorOf(user, req), id, updateSchema.parse(body ?? {}));
+    await this.users.update(actor, id, updateSchema.parse(body ?? {}));
     return this.users.detail(id);
   }
 
@@ -105,11 +97,10 @@ export class UserManagementController {
   async lock(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
+    @CurrentActor() actor: Actor,
   ) {
     const { reason } = lockSchema.parse(body ?? {});
-    await this.users.lock(actorOf(user, req), id, reason);
+    await this.users.lock(actor, id, reason);
     return this.users.detail(id);
   }
 
@@ -118,21 +109,16 @@ export class UserManagementController {
   async unlock(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: unknown,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
+    @CurrentActor() actor: Actor,
   ) {
     const { reason } = unlockSchema.parse(body ?? {});
-    await this.users.unlock(actorOf(user, req), id, reason || null);
+    await this.users.unlock(actor, id, reason || null);
     return this.users.detail(id);
   }
 
   @Delete(':id')
-  async remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
-  ) {
-    await this.users.remove(actorOf(user, req), id);
+  async remove(@Param('id', ParseUUIDPipe) id: string, @CurrentActor() actor: Actor) {
+    await this.users.remove(actor, id);
     return this.users.detail(id);
   }
 
@@ -140,10 +126,9 @@ export class UserManagementController {
   async grantRoleTag(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('tag') tag: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
+    @CurrentActor() actor: Actor,
   ) {
-    await this.users.grantRoleTag(actorOf(user, req), id, roleTagParam.parse(tag));
+    await this.users.grantRoleTag(actor, id, roleTagParam.parse(tag));
     return this.users.detail(id);
   }
 
@@ -151,21 +136,16 @@ export class UserManagementController {
   async revokeRoleTag(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('tag') tag: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
+    @CurrentActor() actor: Actor,
   ) {
-    await this.users.revokeRoleTag(actorOf(user, req), id, roleTagParam.parse(tag));
+    await this.users.revokeRoleTag(actor, id, roleTagParam.parse(tag));
     return this.users.detail(id);
   }
 
   @Post(':id/temporary-password')
   @HttpCode(200)
-  reissueTemporaryPassword(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
-  ) {
-    return this.users.reissueTemporaryPassword(actorOf(user, req), id);
+  reissueTemporaryPassword(@Param('id', ParseUUIDPipe) id: string, @CurrentActor() actor: Actor) {
+    return this.users.reissueTemporaryPassword(actor, id);
   }
 }
 
@@ -175,11 +155,7 @@ export class AdminsController {
   constructor(private readonly users: UserManagementService) {}
 
   @Post()
-  create(
-    @Body() body: unknown,
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: FastifyRequest,
-  ) {
-    return this.users.createAdmin(actorOf(user, req), createAdminSchema.parse(body ?? {}));
+  create(@Body() body: unknown, @CurrentActor() actor: Actor) {
+    return this.users.createAdmin(actor, createAdminSchema.parse(body ?? {}));
   }
 }

@@ -1,16 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { asc, eq } from 'drizzle-orm';
+import type { Actor } from '../../../common/actor';
 import { ApiError } from '../../../common/api-error';
-import { uniqueViolationOf } from '../../../common/pg-error';
+import { mapUniqueToConflict } from '../../../common/pg-error';
 import { type Database, DB } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
 import { units } from '../identity.schema';
-import type { Actor } from '../users/user-management.service';
 
 export interface UnitInput {
   code: string;
   name: string;
 }
+
+const UNIQUE_FIELDS = { units_code_unique: 'code' };
 
 /** Đơn vị: Quản trị viên thêm, sửa, xem danh sách. Chưa có xóa. */
 @Injectable()
@@ -28,7 +30,7 @@ export class UnitsService {
   }
 
   async create(actor: Actor, input: UnitInput) {
-    return this.withConflict(() =>
+    return mapUniqueToConflict(UNIQUE_FIELDS, () =>
       this.db.transaction(async (tx) => {
         const [row] = await tx
           .insert(units)
@@ -36,14 +38,7 @@ export class UnitsService {
           .returning({ id: units.id, code: units.code, name: units.name });
         if (!row) throw new Error('Không tạo được Đơn vị');
         await this.audit.record(
-          {
-            actorId: actor.id,
-            action: 'unit.create',
-            entityType: 'unit',
-            entityId: row.id,
-            after: input,
-            ip: actor.ip,
-          },
+          { actor, action: 'unit.create', entityType: 'unit', entityId: row.id, after: input },
           tx,
         );
         return row;
@@ -56,18 +51,17 @@ export class UnitsService {
     if (!unit) throw new ApiError('NOT_FOUND');
     const changed = (Object.keys(input) as (keyof UnitInput)[]).filter((k) => input[k] !== unit[k]);
     if (changed.length > 0) {
-      await this.withConflict(() =>
+      await mapUniqueToConflict(UNIQUE_FIELDS, () =>
         this.db.transaction(async (tx) => {
           await tx.update(units).set(input).where(eq(units.id, id));
           await this.audit.record(
             {
-              actorId: actor.id,
+              actor,
               action: 'unit.update',
               entityType: 'unit',
               entityId: id,
               before: Object.fromEntries(changed.map((k) => [k, unit[k]])),
               after: Object.fromEntries(changed.map((k) => [k, input[k]])),
-              ip: actor.ip,
             },
             tx,
           );
@@ -75,16 +69,5 @@ export class UnitsService {
       );
     }
     return { id, code: input.code ?? unit.code, name: input.name ?? unit.name };
-  }
-
-  private async withConflict<T>(run: () => Promise<T>): Promise<T> {
-    try {
-      return await run();
-    } catch (error) {
-      if (uniqueViolationOf(error) === 'units_code_unique') {
-        throw new ApiError('CONFLICT', { field: 'code' });
-      }
-      throw error;
-    }
   }
 }
