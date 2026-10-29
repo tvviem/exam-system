@@ -128,7 +128,7 @@ Sau đó mở **hai cửa sổ terminal** và để chúng chạy:
 | Terminal | Lệnh | Việc làm |
 |---|---|---|
 | 1 | `pnpm dev` | api (cổng 3000) và web (cổng 5173), tự nạp lại khi sửa mã |
-| 2 | `pnpm -C apps/api dev:worker` | worker: đọc file Excel, tạo tài khoản, dựng Phiếu tài khoản |
+| 2 | `pnpm -C apps/api dev:worker` | worker: đọc file Excel, tạo tài khoản, dựng Phiếu tài khoản; tự khởi động lại khi terminal 1 build lại mã |
 
 Chạy terminal 2 sau khi terminal 1 đã build xong (có thư mục `apps/api/dist`). **Không có worker** thì yêu cầu tải lên sẽ đứng ở "Đang đọc file".
 
@@ -206,6 +206,7 @@ Mục này dẫn anh đi qua toàn bộ chức năng đã làm, theo đúng lu�
 | `LOG_LEVEL`, `PORT` | không | Mức log và cổng của api |
 
 **Sự cố thường gặp**
+- *Worker báo lỗi rồi thoát (ví dụ `ENOENT ... dist/...`) hoặc nghi còn tiến trình worker cũ chạy ngầm*: gõ `pkill -f dist/worker/main.js` để tắt hết, đợi terminal 1 build xong rồi chạy lại `pnpm -C apps/api dev:worker`. Chỉ nên có đúng một worker.
 - *Yêu cầu đứng mãi ở "Đang đọc file" hoặc "Đang tạo tài khoản"*: worker chưa chạy hoặc không nối được Redis. Bật worker rồi tải lại trang; yêu cầu kẹt quá 15 phút ở "Đang đọc file" sẽ được job dọn dẹp chuyển thành "File lỗi".
 - *api hoặc worker không khởi động, báo `SLIP_ENCRYPTION_KEY`*: thiếu hoặc sai khóa; xem lệnh `sed` ở Bắt đầu nhanh.
 - *Đăng nhập sai nhiều lần bị chặn 15 phút*: đúng thiết kế (Q47). Quản trị viên mở bằng **Cấp lại mật khẩu tạm**; chính Quản trị viên bị chặn thì dùng `pnpm cli recover-admin`.
