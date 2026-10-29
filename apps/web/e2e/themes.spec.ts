@@ -9,6 +9,7 @@ const PAGES = [
   ['dang-nhap', '/login'],
   ['nguoi-dung', '/admin/users'],
   ['don-vi', '/admin/units'],
+  ['loi-moi', '/admin/invitations'],
   ['lich-su-dang-nhap', '/admin/login-events'],
   ['nhat-ky-thao-tac', '/admin/audit-logs'],
 ] as const;

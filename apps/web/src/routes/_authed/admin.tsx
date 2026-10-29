@@ -11,6 +11,7 @@ export const Route = createFileRoute('/_authed/admin')({
 const SECTIONS = [
   { to: '/admin/users', key: 'users' },
   { to: '/admin/units', key: 'units' },
+  { to: '/admin/invitations', key: 'invitations' },
   { to: '/admin/login-events', key: 'loginEvents' },
   { to: '/admin/audit-logs', key: 'auditLogs' },
 ] as const;
