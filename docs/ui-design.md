@@ -216,7 +216,7 @@ Mẫu **Theo dõi** và **Chấm** cần prototype riêng để chủ dự án c
 
 ## 11. Thành phần dùng chung và mật độ (Q108, Q109)
 
-**Xây trong PR giao diện (Q105):** khung ứng dụng (mục 9), bảng thích ứng `DataList` (thẻ dưới 768 px, bảng từ 768 px, cột ưu tiên ẩn dần ở 768–1023 px, dòng phụ dưới tên thay cho các cột bị ẩn), `FilterBar`, chip số liệu, thanh hành động dính đáy, thông báo nổi (toast), huy hiệu trạng thái đúng nghĩa biểu tượng. **Xây cùng lát cắt cần đến chúng:** ngăn bên/ngăn kéo (2), bước (4), cây Chủ đề (2), trình soạn (2), kéo thả (3).
+**Xây trong PR giao diện (Q105):** khung ứng dụng (mục 9), bảng thích ứng `DataList` (thẻ dưới 768 px, bảng từ 768 px, cột ưu tiên ẩn dần ở 768–1023 px, dòng phụ dưới tên thay cho các cột bị ẩn), `FilterBar`, chip số liệu, thanh hành động dính đáy, thông báo nổi (toast), huy hiệu trạng thái đúng nghĩa biểu tượng. **Xây cùng lát cắt cần đến chúng:** ngăn bên/ngăn kéo (2), bước (4), trình soạn (2), kéo thả (3). Chủ đề là danh sách phẳng nên không cần thành phần cây.
 
 - **Thông báo nổi:** nằm phía trên màn hình (dưới thanh trên cùng) để không che thanh tab hay thanh hành động dính đáy; vùng chứa là vùng `aria-live` cố định. Thao tác thành công hiện 4 giây rồi tự mất, không chiếm focus; lỗi cần hành động (`role="alert"`) ở lại cho tới khi bấm đóng. Hộp thoại modal che thông báo nổi, nên phản hồi ngay trong hộp thoại (ví dụ nút Sao chép đổi biểu tượng) không dùng toast.
 - **Huy hiệu:** chữ ≥ 13 px, không bị bẻ dòng (`whitespace-nowrap`), luôn có chữ; nhóm chip tự xuống dòng thay vì co nhãn.
