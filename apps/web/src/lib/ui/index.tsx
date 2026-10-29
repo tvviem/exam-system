@@ -95,6 +95,7 @@ const buttonVariants = {
   secondary: 'border border-border-strong bg-surface text-fg hover:bg-primary-soft',
   danger: 'bg-danger text-on-danger hover:opacity-90',
   ghost: 'text-primary hover:bg-primary-soft',
+  'danger-ghost': 'text-danger hover:bg-danger-soft',
 } as const;
 
 export function Button({

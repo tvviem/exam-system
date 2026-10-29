@@ -7,7 +7,8 @@
     "examiner": "Người ra đề",
     "take": "Vào thi",
     "logout": "Đăng xuất",
-    "authSessions": "Phiên đăng nhập"
+    "authSessions": "Phiên đăng nhập",
+    "accountMenu": "Tài khoản"
   },
   "health": {
     "heading": "Trạng thái hệ thống",
@@ -48,7 +49,18 @@
     "RATE_LIMITED": "Bạn thử đăng nhập quá nhiều lần. Hãy đợi vài phút rồi thử lại.",
     "WRONG_CURRENT_PASSWORD": "Mật khẩu hiện tại không đúng.",
     "FORBIDDEN_ORIGIN": "Yêu cầu bị từ chối. Hãy tải lại trang.",
-    "UNKNOWN": "Có lỗi xảy ra. Hãy thử lại."
+    "UNKNOWN": "Có lỗi xảy ra. Hãy thử lại.",
+    "FORBIDDEN": "Bạn không có quyền thực hiện thao tác này.",
+    "CANNOT_TARGET_SELF": "Không thể thực hiện thao tác này với chính tài khoản của bạn.",
+    "INVALID_STATE": "Trạng thái của Người dùng không cho phép thao tác này. Hãy tải lại trang.",
+    "NOT_FOUND": "Không tìm thấy dữ liệu.",
+    "VALIDATION_FAILED": "Dữ liệu chưa hợp lệ. Hãy kiểm tra lại.",
+    "CONFLICT": "Giá trị này đã được dùng.",
+    "CONFLICT_username": "Tên đăng nhập đã được dùng cho tài khoản khác.",
+    "CONFLICT_email": "Email đã được dùng cho tài khoản khác.",
+    "CONFLICT_code": "Mã này đã được dùng.",
+    "PASSWORD_CHANGE_REQUIRED": "Bạn cần đổi mật khẩu trước khi tiếp tục.",
+    "UNAUTHENTICATED": "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -66,12 +78,163 @@
     "unknownDevice": "Thiết bị không rõ"
   },
   "common": {
-    "close": "Đóng"
+    "close": "Đóng",
+    "done": "Xong",
+    "save": "Lưu thay đổi",
+    "saved": "Đã lưu.",
+    "cancel": "Hủy",
+    "notSet": "Chưa đặt",
+    "none": "Không có",
+    "never": "Chưa từng"
   },
   "theme": {
     "label": "Chế độ hiển thị",
     "system": "Theo hệ thống",
     "light": "Sáng",
     "dark": "Tối"
+  },
+  "pagination": {
+    "label": "Phân trang",
+    "previous": "Trang trước",
+    "next": "Trang sau",
+    "range": "{{from}}–{{to}} / {{total}}"
+  },
+  "userStatus": {
+    "active": "Đang hoạt động",
+    "locked": "Bị khóa",
+    "removed": "Đã xóa"
+  },
+  "roleTag": {
+    "examiner": "Người ra đề",
+    "candidate": "Người dự thi",
+    "admin": "Quản trị viên"
+  },
+  "gender": {
+    "male": "Nam",
+    "female": "Nữ",
+    "other": "Khác"
+  },
+  "academicDegree": {
+    "bachelor": "Cử nhân",
+    "engineer": "Kỹ sư",
+    "master": "Thạc sĩ",
+    "doctor": "Tiến sĩ",
+    "doctor_of_science": "Tiến sĩ khoa học"
+  },
+  "academicTitle": {
+    "associate_professor": "Phó giáo sư",
+    "professor": "Giáo sư"
+  },
+  "temporaryPassword": {
+    "onlyOnce": "Mật khẩu chỉ hiển thị lần này. Hãy sao chép hoặc ghi lại trước khi đóng.",
+    "copy": "Sao chép mật khẩu",
+    "expires": "Hết hạn lúc {{time}}. Người dùng phải đổi mật khẩu ở lần đăng nhập đầu tiên.",
+    "saved": "Tôi đã lưu mật khẩu"
+  },
+  "admin": {
+    "nav": {
+      "users": "Người dùng",
+      "units": "Đơn vị",
+      "loginEvents": "Lịch sử đăng nhập",
+      "auditLogs": "Nhật ký thao tác"
+    },
+    "users": {
+      "heading": "Người dùng",
+      "search": "Tìm Người dùng",
+      "searchPlaceholder": "Tên, mã, email, lớp…",
+      "filters_zero": "Lọc",
+      "filters_other": "Lọc ({{count}})",
+      "filtersTitle": "Lọc Người dùng",
+      "filterStatus": "Trạng thái",
+      "statusNotRemoved": "Chưa bị xóa",
+      "filterRoleTag": "Nhãn vai trò",
+      "allRoleTags": "Mọi nhãn",
+      "empty": "Không có Người dùng nào khớp.",
+      "fullName": "Họ tên",
+      "identity": "Mã · Tên đăng nhập · Email",
+      "username": "Tên đăng nhập",
+      "email": "Email",
+      "emailOptional": "Email (không bắt buộc)",
+      "code": "Mã định danh",
+      "classLabel": "Lớp",
+      "dateOfBirth": "Ngày sinh",
+      "gender": "Giới tính",
+      "roleTags": "Nhãn vai trò",
+      "status": "Trạng thái",
+      "createAdmin": "Tạo Quản trị viên",
+      "createAdminIntro": "Tài khoản Quản trị viên tách riêng và không mang Nhãn vai trò. Người vừa quản trị vừa ra đề dùng hai tài khoản.",
+      "adminEmailHint": "Email phải khác email của các tài khoản khác.",
+      "createAdminSubmit": "Tạo tài khoản",
+      "adminCreated": "Đã tạo Quản trị viên",
+      "backToList": "Danh sách Người dùng",
+      "lockedBecause": "Bị Khóa đăng nhập lúc {{time}}. Lý do: {{reason}}",
+      "profile": "Thông tin",
+      "examinerProfile": "Hồ sơ Người ra đề",
+      "academicDegree": "Học vị",
+      "academicTitle": "Học hàm",
+      "unit": "Đơn vị",
+      "noRoleTagWarning": "Người dùng không còn nhãn nào nên đăng nhập được nhưng không vào được khu nào.",
+      "account": "Tài khoản",
+      "lastLoginAt": "Đăng nhập gần nhất",
+      "createdAt": "Ngày tạo",
+      "temporaryPasswordUntil": "Mật khẩu tạm hết hạn",
+      "actions": "Thao tác",
+      "lock": "Khóa đăng nhập",
+      "unlock": "Mở khóa",
+      "reissue": "Cấp lại mật khẩu tạm",
+      "remove": "Xóa người dùng",
+      "lockTitle": "Khóa đăng nhập {{name}}?",
+      "lockBody": "Mọi Phiên đăng nhập của người này bị thu hồi ngay và họ không đăng nhập được cho tới khi được mở khóa.",
+      "unlockTitle": "Mở khóa {{name}}?",
+      "unlockBody": "Người này đăng nhập lại được bằng mật khẩu hiện tại.",
+      "reissueTitle": "Cấp lại mật khẩu tạm cho {{name}}?",
+      "reissueBody": "Mật khẩu cũ mất hiệu lực, mọi Phiên đăng nhập bị thu hồi. Mật khẩu tạm mới có hạn 7 ngày và chỉ hiển thị một lần.",
+      "removeTitle": "Xóa người dùng {{name}}?",
+      "removeBody": "Người này bị đưa ra khỏi sử dụng vĩnh viễn, không khôi phục được. Lịch sử và kết quả liên quan vẫn được giữ.",
+      "reason": "Lý do",
+      "reasonOptional": "Lý do (không bắt buộc)",
+      "passwordReissued": "Mật khẩu tạm mới"
+    },
+    "units": {
+      "heading": "Đơn vị",
+      "add": "Thêm Đơn vị",
+      "edit": "Sửa Đơn vị",
+      "editNamed": "Sửa {{name}}",
+      "code": "Mã Đơn vị",
+      "name": "Tên Đơn vị",
+      "empty": "Chưa có Đơn vị nào."
+    },
+    "loginEvents": {
+      "heading": "Lịch sử đăng nhập",
+      "result": "Kết quả",
+      "all": "Tất cả",
+      "success": "Thành công",
+      "failure": "Thất bại",
+      "clearUser": "Xem của mọi người",
+      "unknownAccount": "Không khớp tài khoản nào",
+      "empty": "Chưa có lần đăng nhập nào."
+    },
+    "auditLogs": {
+      "heading": "Nhật ký thao tác",
+      "action": "Hành động",
+      "allActions": "Mọi hành động",
+      "clearScope": "Xem toàn bộ nhật ký",
+      "system": "Hệ thống",
+      "empty": "Chưa có thao tác nào."
+    }
+  },
+  "auditAction": {
+    "user.update": "Sửa thông tin Người dùng",
+    "user.lock": "Khóa đăng nhập",
+    "user.unlock": "Mở khóa",
+    "user.remove": "Xóa người dùng",
+    "user.role-tag.grant": "Gắn Nhãn vai trò",
+    "user.role-tag.revoke": "Gỡ Nhãn vai trò",
+    "user.temporary-password.reissue": "Cấp lại mật khẩu tạm",
+    "admin.create": "Tạo Quản trị viên",
+    "unit.create": "Thêm Đơn vị",
+    "unit.update": "Sửa Đơn vị",
+    "cli.bootstrap-admin": "Khởi tạo Quản trị viên đầu tiên (CLI)",
+    "cli.recover-admin": "Khôi phục Quản trị viên (CLI)"
   }
 }

@@ -28,8 +28,9 @@ test('Quản trị viên đăng nhập lần đầu phải đổi mật khẩu r
   await page.getByRole('button', { name: 'Đổi mật khẩu' }).click();
 
   await expect(page).toHaveURL(/\/admin/);
-  await expect(page.getByRole('heading', { name: 'Quản trị' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Người dùng' })).toBeVisible();
 
+  await page.getByRole('button', { name: 'Tài khoản' }).click();
   await page.getByRole('button', { name: 'Đăng xuất' }).click();
   await expect(page).toHaveURL(/\/login/);
 });
