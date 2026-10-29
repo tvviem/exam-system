@@ -20,7 +20,11 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { accountRequestStatusEnum, matchStatusEnum } from '../identity.schema';
 import { MAX_UPLOAD_BYTES } from './account-request-file';
 import { buildAccountRequestTemplate } from './account-request-template';
-import { AccountRequestsService, canViewAccountRequests } from './account-requests.service';
+import {
+  AccountRequestsService,
+  canViewAccountRequests,
+  NOTE_MAX,
+} from './account-requests.service';
 
 const listSchema = pageSchema.extend({
   status: z.enum(accountRequestStatusEnum.enumValues).optional(),
@@ -29,7 +33,7 @@ const itemsSchema = pageSchema.extend({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   matchStatus: z.enum(matchStatusEnum.enumValues).optional(),
 });
-const rejectSchema = z.object({ note: z.string().max(1000).optional() }).strict();
+const rejectSchema = z.object({ note: z.string().max(NOTE_MAX).optional() }).strict();
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 

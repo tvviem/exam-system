@@ -55,7 +55,7 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
         {unread > 0 && (
           <span
             aria-hidden
-            className="absolute top-1.5 right-1 min-w-5 rounded-full bg-danger px-1 text-center text-xs font-semibold text-on-danger"
+            className="absolute top-1.5 right-1 min-w-5 rounded-full bg-danger px-1 text-center text-[13px] font-semibold text-on-danger"
           >
             {unread > 99 ? '99+' : unread}
           </span>

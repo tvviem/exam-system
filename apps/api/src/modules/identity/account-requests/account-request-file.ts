@@ -63,11 +63,53 @@ const MAX_LENGTH: Partial<Record<Field, number>> = {
 };
 
 const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
+const MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
+const MAX_ZIP_ENTRIES = 1000;
+const MAX_COLUMNS = 50;
+
+/**
+ * Đọc thư mục trung tâm của file zip (không giải nén): lấy tên các mục và tổng kích thước giải nén
+ * khai báo. Trả null nếu cấu trúc zip không hợp lệ.
+ */
+function inspectZip(buffer: Buffer): { names: Set<string>; uncompressedBytes: number } | null {
+  const END_SIGNATURE = 0x06054b50;
+  const ENTRY_SIGNATURE = 0x02014b50;
+  const searchFrom = Math.max(0, buffer.length - 22 - 0xffff);
+  let end = -1;
+  for (let i = buffer.length - 22; i >= searchFrom; i--) {
+    if (buffer.readUInt32LE(i) === END_SIGNATURE) {
+      end = i;
+      break;
+    }
+  }
+  if (end < 0) return null;
+  const entries = buffer.readUInt16LE(end + 10);
+  let offset = buffer.readUInt32LE(end + 16);
+  if (entries > MAX_ZIP_ENTRIES) return null;
+
+  const names = new Set<string>();
+  let uncompressedBytes = 0;
+  for (let i = 0; i < entries; i++) {
+    if (offset + 46 > buffer.length || buffer.readUInt32LE(offset) !== ENTRY_SIGNATURE) return null;
+    uncompressedBytes += buffer.readUInt32LE(offset + 24);
+    const nameLength = buffer.readUInt16LE(offset + 28);
+    const extraLength = buffer.readUInt16LE(offset + 30);
+    const commentLength = buffer.readUInt16LE(offset + 32);
+    names.add(buffer.toString('utf8', offset + 46, offset + 46 + nameLength));
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  return { names, uncompressedBytes };
+}
 
 /** Loại file theo nội dung thật, không tin đuôi file hay MIME do client gửi. */
 export function sniffUpload(buffer: Buffer): 'xlsx' | 'csv' | null {
   if (buffer.length === 0) return null;
-  if (ZIP_MAGIC.every((byte, i) => buffer[i] === byte)) return 'xlsx';
+  if (ZIP_MAGIC.every((byte, i) => buffer[i] === byte)) {
+    // xlsx phải là zip có xl/workbook.xml và không phình to khi giải nén (Q88).
+    const zip = inspectZip(buffer);
+    if (!zip?.names.has('xl/workbook.xml')) return null;
+    return zip.uncompressedBytes > MAX_UNCOMPRESSED_BYTES ? null : 'xlsx';
+  }
   if (buffer.includes(0)) return null;
   try {
     new TextDecoder('utf-8', { fatal: true }).decode(buffer);
@@ -101,16 +143,21 @@ async function readXlsx(buffer: Buffer): Promise<Table> {
   }
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new AccountRequestFileError('empty_file');
-  const columns = sheet.columnCount;
-  const cellsOf = (rowNumber: number) =>
-    Array.from({ length: columns }, (_, i) =>
-      cellValue(sheet.getRow(rowNumber).getCell(i + 1).value),
-    );
-  const records = [];
-  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
-    records.push({ rowNumber, cells: cellsOf(rowNumber) });
-  }
-  return { header: cellsOf(1), records };
+  const columns = Math.min(sheet.columnCount, MAX_COLUMNS);
+  const cellsOf = (row: ExcelJS.Row) =>
+    Array.from({ length: columns }, (_, i) => cellValue(row.getCell(i + 1).value));
+  // eachRow chỉ đi qua các dòng có thật: ô nằm ở dòng 1.000.000 không làm ta duyệt cả triệu dòng trống.
+  const records: Table['records'] = [];
+  let header: Cell[] = [];
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) {
+      header = cellsOf(row);
+      return;
+    }
+    const cells = cellsOf(row);
+    if (cells.some(isFilled) && records.length <= MAX_ROWS) records.push({ rowNumber, cells });
+  });
+  return { header, records };
 }
 
 function cellValue(value: ExcelJS.CellValue): Cell {
@@ -178,6 +225,8 @@ function readCsv(buffer: Buffer): Table {
 
 const count = (text: string, char: string) => text.split(char).length - 1;
 
+const isFilled = (cell: Cell) => cell instanceof Date || cell !== '';
+
 // --- kiểm tra từng dòng ----------------------------------------------------------------------
 
 function validateRows(table: Table): ParsedRow[] {
@@ -192,9 +241,7 @@ function validateRows(table: Table): ParsedRow[] {
   });
   if (!columns.has('fullName')) throw new AccountRequestFileError('missing_columns');
 
-  const records = table.records.filter((r) =>
-    r.cells.some((cell) => cell instanceof Date || cell !== ''),
-  );
+  const records = table.records.filter((r) => r.cells.some(isFilled));
   if (records.length === 0) throw new AccountRequestFileError('empty_file');
   if (records.length > MAX_ROWS) throw new AccountRequestFileError('too_many_rows');
 

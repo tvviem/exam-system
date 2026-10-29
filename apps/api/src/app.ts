@@ -8,6 +8,7 @@ import { registerOriginCheck } from './common/origin-check';
 import { ZodExceptionFilter } from './common/zod-exception.filter';
 import { ENV } from './config/config.module';
 import type { Env } from './config/env';
+import { MAX_UPLOAD_BYTES } from './modules/identity/account-requests/account-request-file';
 
 export async function createApp(): Promise<NestFastifyApplication> {
   // trustProxy: chỉ tin X-Forwarded-For do nginx cùng pod gửi tới.
@@ -26,7 +27,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
   await app.register(fastifyCookie);
   // Giới hạn thật của từng route được đặt khi đọc file; đây là trần chung.
   await app.register(fastifyMultipart, {
-    limits: { fileSize: 2 * 1024 * 1024, files: 1, fields: 5 },
+    limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 5 },
   });
   registerOriginCheck(app.getHttpAdapter().getInstance(), app.get<Env>(ENV).APP_ORIGINS);
   app.setGlobalPrefix('api');

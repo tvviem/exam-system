@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
-import { CLOCK, type Clock } from '../../../common/clock';
 import { type Database, DB } from '../../../db/db.module';
 import { MEDIA_STORE, type MediaStore } from '../../../media/media-store';
 import { JobRegistry } from '../../../queue/job-queue';
@@ -18,7 +17,6 @@ export class AccountRequestParseJob implements OnModuleInit {
 
   constructor(
     @Inject(DB) private readonly db: Database,
-    @Inject(CLOCK) private readonly clock: Clock,
     @Inject(MEDIA_STORE) private readonly media: MediaStore,
     private readonly registry: JobRegistry,
     private readonly notifications: NotificationsService,
@@ -39,6 +37,14 @@ export class AccountRequestParseJob implements OnModuleInit {
       const { rows } = await parseAccountRequestFile(await this.media.get(request.uploadKey));
       const matches = await matchRows(this.db, rows);
       await this.db.transaction(async (tx) => {
+        // Khóa dòng: hai lần chạy song song (BullMQ giao lại job) thì lần sau thấy không còn `parsing` và thôi.
+        const [current] = await tx
+          .select({ id: accountRequests.id })
+          .from(accountRequests)
+          .where(and(eq(accountRequests.id, requestId), eq(accountRequests.status, 'parsing')))
+          .for('update');
+        if (!current) return;
+
         const values = rows.map((row, i) => {
           const match = matches[i];
           return {
@@ -89,17 +95,19 @@ export class AccountRequestParseJob implements OnModuleInit {
       const code = error instanceof AccountRequestFileError ? error.code : 'internal_error';
       if (code === 'internal_error') this.logger.error(`Phân tích yêu cầu ${requestId} lỗi`, error);
       await this.failParse(request.requestedBy, requestId, code);
-    } finally {
-      await this.media.delete(request.uploadKey);
     }
+    // Chỉ xóa file khi trạng thái mới đã được ghi: nếu `failParse` cũng lỗi thì file còn đó để xử lý sau.
+    await this.media.delete(request.uploadKey);
   }
 
   private async failParse(requesterId: string, requestId: string, error: string) {
     await this.db.transaction(async (tx) => {
-      await tx
+      const failed = await tx
         .update(accountRequests)
         .set({ status: 'parse_failed', parseError: error, uploadKey: null })
-        .where(eq(accountRequests.id, requestId));
+        .where(and(eq(accountRequests.id, requestId), eq(accountRequests.status, 'parsing')))
+        .returning({ id: accountRequests.id });
+      if (failed.length === 0) return;
       await this.notifications.notify(
         {
           userIds: [requesterId],

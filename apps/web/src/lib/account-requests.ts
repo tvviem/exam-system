@@ -104,13 +104,14 @@ export interface AccountRequestItemParams {
   page?: number;
 }
 
+/** `refreshKey` (trạng thái yêu cầu) đổi thì danh sách dòng được tải lại, ví dụ khi vừa đọc xong file. */
 export const accountRequestItemsQuery = (
   id: string,
   params: AccountRequestItemParams,
-  status?: string,
+  refreshKey?: string,
 ) =>
   queryOptions({
-    queryKey: ['account-requests', 'items', id, params, status],
+    queryKey: ['account-requests', 'items', id, params, refreshKey],
     queryFn: () =>
       apiFetch<PageResult<AccountRequestItem>>(
         `/account-requests/${id}/items${queryString({ ...params })}`,

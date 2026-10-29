@@ -7,8 +7,14 @@ import type { JobName, JobPayloads, JobQueue, JobRegistry } from '../../src/queu
 export class InlineJobQueue implements JobQueue {
   private jobs: { name: JobName; payload: JobPayloads[JobName] }[] = [];
   registry?: JobRegistry;
+  /** Đặt true để lần `enqueue` kế tiếp ném lỗi (giả lập Redis hỏng). */
+  failNextEnqueue = false;
 
   async enqueue<N extends JobName>(name: N, payload: JobPayloads[N]): Promise<void> {
+    if (this.failNextEnqueue) {
+      this.failNextEnqueue = false;
+      throw new Error('Redis không sẵn sàng');
+    }
     this.jobs.push({ name, payload });
   }
 

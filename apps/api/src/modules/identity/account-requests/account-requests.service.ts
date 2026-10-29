@@ -19,12 +19,20 @@ import { MAX_UPLOAD_BYTES, sniffUpload } from './account-request-file';
 export type AccountRequestStatus = (typeof accountRequests.$inferSelect)['status'];
 export type MatchStatusValue = (typeof accountRequestItems.$inferSelect)['matchStatus'];
 
-const NOTE_MAX = 1000;
+export const NOTE_MAX = 1000;
 const FILENAME_MAX = 255;
 
 /** Người ra đề thấy yêu cầu của mình, Quản trị viên thấy tất cả (Q97). */
 export const canViewAccountRequests = (user: AuthenticatedUser) =>
   user.isAdmin || user.roleTags.includes('examiner');
+
+const trimmedNote = (note: string | null | undefined) => note?.trim().slice(0, NOTE_MAX) || null;
+
+/** Người ra đề chỉ xem yêu cầu của mình; Quản trị viên (undefined) xem tất cả. */
+const scopeOf = (user: AuthenticatedUser) => (user.isAdmin ? undefined : user.id);
+
+/** Lý do chặn nói rõ tài khoản khớp là loại nào (Quản trị viên, đã Xóa...) chỉ dành cho Quản trị viên. */
+const ADMIN_ONLY_NOTES = new Set(['matches_admin', 'matches_removed_user', 'code_email_conflict']);
 
 @Injectable()
 export class AccountRequestsService {
@@ -41,7 +49,7 @@ export class AccountRequestsService {
   async create(actor: Actor, upload: { filename: string; content: Buffer; note: string | null }) {
     if (upload.content.length > MAX_UPLOAD_BYTES) throw validationFailed('file', 'file_too_large');
     if (!sniffUpload(upload.content)) throw validationFailed('file', 'unsupported_file');
-    const note = upload.note?.trim().slice(0, NOTE_MAX) || null;
+    const note = trimmedNote(upload.note);
     const originalFilename = path.basename(upload.filename).slice(0, FILENAME_MAX) || 'danh-sach';
 
     const id = uuidv7();
@@ -72,8 +80,22 @@ export class AccountRequestsService {
       await this.media.delete(uploadKey);
       throw error;
     }
-    await this.queue.enqueue('account-request.parse', { requestId: id });
+    try {
+      await this.queue.enqueue('account-request.parse', { requestId: id });
+    } catch (error) {
+      // Không xếp được job (Redis hỏng): đừng để yêu cầu kẹt ở "đang đọc file" mãi mãi.
+      await this.markParseFailed(id, uploadKey);
+      throw error;
+    }
     return { id, status: 'parsing' as const };
+  }
+
+  private async markParseFailed(id: string, uploadKey: string) {
+    await this.db
+      .update(accountRequests)
+      .set({ status: 'parse_failed', parseError: 'internal_error', uploadKey: null })
+      .where(eq(accountRequests.id, id));
+    await this.media.delete(uploadKey);
   }
 
   async list(
@@ -81,7 +103,7 @@ export class AccountRequestsService {
     { page, pageSize, status }: Page & { status?: AccountRequestStatus },
   ) {
     const where = and(
-      user.isAdmin ? undefined : eq(accountRequests.requestedBy, user.id),
+      scopeOf(user) ? eq(accountRequests.requestedBy, user.id) : undefined,
       status ? eq(accountRequests.status, status) : undefined,
     );
     return paginate(
@@ -109,7 +131,7 @@ export class AccountRequestsService {
   }
 
   detail(user: AuthenticatedUser, id: string) {
-    return this.loadDetail(id, user.isAdmin ? undefined : user.id);
+    return this.loadDetail(id, scopeOf(user));
   }
 
   /** `onlyRequestedBy`: nếu có, chỉ thấy yêu cầu do người đó gửi. */
@@ -154,7 +176,7 @@ export class AccountRequestsService {
     const [visible] = await this.db
       .select({ id: accountRequests.id })
       .from(accountRequests)
-      .where(this.visible(id, user.isAdmin ? undefined : user.id));
+      .where(this.visible(id, scopeOf(user)));
     if (!visible) throw new ApiError('NOT_FOUND');
 
     const where = and(
@@ -188,18 +210,24 @@ export class AccountRequestsService {
           .limit(limit)
           .offset(offset),
     );
+    // Người ra đề không thấy tên tài khoản bị khớp hay lý do chặn cụ thể: tránh dùng tính năng này để dò danh bạ.
     return {
       ...result,
       items: result.items.map(({ matchedUserId, matchedUserName, ...item }) => ({
         ...item,
-        matchedUser: matchedUserId ? { id: matchedUserId, fullName: matchedUserName } : null,
+        outcomeNote:
+          !user.isAdmin && item.outcomeNote && ADMIN_ONLY_NOTES.has(item.outcomeNote)
+            ? 'account_conflict'
+            : item.outcomeNote,
+        matchedUser:
+          user.isAdmin && matchedUserId ? { id: matchedUserId, fullName: matchedUserName } : null,
       })),
     };
   }
 
   /** Quản trị viên Từ chối cả yêu cầu đang chờ duyệt. */
   async reject(actor: Actor, id: string, note: string | null) {
-    const reviewNote = note?.trim().slice(0, NOTE_MAX) || null;
+    const reviewNote = trimmedNote(note);
     await this.db.transaction(async (tx) => {
       const [request] = await tx
         .select()

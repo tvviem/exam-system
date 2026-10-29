@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   type AccountRequestItem,
+  type AccountRequestItemParams,
   type AccountRequestStatus,
   accountRequestItemsQuery,
   accountRequestQuery,
@@ -81,19 +82,25 @@ export function MatchBadge({ status }: { status: MatchStatus }) {
 }
 
 /** Chi tiết một yêu cầu, dùng chung cho Người ra đề và Quản trị viên (Quản trị viên có thêm Từ chối). */
-export function AccountRequestView({ id, admin }: { id: string; admin: boolean }) {
+export function AccountRequestView({
+  id,
+  admin,
+  filter,
+  onFilterChange,
+}: {
+  id: string;
+  admin: boolean;
+  /** Bộ lọc và trang nằm trên URL (docs/ui-design.md mục 7) nên do route giữ. */
+  filter: AccountRequestItemParams;
+  onFilterChange: (next: AccountRequestItemParams) => void;
+}) {
   const { t } = useTranslation();
   const request = useQuery(accountRequestQuery(id));
-  const [matchStatus, setMatchStatus] = useState<MatchStatus | undefined>();
-  const [page, setPage] = useState(1);
   const [rejecting, setRejecting] = useState(false);
   const data = request.data;
+  const { matchStatus } = filter;
   const items = useQuery({
-    ...accountRequestItemsQuery(
-      id,
-      { matchStatus, page: page > 1 ? page : undefined },
-      data?.status,
-    ),
+    ...accountRequestItemsQuery(id, filter, data?.status),
     enabled: !!data && data.status !== 'parsing' && data.status !== 'parse_failed',
   });
 
@@ -179,23 +186,14 @@ export function AccountRequestView({ id, admin }: { id: string; admin: boolean }
                 <legend className="mb-1 text-sm font-medium">
                   {t('accountRequests.filterRows')}
                 </legend>
-                <FilterButton
-                  active={!matchStatus}
-                  onClick={() => {
-                    setMatchStatus(undefined);
-                    setPage(1);
-                  }}
-                >
+                <FilterButton active={!matchStatus} onClick={() => onFilterChange({})}>
                   {t('accountRequests.allRows', { count: data.rowCount ?? 0 })}
                 </FilterButton>
                 {MATCH_STATUSES.map((status) => (
                   <FilterButton
                     key={status}
                     active={matchStatus === status}
-                    onClick={() => {
-                      setMatchStatus(status);
-                      setPage(1);
-                    }}
+                    onClick={() => onFilterChange({ matchStatus: status })}
                   >
                     {t(`matchStatus.${status}`)} ({data.counts[status]})
                   </FilterButton>
@@ -216,7 +214,9 @@ export function AccountRequestView({ id, admin }: { id: string; admin: boolean }
                     page={items.data.page}
                     pageSize={items.data.pageSize}
                     total={items.data.total}
-                    onPage={setPage}
+                    onPage={(next) =>
+                      onFilterChange({ matchStatus, page: next > 1 ? next : undefined })
+                    }
                   />
                 </>
               )}
@@ -291,7 +291,7 @@ function ItemCards({ items, admin }: { items: AccountRequestItem[]; admin: boole
     <ul className="flex flex-col gap-3 md:hidden">
       {items.map((item) => (
         <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-xs text-fg-muted">{t('accountRequests.row', { n: item.rowNumber })}</p>
+          <p className="text-sm text-fg-muted">{t('accountRequests.row', { n: item.rowNumber })}</p>
           <p className="font-medium">{item.fullName ?? '—'}</p>
           <p className="text-sm text-fg-muted">
             {identityOf(item)}

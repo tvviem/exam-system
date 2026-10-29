@@ -71,20 +71,19 @@ export async function matchRows(
     if (row.error) return blocked(row.error);
     const viaCode = (row.code ? byCode.get(row.code.toLowerCase()) : undefined) ?? [];
     const viaEmail = (row.email ? byEmail.get(row.email.toLowerCase()) : undefined) ?? [];
-    const candidates = [...new Map([...viaCode, ...viaEmail].map((u) => [u.id, u])).values()];
-    const active = candidates.filter((u) => !u.removed);
+    // Chủ hiện tại của mã/email là tài khoản chưa bị Xóa; chỉ khi không còn ai dùng mới xét tài khoản đã Xóa.
+    const owner = (found: KnownUser[]) => found.find((u) => !u.removed) ?? found[0];
+    const codeOwner = owner(viaCode);
+    const emailOwner = owner(viaEmail);
 
-    if (active.some((u) => u.isAdmin)) return blocked('matches_admin');
-    const codeOwner = viaCode.find((u) => !u.removed);
-    const emailOwner = viaEmail.find((u) => !u.removed);
+    if ([codeOwner, emailOwner].some((u) => u && !u.removed && u.isAdmin)) {
+      return blocked('matches_admin');
+    }
     if (codeOwner && emailOwner && codeOwner.id !== emailOwner.id)
       return blocked('code_email_conflict');
     const matched = codeOwner ?? emailOwner;
-    if (!matched) {
-      return candidates.length > 0
-        ? blocked('matches_removed_user')
-        : { matchStatus: 'new', userId: null, note: null };
-    }
+    if (!matched) return { matchStatus: 'new', userId: null, note: null };
+    if (matched.removed) return blocked('matches_removed_user');
     const sameName =
       normalizePersonName(matched.fullName) === normalizePersonName(row.fullName ?? '');
     return { matchStatus: sameName ? 'exact' : 'name_mismatch', userId: matched.id, note: null };

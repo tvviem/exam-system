@@ -162,6 +162,45 @@ describe('lỗi cả file', () => {
   });
 });
 
+/** Đổi tên một mục trong file zip (cùng độ dài, cả header cục bộ lẫn thư mục trung tâm). */
+const renameZipEntry = (zip: Buffer, from: string, to: string) =>
+  Buffer.from(zip.toString('latin1').replaceAll(from, to), 'latin1');
+
+/** Sửa kích thước giải nén khai báo của mọi mục trong thư mục trung tâm (PK\x01\x02, offset 24). */
+function declareUncompressedSize(zip: Buffer, size: number): Buffer {
+  const copy = Buffer.from(zip);
+  for (let i = 0; i < copy.length - 4; i++) {
+    if (copy.readUInt32LE(i) === 0x02014b50) copy.writeUInt32LE(size, i + 24);
+  }
+  return copy;
+}
+
+describe('kiểm tra file xlsx (Q88)', () => {
+  it('file zip không có xl/workbook.xml (ví dụ .docx) bị từ chối', async () => {
+    const real = await xlsx([['Họ tên'], ['A']]);
+    const notWorkbook = renameZipEntry(real, 'xl/workbook.xml', 'xl/workbook.xmx');
+    expect(sniffUpload(real)).toBe('xlsx');
+    expect(sniffUpload(notWorkbook)).toBeNull();
+  });
+
+  it('khai báo giải nén quá lớn (zip bomb) bị từ chối', async () => {
+    const real = await xlsx([['Họ tên'], ['A']]);
+    expect(sniffUpload(declareUncompressedSize(real, 200 * 1024 * 1024))).toBeNull();
+  });
+
+  it('ô nằm ở dòng rất xa không làm worker duyệt hàng triệu dòng trống', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Danh sách');
+    sheet.getRow(1).values = ['Họ tên', 'Mã định danh'];
+    sheet.getRow(2).values = ['A', 'B1'];
+    sheet.getRow(1_000_000).values = ['Z', 'B2'];
+    const started = Date.now();
+    const rows = await rowsOf(Buffer.from(await workbook.xlsx.writeBuffer()));
+    expect(rows.map((r) => r.rowNumber)).toEqual([2, 1_000_000]);
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+});
+
 describe('sniffUpload', () => {
   it('nhận ra loại file theo nội dung, không theo đuôi', async () => {
     expect(sniffUpload(await xlsx([['a']]))).toBe('xlsx');

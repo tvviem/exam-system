@@ -361,7 +361,8 @@
     "matches_admin": "Trùng tài khoản Quản trị viên.",
     "matches_removed_user": "Trùng tài khoản đã bị Xóa.",
     "code_email_conflict": "Mã và email thuộc hai tài khoản khác nhau.",
-    "request_rejected": "Yêu cầu đã bị từ chối."
+    "request_rejected": "Yêu cầu đã bị từ chối.",
+    "account_conflict": "Mã hoặc email trùng một tài khoản không thể dùng nên dòng này không cấp được."
   },
   "accountRequests": {
     "heading": "Yêu cầu cấp tài khoản",

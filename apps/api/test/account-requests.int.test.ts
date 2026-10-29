@@ -2,6 +2,7 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import ExcelJS from 'exceljs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { JobRegistry } from '../src/queue/job-queue';
 import { createTestApp, type TestApp } from './support/app';
 import { csvFile, xlsxFile } from './support/files';
 import { call, login, type UploadFile, upload } from './support/http';
@@ -59,7 +60,7 @@ describe('quyền và file mẫu', () => {
     expect(res.headers['content-disposition']).toContain('.xlsx');
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(res.rawPayload as unknown as ArrayBuffer);
-    const header = (workbook.worksheets[0]?.getRow(1).values as string[]).slice(1);
+    const header = ((workbook.worksheets[0]?.getRow(1).values ?? []) as string[]).slice(1);
     expect(header.map((h) => String(h).replace('*', '').trim())).toEqual([
       'Họ tên',
       'Mã định danh',
@@ -123,7 +124,8 @@ describe('tải lên và phân tích', () => {
       ),
     );
 
-    const items = await itemsOf(examiner.cookie, id);
+    const admin = await signedIn({ isAdmin: true });
+    const items = await itemsOf(admin.cookie, id);
     const summary = items.map((i: Record<string, unknown>) => [
       i.rowNumber,
       i.matchStatus,
@@ -144,6 +146,41 @@ describe('tải lên và phân tích', () => {
     ]);
     const detail = (await get(examiner.cookie, `/api/account-requests/${id}`)).json();
     expect(detail.counts).toEqual({ new: 1, exact: 2, name_mismatch: 1, blocked: 5 });
+  });
+
+  it('mã thuộc người đã bị Xóa mà email thuộc người đang dùng thì chặn, không khớp nhầm người đang dùng', async () => {
+    await seedUser({ removed: true, code: 'B800', fullName: 'Người Cũ' });
+    await seedUser({ email: 'dang.dung@example.edu.vn', fullName: 'Người Mới' });
+    const admin = await signedIn({ isAdmin: true });
+    const id = await submitted(
+      examiner.cookie,
+      csvFile('Người Mới,B800,dang.dung@example.edu.vn,,,'),
+    );
+    const [item] = await itemsOf(admin.cookie, id);
+    expect(item).toMatchObject({ matchStatus: 'blocked', outcomeNote: 'code_email_conflict' });
+  });
+
+  it('Người ra đề không thấy tên tài khoản bị khớp hay lý do chặn cụ thể (tránh dò danh bạ)', async () => {
+    await seedUser({ fullName: 'Nguyễn Văn An', code: 'B100' });
+    await seedUser({ isAdmin: true, email: 'qt@example.edu.vn' });
+    const id = await submitted(
+      examiner.cookie,
+      csvFile('Nguyễn Văn An,B100,,,,', 'Quản Trị,,qt@example.edu.vn,,,'),
+    );
+    const [exact, blocked] = await itemsOf(examiner.cookie, id);
+    expect(exact).toMatchObject({ matchStatus: 'exact', matchedUser: null });
+    expect(blocked).toMatchObject({
+      matchStatus: 'blocked',
+      outcomeNote: 'account_conflict',
+      matchedUser: null,
+    });
+  });
+
+  it('job phân tích chạy lại không chèn dòng lần hai', async () => {
+    const id = await submitted(examiner.cookie, csvFile('A,B1,,,,', 'B,B2,,,,'));
+    await t.app.get(JobRegistry).run('account-request.parse', { requestId: id });
+    expect(await itemsOf(examiner.cookie, id)).toHaveLength(2);
+    expect((await get(examiner.cookie, `/api/account-requests/${id}`)).json().rowCount).toBe(2);
   });
 
   it('lọc dòng theo match_status và phân trang', async () => {
@@ -217,6 +254,33 @@ describe('file không dùng được', () => {
       issues: [{ path: 'file', code: 'unsupported_file' }],
     });
     expect((await get(examiner.cookie, '/api/account-requests')).json().total).toBe(0);
+  });
+
+  it('file zip không phải xlsx (ví dụ .docx) bị từ chối ngay khi tải lên', async () => {
+    const real = await xlsxFile([['A', 'B1']]);
+    const docx = {
+      ...real,
+      filename: 'khong-phai-excel.xlsx',
+      content: Buffer.from(
+        real.content.toString('latin1').replaceAll('xl/workbook.xml', 'word/doc.xmlxx'),
+        'latin1',
+      ),
+    };
+    const res = await send(examiner.cookie, docx);
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ issues: [{ path: 'file', code: 'unsupported_file' }] });
+  });
+
+  it('xếp job lỗi (Redis hỏng) thì yêu cầu thành parse_failed, không kẹt ở "đang đọc"', async () => {
+    t.queue.failNextEnqueue = true;
+    const res = await send(examiner.cookie, csvFile('A,B1,,,,'));
+    expect(res.statusCode).toBe(500);
+    const [request] = (await get(examiner.cookie, '/api/account-requests')).json().items;
+    expect(request).toMatchObject({ status: 'parse_failed', parseError: 'internal_error' });
+    const uploads = await readdir(path.join(process.env.MEDIA_DIR as string, 'uploads')).catch(
+      () => [],
+    );
+    expect(uploads).toEqual([]);
   });
 
   it('quá 2 MB bị từ chối', async () => {
