@@ -38,6 +38,15 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   return result.data;
 }
 
+/** Chỉ `DATABASE_URL`: lệnh migration chạy trước khi triển khai nên không được đòi các khóa khác. */
+export function loadDatabaseUrl(source: NodeJS.ProcessEnv = process.env): string {
+  const result = envSchema.pick({ DATABASE_URL: true }).safeParse(source);
+  if (!result.success) {
+    throw new Error(`Biến môi trường không hợp lệ:\n${z.prettifyError(result.error)}`);
+  }
+  return result.data.DATABASE_URL;
+}
+
 /** Nạp `.env` ở thư mục hiện tại nếu có; biến đã đặt sẵn trong môi trường được giữ nguyên. */
 export function loadDotenvFile(): void {
   try {

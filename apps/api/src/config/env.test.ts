@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadEnv } from './env';
+import { loadDatabaseUrl, loadEnv } from './env';
 
 const valid = {
   DATABASE_URL: 'postgres://exam:exam@localhost:5434/exam',
@@ -16,6 +16,11 @@ describe('loadEnv', () => {
 
   it('báo lỗi khi thiếu DATABASE_URL', () => {
     expect(() => loadEnv({ REDIS_URL: valid.REDIS_URL })).toThrow(/DATABASE_URL/);
+  });
+
+  it('migration chỉ cần DATABASE_URL, không đòi các biến khác', () => {
+    expect(loadDatabaseUrl({ DATABASE_URL: valid.DATABASE_URL })).toBe(valid.DATABASE_URL);
+    expect(() => loadDatabaseUrl({})).toThrow(/DATABASE_URL/);
   });
 
   it('báo lỗi khi khóa mã hóa phiếu không đủ 32 byte', () => {
