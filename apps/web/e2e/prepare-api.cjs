@@ -62,8 +62,11 @@ async function main() {
     DATABASE_URL: databaseUrl,
     REDIS_URL: redisUrl,
     APP_ORIGINS: 'http://localhost:4173',
+    MEDIA_DIR: path.join(require('node:os').tmpdir(), 'exam-e2e-media'),
   });
   require(path.join(apiDir, 'dist/main.js'));
+  // Production chạy worker thành tiến trình riêng; E2E chạy chung để các job (đọc file Excel...) được xử lý.
+  require(path.join(apiDir, 'dist/worker/main.js'));
 }
 
 main().catch((error) => {
