@@ -1,4 +1,4 @@
-import { questionInputSchema, questionTypeSchema } from '@exam/shared';
+import { normalizeTag, questionInputSchema, questionTypeSchema } from '@exam/shared';
 import {
   Body,
   Controller,
@@ -20,7 +20,7 @@ import { QuestionsService } from './questions.service';
 const listSchema = pageSchema.extend({
   topicId: z.uuid().optional(),
   type: questionTypeSchema.optional(),
-  tag: z.string().trim().max(30).optional(),
+  tag: z.string().max(100).transform(normalizeTag).optional(),
   q: z.string().trim().max(200).optional(),
 });
 const versionSchema = z.object({ version: z.number().int().min(1) });

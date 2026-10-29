@@ -104,7 +104,7 @@ const essayPayload = z.strictObject({
   rubric: richTextSchema.optional(),
 });
 
-const normalizeTag = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase();
+export const normalizeTag = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase();
 
 const tagsSchema = z
   .array(z.string().transform(normalizeTag).pipe(z.string().min(1).max(TAG_MAX_CHARS)))

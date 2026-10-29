@@ -25,6 +25,7 @@ const fullColumns = {
   payload: questions.payload,
   defaultPoints: questions.defaultPoints,
   tags: questions.tags,
+  searchText: questions.searchText,
   version: questions.version,
   createdAt: questions.createdAt,
   updatedAt: questions.updatedAt,
@@ -34,7 +35,11 @@ type FullRow = {
   [K in keyof typeof fullColumns]: (typeof fullColumns)[K]['_']['data'];
 };
 
-const present = (row: FullRow) => ({ ...row, defaultPoints: Number(row.defaultPoints) });
+/** Trả cho client: điểm là số, `searchText` chỉ dùng nội bộ. */
+const present = ({ searchText: _searchText, ...row }: FullRow) => ({
+  ...row,
+  defaultPoints: Number(row.defaultPoints),
+});
 
 /** Câu hỏi của Người ra đề. Mọi truy cập lọc theo `owner_id`; câu của người khác coi như không tồn tại. */
 @Injectable()
@@ -55,12 +60,16 @@ export class QuestionsService {
   }
 
   async get(ownerId: string, id: string) {
+    return present(await this.load(ownerId, id));
+  }
+
+  private async load(ownerId: string, id: string) {
     const [row] = await this.db
       .select(fullColumns)
       .from(questions)
       .where(and(eq(questions.id, id), eq(questions.ownerId, ownerId)));
     if (!row) throw new ApiError('NOT_FOUND');
-    return present(row);
+    return row;
   }
 
   /** Thay toàn bộ nội dung. `version` là bản client đang sửa; lệch thì CONFLICT (sửa từ hai nơi). */
@@ -79,12 +88,7 @@ export class QuestionsService {
   }
 
   async duplicate(ownerId: string, id: string) {
-    const source = await this.get(ownerId, id);
-    const [stored] = await this.db
-      .select({ searchText: questions.searchText })
-      .from(questions)
-      .where(eq(questions.id, id));
-    if (!stored) throw new ApiError('NOT_FOUND');
+    const source = await this.load(ownerId, id);
     const [row] = await this.db
       .insert(questions)
       .values({
@@ -95,7 +99,7 @@ export class QuestionsService {
         payload: source.payload,
         defaultPoints: String(source.defaultPoints),
         tags: source.tags,
-        searchText: stored.searchText,
+        searchText: source.searchText,
       })
       .returning(fullColumns);
     if (!row) throw new Error('Không nhân bản được Câu hỏi');
@@ -108,7 +112,7 @@ export class QuestionsService {
       const unique = [...new Set(ids)];
       const moved = await tx
         .update(questions)
-        .set({ topicId })
+        .set({ topicId, version: sql`${questions.version} + 1` })
         .where(and(inArray(questions.id, unique), eq(questions.ownerId, ownerId)))
         .returning({ id: questions.id });
       // Có id không thuộc về chủ: ném lỗi để giao dịch hoàn tác toàn bộ.

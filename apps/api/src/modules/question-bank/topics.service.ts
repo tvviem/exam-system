@@ -113,7 +113,7 @@ export class TopicsService {
     });
   }
 
-  /** Chủ đề của chủ này, chưa lưu trữ nếu `active`; ngược lại NOT_FOUND hoặc INVALID_STATE. */
+  /** Chủ đề của chủ này và chưa lưu trữ; ngược lại NOT_FOUND (không phải của chủ) hoặc INVALID_STATE (đã lưu trữ). */
   async requireUsable(ownerId: string, id: string): Promise<void> {
     const row = await this.requireOwned(ownerId, id);
     if (row.archivedAt) throw new ApiError('INVALID_STATE', { reason: 'TOPIC_ARCHIVED' });

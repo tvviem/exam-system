@@ -124,9 +124,11 @@ Quy tắc ràng buộc ở tầng service:
 ## 2. Ngân hàng câu hỏi (module `question-bank`)
 
 ```sql
-topics (                                  -- Chủ đề
-  id, owner_id → users NOT NULL, name, description, archived_at
+topics (                                  -- Chủ đề: danh sách phẳng của một Người ra đề
+  id, owner_id → users NOT NULL, name, description, archived_at, created_at, updated_at,
+  name_key text                           -- tên bỏ dấu, chữ thường, gộp khoảng trắng (normalizeForSearch)
 )
+-- UNIQUE (owner_id, name_key) WHERE archived_at IS NULL: tên không trùng trong các Chủ đề chưa lưu trữ của cùng chủ
 
 questions (
   id, topic_id → topics, owner_id → users,   -- owner_id lặp lại để kiểm tra quyền nhanh
@@ -134,8 +136,11 @@ questions (
   stem jsonb,                              -- rich text (TipTap JSON)
   payload jsonb,                           -- phần riêng theo type, kiểm tra bằng Zod
   default_points numeric(6,2),
-  tags text[], version int, archived_at
+  tags text[], version int, archived_at, created_at, updated_at,
+  search_text text                         -- văn bản thuần của Phần dẫn, Phương án, Mệnh đề, đã bỏ dấu và chữ thường
 )
+-- Tìm kiếm: chuẩn hóa chuỗi tìm bằng cùng hàm rồi LIKE trên search_text (thoát %, _). Khác Người dùng (unaccent lúc truy vấn):
+-- cách này xử lý được cả "đ" và không cần gọi hàm trên từng dòng. `version` tăng mỗi lần sửa nội dung hoặc đổi Chủ đề.
 
 illustrations (                           -- Hình minh họa
   id, owner_id → users, object_key text, width, height, mime, bytes, alt text

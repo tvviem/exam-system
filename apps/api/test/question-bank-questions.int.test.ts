@@ -201,6 +201,7 @@ describe('danh sách, tìm và lọc', () => {
     expect(await ids(`topicId=${algebra}`)).toBe(1);
     expect(await ids('type=essay')).toBe(1);
     expect(await ids('tag=chương%203')).toBe(1);
+    expect(await ids('tag=%20Chương%20%20%203%20')).toBe(1); // tag lọc được chuẩn hóa như lúc lưu
     expect(await ids(`topicId=${topicId}&type=essay`)).toBe(1);
     expect(await ids('q=%25')).toBe(0); // ký tự đặc biệt của LIKE được thoát
   });
@@ -225,6 +226,18 @@ describe('nhân bản, di chuyển, xóa', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ moved: 2 });
     expect((await mine('GET', `/api/questions?topicId=${dest}`)).json().total).toBe(2);
+  });
+
+  it('di chuyển tăng version để trình soạn đang mở sửa đè thì bị CONFLICT', async () => {
+    const dest = await newTopic('Đích');
+    const q = await newQuestion(singleChoice(topicId));
+    await mine('POST', '/api/questions/move', { ids: [q.id], topicId: dest });
+    expect((await mine('GET', `/api/questions/${q.id}`)).json().version).toBe(2);
+    const stale = await mine('PUT', `/api/questions/${q.id}`, {
+      ...singleChoice(topicId),
+      version: 1,
+    });
+    expect(stale.statusCode).toBe(409);
   });
 
   it('di chuyển lẫn Câu hỏi của người khác thì NOT_FOUND và không đổi gì', async () => {

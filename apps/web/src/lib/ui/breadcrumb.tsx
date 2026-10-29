@@ -9,7 +9,7 @@ export interface Crumb {
   search?: Record<string, string | undefined>;
 }
 
-/** Đường dẫn (docs/ui-design.md mục 11): Ngân hàng câu hỏi → Chủ đề → Câu hỏi. */
+/** Đường dẫn (docs/ui-design.md mục 9): Ngân hàng câu hỏi → Chủ đề → Câu hỏi. */
 export function Breadcrumb({ items }: { items: Crumb[] }) {
   const { t } = useTranslation();
   return (
