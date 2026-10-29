@@ -163,7 +163,7 @@ Người nhận mở link
 
 **Test:** integration cho cả hai nhánh (chưa có tài khoản / đã có tài khoản), link dùng lần hai, link hết hạn, link đã thu hồi, và trường hợp người đã đăng nhập bằng tài khoản có email khác với email được mời (phải từ chối).
 
-### Chi tiết PR 1c (Q77–Q86, đề xuất)
+### Chi tiết PR 1c (Q77–Q86)
 
 **Trạng thái và token**
 - **Trạng thái suy ra, không lưu (Q77):** `accepted` (có `accepted_at`) > `revoked` (có `revoked_at`) > `expired` (`expires_at` ≤ giờ của Clock) > `pending`.
@@ -183,7 +183,7 @@ Người nhận mở link
 - **Nhật ký (Q84):** `invitation.create`, `invitation.revoke`, `invitation.regenerate` (người thực hiện là Quản trị viên) và `invitation.accept` (người thực hiện là người vừa nhận; `after` gồm `userId` và `createdAccount`).
 - **Giao diện (Q86):** trang quản trị "Lời mời" (danh sách, tạo, hộp thoại link có nút Sao chép, Thu hồi, Tạo lại link) trong thanh điều hướng con; trang công khai `/invite/$token` nằm ngoài `_authed` với ba trạng thái: không dùng được (thông báo chung), form tạo tài khoản, yêu cầu đăng nhập.
 
-**Test (seam đề xuất)**
+**Test (seam đã chốt)**
 1. *API Quản trị viên* (HTTP + PostgreSQL + Redis, Clock giả): tạo, liệt kê, lọc; ba lý do từ chối khi tạo; Thu hồi; Tạo lại link làm link cũ mất hiệu lực; chỉ Quản trị viên gọi được; nhật ký không chứa token.
 2. *API công khai*: nhận ở cả hai nhánh; dùng lần hai, hết hạn (kéo Clock), đã thu hồi; đăng nhập sai tài khoản; hai lần nhận đồng thời; giới hạn tốc độ.
 3. *E2E*: Quản trị viên tạo Lời mời và sao chép link; ở một ngữ cảnh trình duyệt mới người được mời đặt mật khẩu và vào trang chủ với vai trò Người ra đề. Thêm trang Lời mời vào `themes.spec`.

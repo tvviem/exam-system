@@ -137,3 +137,26 @@ export const loginEvents = pgTable(
     index('login_events_at_idx').on(t.at),
   ],
 );
+
+/** Lời mời trở thành Người ra đề. Trạng thái suy ra từ các cột và Clock (Q77), không lưu. */
+export const invitations = pgTable(
+  'invitations',
+  {
+    id: idColumn(),
+    email: citext('email').notNull(),
+    fullName: text('full_name').notNull(),
+    unitId: uuid('unit_id')
+      .notNull()
+      .references(() => units.id),
+    tokenHash: text('token_hash').notNull().unique(),
+    invitedBy: uuid('invited_by')
+      .notNull()
+      .references(() => users.id),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    acceptedUserId: uuid('accepted_user_id').references(() => users.id),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index('invitations_email_idx').on(t.email)],
+);
