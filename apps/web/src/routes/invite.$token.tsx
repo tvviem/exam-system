@@ -26,6 +26,7 @@ import {
   TextField,
 } from '../lib/ui';
 import { ListSkeleton } from '../lib/ui/admin';
+import { BrandMark } from '../lib/ui/brand';
 import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
 // Trang công khai: người được mời mở link, không cần đăng nhập để xem (Q81, Q86).
@@ -41,7 +42,7 @@ function InvitePage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <p className="text-sm font-semibold text-primary">{t('app.title')}</p>
+        <BrandMark className="text-sm" />
         <ThemeSwitcher />
       </div>
       <Card>

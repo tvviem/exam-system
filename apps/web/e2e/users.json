@@ -98,5 +98,19 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-khung-desktop",
+    "fullName": "Quản trị khung desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-khung-mobile",
+    "fullName": "Quản trị khung mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
   }
 ]

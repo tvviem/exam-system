@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { login, meQuery, safeRedirect } from '../lib/auth';
 import { errorMessage } from '../lib/errors';
 import { Card, ErrorMessage, PrimaryButton, TextField } from '../lib/ui';
+import { BrandMark } from '../lib/ui/brand';
 import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
 export const Route = createFileRoute('/login')({
@@ -41,7 +42,7 @@ function LoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <p className="text-sm font-semibold text-primary">{t('app.title')}</p>
+        <BrandMark className="text-sm" />
         <ThemeSwitcher />
       </div>
       <Card>

@@ -152,6 +152,8 @@ Mở http://localhost:5173 và đăng nhập bằng tài khoản vừa tạo; l�
 
 Mục này dẫn anh đi qua toàn bộ chức năng đã làm, theo đúng luồng nghiệp vụ đã thống nhất. Cần đã làm xong [Bắt đầu nhanh](#bắt-đầu-nhanh) với **cả hai terminal** đang chạy. Nên mở thêm một cửa sổ ẩn danh (hoặc trình duyệt khác) để đóng vai người thứ hai mà không bị lẫn phiên đăng nhập.
 
+**Điều hướng:** từ 1024 px (laptop) menu là thanh bên trái; trên máy tính bảng và điện thoại là thanh tab dưới đáy với 4 mục chính và nút **Thêm** (chứa Lịch sử đăng nhập, Nhật ký thao tác). Chuông thông báo và nút **Tài khoản** ở góc phải trên cùng.
+
 **1. Quản trị viên: Đơn vị**
 1. Đăng nhập `quantri` (đổi mật khẩu lần đầu; mật khẩu mới ít nhất 10 ký tự, không dùng mật khẩu phổ biến).
 2. Mục **Đơn vị** → **Thêm Đơn vị**: mã `CNTT`, tên `Khoa Công nghệ thông tin`.

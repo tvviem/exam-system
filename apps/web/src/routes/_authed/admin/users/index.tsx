@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ChevronRight, ListFilter, ShieldPlus } from 'lucide-react';
+import { ChevronRight, ShieldPlus } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -31,6 +31,9 @@ import {
   StatusBadge,
   TemporaryPasswordDialog,
 } from '../../../../lib/ui/admin';
+import { DataList } from '../../../../lib/ui/data-list';
+import { FilterBar } from '../../../../lib/ui/filter-bar';
+import { PageHeader } from '../../../../lib/ui/page-header';
 
 const STATUSES: UserStatus[] = ['active', 'locked', 'removed'];
 
@@ -54,7 +57,6 @@ function UsersPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const users = useQuery(usersQuery(search));
   const [q, setQ] = useState(search.q ?? '');
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [password, setPassword] = useState<(TemporaryPassword & { title: string }) | null>(null);
 
@@ -108,16 +110,20 @@ function UsersPage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t('admin.users.heading')}</h1>
-        <Button onClick={() => setCreatingAdmin(true)}>
-          <ShieldPlus aria-hidden className="size-5" />
-          {t('admin.users.createAdmin')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('admin.users.heading')}
+        actions={
+          <Button onClick={() => setCreatingAdmin(true)}>
+            <ShieldPlus aria-hidden className="size-5" />
+            {t('admin.users.createAdmin')}
+          </Button>
+        }
+      />
 
-      <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-3 bg-bg px-4 py-2 md:flex-row md:items-end">
-        <div className="flex-1">
+      <FilterBar
+        activeCount={activeFilters}
+        filters={filters}
+        search={
           <SearchField
             id="user-search"
             label={t('admin.users.search')}
@@ -125,22 +131,8 @@ function UsersPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-        </div>
-        <div className="hidden gap-3 md:flex md:w-96">{filters}</div>
-        <Button className="md:hidden" onClick={() => setFiltersOpen(true)}>
-          <ListFilter aria-hidden className="size-5" />
-          {t('admin.users.filters', { count: activeFilters })}
-        </Button>
-      </div>
-
-      <Dialog
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        title={t('admin.users.filtersTitle')}
-      >
-        {filters}
-        <PrimaryButton onClick={() => setFiltersOpen(false)}>{t('common.done')}</PrimaryButton>
-      </Dialog>
+        }
+      />
 
       {users.isPending ? (
         <ListSkeleton />
@@ -150,8 +142,7 @@ function UsersPage() {
         <EmptyState>{t('admin.users.empty')}</EmptyState>
       ) : (
         <>
-          <UserCards items={users.data.items} />
-          <UserTable items={users.data.items} />
+          <UserList items={users.data.items} />
           <Pagination
             page={users.data.page}
             pageSize={users.data.pageSize}
@@ -186,76 +177,89 @@ function RoleTags({ user }: { user: UserListItem }) {
   );
 }
 
-const identityLine = (user: UserListItem) =>
-  [user.code, user.username, user.email].filter(Boolean).join(' · ');
+/** Mã, tên đăng nhập, email; bỏ tên đăng nhập khi chỉ lặp lại mã hoặc email (hay gặp ở tài khoản Người dự thi). */
+const identityLine = (user: UserListItem) => {
+  const lower = (value: string | null) => value?.toLowerCase() ?? null;
+  const username =
+    lower(user.username) === lower(user.code) || lower(user.username) === lower(user.email)
+      ? null
+      : user.username;
+  return [user.code, username, user.email].filter(Boolean).join(' · ');
+};
 
-function UserCards({ items }: { items: UserListItem[] }) {
-  return (
-    <ul className="flex flex-col gap-3 md:hidden">
-      {items.map((user) => (
-        <li key={user.id}>
-          <Link
-            to="/admin/users/$userId"
-            params={{ userId: user.id }}
-            className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{user.fullName}</p>
-              <p className="truncate text-sm text-fg-muted">{identityLine(user)}</p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                <StatusBadge status={user.status} />
-                <RoleTags user={user} />
-              </div>
-            </div>
-            <ChevronRight aria-hidden className="size-5 shrink-0 text-fg-muted" />
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function UserTable({ items }: { items: UserListItem[] }) {
+function UserList({ items }: { items: UserListItem[] }) {
   const { t } = useTranslation();
   return (
-    <div className="hidden overflow-hidden rounded-xl border border-border bg-surface md:block">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-border text-fg-muted">
-          <tr>
-            <th className="px-4 py-3 font-medium">{t('admin.users.fullName')}</th>
-            <th className="px-4 py-3 font-medium">{t('admin.users.identity')}</th>
-            <th className="px-4 py-3 font-medium">{t('admin.users.classLabel')}</th>
-            <th className="px-4 py-3 font-medium">{t('admin.users.roleTags')}</th>
-            <th className="px-4 py-3 font-medium">{t('admin.users.status')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((user) => (
-            <tr key={user.id} className="border-b border-border last:border-0 hover:bg-bg">
-              <td className="px-4 py-3">
-                <Link
-                  to="/admin/users/$userId"
-                  params={{ userId: user.id }}
-                  className="font-medium text-primary hover:underline"
-                >
-                  {user.fullName}
-                </Link>
-              </td>
-              <td className="px-4 py-3 text-fg-muted">{identityLine(user)}</td>
-              <td className="px-4 py-3 text-fg-muted">{user.classLabel}</td>
-              <td className="px-4 py-3">
-                <div className="flex flex-wrap gap-1">
-                  <RoleTags user={user} />
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <StatusBadge status={user.status} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataList
+      items={items}
+      rowKey={(user) => user.id}
+      columns={[
+        {
+          key: 'name',
+          header: t('admin.users.fullName'),
+          cell: (user) => (
+            <>
+              <Link
+                to="/admin/users/$userId"
+                params={{ userId: user.id }}
+                className="font-medium text-primary hover:underline"
+              >
+                {user.fullName}
+              </Link>
+              {/* 768–1023 px: cột Mã và Lớp ẩn đi, gộp thành một dòng phụ dưới tên */}
+              <p className="mt-0.5 text-fg-muted lg:hidden">
+                {[identityLine(user), user.classLabel].filter(Boolean).join(' · ')}
+              </p>
+            </>
+          ),
+        },
+        {
+          key: 'identity',
+          header: t('admin.users.identity'),
+          from: 'lg',
+          className: 'text-fg-muted',
+          cell: identityLine,
+        },
+        {
+          key: 'class',
+          header: t('admin.users.classLabel'),
+          from: 'lg',
+          className: 'text-fg-muted',
+          cell: (user) => user.classLabel,
+        },
+        {
+          key: 'tags',
+          header: t('admin.users.roleTags'),
+          cell: (user) => (
+            <div className="flex flex-wrap gap-1">
+              <RoleTags user={user} />
+            </div>
+          ),
+        },
+        {
+          key: 'status',
+          header: t('admin.users.status'),
+          cell: (user) => <StatusBadge status={user.status} />,
+        },
+      ]}
+      card={(user) => (
+        <Link
+          to="/admin/users/$userId"
+          params={{ userId: user.id }}
+          className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium">{user.fullName}</p>
+            <p className="truncate text-sm text-fg-muted">{identityLine(user)}</p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              <StatusBadge status={user.status} />
+              <RoleTags user={user} />
+            </div>
+          </div>
+          <ChevronRight aria-hidden className="size-5 shrink-0 text-fg-muted" />
+        </Link>
+      )}
+    />
   );
 }
 

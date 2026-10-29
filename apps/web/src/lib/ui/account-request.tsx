@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import type { TFunction } from 'i18next';
 import {
   ArrowLeft,
   Ban,
+  CircleAlert,
   CircleCheck,
   CircleX,
   FileDown,
@@ -32,6 +32,10 @@ import { errorMessage } from '../errors';
 import { formatDate, formatDateTime } from '../format';
 import { Badge, Button, buttonClass, Dialog, ErrorMessage } from '.';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
+import { Chip, ChipGroup } from './chips';
+import { DataList } from './data-list';
+import { StickyActionBar } from './sticky-action-bar';
+import { useToast } from './toast';
 
 const statusTone = {
   parsing: 'neutral',
@@ -48,11 +52,13 @@ export function RequestStatusBadge({ status }: { status: AccountRequestStatus })
   const { t } = useTranslation();
   const icon =
     status === 'approved' ? (
-      <CircleCheck aria-hidden className="size-3" />
+      <CircleCheck aria-hidden className="size-3.5" />
+    ) : status === 'partially_approved' ? (
+      <CircleAlert aria-hidden className="size-3.5" />
     ) : status === 'rejected' || status === 'parse_failed' ? (
-      <CircleX aria-hidden className="size-3" />
+      <CircleX aria-hidden className="size-3.5" />
     ) : (
-      <Hourglass aria-hidden className="size-3" />
+      <Hourglass aria-hidden className="size-3.5" />
     );
   return (
     <Badge tone={statusTone[status]} icon={icon}>
@@ -78,7 +84,7 @@ export function MatchBadge({ status }: { status: MatchStatus }) {
     ) : status === 'blocked' ? (
       <Ban aria-hidden className="size-3" />
     ) : (
-      <Hourglass aria-hidden className="size-3" />
+      <CircleAlert aria-hidden className="size-3.5" />
     );
   return (
     <Badge tone={matchTone[status]} icon={icon}>
@@ -199,37 +205,32 @@ export function AccountRequestView({
             </p>
           )}
 
-          {reviewable && (
-            <ReviewBar
-              id={id}
-              pendingValid={request.data.pendingValid}
-              selected={selected}
-              onDone={() => setSelected(new Set())}
-              onReject={() => setRejecting(true)}
-            />
-          )}
-
           <SlipsSection requestId={id} status={request.data.status} />
 
           {data && data.status !== 'parsing' && data.status !== 'parse_failed' && (
             <>
-              <fieldset className="flex flex-wrap gap-2">
-                <legend className="mb-1 text-sm font-medium">
-                  {t('accountRequests.filterRows')}
-                </legend>
-                <FilterButton active={!matchStatus} onClick={() => onFilterChange({})}>
-                  {t('accountRequests.allRows', { count: data.rowCount ?? 0 })}
-                </FilterButton>
+              {reviewable && (
+                <p className="text-sm text-fg-muted">{t('accountRequests.selectHint')}</p>
+              )}
+              <ChipGroup label={t('accountRequests.filterRows')}>
+                <Chip
+                  active={!matchStatus}
+                  count={data.rowCount ?? 0}
+                  onClick={() => onFilterChange({})}
+                >
+                  {t('accountRequests.allRows')}
+                </Chip>
                 {MATCH_STATUSES.map((status) => (
-                  <FilterButton
+                  <Chip
                     key={status}
                     active={matchStatus === status}
+                    count={data.counts[status]}
                     onClick={() => onFilterChange({ matchStatus: status })}
                   >
-                    {t(`matchStatus.${status}`)} ({data.counts[status]})
-                  </FilterButton>
+                    {t(`matchStatus.${status}`)}
+                  </Chip>
                 ))}
-              </fieldset>
+              </ChipGroup>
 
               {items.isPending ? (
                 <ListSkeleton />
@@ -239,8 +240,7 @@ export function AccountRequestView({
                 <EmptyState>{t('accountRequests.itemsEmpty')}</EmptyState>
               ) : (
                 <>
-                  <ItemCards items={items.data.items} admin={admin} selection={selection} />
-                  <ItemTable items={items.data.items} admin={admin} selection={selection} />
+                  <ItemList items={items.data.items} admin={admin} selection={selection} />
                   <Pagination
                     page={items.data.page}
                     pageSize={items.data.pageSize}
@@ -255,41 +255,33 @@ export function AccountRequestView({
           )}
         </>
       )}
+      {/* Cuối nội dung: thanh dính đáy chỉ "ghim" khi vị trí tự nhiên của nó nằm dưới màn hình */}
+      {reviewable && data && (
+        <ReviewBar
+          id={id}
+          pendingValid={data.pendingValid}
+          selected={selected}
+          onDone={() => setSelected(new Set())}
+          onReject={() => setRejecting(true)}
+        />
+      )}
       {rejecting && <RejectDialog id={id} onClose={() => setRejecting(false)} />}
     </section>
   );
 }
 
-function FilterButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`inline-flex min-h-12 cursor-pointer items-center rounded-lg border px-3 text-sm font-medium ${
-        active
-          ? 'border-primary bg-primary-soft text-on-primary-soft'
-          : 'border-border-strong bg-surface text-fg hover:bg-primary-soft'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-/** Lý do dòng không duyệt được, hoặc ghi chú kết quả. */
-function itemNote(item: AccountRequestItem, t: TFunction) {
-  return item.outcomeNote
+/**
+ * Ghi chú dưới huy hiệu kiểm tra: lý do bị chặn hoặc bỏ qua; dòng còn chờ thì nhắc việc sẽ xảy ra khi duyệt.
+ * Dòng đã xử lý chỉ hiện kết quả, không còn câu hướng dẫn của trạng thái chờ.
+ */
+function ItemNote({ item }: { item: AccountRequestItem }) {
+  const { t } = useTranslation();
+  const text = item.outcomeNote
     ? t(`accountRequestRowError.${item.outcomeNote}`, { defaultValue: item.outcomeNote })
-    : t(`matchStatusHint.${item.matchStatus}`);
+    : item.outcome === 'pending'
+      ? t(`matchStatusHint.${item.matchStatus}`)
+      : null;
+  return text ? <p className="mt-1 text-sm">{text}</p> : null;
 }
 
 const identityOf = (item: AccountRequestItem) =>
@@ -300,7 +292,10 @@ function MatchedUser({ item, admin }: { item: AccountRequestItem; admin: boolean
   if (!item.matchedUser) return null;
   return (
     <p className="text-sm text-fg-muted">
-      {t('accountRequests.matchedAccount')}:{' '}
+      {item.outcome === 'created'
+        ? t('accountRequests.createdAccount')
+        : t('accountRequests.matchedAccount')}
+      :{' '}
       {admin ? (
         <Link
           to="/admin/users/$userId"
@@ -346,12 +341,65 @@ function RowCheckbox({
   );
 }
 
-function ItemCards({ items, admin, selection }: ItemListProps) {
+function ItemList({ items, admin, selection }: ItemListProps) {
   const { t } = useTranslation();
+  const matchCell = (item: AccountRequestItem) => (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <MatchBadge status={item.matchStatus} />
+        {item.outcome !== 'pending' && <Badge>{t(`itemOutcome.${item.outcome}`)}</Badge>}
+      </div>
+      <ItemNote item={item} />
+      <MatchedUser item={item} admin={admin} />
+    </>
+  );
   return (
-    <ul className="flex flex-col gap-3 md:hidden">
-      {items.map((item) => (
-        <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
+    <DataList
+      items={items}
+      rowKey={(item) => item.id}
+      selectionHeader={<span className="sr-only">{t('accountRequests.columns.select')}</span>}
+      selectionCell={
+        selection ? (item) => <RowCheckbox item={item} selection={selection} /> : undefined
+      }
+      columns={[
+        {
+          key: 'row',
+          header: t('accountRequests.columns.row'),
+          className: 'tabular-nums text-fg-muted',
+          cell: (item) => item.rowNumber,
+        },
+        {
+          key: 'name',
+          header: t('accountRequests.columns.fullName'),
+          className: 'font-medium',
+          cell: (item) => (
+            <>
+              {item.fullName ?? '—'}
+              {/* 768–1023 px: cột Mã/Email và Lớp ẩn đi, gộp thành dòng phụ dưới tên */}
+              <p className="mt-0.5 text-sm font-normal text-fg-muted lg:hidden">
+                {[identityOf(item), item.classLabel].filter(Boolean).join(' · ')}
+              </p>
+            </>
+          ),
+        },
+        {
+          key: 'identity',
+          header: t('accountRequests.columns.identity'),
+          from: 'lg',
+          className: 'text-fg-muted',
+          cell: identityOf,
+        },
+        {
+          key: 'class',
+          header: t('accountRequests.columns.classLabel'),
+          from: 'lg',
+          className: 'text-fg-muted',
+          cell: (item) => item.classLabel,
+        },
+        { key: 'match', header: t('accountRequests.columns.match'), cell: matchCell },
+      ]}
+      card={(item) => (
+        <div className="rounded-xl border border-border bg-surface p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-fg-muted">
               {t('accountRequests.row', { n: item.rowNumber })}
@@ -364,74 +412,24 @@ function ItemCards({ items, admin, selection }: ItemListProps) {
             {item.classLabel && ` · ${item.classLabel}`}
             {item.dateOfBirth && ` · ${formatDate(item.dateOfBirth)}`}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <MatchBadge status={item.matchStatus} />
-            {item.outcome !== 'pending' && <Badge>{t(`itemOutcome.${item.outcome}`)}</Badge>}
-          </div>
-          <p className="mt-1 text-sm">{itemNote(item, t)}</p>
-          <MatchedUser item={item} admin={admin} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ItemTable({ items, admin, selection }: ItemListProps) {
-  const { t } = useTranslation();
-  return (
-    <div className="hidden overflow-hidden rounded-xl border border-border bg-surface md:block">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-border text-fg-muted">
-          <tr>
-            {selection && (
-              <th className="w-12 px-2 py-3">
-                <span className="sr-only">{t('accountRequests.columns.select')}</span>
-              </th>
-            )}
-            <th className="px-4 py-3 font-medium">{t('accountRequests.columns.row')}</th>
-            <th className="px-4 py-3 font-medium">{t('accountRequests.columns.fullName')}</th>
-            <th className="px-4 py-3 font-medium">{t('accountRequests.columns.identity')}</th>
-            <th className="px-4 py-3 font-medium">{t('accountRequests.columns.classLabel')}</th>
-            <th className="px-4 py-3 font-medium">{t('accountRequests.columns.match')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.id} className="border-b border-border align-top last:border-0">
-              {selection && (
-                <td className="px-2 py-1">
-                  <RowCheckbox item={item} selection={selection} />
-                </td>
-              )}
-              <td className="px-4 py-3 tabular-nums text-fg-muted">{item.rowNumber}</td>
-              <td className="px-4 py-3 font-medium">{item.fullName ?? '—'}</td>
-              <td className="px-4 py-3 text-fg-muted">{identityOf(item)}</td>
-              <td className="px-4 py-3 text-fg-muted">{item.classLabel}</td>
-              <td className="px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <MatchBadge status={item.matchStatus} />
-                  {item.outcome !== 'pending' && <Badge>{t(`itemOutcome.${item.outcome}`)}</Badge>}
-                </div>
-                <p className="mt-1">{itemNote(item, t)}</p>
-                <MatchedUser item={item} admin={admin} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          <div className="mt-2">{matchCell(item)}</div>
+        </div>
+      )}
+    />
   );
 }
 
 function RejectDialog({ id, onClose }: { id: string; onClose: () => void }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [note, setNote] = useState('');
   const mutation = useMutation({
     mutationFn: () => rejectAccountRequest(id, note),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['account-requests'] });
       await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast(t('toast.requestRejected'));
       onClose();
     },
   });
@@ -475,9 +473,11 @@ function ReviewBar({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const mutation = useMutation({
     mutationFn: (selection: ApprovalSelection) => approveAccountRequest(id, selection),
     onSuccess: async () => {
+      toast(t('toast.approvalStarted'));
       onDone();
       await queryClient.invalidateQueries({ queryKey: ['account-requests'] });
       await queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -485,7 +485,7 @@ function ReviewBar({
   });
   const chosen = [...selected];
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+    <StickyActionBar>
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <Button
           variant="primary"
@@ -515,9 +515,8 @@ function ReviewBar({
           {t('accountRequests.reject')}
         </Button>
       </div>
-      <p className="text-sm text-fg-muted">{t('accountRequests.selectHint')}</p>
       <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
-    </div>
+    </StickyActionBar>
   );
 }
 

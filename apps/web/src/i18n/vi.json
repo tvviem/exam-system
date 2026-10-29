@@ -3,14 +3,22 @@
     "title": "Hệ thống thi trực tuyến"
   },
   "nav": {
-    "admin": "Quản trị",
-    "examiner": "Người ra đề",
     "take": "Vào thi",
     "logout": "Đăng xuất",
     "authSessions": "Phiên đăng nhập",
     "accountMenu": "Tài khoản",
     "accountRequests": "Yêu cầu cấp tài khoản",
-    "notifications": "Thông báo"
+    "notifications": "Thông báo",
+    "main": "Điều hướng chính",
+    "more": "Thêm",
+    "short": {
+      "users": "Người dùng",
+      "accountRequests": "Yêu cầu",
+      "invitations": "Lời mời",
+      "units": "Đơn vị",
+      "loginEvents": "Đăng nhập",
+      "auditLogs": "Nhật ký"
+    }
   },
   "health": {
     "heading": "Trạng thái hệ thống",
@@ -95,7 +103,6 @@
     "close": "Đóng",
     "done": "Xong",
     "save": "Lưu thay đổi",
-    "saved": "Đã lưu.",
     "cancel": "Hủy",
     "notSet": "Chưa đặt",
     "none": "Không có",
@@ -152,8 +159,7 @@
       "units": "Đơn vị",
       "loginEvents": "Lịch sử đăng nhập",
       "auditLogs": "Nhật ký thao tác",
-      "invitations": "Lời mời",
-      "accountRequests": "Yêu cầu cấp tài khoản"
+      "invitations": "Lời mời"
     },
     "users": {
       "heading": "Người dùng",
@@ -161,7 +167,6 @@
       "searchPlaceholder": "Tên, mã, email, lớp…",
       "filters_zero": "Lọc",
       "filters_other": "Lọc ({{count}})",
-      "filtersTitle": "Lọc Người dùng",
       "filterStatus": "Trạng thái",
       "statusNotRemoved": "Chưa bị xóa",
       "filterRoleTag": "Nhãn vai trò",
@@ -390,7 +395,7 @@
     "reviewNote": "Ghi chú của Quản trị viên",
     "parsingHint": "Hệ thống đang đọc file. Trang tự cập nhật.",
     "filterRows": "Lọc dòng",
-    "allRows": "Tất cả ({{count}})",
+    "allRows": "Tất cả",
     "row": "Dòng {{n}}",
     "itemsEmpty": "Không có dòng nào.",
     "matchedAccount": "Tài khoản có sẵn",
@@ -412,7 +417,8 @@
     "rejectSelected": "Từ chối dòng đã chọn ({{count}})",
     "selectRow": "Chọn dòng {{n}}",
     "selectHint": "Dòng \"khớp nhưng khác họ tên\" chỉ được duyệt khi bạn chọn riêng: hãy kiểm tra đúng là người đó.",
-    "approvingHint": "Đang tạo tài khoản. Trang tự cập nhật."
+    "approvingHint": "Đang tạo tài khoản. Trang tự cập nhật.",
+    "createdAccount": "Tài khoản đã tạo"
   },
   "notification": {
     "account_request.submitted": "{{requesterName}} gửi yêu cầu cấp tài khoản ({{rowCount}} dòng).",
@@ -444,5 +450,19 @@
       "expired": "Hết hạn"
     },
     "hint": "Phiếu chứa mật khẩu tạm: chỉ phát cho đúng người, không lưu hay chuyển tiếp."
+  },
+  "filter": {
+    "open": "Lọc ({{count}})",
+    "title": "Bộ lọc"
+  },
+  "toast": {
+    "unitCreated": "Đã thêm Đơn vị",
+    "unitSaved": "Đã lưu Đơn vị",
+    "profileSaved": "Đã lưu thông tin",
+    "examinerProfileSaved": "Đã lưu hồ sơ Người ra đề",
+    "requestRejected": "Đã từ chối yêu cầu",
+    "approvalStarted": "Đang tạo tài khoản…",
+    "invitationRevoked": "Đã thu hồi Lời mời",
+    "roleTagSaved": "Đã cập nhật Nhãn vai trò"
   }
 }

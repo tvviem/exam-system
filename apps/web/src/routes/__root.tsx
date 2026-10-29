@@ -1,10 +1,13 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
+import { ToastProvider } from '../lib/ui/toast';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: () => (
-    <div className="min-h-dvh">
-      <Outlet />
-    </div>
+    <ToastProvider>
+      <div className="min-h-dvh">
+        <Outlet />
+      </div>
+    </ToastProvider>
   ),
 });
