@@ -52,7 +52,7 @@ Trạng thái: **Đạt** · **Một phần** · **Chưa**. Mã quy tắc theo s
 
 | Chức năng (lát cắt) | Yêu cầu giao diện | Khung hiện tại | Khung đề xuất |
 |---|---|---|---|
-| Ngân hàng câu hỏi: cây Chủ đề, danh sách Câu hỏi, lọc, thao tác hàng loạt (2) | Chia đôi (cây Chủ đề bên trái, danh sách bên phải) trên laptop; trên điện thoại cây thành ngăn kéo; chọn nhiều + thanh hành động | Không đáp ứng: không có thanh bên, không có thanh hành động | Mẫu **Danh sách có bộ lọc** + ngăn bên (Q108) |
+| Ngân hàng câu hỏi: danh sách Chủ đề (phẳng, theo GLOSSARY), danh sách Câu hỏi, lọc, thao tác hàng loạt (2) | Chia đôi (Chủ đề bên trái, danh sách bên phải) trên laptop; trên điện thoại Chủ đề thành bộ lọc dạng chip; chọn nhiều + thanh hành động | Không đáp ứng: không có thanh bên, không có thanh hành động | Mẫu **Danh sách có bộ lọc** + ngăn bên (Q108) |
 | Trình soạn câu hỏi: 4 loại, soạn công thức, ảnh (2) | 2 cột soạn / xem trước thật trên laptop; điện thoại hai tab "Soạn" và "Xem trước", thanh công cụ dính; tự lưu có trạng thái | Chưa có mẫu | Mẫu **Soạn** (mục 10), vùng nội dung rộng (Q107) |
 | Nhập câu hỏi từ Excel (2) | Tải lên → xem trước từng dòng lỗi → xác nhận | Đã có mẫu tương tự ở Yêu cầu cấp tài khoản | Dùng lại mẫu đó (bảng dòng + chip số liệu + thanh duyệt) |
 | Dựng Bộ đề: Phần, kéo thả, chọn câu, đặt điểm nhanh, Xem thử, Phát hành (3) | Kéo thả có thay thế bằng nút ↑↓ cho bàn phím và điện thoại; chọn câu trong ngăn bên; bảng điểm sửa tại chỗ | Chưa có mẫu | Mẫu **Soạn** + ngăn bên; Xem thử dùng chính khu làm bài |
