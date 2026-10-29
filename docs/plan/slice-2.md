@@ -131,7 +131,7 @@ Quản trị viên chọn một người ra đề, chọn một hoặc nhiều C
 
 Nếu người đó còn Chủ đề, API từ chối với `HAS_CONTENT` kèm danh sách Chủ đề. Hộp thoại Xóa người dùng cho **chọn người nhận ngay trong một bước**: hệ thống Chuyển giao toàn bộ rồi mới Xóa, trong cùng một giao dịch. Tài khoản không còn nội dung thì Xóa như hiện nay.
 
-## Test (seam đề xuất)
+## Test (seam đã duyệt)
 
 1. **Unit (không DB):**
    - Schema nội dung: JSON hợp lệ, node và thuộc tính lạ bị loại, vượt giới hạn ký tự.
