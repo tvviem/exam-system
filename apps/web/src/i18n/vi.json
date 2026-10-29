@@ -54,7 +54,7 @@
     "UNKNOWN": "Có lỗi xảy ra. Hãy thử lại.",
     "FORBIDDEN": "Bạn không có quyền thực hiện thao tác này.",
     "CANNOT_TARGET_SELF": "Không thể thực hiện thao tác này với chính tài khoản của bạn.",
-    "INVALID_STATE": "Trạng thái của Người dùng không cho phép thao tác này. Hãy tải lại trang.",
+    "INVALID_STATE": "Trạng thái hiện tại không cho phép thao tác này. Hãy tải lại trang.",
     "NOT_FOUND": "Không tìm thấy dữ liệu.",
     "VALIDATION_FAILED": "Dữ liệu chưa hợp lệ. Hãy kiểm tra lại.",
     "CONFLICT": "Giá trị này đã được dùng.",
@@ -70,7 +70,11 @@
     "CONFLICT_email_invitation": "Email này đã có Lời mời còn hạn. Hãy dùng \"Tạo lại link\" trong danh sách.",
     "VALIDATION_required": "Hãy chọn một file.",
     "VALIDATION_unsupported_file": "File không đọc được. Chỉ nhận file .xlsx hoặc .csv (UTF-8), hãy dùng file mẫu.",
-    "VALIDATION_file_too_large": "File quá lớn. Tối đa 2 MB."
+    "VALIDATION_file_too_large": "File quá lớn. Tối đa 2 MB.",
+    "SLIP_EXPIRED": "Phiếu tài khoản đã hết hạn tải (quá 7 ngày). Hãy dùng \"Cấp lại mật khẩu tạm\" ở trang Người dùng.",
+    "VALIDATION_item_not_approvable": "Có dòng không duyệt được (đã xử lý, bị chặn hoặc không thuộc yêu cầu). Hãy tải lại trang.",
+    "VALIDATION_item_not_rejectable": "Có dòng không từ chối được (đã xử lý hoặc không thuộc yêu cầu). Hãy tải lại trang.",
+    "VALIDATION_nothing_selected": "Chưa có dòng nào để duyệt."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -395,14 +399,20 @@
     "rejectIntro": "Mọi dòng đang chờ sẽ bị từ chối và người gửi được báo.",
     "rejectNote": "Lý do (không bắt buộc)",
     "rejectConfirm": "Từ chối",
-    "approveSoon": "Việc duyệt và tạo tài khoản chưa có trong bản này.",
     "columns": {
       "row": "Dòng",
       "fullName": "Họ tên",
       "identity": "Mã · Email",
       "classLabel": "Lớp",
-      "match": "Kết quả kiểm tra"
-    }
+      "match": "Kết quả kiểm tra",
+      "select": "Chọn"
+    },
+    "approveValid": "Duyệt các dòng hợp lệ ({{count}})",
+    "approveSelected": "Duyệt dòng đã chọn ({{count}})",
+    "rejectSelected": "Từ chối dòng đã chọn ({{count}})",
+    "selectRow": "Chọn dòng {{n}}",
+    "selectHint": "Dòng \"khớp nhưng khác họ tên\" chỉ được duyệt khi bạn chọn riêng: hãy kiểm tra đúng là người đó.",
+    "approvingHint": "Đang tạo tài khoản. Trang tự cập nhật."
   },
   "notification": {
     "account_request.submitted": "{{requesterName}} gửi yêu cầu cấp tài khoản ({{rowCount}} dòng).",
@@ -413,6 +423,26 @@
     "markAllRead": "Đánh dấu tất cả đã đọc",
     "bell": "Thông báo ({{count}} chưa đọc)",
     "bellNone": "Thông báo",
-    "unread": "Chưa đọc"
+    "unread": "Chưa đọc",
+    "account_request.reviewed_approved": "Yêu cầu cấp tài khoản của bạn đã được duyệt.",
+    "account_request.reviewed_partially_approved": "Yêu cầu cấp tài khoản của bạn đã được duyệt một phần.",
+    "credential_slip.ready_ready": "Phiếu tài khoản đã sẵn sàng để tải.",
+    "credential_slip.ready_failed": "Không dựng được Phiếu tài khoản. Hãy cấp lại mật khẩu tạm.",
+    "account_request.approve_interrupted": "Việc duyệt yêu cầu bị gián đoạn. Hãy mở yêu cầu và duyệt lại các dòng còn chờ."
+  },
+  "credentialSlips": {
+    "heading": "Phiếu tài khoản",
+    "item": "{{count}} tài khoản · tạo lúc {{time}}",
+    "expires": "Tải được đến {{time}}",
+    "expired": "Đã hết hạn tải. Dùng \"Cấp lại mật khẩu tạm\" ở trang Người dùng nếu cần.",
+    "failed": "Không dựng được phiếu. Tài khoản đã được tạo: hãy dùng \"Cấp lại mật khẩu tạm\" ở trang Người dùng.",
+    "downloadPdf": "Tải PDF (in phát)",
+    "downloadXlsx": "Tải Excel (tra cứu)",
+    "status": {
+      "ready": "Sẵn sàng",
+      "failed": "Lỗi",
+      "expired": "Hết hạn"
+    },
+    "hint": "Phiếu chứa mật khẩu tạm: chỉ phát cho đúng người, không lưu hay chuyển tiếp."
   }
 }

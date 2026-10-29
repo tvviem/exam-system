@@ -6,6 +6,8 @@ import {
   Ban,
   CircleCheck,
   CircleX,
+  FileDown,
+  FileSpreadsheet,
   Hourglass,
   UserRoundCheck,
   UserRoundPlus,
@@ -16,15 +18,19 @@ import {
   type AccountRequestItem,
   type AccountRequestItemParams,
   type AccountRequestStatus,
+  type ApprovalSelection,
   accountRequestItemsQuery,
   accountRequestQuery,
+  approveAccountRequest,
+  credentialSlipsQuery,
   MATCH_STATUSES,
   type MatchStatus,
   rejectAccountRequest,
+  slipUrl,
 } from '../account-requests';
 import { errorMessage } from '../errors';
 import { formatDate, formatDateTime } from '../format';
-import { Badge, Button, Dialog, ErrorMessage } from '.';
+import { Badge, Button, buttonClass, Dialog, ErrorMessage } from '.';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
 
 const statusTone = {
@@ -97,7 +103,20 @@ export function AccountRequestView({
   const { t } = useTranslation();
   const request = useQuery(accountRequestQuery(id));
   const [rejecting, setRejecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const data = request.data;
+  const reviewable = admin && data?.status === 'pending';
+  const selection = reviewable
+    ? {
+        selected,
+        toggle: (itemId: string) =>
+          setSelected((current) => {
+            const next = new Set(current);
+            if (!next.delete(itemId)) next.add(itemId);
+            return next;
+          }),
+      }
+    : undefined;
   const { matchStatus } = filter;
   const items = useQuery({
     ...accountRequestItemsQuery(id, filter, data?.status),
@@ -171,14 +190,26 @@ export function AccountRequestView({
             </p>
           )}
 
-          {admin && request.data.status === 'pending' && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Button variant="danger-ghost" onClick={() => setRejecting(true)}>
-                {t('accountRequests.reject')}
-              </Button>
-              <p className="text-sm text-fg-muted">{t('accountRequests.approveSoon')}</p>
-            </div>
+          {request.data.status === 'approving' && (
+            <p
+              role="status"
+              className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-on-primary-soft"
+            >
+              {t('accountRequests.approvingHint')}
+            </p>
           )}
+
+          {reviewable && (
+            <ReviewBar
+              id={id}
+              pendingValid={request.data.pendingValid}
+              selected={selected}
+              onDone={() => setSelected(new Set())}
+              onReject={() => setRejecting(true)}
+            />
+          )}
+
+          <SlipsSection requestId={id} status={request.data.status} />
 
           {data && data.status !== 'parsing' && data.status !== 'parse_failed' && (
             <>
@@ -208,8 +239,8 @@ export function AccountRequestView({
                 <EmptyState>{t('accountRequests.itemsEmpty')}</EmptyState>
               ) : (
                 <>
-                  <ItemCards items={items.data.items} admin={admin} />
-                  <ItemTable items={items.data.items} admin={admin} />
+                  <ItemCards items={items.data.items} admin={admin} selection={selection} />
+                  <ItemTable items={items.data.items} admin={admin} selection={selection} />
                   <Pagination
                     page={items.data.page}
                     pageSize={items.data.pageSize}
@@ -285,13 +316,48 @@ function MatchedUser({ item, admin }: { item: AccountRequestItem; admin: boolean
   );
 }
 
-function ItemCards({ items, admin }: { items: AccountRequestItem[]; admin: boolean }) {
+interface ItemListProps {
+  items: AccountRequestItem[];
+  admin: boolean;
+  /** Có khi Quản trị viên đang duyệt: cho chọn từng dòng. */
+  selection?: { selected: Set<string>; toggle: (id: string) => void };
+}
+
+/** Ô chọn dòng; chỉ dòng còn chờ và không bị chặn mới chọn được. */
+function RowCheckbox({
+  item,
+  selection,
+}: {
+  item: AccountRequestItem;
+  selection: ItemListProps['selection'];
+}) {
+  const { t } = useTranslation();
+  if (!selection || item.outcome !== 'pending' || item.matchStatus === 'blocked') return null;
+  return (
+    <label className="-m-2 inline-flex size-12 cursor-pointer items-center justify-center">
+      <input
+        type="checkbox"
+        className="size-5 accent-primary"
+        aria-label={t('accountRequests.selectRow', { n: item.rowNumber })}
+        checked={selection.selected.has(item.id)}
+        onChange={() => selection.toggle(item.id)}
+      />
+    </label>
+  );
+}
+
+function ItemCards({ items, admin, selection }: ItemListProps) {
   const { t } = useTranslation();
   return (
     <ul className="flex flex-col gap-3 md:hidden">
       {items.map((item) => (
         <li key={item.id} className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-sm text-fg-muted">{t('accountRequests.row', { n: item.rowNumber })}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-fg-muted">
+              {t('accountRequests.row', { n: item.rowNumber })}
+            </p>
+            <RowCheckbox item={item} selection={selection} />
+          </div>
           <p className="font-medium">{item.fullName ?? '—'}</p>
           <p className="text-sm text-fg-muted">
             {identityOf(item)}
@@ -310,13 +376,18 @@ function ItemCards({ items, admin }: { items: AccountRequestItem[]; admin: boole
   );
 }
 
-function ItemTable({ items, admin }: { items: AccountRequestItem[]; admin: boolean }) {
+function ItemTable({ items, admin, selection }: ItemListProps) {
   const { t } = useTranslation();
   return (
     <div className="hidden overflow-hidden rounded-xl border border-border bg-surface md:block">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-border text-fg-muted">
           <tr>
+            {selection && (
+              <th className="w-12 px-2 py-3">
+                <span className="sr-only">{t('accountRequests.columns.select')}</span>
+              </th>
+            )}
             <th className="px-4 py-3 font-medium">{t('accountRequests.columns.row')}</th>
             <th className="px-4 py-3 font-medium">{t('accountRequests.columns.fullName')}</th>
             <th className="px-4 py-3 font-medium">{t('accountRequests.columns.identity')}</th>
@@ -327,6 +398,11 @@ function ItemTable({ items, admin }: { items: AccountRequestItem[]; admin: boole
         <tbody>
           {items.map((item) => (
             <tr key={item.id} className="border-b border-border align-top last:border-0">
+              {selection && (
+                <td className="px-2 py-1">
+                  <RowCheckbox item={item} selection={selection} />
+                </td>
+              )}
               <td className="px-4 py-3 tabular-nums text-fg-muted">{item.rowNumber}</td>
               <td className="px-4 py-3 font-medium">{item.fullName ?? '—'}</td>
               <td className="px-4 py-3 text-fg-muted">{identityOf(item)}</td>
@@ -380,5 +456,121 @@ function RejectDialog({ id, onClose }: { id: string; onClose: () => void }) {
         <Button onClick={onClose}>{t('common.cancel')}</Button>
       </div>
     </Dialog>
+  );
+}
+
+/** Thanh duyệt: duyệt cả lô hợp lệ, hoặc duyệt / từ chối các dòng đã chọn (Q91). */
+function ReviewBar({
+  id,
+  pendingValid,
+  selected,
+  onDone,
+  onReject,
+}: {
+  id: string;
+  pendingValid: number;
+  selected: Set<string>;
+  onDone: () => void;
+  onReject: () => void;
+}) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (selection: ApprovalSelection) => approveAccountRequest(id, selection),
+    onSuccess: async () => {
+      onDone();
+      await queryClient.invalidateQueries({ queryKey: ['account-requests'] });
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+  const chosen = [...selected];
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <Button
+          variant="primary"
+          disabled={pendingValid === 0 || mutation.isPending}
+          onClick={() => mutation.mutate({ allValid: true })}
+        >
+          {t('accountRequests.approveValid', { count: pendingValid })}
+        </Button>
+        {chosen.length > 0 && (
+          <>
+            <Button
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate({ approveItemIds: chosen })}
+            >
+              {t('accountRequests.approveSelected', { count: chosen.length })}
+            </Button>
+            <Button
+              variant="danger-ghost"
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate({ rejectItemIds: chosen })}
+            >
+              {t('accountRequests.rejectSelected', { count: chosen.length })}
+            </Button>
+          </>
+        )}
+        <Button variant="danger-ghost" className="sm:ml-auto" onClick={onReject}>
+          {t('accountRequests.reject')}
+        </Button>
+      </div>
+      <p className="text-sm text-fg-muted">{t('accountRequests.selectHint')}</p>
+      <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
+    </div>
+  );
+}
+
+/** Các Phiếu tài khoản của yêu cầu; hết 7 ngày thì không tải được nữa (Q94). */
+function SlipsSection({ requestId, status }: { requestId: string; status: AccountRequestStatus }) {
+  const { t } = useTranslation();
+  const slips = useQuery({
+    ...credentialSlipsQuery(requestId, status),
+    enabled: status !== 'parsing' && status !== 'parse_failed',
+  });
+  if (!slips.data || slips.data.length === 0) return null;
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+      <h2 className="text-lg font-semibold">{t('credentialSlips.heading')}</h2>
+      <p className="text-sm text-fg-muted">{t('credentialSlips.hint')}</p>
+      <ul className="flex flex-col gap-3">
+        {slips.data.map((slip) => (
+          <li key={slip.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <p className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">
+                {t('credentialSlips.item', {
+                  count: slip.itemCount,
+                  time: formatDateTime(slip.createdAt),
+                })}
+              </span>
+              <Badge tone={slip.status === 'ready' ? 'success' : 'warning'}>
+                {t(`credentialSlips.status.${slip.status}`)}
+              </Badge>
+            </p>
+            {slip.status === 'ready' && (
+              <>
+                <p className="text-sm text-fg-muted tabular-nums">
+                  {t('credentialSlips.expires', { time: formatDateTime(slip.expiresAt) })}
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <a href={slipUrl(slip.id, 'pdf')} download className={buttonClass('primary')}>
+                    <FileDown aria-hidden className="size-5" />
+                    {t('credentialSlips.downloadPdf')}
+                  </a>
+                  <a href={slipUrl(slip.id, 'xlsx')} download className={buttonClass('secondary')}>
+                    <FileSpreadsheet aria-hidden className="size-5" />
+                    {t('credentialSlips.downloadXlsx')}
+                  </a>
+                </div>
+              </>
+            )}
+            {slip.status === 'expired' && (
+              <p className="text-sm text-fg-muted">{t('credentialSlips.expired')}</p>
+            )}
+            {slip.status === 'failed' && <ErrorMessage>{t('credentialSlips.failed')}</ErrorMessage>}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

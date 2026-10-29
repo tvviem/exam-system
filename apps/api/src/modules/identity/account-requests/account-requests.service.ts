@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 import type { Actor } from '../../../common/actor';
@@ -15,6 +15,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { accountRequestItems, accountRequests, users } from '../identity.schema';
 import { MAX_UPLOAD_BYTES, sniffUpload } from './account-request-file';
+import { settleRequest } from './account-request-settle';
 
 export type AccountRequestStatus = (typeof accountRequests.$inferSelect)['status'];
 export type MatchStatusValue = (typeof accountRequestItems.$inferSelect)['matchStatus'];
@@ -33,6 +34,14 @@ const scopeOf = (user: AuthenticatedUser) => (user.isAdmin ? undefined : user.id
 
 /** Lý do chặn nói rõ tài khoản khớp là loại nào (Quản trị viên, đã Xóa...) chỉ dành cho Quản trị viên. */
 const ADMIN_ONLY_NOTES = new Set(['matches_admin', 'matches_removed_user', 'code_email_conflict']);
+
+export interface ApprovalSelection {
+  /** Duyệt mọi dòng chờ duyệt có `match_status` là `new` hoặc `exact`. */
+  allValid?: boolean;
+  /** Duyệt thêm các dòng này (dùng cho dòng `name_mismatch`: "đúng là người này"). */
+  approveItemIds?: string[];
+  rejectItemIds?: string[];
+}
 
 @Injectable()
 export class AccountRequestsService {
@@ -64,6 +73,8 @@ export class AccountRequestsService {
           originalFilename,
           uploadKey,
           status: 'parsing',
+          // Giờ theo Clock (không phải giờ DB) để job dọn dẹp tính hạn 15 phút cho đúng.
+          createdAt: this.clock.now(),
         });
         await this.audit.record(
           {
@@ -165,7 +176,19 @@ export class AccountRequestsService {
       .groupBy(accountRequestItems.matchStatus);
     const counts = { new: 0, exact: 0, name_mismatch: 0, blocked: 0 };
     for (const { matchStatus, total } of grouped) counts[matchStatus] = total;
-    return { ...request, counts };
+
+    // Số dòng "duyệt cả lô" sẽ duyệt: còn chờ và là người mới hoặc khớp đúng tài khoản có sẵn.
+    const [valid] = await this.db
+      .select({ total: count() })
+      .from(accountRequestItems)
+      .where(
+        and(
+          eq(accountRequestItems.requestId, id),
+          eq(accountRequestItems.outcome, 'pending'),
+          inArray(accountRequestItems.matchStatus, ['new', 'exact']),
+        ),
+      );
+    return { ...request, counts, pendingValid: valid?.total ?? 0 };
   }
 
   async items(
@@ -223,6 +246,109 @@ export class AccountRequestsService {
           user.isAdmin && matchedUserId ? { id: matchedUserId, fullName: matchedUserName } : null,
       })),
     };
+  }
+
+  /**
+   * Quản trị viên duyệt một đợt (Q91): từ chối các dòng chọn từ chối ngay, còn các dòng duyệt thì chuyển sang
+   * `approving` và giao worker tạo tài khoản. Chỉ từ chối thì xong luôn, không cần worker.
+   */
+  async approve(actor: Actor, id: string, selection: ApprovalSelection) {
+    const plan = await this.db.transaction(async (tx) => {
+      const [request] = await tx
+        .select()
+        .from(accountRequests)
+        .where(eq(accountRequests.id, id))
+        .for('update');
+      if (!request) throw new ApiError('NOT_FOUND');
+      if (request.status !== 'pending') throw new ApiError('INVALID_STATE');
+
+      const pending = await tx
+        .select({ id: accountRequestItems.id, matchStatus: accountRequestItems.matchStatus })
+        .from(accountRequestItems)
+        .where(
+          and(eq(accountRequestItems.requestId, id), eq(accountRequestItems.outcome, 'pending')),
+        );
+      const byId = new Map(pending.map((item) => [item.id, item]));
+
+      const approve = new Set<string>();
+      if (selection.allValid) {
+        for (const item of pending) {
+          if (item.matchStatus === 'new' || item.matchStatus === 'exact') approve.add(item.id);
+        }
+      }
+      for (const itemId of selection.approveItemIds ?? []) {
+        const item = byId.get(itemId);
+        if (!item || item.matchStatus === 'blocked') {
+          throw validationFailed('approveItemIds', 'item_not_approvable');
+        }
+        approve.add(itemId);
+      }
+      const reject = new Set(selection.rejectItemIds ?? []);
+      for (const itemId of reject) {
+        if (!byId.has(itemId) || approve.has(itemId)) {
+          throw validationFailed('rejectItemIds', 'item_not_rejectable');
+        }
+      }
+      if (approve.size === 0 && reject.size === 0) {
+        throw validationFailed('approveItemIds', 'nothing_selected');
+      }
+
+      if (reject.size > 0) {
+        await tx
+          .update(accountRequestItems)
+          .set({ outcome: 'rejected', outcomeNote: 'rejected_by_admin' })
+          .where(inArray(accountRequestItems.id, [...reject]));
+      }
+      if (approve.size > 0) {
+        await tx
+          .update(accountRequests)
+          .set({ status: 'approving' })
+          .where(eq(accountRequests.id, id));
+      } else {
+        const status = await settleRequest(tx, id, actor.id, this.clock.now());
+        await this.audit.record(
+          {
+            actor,
+            action: 'account-request.approve',
+            entityType: 'account_request',
+            entityId: id,
+            after: { approved: 0, created: 0, tagAdded: 0, skipped: 0, rejected: reject.size },
+          },
+          tx,
+        );
+        if (status !== 'pending') {
+          await this.notifications.notify(
+            {
+              userIds: [request.requestedBy],
+              type: 'account_request.reviewed',
+              data: { requestId: id, status },
+            },
+            tx,
+          );
+        }
+      }
+      return { itemIds: [...approve], rejectedCount: reject.size };
+    });
+
+    if (plan.itemIds.length > 0) {
+      try {
+        await this.queue.enqueue('account-request.approve', {
+          requestId: id,
+          itemIds: plan.itemIds,
+          reviewerId: actor.id,
+          reviewerIp: actor.ip,
+          rejectedCount: plan.rejectedCount,
+        });
+      } catch (error) {
+        // Không xếp được job: đưa yêu cầu về "chờ duyệt" để Quản trị viên bấm lại, đừng để kẹt ở "đang tạo".
+        await this.db
+          .update(accountRequests)
+          .set({ status: 'pending' })
+          .where(and(eq(accountRequests.id, id), eq(accountRequests.status, 'approving')));
+        throw error;
+      }
+    }
+    return this.loadDetail(id);
   }
 
   /** Quản trị viên Từ chối cả yêu cầu đang chờ duyệt. */

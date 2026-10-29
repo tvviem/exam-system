@@ -228,3 +228,30 @@ export const accountRequestItems = pgTable(
   },
   (t) => [index('account_request_items_request_idx').on(t.requestId, t.rowNumber)],
 );
+
+export const credentialSlipStatusEnum = pgEnum('credential_slip_status', [
+  'ready',
+  'failed',
+  'expired',
+]);
+
+/** Phiếu tài khoản của một đợt duyệt (Q93). File PDF/Excel nằm trong MediaStore, đã mã hóa AES-256-GCM. */
+export const credentialSlips = pgTable(
+  'credential_slips',
+  {
+    id: idColumn(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => accountRequests.id),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    itemCount: integer('item_count').notNull(),
+    status: credentialSlipStatusEnum('status').notNull(),
+    pdfKey: text('pdf_key'),
+    xlsxKey: text('xlsx_key'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (t) => [index('credential_slips_request_idx').on(t.requestId)],
+);

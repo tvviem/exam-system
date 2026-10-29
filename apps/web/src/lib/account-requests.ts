@@ -50,6 +50,8 @@ export interface AccountRequestDetail {
   reviewNote: string | null;
   reviewedByName: string | null;
   counts: Record<MatchStatus, number>;
+  /** Số dòng sẽ được duyệt bởi "duyệt các dòng hợp lệ". */
+  pendingValid: number;
 }
 
 export interface AccountRequestItem {
@@ -96,7 +98,8 @@ export const accountRequestQuery = (id: string) =>
   queryOptions({
     queryKey: ['account-requests', 'detail', id],
     queryFn: () => apiFetch<AccountRequestDetail>(`/account-requests/${id}`),
-    refetchInterval: (query) => (query.state.data?.status === 'parsing' ? 2000 : false),
+    refetchInterval: (query) =>
+      ['parsing', 'approving'].includes(query.state.data?.status ?? '') ? 2000 : false,
   });
 
 export interface AccountRequestItemParams {
@@ -137,3 +140,33 @@ export const rejectAccountRequest = (id: string, note: string) =>
   });
 
 export const TEMPLATE_URL = '/api/account-requests/template';
+
+export interface ApprovalSelection {
+  allValid?: boolean;
+  approveItemIds?: string[];
+  rejectItemIds?: string[];
+}
+
+export const approveAccountRequest = (id: string, selection: ApprovalSelection) =>
+  apiFetch<AccountRequestDetail>(`/account-requests/${id}/approve`, {
+    method: 'POST',
+    body: selection,
+  });
+
+export interface CredentialSlip {
+  id: string;
+  status: 'ready' | 'failed' | 'expired';
+  itemCount: number;
+  createdAt: string;
+  expiresAt: string;
+}
+
+/** `refreshKey` (trạng thái yêu cầu) đổi thì tải lại, ví dụ khi worker vừa dựng xong phiếu. */
+export const credentialSlipsQuery = (requestId: string, refreshKey?: string) =>
+  queryOptions({
+    queryKey: ['account-requests', 'slips', requestId, refreshKey],
+    queryFn: () => apiFetch<CredentialSlip[]>(`/account-requests/${requestId}/slips`),
+  });
+
+export const slipUrl = (slipId: string, format: 'pdf' | 'xlsx') =>
+  `/api/credential-slips/${slipId}/${format}`;

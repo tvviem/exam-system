@@ -69,6 +69,14 @@ account_request_items (
   outcome_note                            -- mã lỗi của dòng (blocked) hoặc lý do bỏ qua
 )
 
+credential_slips (                        -- Phiếu tài khoản của một đợt duyệt (PR 1e)
+  id, request_id → account_requests, created_by → users (admin), item_count int,
+  status enum('ready','failed','expired'),   -- `failed`: dựng PDF lỗi, tài khoản vẫn được tạo (dùng "Cấp lại mật khẩu tạm")
+  pdf_key text NULL, xlsx_key text NULL,     -- khóa trong MediaStore; file đã mã hóa AES-256-GCM, NULL khi hết hạn
+  expires_at timestamptz,                    -- = hạn của mật khẩu tạm (7 ngày kể từ lúc duyệt)
+  created_at
+)
+
 examiner_profiles (                       -- thông tin riêng của Người ra đề
   user_id PK → users,
   academic_degree enum('bachelor','engineer','master','doctor','doctor_of_science'), -- học vị
@@ -103,7 +111,7 @@ Quy tắc ràng buộc ở tầng service:
 - **Lời mời:** Quản trị viên tạo Lời mời (họ tên, email, Đơn vị) → hệ thống hiển thị link một lần, Quản trị viên tự gửi cho người được mời (giai đoạn 1 không gửi email) → người nhận mở link (dùng một lần, hết hạn sau 7 ngày), chọn học vị, học hàm và đặt mật khẩu → tạo `users`, gắn nhãn `examiner` và `examiner_profiles`. Nếu email đã có tài khoản thì người nhận phải đăng nhập bằng tài khoản đó, rồi chỉ được thêm nhãn. Không được tạo Lời mời tới email của một tài khoản Quản trị viên.
 - **Yêu cầu cấp tài khoản:** Người ra đề tải lên Excel/CSV → hệ thống kiểm tra trùng theo `code`/`email` → Quản trị viên duyệt từng dòng hoặc cả lô. Người đã có tài khoản thì chỉ được thêm nhãn `candidate` (`tag_added`), người chưa có thì tạo tài khoản mới (`created`) kèm mật khẩu tạm ngẫu nhiên và Phiếu tài khoản. Giai đoạn 1 không gửi email; Phiếu tài khoản là kênh duy nhất giao mật khẩu.
 - **Kiểm tra trùng khi đọc file:** xét `code` trước, rồi đến `email`. `exact`: khớp mã và họ tên, đề xuất `tag_added`. `name_mismatch`: khớp mã hoặc email nhưng khác họ tên, Quản trị viên tự quyết. `blocked`: khớp tài khoản Quản trị viên hoặc người đã bị Xóa, luôn `rejected`.
-- **Phiếu tài khoản:** PDF A4, 8 phiếu mỗi trang, gồm họ tên, Mã định danh, Lớp, tên đăng nhập, mật khẩu tạm và mã QR mở trang đăng nhập; kèm file Excel danh sách không có mật khẩu. File PDF được mã hóa AES-256-GCM (khóa trong env file), lưu sau `MediaStore` và tự xóa sau 7 ngày. Quản trị viên và Người ra đề gửi yêu cầu tải được trong 7 ngày đó, mỗi lần tải ghi `audit_logs`. Mật khẩu dạng rõ không bao giờ được ghi vào PostgreSQL hay vào log.
+- **Phiếu tài khoản:** PDF A4, 8 phiếu mỗi trang, gồm họ tên, Mã định danh, Lớp, tên đăng nhập, mật khẩu tạm và mã QR mở trang đăng nhập; kèm file Excel danh sách không có mật khẩu. Cả file PDF lẫn Excel được mã hóa AES-256-GCM (khóa `SLIP_ENCRYPTION_KEY` trong env file), lưu sau `MediaStore` và tự xóa sau 7 ngày. Thông tin từng phiếu cũng được mã hóa và ghi ngay lúc tạo tài khoản để job chết giữa chừng vẫn dựng lại được phiếu, rồi xóa sau khi phiếu đã lưu. Quản trị viên và Người ra đề gửi yêu cầu tải được trong 7 ngày đó, mỗi lần tải ghi `audit_logs`. Mật khẩu dạng rõ không bao giờ được ghi vào PostgreSQL hay vào log.
 - **Quản trị viên:** có thể có nhiều người. Lệnh `pnpm cli recover-admin --username <tên>` trên máy chủ khôi phục một tài khoản Quản trị viên chưa bị Xóa: mở Khóa đăng nhập, gỡ khóa tạm, cấp mật khẩu tạm mới (in ra một lần, hạn 7 ngày) và thu hồi mọi Phiên đăng nhập. Lệnh không biến tài khoản khác thành Quản trị viên, vì tài khoản Quản trị viên được tách riêng.
 - **Chuyển giao Chủ đề:** đổi `topics.owner_id` và `questions.owner_id`, kèm các Bộ đề **nháp** đang dùng câu của Chủ đề đó, trong cùng một giao dịch, rồi ghi `audit_logs`.
 - **Xóa người dùng là Người ra đề:** bắt buộc chọn người nhận cho mọi Chủ đề, Bộ đề và Phiên thi chưa Chốt của người đó.
