@@ -46,3 +46,46 @@ export async function login(
   const res = await call(app, 'POST', '/api/auth/login', { body: { identifier, password }, ip });
   return { res, cookie: sessionCookieOf(res) };
 }
+
+export interface UploadFile {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
+/** Gửi multipart/form-data: một file (trường `file`) và các trường chữ. */
+export async function upload(
+  app: NestFastifyApplication,
+  url: string,
+  file: UploadFile,
+  options: { cookie?: string; fields?: Record<string, string> } = {},
+) {
+  const boundary = `----exam-test-${Math.random().toString(16).slice(2)}`;
+  const parts: Buffer[] = [];
+  for (const [name, value] of Object.entries(options.fields ?? {})) {
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+      ),
+    );
+  }
+  parts.push(
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${file.filename}"\r\n` +
+        `Content-Type: ${file.contentType ?? 'application/octet-stream'}\r\n\r\n`,
+    ),
+    file.content,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  );
+  return app.inject({
+    method: 'POST',
+    url,
+    headers: {
+      origin: ORIGIN,
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+      ...(options.cookie ? { cookie: `${AUTH_SESSION_COOKIE}=${options.cookie}` } : {}),
+    },
+    remoteAddress: '10.0.0.1',
+    payload: Buffer.concat(parts),
+  });
+}

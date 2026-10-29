@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import { Redis } from 'ioredis';
 import { Client } from 'pg';
 
@@ -17,6 +18,7 @@ export async function resetState(): Promise<void> {
   } finally {
     await pg.end();
   }
+  await rm(process.env.MEDIA_DIR as string, { recursive: true, force: true });
   const redis = new Redis(process.env.REDIS_URL as string);
   await redis.flushdb();
   await redis.quit();

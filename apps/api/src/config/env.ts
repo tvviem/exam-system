@@ -7,6 +7,8 @@ const envSchema = z.object({
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
   APP_VERSION: z.string().default('dev'),
+  // Thư mục lưu file (MediaStore): file tải lên tạm, Phiếu tài khoản. Trên production là volume.
+  MEDIA_DIR: z.string().default('./media-data'),
   // Origin được phép gửi request đổi dữ liệu (chống CSRF), cách nhau bằng dấu phẩy.
   APP_ORIGINS: z
     .string()

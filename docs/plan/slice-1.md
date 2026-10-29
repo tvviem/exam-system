@@ -10,11 +10,12 @@ Sau lát cắt 1:
 - Người ra đề gửi được Yêu cầu cấp tài khoản từ file Excel.
 - Quản trị viên duyệt yêu cầu và xuất Phiếu tài khoản cho Người dự thi.
 
-Lát cắt chia thành 4 PR. Merge xong PR nào thì hệ thống chạy được tới đó.
+Lát cắt chia thành 5 PR (PR 1d tách thành 1d và 1e, Q99). Merge xong PR nào thì hệ thống chạy được tới đó.
 
 ```text
 1a đăng nhập ──► 1b quản lý Người dùng + nhật ký ──► 1c Lời mời
-                                     └──────────────► 1d Yêu cầu cấp tài khoản (worker đầu tiên)
+                                     └──────────────► 1d Gửi/xem Yêu cầu cấp tài khoản (worker đầu tiên)
+                                                          └──► 1e Duyệt + Phiếu tài khoản
 ```
 
 ## Thiết kế chung
@@ -227,7 +228,7 @@ Xuất Phiếu tài khoản (job "credential-slip.export") ─► PDF A4, 8 phi�
 - Integration: luồng duyệt có dòng `created`, `tag_added`, `rejected`; đủ 4 giá trị `match_status`; tải phiếu sau 7 ngày bị từ chối; thông báo được tạo đúng người.
 - E2E: Người ra đề tải lên → Quản trị viên duyệt → tải Phiếu tài khoản.
 
-### Chi tiết PR 1d–1e (Q87–Q99, đề xuất)
+### Chi tiết PR 1d–1e (Q87–Q99)
 
 PR 1d gom quá nhiều việc cho một lần review (hàng đợi, đọc Excel, duyệt, tạo hàng loạt tài khoản, PDF, mã hóa, thông báo, dọn dẹp). Đề xuất tách làm hai PR; tài khoản chỉ được tạo ở PR 1e, cùng lúc có Phiếu tài khoản để giao mật khẩu, nên không có tình huống tạo tài khoản mà không ai biết mật khẩu.
 
@@ -255,7 +256,7 @@ PR 1e  duyệt + Phiếu tài khoản + dọn dẹp
 - **Tải phiếu (Q94):** `GET /api/credential-slips/:id/pdf` và `/xlsx`: Quản trị viên hoặc người gửi yêu cầu, trong 7 ngày; quá hạn trả `410 SLIP_EXPIRED`; chưa xong trả `409 INVALID_STATE`; mỗi lần tải ghi `credential-slip.download`. PDF dựng bằng `pdfkit` + `qrcode` (không cần trình duyệt), font Be Vietnam Pro (OFL, file TTF đặt trong `apps/api/assets/fonts`), QR mở `<APP_ORIGIN>/login`.
 - **Dọn dẹp (Q96):** job lặp hằng ngày: xóa `login_events` quá 12 tháng, xóa file phiếu hết hạn (đặt `expired`), xóa file tải lên tạm.
 
-**Test (seam đề xuất)**
+**Test (seam đã chốt)**
 1. *Unit* (không DB): bộ phân tích file với các file mẫu lỗi (xlsx dựng bằng ExcelJS trong test, csv); mã hóa/giải mã AES-GCM (đi về nguyên vẹn, sai khóa hoặc bị sửa thì lỗi).
 2. *Tích hợp* (HTTP + PostgreSQL + Redis, `JobQueue` chạy tại chỗ, `MediaStore` trỏ thư mục tạm): tải lên → bốn giá trị `match_status` + dòng lỗi; quyền xem; thông báo tới đúng người. PR 1e: duyệt tạo `created`, `tag_added`, `skipped`, `rejected`; tải phiếu (kiểm tra là PDF hợp lệ và đủ số trang, không so hình); quá 7 ngày bị từ chối; mỗi lần tải có nhật ký; mật khẩu dạng rõ không có trong DB. Một test duy nhất đi qua BullMQ và Redis thật để kiểm tra bản adapter.
 3. *E2E*: PR 1d: Người ra đề tải lên file mẫu → Quản trị viên thấy bảng dòng và thông báo. PR 1e: Quản trị viên duyệt → tải Phiếu tài khoản.

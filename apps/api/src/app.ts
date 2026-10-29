@@ -1,4 +1,5 @@
 import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Logger } from 'nestjs-pino';
@@ -23,6 +24,10 @@ export async function createApp(): Promise<NestFastifyApplication> {
 /** Cấu hình dùng chung cho app thật và app trong integration test. */
 export async function configureApp(app: NestFastifyApplication): Promise<void> {
   await app.register(fastifyCookie);
+  // Giới hạn thật của từng route được đặt khi đọc file; đây là trần chung.
+  await app.register(fastifyMultipart, {
+    limits: { fileSize: 2 * 1024 * 1024, files: 1, fields: 5 },
+  });
   registerOriginCheck(app.getHttpAdapter().getInstance(), app.get<Env>(ENV).APP_ORIGINS);
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new ZodExceptionFilter());
