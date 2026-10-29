@@ -199,3 +199,59 @@ export const createUnit = (body: { code: string; name: string }) =>
 
 export const updateUnit = (id: string, body: { code: string; name: string }) =>
   apiFetch<Unit>(`/admin/units/${id}`, { method: 'PATCH', body });
+
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
+export const INVITATION_STATUSES: InvitationStatus[] = [
+  'pending',
+  'accepted',
+  'expired',
+  'revoked',
+];
+
+export interface Invitation {
+  id: string;
+  email: string;
+  fullName: string;
+  unitId: string;
+  unitName: string;
+  invitedByName: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
+}
+
+/** Trả về từ tạo / Tạo lại link: `token` chỉ có đúng lần này. */
+export interface InvitationLink {
+  id: string;
+  email: string;
+  fullName: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  token: string;
+}
+
+export interface InvitationParams {
+  status?: InvitationStatus;
+  page?: number;
+}
+
+export const invitationsQuery = (params: InvitationParams) =>
+  queryOptions({
+    queryKey: ['admin', 'invitations', params],
+    queryFn: () =>
+      apiFetch<PageResult<Invitation>>(`/admin/invitations${queryString({ ...params })}`),
+    placeholderData: keepPreviousData,
+  });
+
+export const createInvitation = (body: { email: string; fullName: string; unitId: string }) =>
+  apiFetch<InvitationLink>('/admin/invitations', { method: 'POST', body });
+
+export const revokeInvitation = (id: string) =>
+  apiFetch<Invitation>(`/admin/invitations/${id}/revoke`, { method: 'POST' });
+
+export const regenerateInvitation = (id: string) =>
+  apiFetch<InvitationLink>(`/admin/invitations/${id}/regenerate`, { method: 'POST' });
+
+/** Link gửi cho người được mời; dựng từ địa chỉ trang đang mở nên đúng ở cả dev lẫn production. */
+export const invitationUrl = (token: string) => `${window.location.origin}/invite/${token}`;

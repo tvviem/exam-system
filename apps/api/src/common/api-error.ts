@@ -16,6 +16,7 @@ export const API_ERROR_STATUS = {
   PASSWORD_POLICY: HttpStatus.BAD_REQUEST,
   VALIDATION_FAILED: HttpStatus.BAD_REQUEST,
   NOT_FOUND: HttpStatus.NOT_FOUND,
+  INVITATION_UNAVAILABLE: HttpStatus.NOT_FOUND,
   CONFLICT: HttpStatus.CONFLICT,
   INVALID_STATE: HttpStatus.CONFLICT,
 } as const;
@@ -31,3 +32,7 @@ export class ApiError extends HttpException {
     super({ code, ...details }, API_ERROR_STATUS[code]);
   }
 }
+
+/** Một lỗi dữ liệu ở trường `path`; `code` để giao diện chọn thông báo (`errors.VALIDATION_<code>`). */
+export const validationFailed = (path: string, code: string) =>
+  new ApiError('VALIDATION_FAILED', { issues: [{ path, code }] });

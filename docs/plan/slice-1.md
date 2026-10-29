@@ -1,6 +1,6 @@
 # Lát cắt 1: Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản
 
-> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58, review PR 1a (Q59–Q60) và chốt chi tiết PR 1b (Q61–Q70), review PR 1b (Q76) ở [mục Quyết định](#quyết-định-q43q76). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
+> Trạng thái: **accepted** (28/10/2026), sau vòng chất vấn Q43–Q58, review PR 1a (Q59–Q60) và chốt chi tiết PR 1b (Q61–Q70), review PR 1b (Q76) ở [mục Quyết định](#quyết-định-q43q86). Làm theo [data-model.md](../data-model.md) mục 1, [ADR-0004](../adr/0004-phien-dang-nhap-opaque-cookie.md), [architecture.md](../architecture.md) mục 6 và các quyết định Q1–Q3, Q21–Q23, Q31, Q37, Q39 của vòng chất vấn đặc tả (27/10/2026).
 
 ## Mục tiêu
 
@@ -163,6 +163,31 @@ Người nhận mở link
 
 **Test:** integration cho cả hai nhánh (chưa có tài khoản / đã có tài khoản), link dùng lần hai, link hết hạn, link đã thu hồi, và trường hợp người đã đăng nhập bằng tài khoản có email khác với email được mời (phải từ chối).
 
+### Chi tiết PR 1c (Q77–Q86)
+
+**Trạng thái và token**
+- **Trạng thái suy ra, không lưu (Q77):** `accepted` (có `accepted_at`) > `revoked` (có `revoked_at`) > `expired` (`expires_at` ≤ giờ của Clock) > `pending`.
+- **Token (Q78):** 32 byte ngẫu nhiên, mã hóa base64url; DB chỉ lưu SHA-256. Link `/invite/<token>` chỉ hiện đúng lúc tạo hoặc tạo lại. Token không bao giờ vào `audit_logs` hay log.
+
+**Quản trị viên**
+- **Tạo (Q79):** từ chối (a) email của Quản trị viên (Q52), (b) email của người đã mang nhãn `examiner`, (c) email đã có Lời mời `pending` còn hạn (gợi ý "Tạo lại link"). Email của tài khoản đã bị Xóa coi như chưa có tài khoản. Tài khoản đang bị Khóa đăng nhập vẫn được mời.
+- **Thu hồi và Tạo lại link (Q80):** Thu hồi chỉ cho Lời mời `pending`. Tạo lại link cho `pending` hoặc `expired`: giữ `id`, đổi `token_hash`, `expires_at` = giờ hiện tại + 7 ngày. Lời mời `accepted` hoặc `revoked` thì trả `INVALID_STATE`; muốn mời lại thì tạo Lời mời mới. Không sửa họ tên, email, Đơn vị của Lời mời đã tạo: thu hồi rồi tạo mới.
+- **API (Q85):** `GET /api/admin/invitations` (lọc `status`, phân trang), `POST /api/admin/invitations`, `POST /api/admin/invitations/:id/revoke`, `POST /api/admin/invitations/:id/regenerate`. Chỉ tạo và tạo lại trả `token`, một lần duy nhất.
+
+**Người được mời (không cần đăng nhập để xem)**
+- **Xem (Q81):** `GET /api/invitations/:token` trả `{ email, fullName, unitName, accountExists }`. Link không tồn tại, hết hạn, đã thu hồi, đã dùng đều trả cùng `404 INVITATION_UNAVAILABLE`. Hai endpoint công khai giới hạn 30 lần mỗi 10 phút mỗi IP.
+- **Nhận khi chưa có tài khoản (Q82):** `POST /api/invitations/:token/accept` với `{ password, academicDegree?, academicTitle? }` (học vị, học hàm không bắt buộc). Một transaction: tạo `users` (email và họ tên lấy từ Lời mời, không có `username`, `must_change_password = false`), gắn nhãn `examiner`, tạo `examiner_profiles` (Đơn vị từ Lời mời), đánh dấu `accepted`. Mật khẩu theo chính sách Q46. Đăng nhập luôn (tạo Phiên đăng nhập, đặt cookie, ghi `login_events`). Hai người nhận cùng lúc: chỉ một người thành công, người còn lại nhận `INVITATION_UNAVAILABLE`.
+- **Nhận khi đã có tài khoản (Q83):** phải đang đăng nhập đúng tài khoản có email đó. Chưa đăng nhập: `401` (web chuyển tới `/login?redirect=/invite/<token>`). Đăng nhập tài khoản khác: `403 FORBIDDEN`. Body chỉ gồm học vị, học hàm. Thêm nhãn `examiner`; hồ sơ Người ra đề có sẵn thì giữ nguyên, chỉ điền các ô còn trống. Tài khoản đã là Quản trị viên: `INVALID_STATE`. Đã mang nhãn `examiner`: vẫn đánh dấu `accepted`, không đổi gì.
+
+**Nhật ký và giao diện**
+- **Nhật ký (Q84):** `invitation.create`, `invitation.revoke`, `invitation.regenerate` (người thực hiện là Quản trị viên) và `invitation.accept` (người thực hiện là người vừa nhận; `after` gồm `userId` và `createdAccount`).
+- **Giao diện (Q86):** trang quản trị "Lời mời" (danh sách, tạo, hộp thoại link có nút Sao chép, Thu hồi, Tạo lại link) trong thanh điều hướng con; trang công khai `/invite/$token` nằm ngoài `_authed` với ba trạng thái: không dùng được (thông báo chung), form tạo tài khoản, yêu cầu đăng nhập.
+
+**Test (seam đã chốt)**
+1. *API Quản trị viên* (HTTP + PostgreSQL + Redis, Clock giả): tạo, liệt kê, lọc; ba lý do từ chối khi tạo; Thu hồi; Tạo lại link làm link cũ mất hiệu lực; chỉ Quản trị viên gọi được; nhật ký không chứa token.
+2. *API công khai*: nhận ở cả hai nhánh; dùng lần hai, hết hạn (kéo Clock), đã thu hồi; đăng nhập sai tài khoản; hai lần nhận đồng thời; giới hạn tốc độ.
+3. *E2E*: Quản trị viên tạo Lời mời và sao chép link; ở một ngữ cảnh trình duyệt mới người được mời đặt mật khẩu và vào trang chủ với vai trò Người ra đề. Thêm trang Lời mời vào `themes.spec`.
+
 ## PR 1d: Yêu cầu cấp tài khoản và Phiếu tài khoản
 
 Đây là PR đầu tiên đưa BullMQ vào worker.
@@ -214,7 +239,7 @@ Q2 và Q37 trước đây chốt rằng email dùng cho Lời mời và link đ�
 - Người dùng tự đặt lại mật khẩu khi quên: cần email, nằm trong backlog. Giai đoạn 1 dùng "Cấp lại mật khẩu tạm".
 - Xác thực hai lớp (TOTP) cho Quản trị viên: backlog (Q45).
 
-## Quyết định (Q43–Q76)
+## Quyết định (Q43–Q86)
 
 Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất vấn đặc tả. Mọi câu đều chấp nhận khuyến nghị.
 
@@ -249,3 +274,13 @@ Vòng chất vấn ngày 28/10/2026, tiếp nối Q1–Q42 của vòng chất v�
 | Q69 | Tìm kiếm không dấu bằng extension `unaccent` |
 | Q70 | Tạo Quản trị viên mới bằng mật khẩu tạm sinh ngẫu nhiên, hiển thị một lần |
 | Q76 | `IdentityService.revokeAllSessions` chưa làm ở lát cắt 1 vì chưa module nào dùng; thêm ở lát cắt 4 cùng việc tự động Nộp bài khi bị Khóa đăng nhập |
+| Q77 | Trạng thái Lời mời suy ra từ cột và Clock, không lưu |
+| Q78 | Token 32 byte, lưu SHA-256, link chỉ hiện một lần, không vào nhật ký |
+| Q79 | Tạo Lời mời từ chối email Quản trị viên, email đã là Người ra đề, email đã có Lời mời còn hạn |
+| Q80 | Thu hồi chỉ cho `pending`; Tạo lại link cho `pending` và `expired`, giữ `id`; không sửa Lời mời đã tạo |
+| Q81 | Link không dùng được thì cùng trả `404 INVITATION_UNAVAILABLE`; endpoint công khai giới hạn 30 lần/10 phút/IP |
+| Q82 | Nhận khi chưa có tài khoản: tạo `users` + nhãn + hồ sơ trong một transaction, đăng nhập luôn; học vị, học hàm không bắt buộc |
+| Q83 | Nhận khi đã có tài khoản: phải đăng nhập đúng email; hồ sơ có sẵn chỉ điền ô trống |
+| Q84 | Bốn hành động nhật ký `invitation.*`; `accept` có người thực hiện là người nhận |
+| Q85 | API Quản trị viên: liệt kê, tạo, revoke, regenerate; chỉ tạo và regenerate trả token |
+| Q86 | Trang quản trị "Lời mời" và trang công khai `/invite/$token` ngoài `_authed` |

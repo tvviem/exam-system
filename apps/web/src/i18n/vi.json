@@ -46,7 +46,7 @@
     "LOGIN_TEMPORARILY_BLOCKED": "Tạm thời không đăng nhập được do nhập sai nhiều lần. Thử lại sau 15 phút.",
     "ACCOUNT_LOCKED": "Tài khoản đã bị Khóa đăng nhập. Hãy liên hệ Quản trị viên.",
     "TEMPORARY_PASSWORD_EXPIRED": "Mật khẩu tạm đã hết hạn. Hãy liên hệ người đã cấp tài khoản để được cấp lại.",
-    "RATE_LIMITED": "Bạn thử đăng nhập quá nhiều lần. Hãy đợi vài phút rồi thử lại.",
+    "RATE_LIMITED": "Bạn thao tác quá nhiều lần. Hãy đợi vài phút rồi thử lại.",
     "WRONG_CURRENT_PASSWORD": "Mật khẩu hiện tại không đúng.",
     "FORBIDDEN_ORIGIN": "Yêu cầu bị từ chối. Hãy tải lại trang.",
     "UNKNOWN": "Có lỗi xảy ra. Hãy thử lại.",
@@ -60,7 +60,12 @@
     "CONFLICT_email": "Email đã được dùng cho tài khoản khác.",
     "CONFLICT_code": "Mã này đã được dùng.",
     "PASSWORD_CHANGE_REQUIRED": "Bạn cần đổi mật khẩu trước khi tiếp tục.",
-    "UNAUTHENTICATED": "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại."
+    "UNAUTHENTICATED": "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.",
+    "INVITATION_UNAVAILABLE": "Link mời này không còn dùng được: đã hết hạn, đã được dùng hoặc đã bị thu hồi. Hãy liên hệ Quản trị viên để nhận link mới.",
+    "VALIDATION_email_belongs_to_admin": "Email này thuộc một tài khoản Quản trị viên. Hãy dùng email khác.",
+    "VALIDATION_already_examiner": "Người này đã là Người ra đề.",
+    "VALIDATION_unit_not_found": "Đơn vị không tồn tại.",
+    "CONFLICT_email_invitation": "Email này đã có Lời mời còn hạn. Hãy dùng \"Tạo lại link\" trong danh sách."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -137,7 +142,8 @@
       "users": "Người dùng",
       "units": "Đơn vị",
       "loginEvents": "Lịch sử đăng nhập",
-      "auditLogs": "Nhật ký thao tác"
+      "auditLogs": "Nhật ký thao tác",
+      "invitations": "Lời mời"
     },
     "users": {
       "heading": "Người dùng",
@@ -228,6 +234,34 @@
       "filteredEntity": "Đối tượng: {{name}}",
       "filterByActor": "Chỉ xem thao tác của {{name}}",
       "thisEntity": "đối tượng đã chọn"
+    },
+    "invitations": {
+      "heading": "Lời mời",
+      "add": "Mời Người ra đề",
+      "intro": "Hệ thống không gửi email. Sau khi tạo, hãy sao chép link và gửi cho người được mời qua Zalo hoặc email của bạn.",
+      "status": "Trạng thái",
+      "allStatuses": "Tất cả",
+      "empty": "Chưa có Lời mời nào.",
+      "email": "Email người được mời",
+      "fullName": "Họ tên",
+      "unit": "Đơn vị",
+      "unitPlaceholder": "Chọn Đơn vị",
+      "noUnits": "Chưa có Đơn vị nào. Hãy thêm Đơn vị trước khi mời.",
+      "createSubmit": "Tạo link mời",
+      "expires": "Hết hạn {{time}}",
+      "invitedBy": "Mời bởi {{name}}",
+      "accepted": "Nhận lúc {{time}}",
+      "revoke": "Thu hồi",
+      "revokeTitle": "Thu hồi Lời mời?",
+      "revokeConfirm": "Link đã gửi cho {{name}} sẽ không dùng được nữa.",
+      "regenerate": "Tạo lại link",
+      "regenerateTitle": "Tạo lại link cho {{name}}?",
+      "regenerateConfirm": "Link cũ mất hiệu lực ngay, link mới có hạn 7 ngày.",
+      "linkTitle": "Link mời {{name}}",
+      "linkOnlyOnce": "Link chỉ hiển thị lần này. Hãy sao chép và gửi cho người được mời trước khi đóng.",
+      "copyLink": "Sao chép link",
+      "linkExpires": "Hết hạn lúc {{time}}. Mỗi link chỉ dùng được một lần.",
+      "linkSaved": "Tôi đã sao chép link"
     }
   },
   "auditAction": {
@@ -242,6 +276,37 @@
     "unit.create": "Thêm Đơn vị",
     "unit.update": "Sửa Đơn vị",
     "cli.bootstrap-admin": "Khởi tạo Quản trị viên đầu tiên (CLI)",
-    "cli.recover-admin": "Khôi phục Quản trị viên (CLI)"
+    "cli.recover-admin": "Khôi phục Quản trị viên (CLI)",
+    "invitation.create": "Tạo Lời mời",
+    "invitation.revoke": "Thu hồi Lời mời",
+    "invitation.regenerate": "Tạo lại link Lời mời",
+    "invitation.accept": "Nhận Lời mời"
+  },
+  "invitationStatus": {
+    "pending": "Đang chờ",
+    "accepted": "Đã nhận",
+    "expired": "Hết hạn",
+    "revoked": "Đã thu hồi"
+  },
+  "invite": {
+    "brand": "Lời mời",
+    "heading": "Lời mời làm Người ra đề",
+    "intro": "{{name}}, bạn được mời làm Người ra đề thuộc {{unit}}.",
+    "email": "Email",
+    "createIntro": "Hãy đặt mật khẩu để tạo tài khoản. Bạn đăng nhập bằng email này.",
+    "password": "Mật khẩu",
+    "passwordHint": "Ít nhất 10 ký tự.",
+    "confirmPassword": "Nhập lại mật khẩu",
+    "passwordMismatch": "Hai mật khẩu chưa giống nhau.",
+    "academicDegree": "Học vị",
+    "academicTitle": "Học hàm",
+    "createSubmit": "Tạo tài khoản và vào hệ thống",
+    "existingNeedLogin": "Email {{email}} đã có tài khoản. Hãy đăng nhập bằng tài khoản đó để nhận lời mời.",
+    "login": "Đăng nhập",
+    "existingIntro": "Chọn học vị, học hàm rồi nhận lời mời để tài khoản của bạn có thêm vai trò Người ra đề.",
+    "acceptSubmit": "Nhận lời mời",
+    "otherAccount": "Bạn đang đăng nhập bằng một tài khoản khác. Nhận lời mời này sẽ tạo tài khoản mới và chuyển sang tài khoản đó.",
+    "wrongAccount": "Lời mời này dành cho tài khoản có email {{email}}. Hãy đăng xuất rồi đăng nhập bằng tài khoản đó.",
+    "logout": "Đăng xuất"
   }
 }

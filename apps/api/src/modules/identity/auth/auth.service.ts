@@ -51,6 +51,15 @@ export class AuthService {
     }
 
     await this.loginBlock.clear(user.id);
+    return this.startSession(user, identifier, meta);
+  }
+
+  /** Mở Phiên đăng nhập cho người đã được xác thực bằng cách khác (mật khẩu hoặc nhận Lời mời). */
+  async startSession(
+    user: { id: string; isAdmin: boolean },
+    identifier: string,
+    meta: AuthSessionMeta,
+  ) {
     await this.db.update(users).set({ lastLoginAt: this.clock.now() }).where(eq(users.id, user.id));
     const session = await this.authSessions.create(user, meta);
     await this.recordLogin({ userId: user.id, identifier, failureReason: null, meta });

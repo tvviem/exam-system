@@ -54,5 +54,19 @@
     "password": "mat-khau-on-dinh",
     "isAdmin": true,
     "mustChangePassword": false
+  },
+  {
+    "username": "e2e-moi-qt-desktop",
+    "fullName": "Quản trị Lời mời desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-moi-qt-mobile",
+    "fullName": "Quản trị Lời mời mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
   }
 ]

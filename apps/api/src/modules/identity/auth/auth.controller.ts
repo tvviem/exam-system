@@ -21,6 +21,7 @@ import {
 } from './auth.decorators';
 import { AuthService } from './auth.service';
 import { AUTH_SESSION_COOKIE, type AuthenticatedUser } from './auth.types';
+import { authSessionMetaFrom, setAuthSessionCookie } from './auth-request';
 import { AuthSessionStore } from './auth-session-store';
 
 const changePasswordSchema = z.object({
@@ -54,13 +55,7 @@ export class AuthController {
       input.password,
       authSessionMetaFrom(req),
     );
-    reply.setCookie(AUTH_SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: true, // ADR-0004; trình duyệt vẫn nhận cookie Secure trên http://localhost
-      sameSite: 'lax',
-      path: '/',
-      maxAge: maxAgeSeconds,
-    });
+    setAuthSessionCookie(reply, token, maxAgeSeconds);
     return { ok: true };
   }
 
@@ -124,12 +119,4 @@ export class AuthController {
       mustChangePassword: user.mustChangePassword,
     };
   }
-}
-
-export function authSessionMetaFrom(req: FastifyRequest) {
-  const userAgent = req.headers['user-agent'];
-  return {
-    ip: req.ip ?? null,
-    userAgent: typeof userAgent === 'string' ? userAgent.slice(0, 512) : null,
-  };
 }

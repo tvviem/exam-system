@@ -9,6 +9,11 @@ import { AuthService } from './auth/auth.service';
 import { AuthSessionStore } from './auth/auth-session-store';
 import { LoginBlock } from './auth/login-block';
 import { LoginRateLimiter } from './auth/login-rate-limiter';
+import { InvitationAcceptanceService } from './invitations/invitation-acceptance.service';
+import { InvitationRateLimiter } from './invitations/invitation-rate-limiter';
+import { InvitationsController } from './invitations/invitations.controller';
+import { InvitationsService } from './invitations/invitations.service';
+import { PublicInvitationsController } from './invitations/public-invitations.controller';
 import { LoginEventsController } from './login-events/login-events.controller';
 import { LoginEventsService } from './login-events/login-events.service';
 import { UnitsController } from './units/units.controller';
@@ -26,6 +31,8 @@ import { UsersRepository } from './users.repository';
     UnitsController,
     LoginEventsController,
     AuditLogsController,
+    InvitationsController,
+    PublicInvitationsController,
   ],
   providers: [
     AuthService,
@@ -37,6 +44,9 @@ import { UsersRepository } from './users.repository';
     UserManagementService,
     UnitsService,
     LoginEventsService,
+    InvitationsService,
+    InvitationAcceptanceService,
+    InvitationRateLimiter,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
   // CLI và các module khác chỉ dùng những gì được xuất ở đây.

@@ -7,6 +7,10 @@ export function errorMessage(t: TFunction, error: unknown): string {
       const [first] = (error.details.violations as string[] | undefined) ?? [];
       return t(`passwordPolicy.${first}`, { defaultValue: t('errors.UNKNOWN') });
     }
+    if (error.code === 'VALIDATION_FAILED') {
+      const [first] = (error.details.issues as { code: string }[] | undefined) ?? [];
+      return t(`errors.VALIDATION_${first?.code}`, { defaultValue: t('errors.VALIDATION_FAILED') });
+    }
     if (error.code === 'CONFLICT') {
       return t(`errors.CONFLICT_${error.details.field}`, { defaultValue: t('errors.CONFLICT') });
     }
