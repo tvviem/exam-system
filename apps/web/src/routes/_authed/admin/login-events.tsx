@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { type LoginEventParams, loginEventsQuery } from '../../../lib/admin';
 import { errorMessage } from '../../../lib/errors';
 import { formatDateTime } from '../../../lib/format';
-import { Button, ErrorMessage, SelectField } from '../../../lib/ui';
-import { EmptyState, ListSkeleton, Pagination } from '../../../lib/ui/admin';
+import { ErrorMessage, SelectField } from '../../../lib/ui';
+import { EmptyState, FilterChip, ListSkeleton, Pagination } from '../../../lib/ui/admin';
 
 export const Route = createFileRoute('/_authed/admin/login-events')({
   validateSearch: (search: Record<string, unknown>): LoginEventParams => ({
@@ -48,13 +48,16 @@ function LoginEventsPage() {
           </SelectField>
         </div>
         {search.userId && (
-          <Button
-            onClick={() =>
+          <FilterChip
+            label={t('admin.loginEvents.filteredUser', {
+              name:
+                events.data?.items.find((e) => e.userId === search.userId)?.userName ??
+                t('admin.loginEvents.thisUser'),
+            })}
+            onClear={() =>
               navigate({ search: (s) => ({ ...s, userId: undefined, page: undefined }) })
             }
-          >
-            {t('admin.loginEvents.clearUser')}
-          </Button>
+          />
         )}
       </div>
       {events.isPending ? (
@@ -76,9 +79,11 @@ function LoginEventsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
                     {e.userId ? (
+                      // Bấm tên để lọc theo người đó; hồ sơ mở từ trang Người dùng.
                       <Link
-                        to="/admin/users/$userId"
-                        params={{ userId: e.userId }}
+                        from={Route.fullPath}
+                        search={(s) => ({ ...s, userId: e.userId ?? undefined, page: undefined })}
+                        aria-label={t('admin.loginEvents.filterByUser', { name: e.userName })}
                         className="text-primary hover:underline"
                       >
                         {e.userName}

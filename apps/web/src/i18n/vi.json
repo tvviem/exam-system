@@ -85,7 +85,8 @@
     "cancel": "Hủy",
     "notSet": "Chưa đặt",
     "none": "Không có",
-    "never": "Chưa từng"
+    "never": "Chưa từng",
+    "clearFilter": "Bỏ lọc: {{label}}"
   },
   "theme": {
     "label": "Chế độ hiển thị",
@@ -193,7 +194,8 @@
       "removeBody": "Người này bị đưa ra khỏi sử dụng vĩnh viễn, không khôi phục được. Lịch sử và kết quả liên quan vẫn được giữ.",
       "reason": "Lý do",
       "reasonOptional": "Lý do (không bắt buộc)",
-      "passwordReissued": "Mật khẩu tạm mới"
+      "passwordReissued": "Mật khẩu tạm mới",
+      "actionsByUser": "Thao tác người này đã làm"
     },
     "units": {
       "heading": "Đơn vị",
@@ -210,17 +212,22 @@
       "all": "Tất cả",
       "success": "Thành công",
       "failure": "Thất bại",
-      "clearUser": "Xem của mọi người",
       "unknownAccount": "Không khớp tài khoản nào",
-      "empty": "Chưa có lần đăng nhập nào."
+      "empty": "Chưa có lần đăng nhập nào.",
+      "filteredUser": "Người dùng: {{name}}",
+      "filterByUser": "Chỉ xem của {{name}}",
+      "thisUser": "người đã chọn"
     },
     "auditLogs": {
       "heading": "Nhật ký thao tác",
       "action": "Hành động",
       "allActions": "Mọi hành động",
-      "clearScope": "Xem toàn bộ nhật ký",
       "system": "Hệ thống",
-      "empty": "Chưa có thao tác nào."
+      "empty": "Chưa có thao tác nào.",
+      "filteredActor": "Người thực hiện: {{name}}",
+      "filteredEntity": "Đối tượng: {{name}}",
+      "filterByActor": "Chỉ xem thao tác của {{name}}",
+      "thisEntity": "đối tượng đã chọn"
     }
   },
   "auditAction": {

@@ -38,8 +38,8 @@ function AuthedLayout() {
     <>
       <header className="border-b border-border bg-surface">
         <nav className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2">
-          <Link to="/" className="min-w-0 truncate font-semibold">
-            {t('app.title')}
+          <Link to="/" className="flex min-h-12 min-w-0 items-center font-semibold">
+            <span className="truncate">{t('app.title')}</span>
           </Link>
           <button
             type="button"

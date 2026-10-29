@@ -19,6 +19,8 @@ test('Quản trị viên tìm một người, Khóa đăng nhập, người đó
 
   // Tìm không dấu.
   await page.getByRole('searchbox', { name: 'Tìm Người dùng' }).fill(`nguyen van khoa ${project}`);
+  // Chờ kết quả của từ khóa (sau 300 ms ngừng gõ) rồi mới bấm, kẻo bấm vào kết quả cũ.
+  await expect(page).toHaveURL(/q=nguyen/);
   await page
     .getByRole('link', { name: new RegExp(`Nguyễn Văn Khóa ${project}`) })
     .first()

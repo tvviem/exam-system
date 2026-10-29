@@ -3,9 +3,14 @@ import { useEffect, useState } from 'react';
 /** Lựa chọn sáng/tối, nhớ trên từng thiết bị (Q71). Đồng bộ với public/theme-init.js. */
 export type ThemeChoice = 'system' | 'light' | 'dark';
 
+declare global {
+  interface Window {
+    /** Định nghĩa trong public/theme-init.js: đặt data-theme và màu thanh địa chỉ. */
+    examApplyTheme: (theme: 'light' | 'dark') => void;
+  }
+}
+
 const STORAGE_KEY = 'exam:theme';
-// Màu thanh địa chỉ trên điện thoại = màu `surface` của thanh trên cùng.
-const THEME_COLOR = { light: '#ffffff', dark: '#0f172a' } as const;
 const darkQuery = () => window.matchMedia('(prefers-color-scheme: dark)');
 
 function readChoice(): ThemeChoice {
@@ -19,8 +24,7 @@ function readChoice(): ThemeChoice {
 
 function apply(choice: ThemeChoice) {
   const theme = choice === 'system' ? (darkQuery().matches ? 'dark' : 'light') : choice;
-  document.documentElement.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme]);
+  window.examApplyTheme(theme);
 }
 
 export function useTheme() {

@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { type AuditLog, type AuditLogParams, auditLogsQuery } from '../../../lib/admin';
 import { errorMessage } from '../../../lib/errors';
 import { formatDateTime } from '../../../lib/format';
-import { Button, ErrorMessage, SelectField } from '../../../lib/ui';
-import { EmptyState, ListSkeleton, Pagination } from '../../../lib/ui/admin';
+import { ErrorMessage, SelectField } from '../../../lib/ui';
+import { EmptyState, FilterChip, ListSkeleton, Pagination } from '../../../lib/ui/admin';
 
 // Hành động đã có ở lát cắt 1; thêm vào đây (và vi.json) khi có hành động mới.
 const ACTIONS = [
@@ -41,7 +41,9 @@ function AuditLogsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const logs = useQuery(auditLogsQuery(search));
-  const scoped = search.actorId || search.entityId;
+  const clear = (patch: Partial<AuditLogParams>) =>
+    navigate({ search: (s) => ({ ...s, ...patch, page: undefined }) });
+  const actorName = logs.data?.items.find((l) => l.actorId === search.actorId)?.actorName;
 
   return (
     <section className="flex flex-col gap-4">
@@ -66,16 +68,19 @@ function AuditLogsPage() {
             ))}
           </SelectField>
         </div>
-        {scoped && (
-          <Button
-            onClick={() =>
-              navigate({
-                search: (s) => ({ ...s, actorId: undefined, entityId: undefined, page: undefined }),
-              })
-            }
-          >
-            {t('admin.auditLogs.clearScope')}
-          </Button>
+        {search.actorId && (
+          <FilterChip
+            label={t('admin.auditLogs.filteredActor', {
+              name: actorName ?? t('admin.loginEvents.thisUser'),
+            })}
+            onClear={() => clear({ actorId: undefined })}
+          />
+        )}
+        {search.entityId && (
+          <FilterChip
+            label={t('admin.auditLogs.filteredEntity', { name: t('admin.auditLogs.thisEntity') })}
+            onClear={() => clear({ entityId: undefined })}
+          />
         )}
       </div>
       {logs.isPending ? (
@@ -117,7 +122,19 @@ function AuditLogRow({ log }: { log: AuditLog }) {
     <li className="flex flex-col gap-1 px-4 py-3">
       <p className="font-medium">{t(`auditAction.${log.action}`, { defaultValue: log.action })}</p>
       <p className="text-sm text-fg-muted tabular-nums">
-        {formatDateTime(log.at)} · {log.actorName ?? t('admin.auditLogs.system')}
+        {formatDateTime(log.at)} ·{' '}
+        {log.actorId ? (
+          <Link
+            from={Route.fullPath}
+            search={(s) => ({ ...s, actorId: log.actorId ?? undefined, page: undefined })}
+            aria-label={t('admin.auditLogs.filterByActor', { name: log.actorName })}
+            className="text-primary hover:underline"
+          >
+            {log.actorName}
+          </Link>
+        ) : (
+          t('admin.auditLogs.system')
+        )}
         {log.ip ? ` · ${log.ip}` : ''}
       </p>
       {keys.length > 0 && (

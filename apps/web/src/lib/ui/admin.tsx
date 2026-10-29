@@ -1,4 +1,4 @@
-import { Ban, Check, ChevronLeft, ChevronRight, Copy, Lock, TriangleAlert } from 'lucide-react';
+import { Ban, Check, ChevronLeft, ChevronRight, Copy, Lock, TriangleAlert, X } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UserStatus } from '../admin';
@@ -66,6 +66,24 @@ export function Pagination({
         <ChevronRight aria-hidden className="size-5" />
       </Button>
     </nav>
+  );
+}
+
+/** Bộ lọc đang áp dụng mà không có ô chọn tương ứng (lọc theo người, theo đối tượng). */
+export function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <span className="inline-flex min-h-12 items-center gap-1 rounded-full bg-primary-soft pl-4 text-sm font-medium text-on-primary-soft">
+      {label}
+      <button
+        type="button"
+        aria-label={t('common.clearFilter', { label })}
+        className="inline-flex size-12 cursor-pointer items-center justify-center rounded-full hover:bg-primary/10"
+        onClick={onClear}
+      >
+        <X aria-hidden className="size-4" />
+      </button>
+    </span>
   );
 }
 

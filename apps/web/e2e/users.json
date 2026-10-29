@@ -40,5 +40,19 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["candidate"]
+  },
+  {
+    "username": "e2e-giao-dien-desktop",
+    "fullName": "Quản trị giao diện desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-giao-dien-mobile",
+    "fullName": "Quản trị giao diện mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
   }
 ]

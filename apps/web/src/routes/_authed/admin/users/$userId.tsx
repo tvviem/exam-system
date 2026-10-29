@@ -74,8 +74,11 @@ function UserDetailPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="flex flex-col gap-5">
           <ProfileForm user={user} editable={editable} />
-          {!user.isAdmin && editable && <RoleTagsCard user={user} />}
-          {user.roleTags.includes('examiner') && editable && <ExaminerProfileForm user={user} />}
+          {/* Người đã bị Xóa: vẫn xem được Nhãn vai trò và hồ sơ, chỉ là không sửa. */}
+          {!user.isAdmin && <RoleTagsCard user={user} editable={editable} />}
+          {user.roleTags.includes('examiner') && (
+            <ExaminerProfileForm user={user} editable={editable} />
+          )}
         </div>
         <aside className="flex flex-col gap-5">
           <AccountCard user={user} />
@@ -228,7 +231,7 @@ function ProfileForm({ user, editable }: { user: UserDetail; editable: boolean }
   );
 }
 
-function RoleTagsCard({ user }: { user: UserDetail }) {
+function RoleTagsCard({ user, editable }: { user: UserDetail; editable: boolean }) {
   const { t } = useTranslation();
   const mutation = useUserMutation(
     user.id,
@@ -237,7 +240,7 @@ function RoleTagsCard({ user }: { user: UserDetail }) {
   );
   return (
     <SectionCard title={t('admin.users.roleTags')}>
-      <fieldset className="flex flex-col gap-2" disabled={mutation.isPending}>
+      <fieldset className="flex flex-col gap-2" disabled={!editable || mutation.isPending}>
         <legend className="sr-only">{t('admin.users.roleTags')}</legend>
         {ROLE_TAGS.map((tag) => (
           <label
@@ -254,7 +257,7 @@ function RoleTagsCard({ user }: { user: UserDetail }) {
           </label>
         ))}
       </fieldset>
-      {user.roleTags.length === 0 && (
+      {editable && user.roleTags.length === 0 && (
         <p className="mt-2 text-sm text-warning">{t('admin.users.noRoleTagWarning')}</p>
       )}
       <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
@@ -262,7 +265,7 @@ function RoleTagsCard({ user }: { user: UserDetail }) {
   );
 }
 
-function ExaminerProfileForm({ user }: { user: UserDetail }) {
+function ExaminerProfileForm({ user, editable }: { user: UserDetail; editable: boolean }) {
   const { t } = useTranslation();
   const units = useQuery(unitsQuery);
   const profile = user.examinerProfile;
@@ -293,7 +296,7 @@ function ExaminerProfileForm({ user }: { user: UserDetail }) {
   return (
     <SectionCard title={t('admin.users.examinerProfile')}>
       <form className="flex flex-col gap-4" onSubmit={submit}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <fieldset disabled={!editable} className="grid gap-4 sm:grid-cols-2">
           <SelectField
             id="academic-degree"
             label={t('admin.users.academicDegree')}
@@ -335,16 +338,18 @@ function ExaminerProfileForm({ user }: { user: UserDetail }) {
               ))}
             </SelectField>
           </div>
-        </div>
+        </fieldset>
         <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
         {saved && (
           <p role="status" className="text-sm text-success">
             {t('common.saved')}
           </p>
         )}
-        <PrimaryButton type="submit" className="sm:w-fit" disabled={mutation.isPending}>
-          {t('common.save')}
-        </PrimaryButton>
+        {editable && (
+          <PrimaryButton type="submit" className="sm:w-fit" disabled={mutation.isPending}>
+            {t('common.save')}
+          </PrimaryButton>
+        )}
       </form>
     </SectionCard>
   );
@@ -386,6 +391,16 @@ function AccountCard({ user }: { user: UserDetail }) {
           <ScrollText aria-hidden className="size-4" />
           {t('admin.nav.auditLogs')}
         </Link>
+        {user.isAdmin && (
+          <Link
+            to="/admin/audit-logs"
+            search={{ actorId: user.id }}
+            className="inline-flex min-h-12 items-center gap-2 text-sm font-medium text-primary"
+          >
+            <ScrollText aria-hidden className="size-4" />
+            {t('admin.users.actionsByUser')}
+          </Link>
+        )}
       </div>
     </SectionCard>
   );

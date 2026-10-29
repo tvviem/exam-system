@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ChevronRight, ListFilter, Search, ShieldPlus } from 'lucide-react';
+import { ChevronRight, ListFilter, ShieldPlus } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,6 +20,7 @@ import {
   Dialog,
   ErrorMessage,
   PrimaryButton,
+  SearchField,
   SelectField,
   TextField,
 } from '../../../../lib/ui';
@@ -116,21 +117,13 @@ function UsersPage() {
       </div>
 
       <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-3 bg-bg px-4 py-2 md:flex-row md:items-end">
-        <div className="relative flex-1">
-          <label htmlFor="user-search" className="sr-only">
-            {t('admin.users.search')}
-          </label>
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute top-3.5 left-3 size-5 text-fg-muted"
-          />
-          <input
+        <div className="flex-1">
+          <SearchField
             id="user-search"
-            type="search"
+            label={t('admin.users.search')}
             placeholder={t('admin.users.searchPlaceholder')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="h-12 w-full rounded-lg border border-border-strong bg-surface pr-3 pl-10 text-base outline-none focus:border-primary focus:ring-2 focus:ring-ring/40"
           />
         </div>
         <div className="hidden gap-3 md:flex md:w-96">{filters}</div>

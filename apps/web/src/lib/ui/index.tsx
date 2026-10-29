@@ -1,4 +1,4 @@
-import { CircleAlert, X } from 'lucide-react';
+import { CircleAlert, Search, X } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -60,6 +60,32 @@ export function TextField({
         aria-describedby={describedBy(id, hint, error)}
         {...input}
       />
+    </FieldShell>
+  );
+}
+
+/** Ô tìm kiếm: nhãn luôn hiển thị như các ô khác (mục 6), thêm biểu tượng kính lúp. */
+export function SearchField({
+  label,
+  id,
+  hint,
+  ...input
+}: { label: string; id: string; hint?: ReactNode } & ComponentProps<'input'>) {
+  return (
+    <FieldShell id={id} label={label} hint={hint}>
+      <div className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-3.5 left-3 size-5 text-fg-muted"
+        />
+        <input
+          id={id}
+          type="search"
+          className={`${fieldClass} pl-10`}
+          aria-describedby={describedBy(id, hint, undefined)}
+          {...input}
+        />
+      </div>
     </FieldShell>
   );
 }
