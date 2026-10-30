@@ -6,6 +6,7 @@
     "take": "Vào thi",
     "logout": "Đăng xuất",
     "authSessions": "Phiên đăng nhập",
+    "myAccount": "Tài khoản của tôi",
     "accountMenu": "Tài khoản",
     "accountRequests": "Yêu cầu cấp tài khoản",
     "notifications": "Thông báo",
@@ -51,6 +52,29 @@
     "submit": "Đổi mật khẩu",
     "mismatch": "Hai lần nhập mật khẩu mới không khớp.",
     "done": "Đã đổi mật khẩu."
+  },
+  "account": {
+    "title": "Tài khoản của tôi",
+    "profile": "Thông tin cá nhân",
+    "fullName": "Họ và tên",
+    "dateOfBirth": "Ngày sinh",
+    "gender": "Giới tính",
+    "academicDegree": "Học vị",
+    "academicTitle": "Học hàm",
+    "notSpecified": "Không nêu",
+    "save": "Lưu thay đổi",
+    "saving": "Đang lưu…",
+    "saved": "Đã lưu thông tin",
+    "managedByAdmin": "Do Quản trị viên quản lý",
+    "managedHint": "Cần đổi các thông tin này thì hãy liên hệ Quản trị viên.",
+    "username": "Tên đăng nhập",
+    "email": "Email",
+    "code": "Mã định danh",
+    "classLabel": "Lớp",
+    "unit": "Đơn vị",
+    "roles": "Vai trò",
+    "empty": "Chưa có",
+    "passwordIntro": "Sau khi đổi, các thiết bị khác đang đăng nhập sẽ bị đăng xuất; thiết bị này giữ nguyên."
   },
   "home": {
     "noRole": "Tài khoản của bạn chưa được gắn Nhãn vai trò. Hãy liên hệ Quản trị viên."
