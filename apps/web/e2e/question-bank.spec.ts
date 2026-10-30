@@ -211,3 +211,21 @@ test('trình soạn chia cột Soạn / Xem thử theo chỗ còn lại, ẩn th
   const wide = await editor.boundingBox();
   expect(wide?.width).toBeGreaterThan(500);
 });
+
+// Thanh Lưu trên laptop gọn như thanh nổi về bên phải, không trải hết chiều ngang.
+test('thanh Lưu của trình soạn trên laptop gọn và nằm bên phải', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'bố cục máy tính');
+  await signIn(page, `e2e-ch-rong-${testInfo.project.name}`);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/examiner/questions/new?type=single_choice');
+  const save = page.getByRole('button', { name: 'Lưu' });
+  await expect(save).toBeVisible();
+  const [button, main] = await Promise.all([
+    save.boundingBox(),
+    page.getByRole('main').boundingBox(),
+  ]);
+  const bar = await save.locator('xpath=ancestor::div[contains(@class,"sticky")][1]').boundingBox();
+  expect(bar && main && bar.width < main.width / 2).toBe(true);
+  expect(bar && main && bar.x + bar.width > main.x + main.width - 40).toBe(true);
+  expect(button?.width).toBeLessThan(260);
+});
