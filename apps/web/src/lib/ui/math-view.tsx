@@ -52,7 +52,11 @@ export function MathView({ latex, display }: { latex: string; display: boolean }
   return (
     <span
       ref={host}
-      className={display ? 'my-1 block overflow-x-auto text-center' : 'inline-block max-w-full'}
+      className={
+        display
+          ? 'my-1 block overflow-x-auto text-center'
+          : 'inline-block max-w-full overflow-x-auto overflow-y-hidden align-middle'
+      }
       data-math={display ? 'display' : 'inline'}
     >
       <code className={`text-sm ${failed ? 'text-danger' : 'text-fg-muted'}`}>{latex}</code>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { MATH_MAX_PER_QUESTION, questionInputSchema, searchTextOf } from './question.js';
+import {
+  MATH_MAX_PER_QUESTION,
+  MATH_MAX_TOTAL_CHARS,
+  questionInputSchema,
+  searchTextOf,
+} from './question.js';
 import { textDoc } from './rich-text.js';
 
 const TOPIC = '0197a6f0-0000-7000-8000-000000000001';
@@ -256,5 +261,13 @@ describe('công thức trong Câu hỏi', () => {
   it('searchText chứa LaTeX đã chuẩn hóa của công thức trong Phần dẫn', () => {
     const input = questionInputSchema.parse(single({ stem: withMath('\\Frac{1}{2}') }));
     expect(searchTextOf(input)).toContain('\\frac{1}{2}');
+  });
+
+  it(`từ chối khi tổng ký tự LaTeX của Câu hỏi vượt ${MATH_MAX_TOTAL_CHARS}`, () => {
+    const long = 'x+'.repeat(900); // 1.800 ký tự mỗi công thức
+    const stems = (count: number) => withMath(long, count);
+    const fits = Math.floor(MATH_MAX_TOTAL_CHARS / long.length);
+    expect(questionInputSchema.safeParse(single({ stem: stems(fits) })).success).toBe(true);
+    expect(questionInputSchema.safeParse(single({ stem: stems(fits + 1) })).success).toBe(false);
   });
 });

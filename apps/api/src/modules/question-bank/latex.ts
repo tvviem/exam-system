@@ -1,8 +1,8 @@
 import {
   hasForbiddenLatex,
   KATEX_OPTIONS,
+  mathNodesOf,
   type QuestionInput,
-  type RichText,
   richTextFieldsOf,
 } from '@exam/shared';
 import katex from 'katex';
@@ -23,21 +23,11 @@ export function checkLatex(latex: string): LatexProblem | null {
   }
 }
 
-const latexOf = (doc: RichText): string[] =>
-  doc.content.flatMap((block) =>
-    block.type === 'paragraph'
-      ? paragraphLatex(block)
-      : block.content.flatMap((item) => item.content.flatMap(paragraphLatex)),
-  );
-
-const paragraphLatex = (paragraph: Extract<RichText['content'][number], { type: 'paragraph' }>) =>
-  (paragraph.content ?? []).flatMap((node) => (node.type === 'math' ? [node.attrs.latex] : []));
-
 /** Ném `VALIDATION_FAILED` với `path` của từng trường có công thức không hợp lệ. */
 export function assertLatexValid(question: QuestionInput): void {
   const issues: { path: string; code: LatexProblem }[] = [];
   for (const { path, doc } of richTextFieldsOf(question)) {
-    const problems = latexOf(doc).map(checkLatex);
+    const problems = mathNodesOf(doc).map((node) => checkLatex(node.latex));
     const code = problems.includes('math_forbidden')
       ? 'math_forbidden'
       : problems.includes('math_invalid')

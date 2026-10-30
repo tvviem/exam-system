@@ -599,7 +599,7 @@
       "tags": "Mỗi tag 1–30 ký tự, tối đa 10 tag.",
       "maxLength": "Từ 100 đến 5.000.",
       "topic": "Hãy chọn một Chủ đề. Nếu chưa có, tạo Chủ đề ở trang Ngân hàng câu hỏi.",
-      "math": "Một Câu hỏi có tối đa 50 công thức."
+      "math": "Một Câu hỏi có tối đa 50 công thức và 10.000 ký tự công thức."
     },
     "problemShort": {
       "stem": "Phần dẫn",

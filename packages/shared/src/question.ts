@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  countMath,
+  mathNodesOf,
   normalizeForSearch,
   plainTextOf,
   type RichText,
@@ -24,7 +24,9 @@ export const POINTS_MIN = 0.25;
 export const POINTS_MAX = 100;
 export const TAGS_MAX = 10;
 export const TAG_MAX_CHARS = 30;
+// Giới hạn công thức mỗi Câu hỏi: số lượng, và tổng ký tự để server dựng thử KaTeX không tốn quá nhiều CPU mỗi lần lưu.
 export const MATH_MAX_PER_QUESTION = 50;
+export const MATH_MAX_TOTAL_CHARS = 10_000;
 
 /** Nội dung có chữ (không rỗng) và không dài quá `max` ký tự văn bản. */
 const textOf = (max: number) =>
@@ -161,11 +163,15 @@ export const questionInputSchema = z
     z.strictObject({ type: z.literal('essay'), ...common, payload: essayPayload }),
   ])
   .refine(
-    (q) =>
-      richTextFieldsOf(q).reduce((sum, field) => sum + countMath(field.doc), 0) <=
-      MATH_MAX_PER_QUESTION,
+    (q) => {
+      const formulas = richTextFieldsOf(q).flatMap((field) => mathNodesOf(field.doc));
+      return (
+        formulas.length <= MATH_MAX_PER_QUESTION &&
+        formulas.reduce((sum, f) => sum + f.latex.length, 0) <= MATH_MAX_TOTAL_CHARS
+      );
+    },
     {
-      message: `Tối đa ${MATH_MAX_PER_QUESTION} công thức trong một Câu hỏi`,
+      message: `Tối đa ${MATH_MAX_PER_QUESTION} công thức và ${MATH_MAX_TOTAL_CHARS} ký tự công thức trong một Câu hỏi`,
     },
   );
 

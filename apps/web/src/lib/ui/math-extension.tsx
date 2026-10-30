@@ -34,7 +34,7 @@ function MathNodeView({ node, getPos, extension, selected }: ReactNodeViewProps)
           const pos = getPos();
           if (pos !== undefined) (extension.options as MathOptions).onEdit(pos, attrs);
         }}
-        className={`max-w-full cursor-pointer rounded px-1 hover:bg-primary-soft ${
+        className={`inline-flex max-w-full cursor-pointer items-center overflow-x-auto rounded px-1 hover:bg-primary-soft pointer-coarse:min-h-12 pointer-coarse:min-w-12 pointer-coarse:justify-center ${
           selected ? 'bg-primary-soft ring-2 ring-ring/40' : ''
         }`}
       >

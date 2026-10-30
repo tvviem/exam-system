@@ -3,6 +3,7 @@ import {
   countMath,
   hasForbiddenLatex,
   MATH_MAX_CHARS,
+  mathNodesOf,
   normalizeForSearch,
   plainTextOf,
   richTextSchema,
@@ -122,6 +123,20 @@ describe('node công thức (math)', () => {
     );
     expect(countMath(input)).toBe(3);
     expect(countMath(textDoc('không có'))).toBe(0);
+  });
+
+  it('mathNodesOf trả thuộc tính từng công thức theo thứ tự xuất hiện', () => {
+    const input = richTextSchema.parse(
+      doc(para(math('a'), math('b', true)), {
+        type: 'bulletList',
+        content: [{ type: 'listItem', content: [para(math('c'))] }],
+      }),
+    );
+    expect(mathNodesOf(input)).toEqual([
+      { latex: 'a', display: false },
+      { latex: 'b', display: true },
+      { latex: 'c', display: false },
+    ]);
   });
 
   it('plainTextOf giữ nguyên LaTeX để tìm kiếm và đếm ký tự', () => {

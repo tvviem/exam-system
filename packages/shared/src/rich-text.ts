@@ -93,18 +93,18 @@ const blockTexts = (block: Block): string[] => {
   return block.content.flatMap((item) => item.content.flatMap(blockTexts));
 };
 
-const blockMathCount = (block: Block): number =>
+const blockMath = (block: Block): { latex: string; display: boolean }[] =>
   block.type === 'paragraph'
-    ? (block.content ?? []).filter((node) => node.type === 'math').length
-    : block.content.reduce(
-        (sum, item) => sum + item.content.reduce((inner, p) => inner + blockMathCount(p), 0),
-        0,
-      );
+    ? (block.content ?? []).flatMap((node) => (node.type === 'math' ? [node.attrs] : []))
+    : block.content.flatMap((item) => item.content.flatMap(blockMath));
+
+/** Các công thức trong nội dung, theo thứ tự xuất hiện (kể cả trong danh sách). */
+export function mathNodesOf(doc: RichText): { latex: string; display: boolean }[] {
+  return doc.content.flatMap(blockMath);
+}
 
 /** Số công thức trong nội dung. */
-export function countMath(doc: RichText): number {
-  return doc.content.reduce((sum, block) => sum + blockMathCount(block), 0);
-}
+export const countMath = (doc: RichText): number => mathNodesOf(doc).length;
 
 /** Văn bản thuần của nội dung (công thức giữ nguyên LaTeX): các đoạn và mục cách nhau bằng khoảng trắng. */
 export function plainTextOf(doc: RichText): string {

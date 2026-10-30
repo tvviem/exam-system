@@ -265,3 +265,81 @@ test('chèn công thức vào Phần dẫn, xem thử, lưu, mở lại và sử
   await expect(stem.getByRole('button', { name: /Công thức x\^2/ })).toBeVisible();
   await save(page);
 });
+
+// Công thức dài không được làm vỡ bố cục ở các điểm gãy chuẩn: trang không cuộn ngang, công thức nằm trong khung
+// (công thức quá rộng tự cuộn bên trong), và trên màn cảm ứng nút sửa công thức đủ lớn để chạm.
+for (const width of [360, 768, 1024, 1440]) {
+  test(`câu hỏi có công thức dài hiển thị gọn ở ${width} px`, async ({ page }, testInfo) => {
+    await signIn(page, `e2e-ch-cthuc-${testInfo.project.name}`);
+    const formula = (latex: string, display = false) => ({
+      type: 'math',
+      attrs: { latex, display },
+    });
+    const long = `${Array.from({ length: 14 }, (_, i) => `a_{${i + 1}}`).join(' + ')} = \\frac{n(n+1)}{2}`;
+    const doc = (...content: unknown[]) => ({ type: 'doc', content });
+    const para = (...content: unknown[]) => ({ type: 'paragraph', content });
+    const text = (value: string) => ({ type: 'text', text: value });
+    const headers = { origin: 'http://localhost:4173' }; // server chặn yêu cầu ghi không có Origin
+    const topic = await page.request.post('/api/topics', {
+      headers,
+      data: { name: `Công thức ${width} ${testInfo.project.name}` },
+    });
+    const created = await page.request.post('/api/questions', {
+      headers,
+      data: {
+        type: 'multiple_choice',
+        topicId: (await topic.json()).id,
+        stem: doc(
+          para(text('Cho tổng '), formula(long), text(' với mọi số tự nhiên n.')),
+          para(formula(`${long} + ${long}`, true)),
+        ),
+        defaultPoints: 1,
+        tags: [],
+        payload: {
+          options: [
+            { id: 'o1', content: doc(para(text('Bằng '), formula(long))) },
+            { id: 'o2', content: doc(para(formula('\\frac{1}{2}'))) },
+          ],
+          key: ['o1'],
+          scoringRule: 'proportional',
+          shuffleOptions: false,
+        },
+      },
+    });
+    expect(created.ok(), await created.text()).toBe(true);
+    const { id } = await created.json();
+
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of [`/examiner/questions/${id}`, '/examiner/questions']) {
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      if (path.endsWith(id)) await expect(page.locator('.katex').first()).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, `${path} cuộn ngang ở ${width} px`).toBe(0);
+    }
+
+    await page.goto(`/examiner/questions/${id}`);
+    await expect(page.locator('[data-math]').first()).toBeVisible();
+    const hosts = await page.locator('[data-math]:visible').evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const box = node.getBoundingClientRect();
+        return { right: box.right, left: box.left };
+      }),
+    );
+    expect(hosts.length).toBeGreaterThan(0);
+    for (const host of hosts) {
+      expect(host.left).toBeGreaterThanOrEqual(0);
+      expect(host.right).toBeLessThanOrEqual(width);
+    }
+
+    if (testInfo.project.name === 'mobile') {
+      const button = page.getByRole('button', { name: /Công thức .*frac\{1\}\{2\}/ }).first();
+      await button.scrollIntoViewIfNeeded();
+      const box = await button.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+    }
+  });
+}
