@@ -145,7 +145,8 @@ type Problem =
   | 'ladder'
   | 'points'
   | 'tags'
-  | 'maxLength';
+  | 'maxLength'
+  | 'math';
 
 /** Các nhóm lỗi của bản nháp (để giao diện báo bằng lời); rỗng nghĩa là lưu được. */
 export function problemsOf(draft: Draft): Problem[] {
@@ -154,7 +155,9 @@ export function problemsOf(draft: Draft): Problem[] {
   const found = new Set<Problem>();
   for (const issue of parsed.error.issues) {
     const [first, second] = issue.path;
-    if (first === 'topicId') found.add('topic');
+    // Lỗi không gắn trường nào: giới hạn số công thức của cả Câu hỏi.
+    if (issue.path.length === 0) found.add('math');
+    else if (first === 'topicId') found.add('topic');
     else if (first === 'stem') found.add('stem');
     else if (first === 'defaultPoints') found.add('points');
     else if (first === 'tags') found.add('tags');

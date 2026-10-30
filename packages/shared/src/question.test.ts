@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { questionInputSchema, searchTextOf } from './question.js';
+import {
+  MATH_MAX_PER_QUESTION,
+  MATH_MAX_TOTAL_CHARS,
+  questionInputSchema,
+  searchTextOf,
+} from './question.js';
 import { textDoc } from './rich-text.js';
 
 const TOPIC = '0197a6f0-0000-7000-8000-000000000001';
@@ -199,5 +204,70 @@ describe('searchTextOf', () => {
     expect(searchTextOf(e)).not.toContain('bi mat');
     const c = questionInputSchema.parse(cluster());
     expect(searchTextOf(c)).toContain('menh de s3');
+  });
+});
+
+describe('công thức trong Câu hỏi', () => {
+  const withMath = (latex: string, count = 1) => ({
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: Array.from({ length: count }, () => ({
+          type: 'math',
+          attrs: { latex, display: false },
+        })),
+      },
+    ],
+  });
+
+  it('Phần dẫn chỉ có công thức vẫn tính là có nội dung', () => {
+    expect(questionInputSchema.safeParse(single({ stem: withMath('x^2') })).success).toBe(true);
+  });
+
+  it(`nhận đúng ${MATH_MAX_PER_QUESTION} công thức, từ chối nhiều hơn (tính cả Phương án)`, () => {
+    const stem = withMath('x', MATH_MAX_PER_QUESTION - 1);
+    const okInput = single({
+      stem,
+      payload: {
+        options: [{ id: 'o1', content: withMath('y') }, opt('o2')],
+        key: ['o1'],
+        shuffleOptions: false,
+      },
+    });
+    expect(questionInputSchema.safeParse(okInput).success).toBe(true);
+    const tooMany = single({
+      stem,
+      payload: {
+        options: [{ id: 'o1', content: withMath('y', 2) }, opt('o2')],
+        key: ['o1'],
+        shuffleOptions: false,
+      },
+    });
+    expect(questionInputSchema.safeParse(tooMany).success).toBe(false);
+  });
+
+  it('tính cả công thức trong hướng dẫn chấm của câu tự luận', () => {
+    const essay = (rubricMath: number) => ({
+      ...single(),
+      type: 'essay',
+      stem: withMath('x', MATH_MAX_PER_QUESTION),
+      payload: { maxLength: 500, rubric: withMath('y', rubricMath) },
+    });
+    expect(questionInputSchema.safeParse(essay(0)).success).toBe(true);
+    expect(questionInputSchema.safeParse(essay(1)).success).toBe(false);
+  });
+
+  it('searchText chứa LaTeX đã chuẩn hóa của công thức trong Phần dẫn', () => {
+    const input = questionInputSchema.parse(single({ stem: withMath('\\Frac{1}{2}') }));
+    expect(searchTextOf(input)).toContain('\\frac{1}{2}');
+  });
+
+  it(`từ chối khi tổng ký tự LaTeX của Câu hỏi vượt ${MATH_MAX_TOTAL_CHARS}`, () => {
+    const long = 'x+'.repeat(900); // 1.800 ký tự mỗi công thức
+    const stems = (count: number) => withMath(long, count);
+    const fits = Math.floor(MATH_MAX_TOTAL_CHARS / long.length);
+    expect(questionInputSchema.safeParse(single({ stem: stems(fits) })).success).toBe(true);
+    expect(questionInputSchema.safeParse(single({ stem: stems(fits + 1) })).success).toBe(false);
   });
 });

@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { normalizeForSearch, plainTextOf, type RichText, richTextSchema } from './rich-text.js';
+import {
+  mathNodesOf,
+  normalizeForSearch,
+  plainTextOf,
+  type RichText,
+  richTextSchema,
+} from './rich-text.js';
 
 // Schema Câu hỏi dùng chung cho web và api (docs/plan/slice-2.md, Q114, Q115).
 
@@ -18,6 +24,9 @@ export const POINTS_MIN = 0.25;
 export const POINTS_MAX = 100;
 export const TAGS_MAX = 10;
 export const TAG_MAX_CHARS = 30;
+// Giới hạn công thức mỗi Câu hỏi: số lượng, và tổng ký tự để server dựng thử KaTeX không tốn quá nhiều CPU mỗi lần lưu.
+export const MATH_MAX_PER_QUESTION = 50;
+export const MATH_MAX_TOTAL_CHARS = 10_000;
 
 /** Nội dung có chữ (không rỗng) và không dài quá `max` ký tự văn bản. */
 const textOf = (max: number) =>
@@ -118,12 +127,53 @@ const common = {
   tags: tagsSchema,
 };
 
-export const questionInputSchema = z.discriminatedUnion('type', [
-  z.strictObject({ type: z.literal('single_choice'), ...common, payload: singleChoicePayload }),
-  z.strictObject({ type: z.literal('multiple_choice'), ...common, payload: multipleChoicePayload }),
-  z.strictObject({ type: z.literal('true_false_cluster'), ...common, payload: clusterPayload }),
-  z.strictObject({ type: z.literal('essay'), ...common, payload: essayPayload }),
-]);
+// Hình dạng tối thiểu của Câu hỏi để duyệt nội dung; không dùng `QuestionInput` vì schema còn gọi hàm này (vòng kiểu).
+type RichTextHolder = { stem: RichText } & (
+  | { type: 'single_choice' | 'multiple_choice'; payload: { options: { content: RichText }[] } }
+  | { type: 'true_false_cluster'; payload: { statements: { content: RichText }[] } }
+  | { type: 'essay'; payload: { rubric?: RichText } }
+);
+
+/** Mọi nội dung có định dạng của Câu hỏi kèm đường dẫn trường: Phần dẫn, Phương án, Mệnh đề, hướng dẫn chấm. */
+export function richTextFieldsOf(question: RichTextHolder): { path: string; doc: RichText }[] {
+  const fields = [{ path: 'stem', doc: question.stem }];
+  if (question.type === 'single_choice' || question.type === 'multiple_choice') {
+    for (const [i, option] of question.payload.options.entries()) {
+      fields.push({ path: `payload.options.${i}.content`, doc: option.content });
+    }
+  } else if (question.type === 'true_false_cluster') {
+    for (const [i, statement] of question.payload.statements.entries()) {
+      fields.push({ path: `payload.statements.${i}.content`, doc: statement.content });
+    }
+  } else if (question.type === 'essay' && question.payload.rubric) {
+    fields.push({ path: 'payload.rubric', doc: question.payload.rubric });
+  }
+  return fields;
+}
+
+export const questionInputSchema = z
+  .discriminatedUnion('type', [
+    z.strictObject({ type: z.literal('single_choice'), ...common, payload: singleChoicePayload }),
+    z.strictObject({
+      type: z.literal('multiple_choice'),
+      ...common,
+      payload: multipleChoicePayload,
+    }),
+    z.strictObject({ type: z.literal('true_false_cluster'), ...common, payload: clusterPayload }),
+    z.strictObject({ type: z.literal('essay'), ...common, payload: essayPayload }),
+  ])
+  .refine(
+    (q) => {
+      const formulas = richTextFieldsOf(q).flatMap((field) => mathNodesOf(field.doc));
+      return (
+        formulas.length <= MATH_MAX_PER_QUESTION &&
+        formulas.reduce((sum, f) => sum + f.latex.length, 0) <= MATH_MAX_TOTAL_CHARS
+      );
+    },
+    {
+      message: `Tối đa ${MATH_MAX_PER_QUESTION} công thức và ${MATH_MAX_TOTAL_CHARS} ký tự công thức trong một Câu hỏi`,
+    },
+  );
 
 export type QuestionInput = z.infer<typeof questionInputSchema>;
 export type SingleChoicePayload = z.infer<typeof singleChoicePayload>;

@@ -4,6 +4,7 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { type Page, paginate } from '../../common/pagination';
 import { type Database, DB } from '../../db/db.module';
+import { assertLatexValid } from './latex';
 import { questions, topics } from './question-bank.schema';
 import { TopicsService } from './topics.service';
 
@@ -50,6 +51,7 @@ export class QuestionsService {
   ) {}
 
   async create(ownerId: string, input: QuestionInput) {
+    assertLatexValid(input);
     await this.topics.requireUsable(ownerId, input.topicId);
     const [row] = await this.db
       .insert(questions)
@@ -74,6 +76,7 @@ export class QuestionsService {
 
   /** Thay toàn bộ nội dung. `version` là bản client đang sửa; lệch thì CONFLICT (sửa từ hai nơi). */
   async update(ownerId: string, id: string, input: QuestionInput, version: number) {
+    assertLatexValid(input);
     const current = await this.get(ownerId, id);
     if (input.topicId !== current.topicId) await this.topics.requireUsable(ownerId, input.topicId);
     const [row] = await this.db
