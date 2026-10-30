@@ -1,6 +1,7 @@
 import type { RichText } from '@exam/shared';
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -115,4 +116,68 @@ export const questionIllustrations = pgTable(
       .references(() => illustrations.id),
   },
   (t) => [primaryKey({ columns: [t.questionId, t.illustrationId] })],
+);
+
+export const importBatchStatusEnum = pgEnum('question_import_status', [
+  'parsing',
+  'parse_failed',
+  'ready',
+  'committing',
+  'committed',
+]);
+
+export const importItemOutcomeEnum = pgEnum('question_import_outcome', [
+  'pending',
+  'created',
+  'skipped',
+]);
+
+/**
+ * Lô nhập Câu hỏi từ Excel (Q123, Q146). File tải lên xóa ngay sau khi đọc; `question_import_items.payload` giữ phần
+ * đã đổi xong để xem lại và tạo Câu hỏi. Lô sống 30 ngày (`expires_at`), Chủ đề bị xóa thì lô đi theo.
+ */
+export const questionImportBatches = pgTable(
+  'question_import_batches',
+  {
+    id: idColumn(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id),
+    topicId: uuid('topic_id')
+      .notNull()
+      .references(() => topics.id, { onDelete: 'cascade' }),
+    originalFilename: text('original_filename').notNull(),
+    uploadKey: text('upload_key'),
+    status: importBatchStatusEnum('status').notNull(),
+    parseError: text('parse_error'),
+    rowCount: integer('row_count'),
+    createdCount: integer('created_count'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    /** Lúc bấm xác nhận; còn `committing` quá 15 phút thì job dọn đưa lô về `ready`. */
+    commitRequestedAt: timestamp('commit_requested_at', { withTimezone: true }),
+    committedAt: timestamp('committed_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('question_import_batches_owner_created_idx').on(t.ownerId, t.createdAt)],
+);
+
+export const questionImportItems = pgTable(
+  'question_import_items',
+  {
+    id: idColumn(),
+    batchId: uuid('batch_id')
+      .notNull()
+      .references(() => questionImportBatches.id, { onDelete: 'cascade' }),
+    rowNumber: integer('row_number').notNull(),
+    /** Câu hỏi chưa gắn Chủ đề (`DraftQuestion`); NULL khi dòng lỗi. */
+    payload: jsonb('payload').$type<Record<string, unknown>>(),
+    searchText: text('search_text'),
+    errorCode: text('error_code'),
+    /** Nghi trùng: Câu hỏi đã có trong Chủ đề đích, hoặc dòng trước trong cùng file. */
+    duplicateOfQuestionId: uuid('duplicate_of_question_id'),
+    duplicateOfRow: integer('duplicate_of_row'),
+    selected: boolean('selected').notNull().default(false),
+    outcome: importItemOutcomeEnum('outcome').notNull().default('pending'),
+  },
+  (t) => [uniqueIndex('question_import_items_batch_row_unique').on(t.batchId, t.rowNumber)],
 );
