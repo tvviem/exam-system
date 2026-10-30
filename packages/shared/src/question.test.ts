@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  IMAGE_MAX_PER_QUESTION,
   MATH_MAX_PER_QUESTION,
   MATH_MAX_TOTAL_CHARS,
   questionInputSchema,
@@ -269,5 +270,35 @@ describe('công thức trong Câu hỏi', () => {
     const fits = Math.floor(MATH_MAX_TOTAL_CHARS / long.length);
     expect(questionInputSchema.safeParse(single({ stem: stems(fits) })).success).toBe(true);
     expect(questionInputSchema.safeParse(single({ stem: stems(fits + 1) })).success).toBe(false);
+  });
+});
+
+describe('hình minh họa trong Câu hỏi', () => {
+  const ID = '0b9f2c5e-3f43-4c8e-9a35-5f4f3b0d1a11';
+  const withImages = (count: number) => ({
+    type: 'doc',
+    content: Array.from({ length: count }, () => ({
+      type: 'image',
+      attrs: { illustrationId: ID, alt: 'Hình' },
+    })),
+  });
+
+  it(`nhận đúng ${IMAGE_MAX_PER_QUESTION} ảnh, từ chối nhiều hơn (tính cả Phương án)`, () => {
+    const withOption = (optionImages: number) =>
+      single({
+        stem: withImages(IMAGE_MAX_PER_QUESTION - 1),
+        payload: {
+          options: [{ id: 'o1', content: withImages(optionImages) }, opt('o2')],
+          key: ['o1'],
+          shuffleOptions: false,
+        },
+      });
+    expect(questionInputSchema.safeParse(withOption(1)).success).toBe(true);
+    expect(questionInputSchema.safeParse(withOption(2)).success).toBe(false);
+  });
+
+  it('Phần dẫn chỉ có ảnh vẫn tính là có nội dung, và alt nằm trong searchText', () => {
+    const input = questionInputSchema.parse(single({ stem: withImages(1) }));
+    expect(searchTextOf(input)).toContain('hinh');
   });
 });
