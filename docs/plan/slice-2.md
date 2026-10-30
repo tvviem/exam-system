@@ -73,7 +73,7 @@ Chủ đề là **danh sách phẳng**, không có cây (GLOSSARY): tên 1–100
 
 ### Tìm và lọc (Q118)
 
-Cột `search_text` (văn bản thuần của Phần dẫn và các Phương án/Mệnh đề, cập nhật khi lưu), tìm không dấu và không phân biệt hoa thường bằng `unaccent` như danh sách Người dùng. Lọc theo Chủ đề, Loại, tag; sắp xếp mới sửa trước; phân trang 20 dòng, trang nằm trên URL.
+Cột `search_text` (văn bản thuần của Phần dẫn và các Phương án/Mệnh đề, cập nhật khi lưu), tìm không dấu và không phân biệt hoa thường. *Khi làm PR 2a:* `search_text` được lưu sẵn dạng đã chuẩn hóa (`normalizeForSearch`, xử lý cả "đ") và tìm bằng `LIKE`, thay cho `unaccent()` lúc truy vấn; hành vi như nhau. Lọc theo Chủ đề, Loại, tag; sắp xếp mới sửa trước; phân trang 20 dòng, trang nằm trên URL.
 
 ### Soạn và Xem thử (Q119, Q120)
 
@@ -146,6 +146,14 @@ Nếu người đó còn Chủ đề, API từ chối với `HAS_CONTENT` kèm d
 3. **E2E:** soạn một câu mỗi loại bằng giao diện (kèm công thức và ảnh ở PR tương ứng); nhập Excel; Quản trị viên Chuyển giao rồi người nhận thấy Chủ đề. Thêm các trang mới vào bộ kiểm "không cuộn ngang" ở 360/768/1024/1440 px.
 
 Không test từng nút của TipTap: chỉ kiểm các luồng chính qua E2E, vì hành vi của trình soạn thuộc thư viện.
+
+## Bổ sung khi làm PR 2a
+
+Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều nhỏ và không đổi quyết định đã duyệt:
+- Sửa Câu hỏi dùng khóa lạc quan: client gửi `version` đang sửa, lệch thì `CONFLICT` (tránh ghi đè khi sửa từ hai nơi); di chuyển Câu hỏi cũng tăng `version`.
+- Chủ đề có thêm đổi tên và Khôi phục sau Lưu trữ (trùng tên với Chủ đề đang dùng thì `CONFLICT`).
+- Bộ lọc tag được chuẩn hóa như lúc lưu (chữ thường, gộp khoảng trắng).
+- "Ngăn bên" chưa tách thành thành phần riêng (xem ui-design mục 9).
 
 ## Ngoài phạm vi lát cắt 2
 

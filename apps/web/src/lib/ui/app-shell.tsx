@@ -4,8 +4,11 @@ import {
   ClipboardList,
   Ellipsis,
   History,
+  Library,
   type LucideIcon,
   MailPlus,
+  PanelLeftClose,
+  PanelLeftOpen,
   ScrollText,
   Users,
 } from 'lucide-react';
@@ -59,6 +62,12 @@ export function navFor(me: Me): NavItem[] {
   if (me.roleTags.includes('examiner')) {
     return [
       {
+        to: '/examiner/questions',
+        label: 'nav.questionBank',
+        short: 'nav.short.questionBank',
+        icon: Library,
+      },
+      {
         to: '/examiner/account-requests',
         label: 'nav.accountRequests',
         short: 'nav.short.accountRequests',
@@ -72,7 +81,30 @@ export function navFor(me: Me): NavItem[] {
 const linkBase =
   'inline-flex items-center gap-3 rounded-lg px-3 text-sm font-medium text-fg-muted hover:bg-primary-soft hover:text-fg [&.active]:bg-primary-soft [&.active]:text-on-primary-soft';
 
-/** Thanh trên cùng, thanh bên (≥ 1024 px), thanh tab dưới đáy (< 1024 px). */
+const COLLAPSED_KEY = 'exam.sidebar.collapsed';
+
+/** Nhớ lựa chọn ẩn/hiện thanh bên theo từng trình duyệt; bộ nhớ bị chặn thì vẫn dùng được, chỉ không nhớ. */
+function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggle = () =>
+    setCollapsed((current) => {
+      try {
+        localStorage.setItem(COLLAPSED_KEY, current ? '0' : '1');
+      } catch {
+        // Không lưu được thì thôi.
+      }
+      return !current;
+    });
+  return [collapsed, toggle] as const;
+}
+
+/** Thanh trên cùng, thanh bên (≥ 1024 px, ẩn được để nới chỗ soạn), thanh tab dưới đáy (< 1024 px). */
 export function AppShell({
   items,
   actions,
@@ -85,6 +117,9 @@ export function AppShell({
 }) {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [collapsed, toggleCollapsed] = useSidebarCollapsed();
+  const sidebar = items.length > 0 && !collapsed;
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   // Thanh tab tối đa 5 mục (Material): nhiều hơn thì mục cuối là "Thêm" mở danh sách còn lại.
   const bottomItems = items.length > 5 ? items.slice(0, 4) : items;
   const overflow = items.length > 5 ? items.slice(4) : [];
@@ -96,7 +131,10 @@ export function AppShell({
   return (
     <>
       {items.length > 0 && (
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-surface lg:flex">
+        <aside
+          id="app-sidebar"
+          className={`fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-surface ${sidebar ? 'lg:flex' : ''}`}
+        >
           <Brand className="h-(--app-header-h) px-5" />
           <nav
             aria-label={t('nav.main')}
@@ -112,10 +150,23 @@ export function AppShell({
         </aside>
       )}
 
-      <div className={items.length > 0 ? 'lg:pl-64' : ''}>
+      <div className={sidebar ? 'lg:pl-64' : ''}>
         <header className="sticky top-0 z-20 border-b border-border bg-surface">
           <div className="flex h-(--app-header-h) items-center gap-3 px-4 md:px-6 lg:px-8">
-            <Brand className={items.length > 0 ? 'lg:hidden' : ''} />
+            {items.length > 0 && (
+              <button
+                type="button"
+                aria-controls="app-sidebar"
+                aria-expanded={!collapsed}
+                aria-label={collapsed ? t('nav.showSidebar') : t('nav.hideSidebar')}
+                title={collapsed ? t('nav.showSidebar') : t('nav.hideSidebar')}
+                onClick={toggleCollapsed}
+                className="hidden size-12 cursor-pointer items-center justify-center rounded-lg text-fg-muted hover:bg-primary-soft hover:text-fg lg:inline-flex pointer-fine:size-10"
+              >
+                <ToggleIcon aria-hidden className="size-5" />
+              </button>
+            )}
+            <Brand className={sidebar ? 'lg:hidden' : ''} />
             <div className="ml-auto flex items-center gap-1">{actions}</div>
           </div>
         </header>
