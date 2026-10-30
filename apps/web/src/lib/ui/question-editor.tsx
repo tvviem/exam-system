@@ -358,8 +358,8 @@ export function QuestionEditor({
         ]}
       />
 
-      <StickyActionBar>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <StickyActionBar align="end">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
           {conflict ? (
             <div className="flex flex-col gap-2">
               <ErrorMessage>{t('questionBank.versionConflict')}</ErrorMessage>
@@ -376,7 +376,7 @@ export function QuestionEditor({
             </ErrorMessage>
           )}
           <PrimaryButton
-            className="lg:ml-auto lg:min-w-40"
+            className="lg:min-w-32"
             disabled={problems.length > 0 || !dirty || save.isPending}
             onClick={() => save.mutate()}
           >

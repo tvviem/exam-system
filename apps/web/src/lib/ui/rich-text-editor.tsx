@@ -10,11 +10,14 @@ import {
   List,
   ListOrdered,
   type LucideIcon,
+  Sigma,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
   Underline as UnderlineIcon,
 } from 'lucide-react';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { type MathAttrs, MathNode } from './math-extension';
 
 // Trình soạn nội dung có định dạng (Q114). Chỉ bật những node và mark mà schema ở @exam/shared cho phép;
 // kết quả luôn được làm sạch rồi kiểm lại bằng richTextSchema trước khi báo ra ngoài.
@@ -22,7 +25,10 @@ import { useTranslation } from 'react-i18next';
 // Mục danh sách chỉ chứa đoạn văn (không lồng danh sách), khớp richTextSchema.
 const FlatListItem = ListItem.extend({ content: 'paragraph' });
 
-const extensions = [
+// MathLive nặng nên chỉ tải khi mở hộp thoại công thức.
+const MathDialog = lazy(() => import('./math-dialog'));
+
+const baseExtensions = [
   StarterKit.configure({
     heading: false,
     blockquote: false,
@@ -54,6 +60,7 @@ function clean(node: Json): Json {
   if (node.type === 'orderedList' && typeof attrs?.start === 'number') {
     out.attrs = { start: attrs.start };
   }
+  if (node.type === 'math') out.attrs = { latex: attrs?.latex, display: attrs?.display === true };
   if (content) out.content = content.map(clean);
   return out;
 }
@@ -112,6 +119,16 @@ export default function RichTextEditor({
   minHeight?: string;
 }) {
   const { t } = useTranslation();
+  // `pos` rỗng là chèn công thức mới tại con trỏ; có số là sửa công thức đang có ở vị trí đó.
+  const [math, setMath] = useState<{ pos: number | null; attrs: MathAttrs } | null>(null);
+  const editMath = useRef((pos: number, attrs: MathAttrs) => setMath({ pos, attrs }));
+  const extensions = useMemo(
+    () => [
+      ...baseExtensions,
+      MathNode.configure({ onEdit: (pos, attrs) => editMath.current(pos, attrs) }),
+    ],
+    [],
+  );
   const editor = useEditor({
     extensions,
     content: value,
@@ -186,8 +203,44 @@ export default function RichTextEditor({
           active={editor.isActive('orderedList')}
           onClick={() => chain().toggleOrderedList().run()}
         />
+        <ToolButton
+          label={t('editor.math')}
+          icon={Sigma}
+          active={false}
+          onClick={() => setMath({ pos: null, attrs: { latex: '', display: false } })}
+        />
       </div>
       <EditorContent editor={editor} />
+      {math && (
+        <Suspense fallback={null}>
+          <MathDialog
+            initial={math.attrs}
+            editing={math.pos !== null}
+            onClose={() => setMath(null)}
+            onSubmit={(attrs) => {
+              if (math.pos === null) {
+                chain().insertContent({ type: 'math', attrs }).run();
+              } else {
+                const pos = math.pos;
+                chain()
+                  .command(({ tr }) => {
+                    tr.setNodeMarkup(pos, undefined, attrs);
+                    return true;
+                  })
+                  .run();
+              }
+              setMath(null);
+            }}
+            onDelete={() => {
+              if (math.pos !== null)
+                chain()
+                  .deleteRange({ from: math.pos, to: math.pos + 1 })
+                  .run();
+              setMath(null);
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

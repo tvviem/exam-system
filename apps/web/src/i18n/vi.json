@@ -69,6 +69,8 @@
     "INVALID_STATE": "Trạng thái hiện tại không cho phép thao tác này. Hãy tải lại trang.",
     "NOT_FOUND": "Không tìm thấy dữ liệu.",
     "VALIDATION_FAILED": "Dữ liệu chưa hợp lệ. Hãy kiểm tra lại.",
+    "VALIDATION_math_invalid": "Có công thức chưa đúng. Hãy mở công thức đó và sửa lại.",
+    "VALIDATION_math_forbidden": "Có công thức chứa lệnh không được phép (liên kết, ảnh hoặc nhúng file).",
     "CONFLICT": "Giá trị này đã được dùng.",
     "CONFLICT_username": "Tên đăng nhập đã được dùng cho tài khoản khác.",
     "CONFLICT_email": "Email đã được dùng cho tài khoản khác.",
@@ -484,7 +486,19 @@
     "superscript": "Chỉ số trên",
     "subscript": "Chỉ số dưới",
     "bulletList": "Danh sách đánh dấu",
-    "orderedList": "Danh sách đánh số"
+    "orderedList": "Danh sách đánh số",
+    "math": "Công thức",
+    "mathNode": "Công thức {{latex}}, bấm để sửa",
+    "mathInsertTitle": "Chèn công thức",
+    "mathEditTitle": "Sửa công thức",
+    "mathField": "Công thức",
+    "mathHint": "Gõ bằng bàn phím toán hoặc gõ thẳng mã LaTeX (bắt đầu bằng dấu \\).",
+    "mathDisplay": "Hiện riêng một dòng, căn giữa",
+    "mathInsert": "Chèn công thức",
+    "mathSave": "Lưu công thức",
+    "mathDelete": "Xóa công thức",
+    "mathInvalid": "Công thức chưa đúng. Hãy kiểm tra các ngoặc và lệnh.",
+    "mathForbidden": "Công thức có lệnh không được phép (liên kết, ảnh hoặc nhúng file)."
   },
   "questionType": {
     "single_choice": "Chọn một",
@@ -584,7 +598,8 @@
       "points": "Điểm từ 0,25 đến 100, bước 0,25.",
       "tags": "Mỗi tag 1–30 ký tự, tối đa 10 tag.",
       "maxLength": "Từ 100 đến 5.000.",
-      "topic": "Hãy chọn một Chủ đề. Nếu chưa có, tạo Chủ đề ở trang Ngân hàng câu hỏi."
+      "topic": "Hãy chọn một Chủ đề. Nếu chưa có, tạo Chủ đề ở trang Ngân hàng câu hỏi.",
+      "math": "Một Câu hỏi có tối đa 50 công thức và 10.000 ký tự công thức."
     },
     "problemShort": {
       "stem": "Phần dẫn",
@@ -595,7 +610,8 @@
       "points": "điểm",
       "tags": "tags",
       "maxLength": "số ký tự tối đa",
-      "topic": "Chủ đề"
+      "topic": "Chủ đề",
+      "math": "số công thức"
     },
     "moveUp": "Chuyển lên",
     "moveDown": "Chuyển xuống",

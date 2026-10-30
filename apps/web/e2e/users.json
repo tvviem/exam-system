@@ -146,6 +146,22 @@
     "roleTags": ["examiner"]
   },
   {
+    "username": "e2e-ch-cthuc-desktop",
+    "fullName": "Giảng viên Công thức desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ch-cthuc-mobile",
+    "fullName": "Giảng viên Công thức mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
     "username": "e2e-ch-nhieu-desktop",
     "fullName": "Giảng viên Nhiều Chủ đề desktop",
     "password": "mat-khau-on-dinh",
