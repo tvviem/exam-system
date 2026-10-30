@@ -1,3 +1,4 @@
+import { normalizeForSearch } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ChevronRight, FolderCog, Plus, Trash2 } from 'lucide-react';
@@ -58,6 +59,13 @@ function QuestionBankPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [managing, setManaging] = useState(false);
   const [choosingType, setChoosingType] = useState(false);
+  const [topicQuery, setTopicQuery] = useState('');
+  // Từ 7 Chủ đề trở lên chip lọc thành ô chọn (điện thoại); từ 9 thì cột bên có ô tìm và vùng cuộn (laptop).
+  const topicCount = topics.data?.length ?? 0;
+  const manyTopics = topicCount > 8;
+  const visibleTopics = (topics.data ?? []).filter((topic) =>
+    normalizeForSearch(topic.name).includes(normalizeForSearch(topicQuery)),
+  );
 
   // Tìm khi ngừng gõ 300 ms; thay URL thay vì thêm lịch sử.
   useEffect(() => {
@@ -146,40 +154,75 @@ function QuestionBankPage() {
             >
               {t('questionBank.allTopics')}
             </TopicLink>
-            {topics.data?.map((topic) => (
-              <TopicLink
-                key={topic.id}
-                active={search.topicId === topic.id}
-                count={topic.questionCount ?? 0}
-                onClick={() => setFilter({ topicId: topic.id })}
-              >
-                {topic.name}
-              </TopicLink>
-            ))}
-          </Card>
-        </aside>
-
-        <div className="flex min-w-0 flex-col gap-4">
-          <div className="lg:hidden">
-            <ChipGroup label={t('questionBank.topics')}>
-              <Chip
-                active={!search.topicId}
-                count={total}
-                onClick={() => setFilter({ topicId: undefined })}
-              >
-                {t('questionBank.allTopics')}
-              </Chip>
-              {topics.data?.map((topic) => (
-                <Chip
+            {manyTopics && (
+              <div className="px-1 pb-1">
+                <SearchField
+                  id="topic-filter"
+                  label={t('questionBank.searchTopics')}
+                  value={topicQuery}
+                  onChange={(e) => setTopicQuery(e.target.value)}
+                />
+              </div>
+            )}
+            <div className="flex max-h-[55dvh] flex-col gap-1 overflow-y-auto">
+              {visibleTopics.map((topic) => (
+                <TopicLink
                   key={topic.id}
                   active={search.topicId === topic.id}
                   count={topic.questionCount ?? 0}
                   onClick={() => setFilter({ topicId: topic.id })}
                 >
                   {topic.name}
-                </Chip>
+                </TopicLink>
               ))}
-            </ChipGroup>
+              {manyTopics && visibleTopics.length === 0 && (
+                <p className="px-2 py-2 text-sm text-fg-muted">
+                  {t('questionBank.noTopicMatch', { q: topicQuery.trim() })}
+                </p>
+              )}
+            </div>
+          </Card>
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="lg:hidden">
+            {topicCount > 6 ? (
+              <SelectField
+                id="topic-picker"
+                label={t('questionBank.topicPicker')}
+                value={search.topicId ?? ''}
+                onChange={(e) => setFilter({ topicId: e.target.value || undefined })}
+              >
+                <option value="">
+                  {t('questionBank.allTopics')} ({total})
+                </option>
+                {topics.data?.map((topic) => (
+                  <option key={topic.id} value={topic.id}>
+                    {topic.name} ({topic.questionCount ?? 0})
+                  </option>
+                ))}
+              </SelectField>
+            ) : (
+              <ChipGroup label={t('questionBank.topics')}>
+                <Chip
+                  active={!search.topicId}
+                  count={total}
+                  onClick={() => setFilter({ topicId: undefined })}
+                >
+                  {t('questionBank.allTopics')}
+                </Chip>
+                {topics.data?.map((topic) => (
+                  <Chip
+                    key={topic.id}
+                    active={search.topicId === topic.id}
+                    count={topic.questionCount ?? 0}
+                    onClick={() => setFilter({ topicId: topic.id })}
+                  >
+                    {topic.name}
+                  </Chip>
+                ))}
+              </ChipGroup>
+            )}
           </div>
 
           <FilterBar

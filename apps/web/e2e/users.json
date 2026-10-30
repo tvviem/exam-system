@@ -160,5 +160,21 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ch-nhieu-desktop",
+    "fullName": "Giảng viên Nhiều Chủ đề desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ch-nhieu-mobile",
+    "fullName": "Giảng viên Nhiều Chủ đề mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]
