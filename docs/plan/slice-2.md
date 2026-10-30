@@ -10,13 +10,13 @@ Sau lát cắt 2:
 - Quản trị viên Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Xóa người dùng là Người ra đề buộc chọn người nhận.
 - Nội dung Câu hỏi chỉ chủ sở hữu thấy, kể cả Đáp án đúng.
 
-Lát cắt chia thành 5 PR (2a–2e, kèm 2f đề xuất ở Q153). Merge xong PR nào thì hệ thống chạy được tới đó.
+Lát cắt chia thành 5 PR (2a–2e, kèm 2f ở Q153). Merge xong PR nào thì hệ thống chạy được tới đó.
 
 ```text
 2a Chủ đề + Câu hỏi (4 loại, văn bản có định dạng)  ──► 2b Công thức toán
                                                     ├──► 2c Hình minh họa
                                                     ├──► 2d Nhập Excel
-                                                    └──► 2f Chuyển giao + Xóa người dùng chọn người nhận (đề xuất, Q153)
+                                                    └──► 2f Chuyển giao + Xóa người dùng chọn người nhận (Q153)
 ```
 
 | PR | Nội dung | Đưa vào dùng được |
@@ -162,9 +162,9 @@ Quản trị viên chọn một người ra đề, chọn một hoặc nhiều C
 
 Nếu người đó còn Chủ đề, API từ chối với `HAS_CONTENT` kèm danh sách Chủ đề. Hộp thoại Xóa người dùng cho **chọn người nhận ngay trong một bước**: hệ thống Chuyển giao toàn bộ rồi mới Xóa, trong cùng một giao dịch. Tài khoản không còn nội dung thì Xóa như hiện nay.
 
-### Chi tiết đề xuất cho PR 2d (Q145–Q153, chờ duyệt)
+### Chi tiết đã duyệt cho PR 2d và 2f (Q145–Q153)
 
-Q143 và Q144 đã được duyệt (xem bảng quyết định); hai câu đó chỉ ghi lại, chưa làm gì ở lát cắt 2.
+Q143 và Q144 chỉ ghi lại, chưa làm gì ở lát cắt 2 (làm ở lát cắt 4).
 
 **Nhập Excel**
 
@@ -255,7 +255,7 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 - Rút ngẫu nhiên câu hỏi theo Chủ đề, thống kê câu hỏi, nhập từ Word, ảnh trong Câu tự luận: giai đoạn sau (architecture.md mục 9).
 - Chia sẻ Chủ đề giữa các Người ra đề: ngoài giai đoạn 1 (GLOSSARY: mỗi Chủ đề chỉ có một chủ).
 
-## Quyết định (Q111–Q144 đã duyệt; Q145–Q153 chờ duyệt)
+## Quyết định (Q111–Q153, đã duyệt)
 
 | Câu | Quyết định |
 |---|---|
