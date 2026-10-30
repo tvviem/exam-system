@@ -6,6 +6,13 @@ import { z } from 'zod';
 
 export const MATH_MAX_CHARS = 2_000;
 
+/** `\href`, `\url` (liên kết ra ngoài), `\includegraphics`, `\input`, `\include` và nhóm `\html*` (gắn lớp, kiểu, id). */
+const FORBIDDEN_LATEX = /\\(?:href|url|includegraphics|input|include|html[A-Za-z]*)(?![A-Za-z])/;
+
+/** Công thức có lệnh bị cấm (Q121). `\\` là xuống dòng nên chữ theo sau không phải tên lệnh. */
+export const hasForbiddenLatex = (latex: string) =>
+  FORBIDDEN_LATEX.test(latex.replace(/\\\\/g, ' '));
+
 const markSchema = z.strictObject({
   type: z.enum(['bold', 'italic', 'underline', 'superscript', 'subscript']),
 });

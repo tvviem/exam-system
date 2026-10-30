@@ -1,18 +1,14 @@
-import type { QuestionInput, RichText } from '@exam/shared';
+import { hasForbiddenLatex, type QuestionInput, type RichText } from '@exam/shared';
 import katex from 'katex';
 import { ApiError } from '../../common/api-error';
 
 // Kiểm công thức LaTeX khi lưu Câu hỏi (Q121, Q128): phải dựng được bằng KaTeX và không có lệnh nguy hiểm.
-// Schema ở @exam/shared chỉ kiểm hình dạng, độ dài và số lượng; KaTeX chỉ nằm ở server để gói của web gọn.
-
-/** `\href`, `\url` (liên kết ra ngoài), `\includegraphics`, `\input`, `\include` và nhóm `\html*` (gắn lớp, kiểu, id). */
-const FORBIDDEN = /\\(?:href|url|includegraphics|input|include|html[A-Za-z]*)(?![A-Za-z])/;
+// Schema ở @exam/shared chỉ kiểm hình dạng, độ dài và số lượng; KaTeX không đặt trong @exam/shared để gói dùng chung nhẹ.
 
 export type LatexProblem = 'math_invalid' | 'math_forbidden';
 
 export function checkLatex(latex: string): LatexProblem | null {
-  // `\\` là xuống dòng, chữ theo sau không phải tên lệnh.
-  if (FORBIDDEN.test(latex.replace(/\\\\/g, ' '))) return 'math_forbidden';
+  if (hasForbiddenLatex(latex)) return 'math_forbidden';
   try {
     katex.renderToString(latex, {
       throwOnError: true,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   countMath,
+  hasForbiddenLatex,
   MATH_MAX_CHARS,
   normalizeForSearch,
   plainTextOf,
@@ -128,6 +129,22 @@ describe('node công thức (math)', () => {
       doc(para(text('Tính '), math('\\frac{1}{2}'), text(' nhé'))),
     );
     expect(plainTextOf(input)).toBe('Tính \\frac{1}{2} nhé');
+  });
+});
+
+describe('hasForbiddenLatex', () => {
+  it.each([
+    ['\\href{https://x.y}{a}', true],
+    ['\\url{x}', true],
+    ['\\includegraphics{a}', true],
+    ['\\input{a}', true],
+    ['\\htmlClass{a}{x}', true],
+    ['a + \\href{u}{b}', true],
+    ['a \\\\ href', false],
+    ['\\frac{1}{2}', false],
+    ['\\inputx', false],
+  ])('%s → %s', (latex, expected) => {
+    expect(hasForbiddenLatex(latex)).toBe(expected);
   });
 });
 

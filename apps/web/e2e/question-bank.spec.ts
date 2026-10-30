@@ -211,3 +211,57 @@ test('trình soạn chia cột Soạn / Xem thử theo chỗ còn lại, ẩn th
   const wide = await editor.boundingBox();
   expect(wide?.width).toBeGreaterThan(500);
 });
+
+// Công thức toán (Q121, Q127–Q131): chèn bằng hộp thoại MathLive, hiện bằng KaTeX, lưu và mở lại vẫn còn.
+test('chèn công thức vào Phần dẫn, xem thử, lưu, mở lại và sửa', async ({ page }, testInfo) => {
+  await signIn(page, `e2e-ch-cthuc-${testInfo.project.name}`);
+  await page.goto('/examiner/questions');
+  await page.getByRole('button', { name: 'Quản lý Chủ đề' }).click();
+  const manager = page.getByRole('dialog');
+  await manager.getByLabel('Tên Chủ đề').fill('Giải tích');
+  await manager.getByRole('button', { name: 'Thêm Chủ đề' }).click();
+  await expect(manager.getByText('Giải tích')).toBeVisible();
+  await manager.getByRole('button', { name: 'Đóng', exact: true }).last().click();
+  await startQuestion(page, 'Chọn một');
+
+  const setFormula = (latex: string) =>
+    page.evaluate((value) => {
+      const field = document.querySelector('math-field') as HTMLElement & { value: string };
+      field.value = value;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    }, latex);
+  const stem = page.getByRole('textbox', { name: 'Phần dẫn' });
+  await typeIn(page, 'Phần dẫn', 'Tính ');
+  await page
+    .getByRole('toolbar', { name: /Phần dẫn/ })
+    .getByRole('button', { name: 'Công thức' })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Chèn công thức' });
+  await expect(dialog.locator('math-field')).toBeVisible();
+
+  // công thức sai thì không chèn được
+  await setFormula('\\frac{1}{');
+  await expect(dialog.getByText('Công thức chưa đúng')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Chèn công thức' })).toBeDisabled();
+  await setFormula('\\href{https://x.y}{a}');
+  await expect(dialog.getByText('lệnh không được phép')).toBeVisible();
+
+  await setFormula('\\frac{1}{2}');
+  await dialog.getByRole('button', { name: 'Chèn công thức' }).click();
+  await expect(stem.locator('.katex')).toHaveCount(1);
+  await typeIn(page, 'Phương án A', 'x');
+  await typeIn(page, 'Phương án B', 'y');
+  await page.getByRole('radio', { name: /Phương án B/ }).check();
+  await expect(page.locator('article .katex')).toHaveCount(1); // cột Xem thử (hoặc tab) cũng dựng công thức
+  await save(page);
+
+  await page.reload();
+  await expect(stem.locator('.katex')).toHaveCount(1);
+  await stem.getByRole('button', { name: /Công thức .*frac/ }).click();
+  const edit = page.getByRole('dialog', { name: 'Sửa công thức' });
+  await expect(edit.locator('math-field')).toBeVisible();
+  await setFormula('x^2');
+  await edit.getByRole('button', { name: 'Lưu công thức' }).click();
+  await expect(stem.getByRole('button', { name: /Công thức x\^2/ })).toBeVisible();
+  await save(page);
+});

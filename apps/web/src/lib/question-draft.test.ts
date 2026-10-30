@@ -109,3 +109,30 @@ describe('bản nháp Câu hỏi', () => {
     expect(problemsOf(cluster)).toContain('ladder');
   });
 });
+
+describe('công thức trong bản nháp', () => {
+  const formulas = (count: number) => ({
+    type: 'doc' as const,
+    content: [
+      {
+        type: 'paragraph' as const,
+        content: Array.from({ length: count }, () => ({
+          type: 'math' as const,
+          attrs: { latex: 'x^2', display: false },
+        })),
+      },
+    ],
+  });
+
+  it('Phần dẫn chỉ có công thức là hợp lệ', () => {
+    const draft = filled('single_choice');
+    draft.stem = formulas(3);
+    expect(problemsOf(draft)).toEqual([]);
+  });
+
+  it('quá 50 công thức báo riêng là "math", không đổ lỗi cho Phương án', () => {
+    const draft = filled('single_choice');
+    draft.stem = formulas(51);
+    expect(problemsOf(draft)).toEqual(['math']);
+  });
+});

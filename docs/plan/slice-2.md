@@ -91,6 +91,14 @@ Thêm mục **Ngân hàng câu hỏi** vào thanh bên của Người ra đề. 
 - Server kiểm LaTeX hợp lệ khi lưu bằng KaTeX ở chế độ `throwOnError`, từ chối công thức lỗi; không cho các lệnh nguy hiểm (`\href`, `\url`, `\includegraphics`, `\input`), giới hạn mỗi công thức ≤ 2.000 ký tự và mỗi Câu hỏi ≤ 50 công thức.
 - Người dùng không cần biết LaTeX: bàn phím toán ảo của MathLive; người quen LaTeX gõ trực tiếp được.
 
+### Chi tiết đã duyệt khi làm PR 2b (Q127–Q131)
+
+- **Q127 Hình dạng node:** một node nhúng trong dòng `math` với `attrs: { latex, display }` (`display` đúng thì hiện riêng dòng, căn giữa); schema chặt, không thuộc tính khác.
+- **Q128 Chỗ kiểm:** `@exam/shared` chỉ kiểm hình dạng, ≤ 2.000 ký tự mỗi công thức và ≤ 50 công thức mỗi Câu hỏi (tính cả Phần dẫn, Phương án, Mệnh đề, hướng dẫn chấm), cùng danh sách lệnh bị cấm (`hasForbiddenLatex`, để web báo sớm). Dựng thử bằng KaTeX (`throwOnError`, không `trust`) chỉ ở `apps/api`, khi tạo và sửa; lỗi trả `VALIDATION_FAILED` với `issues: [{ path, code: math_invalid | math_forbidden }]`. Lệnh bị cấm: `\href`, `\url`, `\includegraphics`, `\input`, `\include` và nhóm `\html*`.
+- **Q129 Tìm kiếm:** LaTeX nguyên văn nằm trong `search_text` (đã chuẩn hóa) nên tìm `frac` hay `x^2` đều ra; cũng tính vào số ký tự và bản xem trước trong danh sách.
+- **Q130 Soạn:** nút Σ "Công thức" trên thanh công cụ (hoặc bấm vào công thức có sẵn) mở hộp thoại có ô MathLive, bàn phím toán ảo gắn vào `<dialog>`, ô "Hiện riêng một dòng", báo lỗi ngay bằng KaTeX; điện thoại hiện dạng bottom sheet.
+- **Q131 Font và dung lượng:** KaTeX và MathLive tự host (font woff2 qua Vite), tải lười; gói chính tăng khoảng 0,3 KB gzip, KaTeX ~77 KB và hộp thoại MathLive ~218 KB gzip chỉ tải khi cần. Chuỗi của MathLive để tiếng Anh.
+
 ## PR 2c: Hình minh họa (Q122)
 
 ```text
@@ -182,3 +190,8 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q124 | Chuyển giao nhiều Chủ đề trong một giao dịch, người nhận hợp lệ, trùng tên thì thêm hậu tố, ghi nhật ký |
 | Q125 | Xóa người dùng còn Chủ đề thì từ chối `HAS_CONTENT`; hộp thoại cho chọn người nhận và Chuyển giao rồi Xóa trong một bước |
 | Q126 | Giao diện theo ui-design: mục "Ngân hàng câu hỏi" ở thanh bên, danh sách hai cột trên laptop, mẫu Soạn dùng `staticData.wide`; xây đường dẫn, `Tabs`, ngăn bên |
+| Q127 | Node `math` nhúng trong dòng, `attrs { latex, display }` |
+| Q128 | Shared kiểm hình dạng, 2.000 ký tự, 50 công thức, lệnh cấm; KaTeX chỉ ở api khi lưu (`math_invalid`, `math_forbidden`) |
+| Q129 | LaTeX nguyên văn nằm trong `search_text` |
+| Q130 | Hộp thoại MathLive từ nút Σ hoặc bấm công thức có sẵn; bottom sheet trên điện thoại |
+| Q131 | KaTeX và MathLive tự host, tải lười; MathLive tiếng Anh |
