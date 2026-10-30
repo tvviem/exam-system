@@ -6,6 +6,7 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
   Bold,
+  Image as ImageIcon,
   Italic,
   List,
   ListOrdered,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { type ImageAttrs, ImageNode } from './image-extension';
 import { type MathAttrs, MathNode } from './math-extension';
 
 // Trình soạn nội dung có định dạng (Q114). Chỉ bật những node và mark mà schema ở @exam/shared cho phép;
@@ -25,8 +27,9 @@ import { type MathAttrs, MathNode } from './math-extension';
 // Mục danh sách chỉ chứa đoạn văn (không lồng danh sách), khớp richTextSchema.
 const FlatListItem = ListItem.extend({ content: 'paragraph' });
 
-// MathLive nặng nên chỉ tải khi mở hộp thoại công thức.
+// MathLive nặng nên chỉ tải khi mở hộp thoại công thức; hộp thoại Ảnh cũng chỉ tải khi mở.
 const MathDialog = lazy(() => import('./math-dialog'));
+const ImageDialog = lazy(() => import('./image-dialog'));
 
 const baseExtensions = [
   StarterKit.configure({
@@ -61,6 +64,7 @@ function clean(node: Json): Json {
     out.attrs = { start: attrs.start };
   }
   if (node.type === 'math') out.attrs = { latex: attrs?.latex, display: attrs?.display === true };
+  if (node.type === 'image') out.attrs = { illustrationId: attrs?.illustrationId, alt: attrs?.alt };
   if (content) out.content = content.map(clean);
   return out;
 }
@@ -122,10 +126,14 @@ export default function RichTextEditor({
   // `pos` rỗng là chèn công thức mới tại con trỏ; có số là sửa công thức đang có ở vị trí đó.
   const [math, setMath] = useState<{ pos: number | null; attrs: MathAttrs } | null>(null);
   const editMath = useRef((pos: number, attrs: MathAttrs) => setMath({ pos, attrs }));
+  // Tương tự cho Hình minh họa: `attrs` rỗng là chèn ảnh mới.
+  const [image, setImage] = useState<{ pos: number | null; attrs: ImageAttrs | null } | null>(null);
+  const editImage = useRef((pos: number, attrs: ImageAttrs) => setImage({ pos, attrs }));
   const extensions = useMemo(
     () => [
       ...baseExtensions,
       MathNode.configure({ onEdit: (pos, attrs) => editMath.current(pos, attrs) }),
+      ImageNode.configure({ onEdit: (pos, attrs) => editImage.current(pos, attrs) }),
     ],
     [],
   );
@@ -209,6 +217,12 @@ export default function RichTextEditor({
           active={false}
           onClick={() => setMath({ pos: null, attrs: { latex: '', display: false } })}
         />
+        <ToolButton
+          label={t('editor.image')}
+          icon={ImageIcon}
+          active={false}
+          onClick={() => setImage({ pos: null, attrs: null })}
+        />
       </div>
       <EditorContent editor={editor} />
       {math && (
@@ -237,6 +251,39 @@ export default function RichTextEditor({
                   .deleteRange({ from: math.pos, to: math.pos + 1 })
                   .run();
               setMath(null);
+            }}
+          />
+        </Suspense>
+      )}
+      {image && (
+        <Suspense fallback={null}>
+          <ImageDialog
+            initial={image.attrs}
+            editing={image.pos !== null}
+            onClose={() => setImage(null)}
+            onSubmit={(attrs) => {
+              if (image.pos === null) {
+                // Kèm một đoạn rỗng phía sau: con trỏ nằm sau ảnh nên gõ tiếp không ghi đè ảnh đang được chọn.
+                chain()
+                  .insertContent([{ type: 'image', attrs }, { type: 'paragraph' }])
+                  .run();
+              } else {
+                const pos = image.pos;
+                chain()
+                  .command(({ tr }) => {
+                    tr.setNodeMarkup(pos, undefined, attrs);
+                    return true;
+                  })
+                  .run();
+              }
+              setImage(null);
+            }}
+            onDelete={() => {
+              if (image.pos !== null)
+                chain()
+                  .deleteRange({ from: image.pos, to: image.pos + 1 })
+                  .run();
+              setImage(null);
             }}
           />
         </Suspense>
