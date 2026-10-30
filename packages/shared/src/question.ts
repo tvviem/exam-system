@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { normalizeForSearch, plainTextOf, type RichText, richTextSchema } from './rich-text.js';
+import {
+  countMath,
+  normalizeForSearch,
+  plainTextOf,
+  type RichText,
+  richTextSchema,
+} from './rich-text.js';
 
 // Schema Câu hỏi dùng chung cho web và api (docs/plan/slice-2.md, Q114, Q115).
 
@@ -18,6 +24,7 @@ export const POINTS_MIN = 0.25;
 export const POINTS_MAX = 100;
 export const TAGS_MAX = 10;
 export const TAG_MAX_CHARS = 30;
+export const MATH_MAX_PER_QUESTION = 50;
 
 /** Nội dung có chữ (không rỗng) và không dài quá `max` ký tự văn bản. */
 const textOf = (max: number) =>
@@ -118,12 +125,42 @@ const common = {
   tags: tagsSchema,
 };
 
-export const questionInputSchema = z.discriminatedUnion('type', [
-  z.strictObject({ type: z.literal('single_choice'), ...common, payload: singleChoicePayload }),
-  z.strictObject({ type: z.literal('multiple_choice'), ...common, payload: multipleChoicePayload }),
-  z.strictObject({ type: z.literal('true_false_cluster'), ...common, payload: clusterPayload }),
-  z.strictObject({ type: z.literal('essay'), ...common, payload: essayPayload }),
-]);
+/** Mọi nội dung có định dạng của Câu hỏi: Phần dẫn, Phương án, Mệnh đề, hướng dẫn chấm. */
+function richTextsOf(question: {
+  stem: RichText;
+  type: QuestionType;
+  payload: unknown;
+}): RichText[] {
+  const payload = question.payload as {
+    options?: { content: RichText }[];
+    statements?: { content: RichText }[];
+    rubric?: RichText;
+  };
+  return [
+    question.stem,
+    ...(payload.options ?? []).map((o) => o.content),
+    ...(payload.statements ?? []).map((s) => s.content),
+    ...(payload.rubric ? [payload.rubric] : []),
+  ];
+}
+
+export const questionInputSchema = z
+  .discriminatedUnion('type', [
+    z.strictObject({ type: z.literal('single_choice'), ...common, payload: singleChoicePayload }),
+    z.strictObject({
+      type: z.literal('multiple_choice'),
+      ...common,
+      payload: multipleChoicePayload,
+    }),
+    z.strictObject({ type: z.literal('true_false_cluster'), ...common, payload: clusterPayload }),
+    z.strictObject({ type: z.literal('essay'), ...common, payload: essayPayload }),
+  ])
+  .refine(
+    (q) => richTextsOf(q).reduce((sum, doc) => sum + countMath(doc), 0) <= MATH_MAX_PER_QUESTION,
+    {
+      message: `Tối đa ${MATH_MAX_PER_QUESTION} công thức trong một Câu hỏi`,
+    },
+  );
 
 export type QuestionInput = z.infer<typeof questionInputSchema>;
 export type SingleChoicePayload = z.infer<typeof singleChoicePayload>;

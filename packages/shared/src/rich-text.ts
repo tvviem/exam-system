@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 // Nội dung có định dạng (Q114): JSON của TipTap theo schema giới hạn. Node hoặc thuộc tính ngoài danh sách đều bị từ chối.
-// Node `math` (PR 2b) và `image` (PR 2c) được thêm khi tới PR đó.
+// Node `math` (PR 2b) nhúng trong dòng; node `image` (PR 2c) được thêm khi tới PR đó.
+// Server còn kiểm LaTeX dựng được bằng KaTeX và chặn lệnh nguy hiểm (apps/api), schema này chỉ kiểm hình dạng.
+
+export const MATH_MAX_CHARS = 2_000;
 
 const markSchema = z.strictObject({
   type: z.enum(['bold', 'italic', 'underline', 'superscript', 'subscript']),
@@ -15,9 +18,20 @@ const textNodeSchema = z.strictObject({
 
 const hardBreakSchema = z.strictObject({ type: z.literal('hardBreak') });
 
+// Công thức LaTeX: `display` false chạy cùng dòng chữ, true hiển thị riêng dòng và căn giữa (Q127).
+const mathSchema = z.strictObject({
+  type: z.literal('math'),
+  attrs: z.strictObject({
+    latex: z.string().min(1).max(MATH_MAX_CHARS),
+    display: z.boolean(),
+  }),
+});
+
 const paragraphSchema = z.strictObject({
   type: z.literal('paragraph'),
-  content: z.array(z.discriminatedUnion('type', [textNodeSchema, hardBreakSchema])).optional(),
+  content: z
+    .array(z.discriminatedUnion('type', [textNodeSchema, hardBreakSchema, mathSchema]))
+    .optional(),
 });
 
 // Mục danh sách chỉ chứa đoạn văn: không lồng danh sách trong danh sách.
@@ -50,12 +64,31 @@ type Block = RichText['content'][number];
 
 const blockTexts = (block: Block): string[] => {
   if (block.type === 'paragraph') {
-    return [(block.content ?? []).map((node) => (node.type === 'text' ? node.text : ' ')).join('')];
+    return [
+      (block.content ?? [])
+        .map((node) =>
+          node.type === 'text' ? node.text : node.type === 'math' ? node.attrs.latex : ' ',
+        )
+        .join(''),
+    ];
   }
   return block.content.flatMap((item) => item.content.flatMap(blockTexts));
 };
 
-/** Văn bản thuần của nội dung: các đoạn và mục cách nhau bằng khoảng trắng. */
+const blockMathCount = (block: Block): number =>
+  block.type === 'paragraph'
+    ? (block.content ?? []).filter((node) => node.type === 'math').length
+    : block.content.reduce(
+        (sum, item) => sum + item.content.reduce((inner, p) => inner + blockMathCount(p), 0),
+        0,
+      );
+
+/** Số công thức trong nội dung. */
+export function countMath(doc: RichText): number {
+  return doc.content.reduce((sum, block) => sum + blockMathCount(block), 0);
+}
+
+/** Văn bản thuần của nội dung (công thức giữ nguyên LaTeX): các đoạn và mục cách nhau bằng khoảng trắng. */
 export function plainTextOf(doc: RichText): string {
   return doc.content.flatMap(blockTexts).join(' ').replace(/\s+/g, ' ').trim();
 }
