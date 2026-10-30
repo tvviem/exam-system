@@ -224,6 +224,12 @@ Q143 và Q144 chỉ ghi lại, chưa làm gì ở lát cắt 2 (làm ở lát c�
 
 - **Q153 Tách PR.** 2d chỉ gồm Nhập Excel (Q145–Q147); 2f gồm Chuyển giao và Xóa người dùng (Q148–Q151). Hai phần không dùng chung mã, tách ra để mỗi PR đủ nhỏ để duyệt. Làm 2d trước.
 
+**Bổ sung khi làm PR 2d** (nhỏ, không đổi quyết định đã duyệt):
+- Job dọn lô có tên riêng `question-import.cleanup` (lịch 3 giờ 15), vì `JobRegistry` chỉ nhận một hàm cho mỗi tên job nên không đăng ký thêm vào `maintenance.cleanup` của identity được. Job này cũng cứu lô kẹt do worker chết: `parsing` quá 15 phút thành `parse_failed`, `committing` quá 15 phút trở lại `ready` (cột `commit_requested_at`).
+- Mã lỗi dòng thêm ngoài danh sách Q145: `invalid_scoring_rule` (Quy tắc chấm không phải Tỷ lệ hay Đúng hết), `too_many_formulas` (quá 50 công thức), `invalid_content` (lưới an toàn: schema chung từ chối mà không rơi vào mã nào ở trên).
+- API: `PATCH /api/question-imports/:id/items` nhận đúng một trong `itemIds` hoặc `group` (`valid` | `duplicate`) kèm `selected`; `counts` có thêm `selectedValid`, `selectedDuplicate` để giao diện hiện ô chọn nhóm ở trạng thái chọn một phần. Mã lỗi xác nhận không có dòng nào là `nothing_to_import`, thiếu Chủ đề là `topic_required`.
+- Giao diện cập nhật ô chọn ngay trên màn hình, không chờ server (mạng chậm trên điện thoại); server vẫn là nguồn đúng, lỗi thì trả về như cũ.
+
 ## Test (seam đã duyệt)
 
 1. **Unit (không DB):**

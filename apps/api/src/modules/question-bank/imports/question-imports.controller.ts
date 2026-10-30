@@ -68,7 +68,7 @@ export class QuestionImportsController {
     const topicId =
       field && !Array.isArray(field) && field.type === 'field' ? String(field.value) : null;
     if (topicId !== null && !z.uuid().safeParse(topicId).success) {
-      throw validationFailed('topicId', 'invalid');
+      throw validationFailed('topicId', 'topic_required');
     }
     return this.imports.create(user.id, { topicId, filename: part.filename, content });
   }

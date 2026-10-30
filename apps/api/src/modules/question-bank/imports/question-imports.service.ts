@@ -76,7 +76,7 @@ export class QuestionImportsService {
     ownerId: string,
     upload: { topicId: string | null; filename: string; content: Buffer },
   ) {
-    if (!upload.topicId) throw validationFailed('topicId', 'required');
+    if (!upload.topicId) throw validationFailed('topicId', 'topic_required');
     if (upload.content.length > MAX_UPLOAD_BYTES) throw validationFailed('file', 'file_too_large');
     if (!sniffUpload(upload.content)) throw validationFailed('file', 'unsupported_file');
     await this.topics.requireUsable(ownerId, upload.topicId);
@@ -252,7 +252,7 @@ export class QuestionImportsService {
             isNull(questionImportItems.errorCode),
           ),
         );
-      if (chosen === 0) throw validationFailed('itemIds', 'nothing_selected');
+      if (chosen === 0) throw validationFailed('itemIds', 'nothing_to_import');
       await tx
         .update(questionImportBatches)
         .set({ status: 'committing', commitRequestedAt: this.clock.now() })
@@ -281,10 +281,22 @@ export class QuestionImportsService {
         duplicate: sql<number>`count(*) filter (where ${kindCondition('duplicate')})::int`,
         error: sql<number>`count(*) filter (where ${hasError})::int`,
         selected: sql<number>`count(*) filter (where ${questionImportItems.selected})::int`,
+        // Để giao diện hiện ô chọn nhóm ở trạng thái chọn một phần.
+        selectedValid: sql<number>`count(*) filter (where ${questionImportItems.selected} and ${kindCondition('valid')})::int`,
+        selectedDuplicate: sql<number>`count(*) filter (where ${questionImportItems.selected} and ${kindCondition('duplicate')})::int`,
       })
       .from(questionImportItems)
       .where(eq(questionImportItems.batchId, id));
-    return row ?? { valid: 0, duplicate: 0, error: 0, selected: 0 };
+    return (
+      row ?? {
+        valid: 0,
+        duplicate: 0,
+        error: 0,
+        selected: 0,
+        selectedValid: 0,
+        selectedDuplicate: 0,
+      }
+    );
   }
 
   private async requireOwned(ownerId: string, id: string) {

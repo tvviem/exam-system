@@ -121,7 +121,12 @@
     "VALIDATION_quota_exceeded": "Bạn đã dùng hết dung lượng ảnh. Hãy xóa bớt ảnh không dùng rồi thử lại.",
     "VALIDATION_image_unavailable": "Có hình minh họa không dùng được (đã bị xóa, chưa xử lý xong hoặc xử lý lỗi). Hãy mở hình đó và chọn lại.",
     "INVALID_STATE_ILLUSTRATION_IN_USE": "Ảnh này đang được Câu hỏi sử dụng nên chưa xóa được.",
-    "VALIDATION_image_too_large": "Ảnh quá lớn. Tối đa 5 MB."
+    "VALIDATION_image_too_large": "Ảnh quá lớn. Tối đa 5 MB.",
+    "VALIDATION_topic_required": "Hãy chọn Chủ đề để nhập vào.",
+    "VALIDATION_nothing_to_import": "Chưa chọn dòng nào để tạo.",
+    "VALIDATION_item_has_error": "Dòng lỗi không chọn được. Hãy sửa file rồi tải lại.",
+    "VALIDATION_unknown_item": "Dòng này không thuộc lô nhập.",
+    "INVALID_STATE_BATCH_NOT_READY": "Lô nhập không còn ở bước xem trước (đã tạo hoặc đang xử lý)."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -681,7 +686,8 @@
     "moveTitle": "Chuyển {{count}} Câu hỏi sang Chủ đề khác",
     "targetTopic": "Chủ đề đích",
     "chooseTopic": "Chọn Chủ đề…",
-    "moved": "Đã chuyển {{count}} Câu hỏi"
+    "moved": "Đã chuyển {{count}} Câu hỏi",
+    "importExcel": "Nhập từ Excel"
   },
   "illustration": {
     "title": "Hình minh họa",
@@ -707,5 +713,88 @@
     "preview": "Xem trước",
     "alt": "Mô tả hình (bắt buộc)",
     "altHint": "Mô tả ngắn để người dùng trình đọc màn hình hiểu hình. {{count}}/{{max}}"
+  },
+  "questionImport": {
+    "title": "Nhập câu hỏi từ Excel",
+    "intro": "Nhập hàng loạt Câu chọn một và Câu chọn nhiều vào một Chủ đề. Bạn xem trước từng dòng rồi mới tạo.",
+    "step1": "Tải file mẫu và điền câu hỏi",
+    "step2": "Chọn Chủ đề sẽ nhập vào",
+    "step3": "Tải file đã điền lên",
+    "downloadTemplate": "Tải file mẫu",
+    "topic": "Chủ đề",
+    "chooseTopic": "Chọn Chủ đề…",
+    "chooseFile": "File câu hỏi (.xlsx hoặc .csv)",
+    "upload": "Tải lên và xem trước",
+    "uploading": "Đang tải lên…",
+    "noTopics": "Bạn chưa có Chủ đề nào. Hãy tạo Chủ đề trước khi nhập câu hỏi.",
+    "recent": "Lô nhập gần đây",
+    "empty": "Chưa có lô nhập nào. Lô được giữ 30 ngày.",
+    "rowsN": "{{count}} dòng",
+    "createdN": "đã tạo {{count}} câu",
+    "intoTopic": "Nhập vào Chủ đề: {{topic}}",
+    "parsingHint": "Hệ thống đang đọc file. Trang tự cập nhật.",
+    "committingHint": "Đang tạo câu hỏi. Trang tự cập nhật.",
+    "tryAnotherFile": "Tải file khác",
+    "doneTitle": "Đã tạo {{count}} câu hỏi",
+    "doneHint": "Các câu mới nằm trong Chủ đề {{topic}}. Các dòng không chọn đã được bỏ qua.",
+    "viewQuestions": "Xem câu hỏi trong Chủ đề",
+    "importAnother": "Nhập file khác",
+    "filterRows": "Lọc dòng",
+    "allRows": "Tất cả",
+    "kind": {
+      "valid": "Hợp lệ",
+      "duplicate": "Nghi trùng",
+      "error": "Lỗi"
+    },
+    "status": {
+      "parsing": "Đang đọc file",
+      "parse_failed": "Đọc file lỗi",
+      "ready": "Chờ xác nhận",
+      "committing": "Đang tạo",
+      "committed": "Đã tạo"
+    },
+    "outcome": {
+      "created": "Đã tạo",
+      "skipped": "Bỏ qua"
+    },
+    "selectValid": "Chọn các dòng hợp lệ ({{count}})",
+    "selectDuplicate": "Chọn cả các dòng nghi trùng ({{count}})",
+    "selectRow": "Chọn dòng {{n}}",
+    "select": "Chọn",
+    "selectedN": "Đã chọn {{count}} dòng",
+    "create": "Tạo {{count}} câu hỏi",
+    "creating": "Đang gửi…",
+    "itemsEmpty": "Không có dòng nào.",
+    "row": "Dòng {{n}}",
+    "rowHeader": "Dòng",
+    "contentHeader": "Nội dung",
+    "statusHeader": "Trạng thái",
+    "noContent": "(không đọc được nội dung)",
+    "view": "Xem",
+    "viewRow": "Xem dòng {{n}}",
+    "duplicateExisting": "Đã có trong Chủ đề này",
+    "duplicateRow": "Giống dòng {{n}} trong file",
+    "parseError": {
+      "unsupported_file": "File không đọc được. Chỉ nhận file .xlsx hoặc .csv (UTF-8), hãy dùng file mẫu.",
+      "missing_columns": "Thiếu cột bắt buộc. Cần có: Nội dung, Phương án A, Phương án B, Đáp án. Hãy dùng file mẫu.",
+      "empty_file": "File không có dòng câu hỏi nào.",
+      "too_many_rows": "File có quá nhiều dòng. Tối đa 500 dòng mỗi lần.",
+      "internal_error": "Hệ thống không đọc được file. Hãy thử lại sau."
+    },
+    "rowError": {
+      "missing_content": "Thiếu nội dung câu hỏi.",
+      "too_few_options": "Cần ít nhất 2 Phương án.",
+      "gap_in_options": "Có ô Phương án trống ở giữa. Hãy điền liên tục từ A.",
+      "answer_mismatch": "Đáp án trống, lặp hoặc không khớp Phương án có thật.",
+      "invalid_points": "Điểm phải từ 0,25 đến 100, bước 0,25.",
+      "scoring_rule_not_allowed": "Quy tắc chấm chỉ dùng cho Câu chọn nhiều.",
+      "invalid_scoring_rule": "Quy tắc chấm phải là Tỷ lệ hoặc Đúng hết.",
+      "field_too_long": "Nội dung, Phương án hoặc tag quá dài.",
+      "too_many_tags": "Tối đa 10 tag.",
+      "too_many_formulas": "Quá nhiều công thức trong một câu (tối đa 50).",
+      "math_invalid": "Công thức LaTeX không dựng được.",
+      "math_forbidden": "Công thức dùng lệnh LaTeX không được phép.",
+      "invalid_content": "Nội dung không hợp lệ."
+    }
   }
 }

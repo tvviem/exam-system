@@ -155,7 +155,7 @@ describe('tải file lên và đọc (Q123, Q146)', () => {
     const big = { filename: 'a.csv', content: Buffer.alloc(2 * 1024 * 1024 + 1, 'a') };
     expect((await send(big)).statusCode).toBe(400);
     expect((await send(importCsv(tp(1)), {})).json()).toMatchObject({
-      issues: [{ path: 'topicId' }],
+      issues: [{ path: 'topicId', code: 'topic_required' }],
     });
   });
 
@@ -226,6 +226,10 @@ describe('chọn dòng để tạo (Q146)', () => {
     expect((await detail(id)).json().counts.selected).toBe(3);
     await select(id, { itemIds: byKind('valid'), selected: false });
     expect((await detail(id)).json().counts.selected).toBe(1); // chỉ còn dòng nghi trùng
+    expect((await detail(id)).json().counts).toMatchObject({
+      selectedValid: 0,
+      selectedDuplicate: 1,
+    });
     await select(id, { group: 'valid', selected: true });
     expect((await detail(id)).json().counts.selected).toBe(3);
 
@@ -332,7 +336,7 @@ describe('xác nhận tạo Câu hỏi (Q146)', () => {
     await select(id, { group: 'valid', selected: false });
     const res = await commit(id);
     expect(res.statusCode).toBe(400);
-    expect(res.json()).toMatchObject({ issues: [{ path: 'itemIds', code: 'nothing_selected' }] });
+    expect(res.json()).toMatchObject({ issues: [{ path: 'itemIds', code: 'nothing_to_import' }] });
     expect((await detail(id)).json().status).toBe('ready');
   });
 
