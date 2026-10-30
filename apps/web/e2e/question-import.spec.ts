@@ -99,6 +99,9 @@ test('nhập câu hỏi từ Excel: tải lên, xem trước, bỏ chọn một 
   // Lô nằm trong danh sách gần đây, trạng thái "Đã tạo".
   await page.goto('/examiner/questions/import');
   await expect(page.getByText('đã tạo 2 câu')).toBeVisible();
+  // Mở lại lô từ danh sách: vẫn thấy kết quả.
+  await page.getByRole('link', { name: /cau-hoi\.csv/ }).click();
+  await expect(page.getByText('Đã tạo 2 câu hỏi')).toBeVisible();
 });
 
 test('file thiếu cột bắt buộc: báo lỗi rõ và cho tải file khác', async ({ page }, testInfo) => {
@@ -139,5 +142,8 @@ for (const width of [360, 768, 1024, 1440]) {
     await page.getByRole('button', { name: 'Tải lên và xem trước' }).click();
     await expect(page.getByText('Đã chọn 3 dòng')).toBeVisible();
     expect(await overflow(), 'màn xem trước').toBe(0);
+    await page.getByRole('button', { name: 'Tạo 3 câu hỏi' }).click();
+    await expect(page.getByText('Đã tạo 3 câu hỏi')).toBeVisible();
+    expect(await overflow(), 'màn kết quả').toBe(0);
   });
 }

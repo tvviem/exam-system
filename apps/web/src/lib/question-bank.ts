@@ -2,6 +2,7 @@ import type { QuestionInput, QuestionType, RichText } from '@exam/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
+import { queryString } from './query-string';
 
 export type { QuestionType } from '@exam/shared';
 export { QUESTION_TYPES } from '@exam/shared';
@@ -40,15 +41,6 @@ export interface QuestionListParams {
   tag?: string;
   page?: number;
 }
-
-const queryString = (params: Record<string, string | number | undefined>) => {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== '') search.set(key, String(value));
-  }
-  const text = search.toString();
-  return text ? `?${text}` : '';
-};
 
 export const topicsQuery = (includeArchived = false) =>
   queryOptions({

@@ -69,7 +69,7 @@ export function ImportItems({
 }) {
   const { t } = useTranslation();
   const [viewing, setViewing] = useState<ImportItem | null>(null);
-  const viewing_ = viewing ? viewOf(viewing) : null;
+  const viewingQuestion = viewing ? viewOf(viewing) : null;
 
   const checkbox = (item: ImportItem) =>
     item.kind === 'error' ? (
@@ -159,7 +159,7 @@ export function ImportItems({
         onClose={() => setViewing(null)}
         title={t('questionImport.row', { n: viewing?.rowNumber })}
       >
-        {viewing_ && <QuestionView question={viewing_} showAnswer />}
+        {viewingQuestion && <QuestionView question={viewingQuestion} showAnswer />}
       </Dialog>
     </>
   );

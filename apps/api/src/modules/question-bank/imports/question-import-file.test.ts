@@ -166,6 +166,7 @@ describe('công thức và xuống dòng trong ô (Q145)', () => {
     ['Giá \\$5 và \\$6', 'Giá $5 và $6'],
     ['Có $ một dấu', 'Có $ một dấu'],
     ['Rỗng $$ nhé', 'Rỗng $$ nhé'],
+    ['Không hỗ trợ $$x^2$$ nhé', 'Không hỗ trợ $$x^2$$ nhé'],
   ])('\\$, $ lẻ và $$ rỗng là chữ: "%s"', async (cell, expected) => {
     expect(inline(await parseOne({ 'Nội dung': cell }))).toEqual([
       { type: 'text', text: expected },
@@ -204,6 +205,8 @@ describe('lỗi từng dòng (Q123, Q145)', () => {
     ['đáp án không phải chữ cái', { 'Đáp án': '2' }, 'answer_mismatch'],
     ['đáp án lặp', { 'Đáp án': 'A,A' }, 'answer_mismatch'],
     ['điểm không phải số', { Điểm: 'mười' }, 'invalid_points'],
+    ['điểm dạng thập lục phân', { Điểm: '0x10' }, 'invalid_points'],
+    ['điểm dạng khoa học', { Điểm: '1e1' }, 'invalid_points'],
     ['điểm không chia hết 0,25', { Điểm: '0,3' }, 'invalid_points'],
     ['điểm dưới 0,25', { Điểm: '0' }, 'invalid_points'],
     ['điểm trên 100', { Điểm: '101' }, 'invalid_points'],

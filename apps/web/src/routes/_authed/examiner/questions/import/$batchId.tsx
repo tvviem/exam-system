@@ -74,14 +74,7 @@ function BatchBody({ batch }: { batch: ImportBatch }) {
         </p>
       </Card>
 
-      {batch.status === 'parsing' && (
-        <Card>
-          <p className="flex items-center gap-3" role="status">
-            <Loader2 aria-hidden className="size-5 animate-spin text-fg-muted" />
-            {t('questionImport.parsingHint')}
-          </p>
-        </Card>
-      )}
+      {batch.status === 'parsing' && <BusyCard>{t('questionImport.parsingHint')}</BusyCard>}
       {batch.status === 'parse_failed' && (
         <>
           <ErrorMessage>
@@ -164,14 +157,7 @@ function Preview({ batch }: { batch: ImportBatch }) {
 
   return (
     <>
-      {batch.status === 'committing' && (
-        <Card>
-          <p className="flex items-center gap-3" role="status">
-            <Loader2 aria-hidden className="size-5 animate-spin text-fg-muted" />
-            {t('questionImport.committingHint')}
-          </p>
-        </Card>
-      )}
+      {batch.status === 'committing' && <BusyCard>{t('questionImport.committingHint')}</BusyCard>}
       {batch.status === 'committed' && (
         <Card className="flex flex-col gap-3">
           <p className="flex items-center gap-2 font-medium text-success" role="status">
@@ -309,5 +295,17 @@ function GroupToggle({
       />
       {label}
     </label>
+  );
+}
+
+/** Thông báo đang xử lý; trang tự cập nhật nên chỉ cần báo cho trình đọc màn hình một lần. */
+function BusyCard({ children }: { children: string }) {
+  return (
+    <Card>
+      <p className="flex items-center gap-3" role="status">
+        <Loader2 aria-hidden className="size-5 animate-spin text-fg-muted" />
+        {children}
+      </p>
+    </Card>
   );
 }

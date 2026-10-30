@@ -3,6 +3,8 @@ import {
   MATH_MAX_PER_QUESTION,
   normalizeForSearch,
   normalizeTag,
+  POINTS_MAX,
+  POINTS_MIN,
   plainTextOf,
   type QuestionInput,
   questionInputSchema,
@@ -17,7 +19,7 @@ import { checkLatex } from '../latex';
 // Đọc file Excel/CSV nhập Câu hỏi (Q123, Q145): chỉ Câu chọn một và Câu chọn nhiều. Hàm thuần, không chạm DB.
 
 export const MAX_IMPORT_ROWS = 500;
-const MAX_OPTIONS = 6;
+export const MAX_OPTIONS = 6;
 const DEFAULT_POINTS = 1;
 // Chỉ để chạy `questionInputSchema` (cần `topicId`); Chủ đề thật gắn lúc tạo Câu hỏi.
 const PLACEHOLDER_TOPIC_ID = '00000000-0000-4000-8000-000000000000';
@@ -192,8 +194,10 @@ function parseAnswer(value: string, optionCount: number): string[] | null {
 /** Trống = 1; chấp nhận dấu phẩy thập phân. null nếu không phải số 0,25–100 chia hết cho 0,25. */
 function parsePoints(value: string): number | null {
   if (value === '') return DEFAULT_POINTS;
+  // Chỉ nhận số thập phân thường: `Number()` cũng nhận `0x10` hay `1e1`.
+  if (!/^\d+([.,]\d+)?$/.test(value)) return null;
   const points = Number(value.replace(',', '.'));
-  if (!Number.isFinite(points) || points < 0.25 || points > 100) return null;
+  if (points < POINTS_MIN || points > POINTS_MAX) return null;
   return Number.isInteger(points * 4) ? points : null;
 }
 
@@ -260,6 +264,10 @@ function inlineOf(line: string): Inline[] {
     const char = line[i];
     if (char === '\\' && line[i + 1] === '$') {
       buffer += '$';
+      i += 2;
+    } else if (char === '$' && line[i + 1] === '$') {
+      // `$$...$$` không hỗ trợ (Q145): giữ nguyên là chữ, không tách thành công thức.
+      buffer += '$$';
       i += 2;
     } else if (char === '$') {
       let j = i + 1;

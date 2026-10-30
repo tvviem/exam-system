@@ -5,6 +5,7 @@ import { type Database, DB } from '../../../db/db.module';
 import { MEDIA_STORE, type MediaStore } from '../../../media/media-store';
 import { JobRegistry } from '../../../queue/job-queue';
 import { questionImportBatches } from '../question-bank.schema';
+import { importUploadKeyOf } from './question-import-keys';
 
 const STUCK_AFTER_MS = 15 * 60_000;
 // Mỗi ngày lúc 3 giờ 15, sau job dọn của identity.
@@ -58,8 +59,8 @@ export class QuestionImportCleanupJob implements OnModuleInit {
         ),
       )
       .returning({ id: questionImportBatches.id });
-    // Khóa file nằm ở cột đã bị xóa trong câu trên; dựng lại từ id theo quy ước đặt tên của `create`.
-    for (const { id } of stuck) await this.media.delete(`uploads/question-imports/${id}`);
+    // Khóa file nằm ở cột vừa bị xóa trong câu trên; dựng lại từ id.
+    for (const { id } of stuck) await this.media.delete(importUploadKeyOf(id));
   }
 
   /** Worker chết giữa lúc tạo Câu hỏi thì giao dịch chưa commit: lô trở lại `ready` để xác nhận lại. */

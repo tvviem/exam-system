@@ -15,11 +15,11 @@ import { z } from 'zod';
 import type { Actor } from '../../../common/actor';
 import { ApiError, validationFailed } from '../../../common/api-error';
 import { pageSchema } from '../../../common/pagination';
+import { MAX_UPLOAD_BYTES } from '../../../common/spreadsheet';
 import { AdminOnly, CurrentActor, CurrentUser, RequireTag } from '../auth/auth.decorators';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CredentialSlipsService } from '../credential-slips/credential-slips.service';
 import { accountRequestStatusEnum, matchStatusEnum } from '../identity.schema';
-import { MAX_UPLOAD_BYTES } from './account-request-file';
 import { buildAccountRequestTemplate } from './account-request-template';
 import {
   AccountRequestsService,

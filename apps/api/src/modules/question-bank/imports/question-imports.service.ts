@@ -6,6 +6,7 @@ import {
   count,
   desc,
   eq,
+  gt,
   inArray,
   isNotNull,
   isNull,
@@ -24,6 +25,7 @@ import { MEDIA_STORE, type MediaStore } from '../../../media/media-store';
 import { JOB_QUEUE, type JobQueue } from '../../../queue/job-queue';
 import { questionImportBatches, questionImportItems, topics } from '../question-bank.schema';
 import { TopicsService } from '../topics.service';
+import { importUploadKeyOf } from './question-import-keys';
 
 const FILENAME_MAX = 255;
 /** Lô sống 30 ngày để xem lại (Q146). */
@@ -82,7 +84,7 @@ export class QuestionImportsService {
     await this.topics.requireUsable(ownerId, upload.topicId);
 
     const id = uuidv7();
-    const uploadKey = `uploads/question-imports/${id}`;
+    const uploadKey = importUploadKeyOf(id);
     const now = this.clock.now();
     await this.media.put(uploadKey, upload.content);
     try {
@@ -115,7 +117,11 @@ export class QuestionImportsService {
   }
 
   list(ownerId: string, page: Page) {
-    const where = eq(questionImportBatches.ownerId, ownerId);
+    // Lô quá hạn coi như đã xóa dù job dọn hằng ngày chưa chạy tới.
+    const where = and(
+      eq(questionImportBatches.ownerId, ownerId),
+      gt(questionImportBatches.expiresAt, this.clock.now()),
+    );
     return paginate(
       page,
       () => this.db.select({ total: count() }).from(questionImportBatches).where(where),
@@ -158,7 +164,13 @@ export class QuestionImportsService {
       })
       .from(questionImportBatches)
       .innerJoin(topics, eq(topics.id, questionImportBatches.topicId))
-      .where(and(eq(questionImportBatches.id, id), eq(questionImportBatches.ownerId, ownerId)));
+      .where(
+        and(
+          eq(questionImportBatches.id, id),
+          eq(questionImportBatches.ownerId, ownerId),
+          gt(questionImportBatches.expiresAt, this.clock.now()),
+        ),
+      );
     if (!batch) throw new ApiError('NOT_FOUND');
     const { topicId, topicName, ...rest } = batch;
     return { ...rest, topic: { id: topicId, name: topicName }, counts: await this.countsOf(id) };

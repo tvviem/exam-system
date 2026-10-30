@@ -5,10 +5,10 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { registerOriginCheck } from './common/origin-check';
+import { MAX_UPLOAD_BYTES } from './common/spreadsheet';
 import { ZodExceptionFilter } from './common/zod-exception.filter';
 import { ENV } from './config/config.module';
 import type { Env } from './config/env';
-import { MAX_UPLOAD_BYTES } from './modules/identity/account-requests/account-request-file';
 import { MAX_ILLUSTRATION_UPLOAD_BYTES } from './modules/question-bank/illustrations/image-processing';
 
 export async function createApp(): Promise<NestFastifyApplication> {

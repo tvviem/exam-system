@@ -365,6 +365,19 @@ describe('xác nhận tạo Câu hỏi (Q146)', () => {
     expect((await questionsOf()).total).toBe(0);
   });
 
+  it('job lỗi giữa chừng: lô trở lại "ready", không tạo nửa chừng', async () => {
+    const id = await parsed(importCsv(tp(1), tp(2)));
+    // Làm hỏng nội dung đã lưu của một dòng để việc tạo Câu hỏi ném lỗi giữa chừng.
+    await sql(
+      "UPDATE question_import_items SET payload = '{}'::jsonb WHERE batch_id = $1 AND row_number = 3",
+      [id],
+    );
+    await commit(id);
+    await t.queue.drain();
+    expect((await detail(id)).json().status).toBe('ready');
+    expect((await questionsOf()).total).toBe(0);
+  });
+
   it('sau khi xác nhận không sửa được lựa chọn nữa', async () => {
     const id = await parsed(importCsv(tp(1)));
     await commit(id);
@@ -376,6 +389,14 @@ describe('xác nhận tạo Câu hỏi (Q146)', () => {
 describe('dọn dẹp hằng ngày', () => {
   const cleanup = () => t.app.get(JobRegistry).run('question-import.cleanup', {});
 
+  it('lô quá 30 ngày không còn hiện dù job dọn chưa chạy', async () => {
+    const old = await parsed(importCsv(tp(1)));
+    t.clock.advance(31 * 24 * 60 * minutes(1));
+    cookie = (await login(t.app, 'gv1', DEFAULT_PASSWORD)).cookie as string;
+    expect((await detail(old)).statusCode).toBe(404);
+    expect((await call(t.app, 'GET', '/api/question-imports', { cookie })).json().total).toBe(0);
+  });
+
   it('xóa lô quá 30 ngày cùng các dòng của nó, giữ lô còn hạn', async () => {
     const old = await parsed(importCsv(tp(1)));
     t.clock.advance(31 * 24 * 60 * minutes(1));
@@ -384,6 +405,10 @@ describe('dọn dẹp hằng ngày', () => {
     await cleanup();
     expect((await detail(old)).statusCode).toBe(404);
     expect((await detail(fresh)).statusCode).toBe(200);
+    const [batches] = await sql<{ n: string }>(
+      'SELECT count(*)::text AS n FROM question_import_batches',
+    );
+    expect(Number(batches?.n)).toBe(1); // lô cũ đã bị xóa thật, không chỉ bị ẩn
     const [count] = await sql<{ n: string }>(
       'SELECT count(*)::text AS n FROM question_import_items',
     );

@@ -1,10 +1,10 @@
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
+import { sniffUpload } from '../../../common/spreadsheet';
 import {
   AccountRequestFileError,
   type ParsedRow,
   parseAccountRequestFile,
-  sniffUpload,
 } from './account-request-file';
 
 const HEADER = 'Họ tên,Mã định danh,Email,Lớp,Ngày sinh,Giới tính';

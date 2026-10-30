@@ -2,16 +2,13 @@ import { z } from 'zod';
 import {
   type Cell,
   isFilled,
-  MAX_UPLOAD_BYTES,
   readTable,
   SpreadsheetError,
-  sniffUpload,
   type Table,
 } from '../../../common/spreadsheet';
 import { stripAccents } from './person-name';
 
-/** Giới hạn của Yêu cầu cấp tài khoản (Q88). */
-export { MAX_UPLOAD_BYTES, sniffUpload };
+/** Giới hạn số dòng của Yêu cầu cấp tài khoản (Q88). */
 export const MAX_ROWS = 2000;
 
 export type FileErrorCode = 'unsupported_file' | 'missing_columns' | 'empty_file' | 'too_many_rows';
