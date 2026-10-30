@@ -1,8 +1,11 @@
 import {
+  IMAGE_MAX_PER_QUESTION,
+  imageNodesOf,
   type QuestionInput,
   type QuestionType,
   questionInputSchema,
   type RichText,
+  richTextFieldsOf,
   textDoc,
 } from '@exam/shared';
 import type { Question } from './question-bank';
@@ -146,7 +149,11 @@ type Problem =
   | 'points'
   | 'tags'
   | 'maxLength'
-  | 'math';
+  | 'math'
+  | 'images';
+
+const imageCount = (draft: Draft) =>
+  richTextFieldsOf(toInput(draft)).reduce((sum, field) => sum + imageNodesOf(field.doc).length, 0);
 
 /** Các nhóm lỗi của bản nháp (để giao diện báo bằng lời); rỗng nghĩa là lưu được. */
 export function problemsOf(draft: Draft): Problem[] {
@@ -155,8 +162,9 @@ export function problemsOf(draft: Draft): Problem[] {
   const found = new Set<Problem>();
   for (const issue of parsed.error.issues) {
     const [first, second] = issue.path;
-    // Lỗi không gắn trường nào: giới hạn số công thức của cả Câu hỏi.
-    if (issue.path.length === 0) found.add('math');
+    // Lỗi không gắn trường nào: giới hạn số công thức hoặc số hình minh họa của cả Câu hỏi.
+    if (issue.path.length === 0)
+      found.add(imageCount(draft) > IMAGE_MAX_PER_QUESTION ? 'images' : 'math');
     else if (first === 'topicId') found.add('topic');
     else if (first === 'stem') found.add('stem');
     else if (first === 'defaultPoints') found.add('points');

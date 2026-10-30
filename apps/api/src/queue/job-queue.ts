@@ -14,6 +14,8 @@ export interface JobPayloads {
     reviewerIp: string | null;
     rejectedCount: number;
   };
+  /** Xử lý Hình minh họa vừa tải lên: bỏ EXIF, tạo biến thể WebP (Q140). */
+  'illustration.process': { illustrationId: string };
   /** Dọn dẹp định kỳ hằng ngày (Q96). */
   'maintenance.cleanup': Record<string, never>;
 }

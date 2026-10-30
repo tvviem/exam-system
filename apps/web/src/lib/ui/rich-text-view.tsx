@@ -1,5 +1,6 @@
 import type { RichText } from '@exam/shared';
 import type { ReactNode } from 'react';
+import { IllustrationFigure } from './illustration-image';
 import { MathView } from './math-view';
 
 // Dựng nội dung từ JSON thành phần tử React, không dùng HTML thô (Q114): không có đường cho XSS.
@@ -40,6 +41,9 @@ function Paragraph({ block }: { block: Extract<Block, { type: 'paragraph' }> }) 
 
 function BlockNode({ block }: { block: Block }) {
   if (block.type === 'paragraph') return <Paragraph block={block} />;
+  if (block.type === 'image') {
+    return <IllustrationFigure id={block.attrs.illustrationId} alt={block.attrs.alt} />;
+  }
   const items = block.content.map((item, index) => (
     // biome-ignore lint/suspicious/noArrayIndexKey: nội dung chỉ đọc, không đổi thứ tự
     <li key={index}>

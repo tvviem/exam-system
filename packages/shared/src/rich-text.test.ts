@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   countMath,
   hasForbiddenLatex,
+  imageNodesOf,
   MATH_MAX_CHARS,
   mathNodesOf,
   normalizeForSearch,
@@ -184,5 +185,54 @@ describe('plainTextOf', () => {
 describe('normalizeForSearch', () => {
   it('bỏ dấu, đ thành d, chữ thường, gộp khoảng trắng', () => {
     expect(normalizeForSearch('  Đạo   HÀM  của hàm số ')).toBe('dao ham cua ham so');
+  });
+});
+
+describe('node image (Hình minh họa)', () => {
+  const ID = '0b9f2c5e-3f43-4c8e-9a35-5f4f3b0d1a11';
+  const image = (
+    attrs: Record<string, unknown> = { illustrationId: ID, alt: 'Đồ thị hàm số' },
+  ) => ({
+    type: 'image',
+    attrs,
+  });
+
+  it('chấp nhận ảnh đứng riêng giữa các đoạn và lấy lại theo thứ tự', () => {
+    const input = doc(para(text('Xem hình')), image(), para(text('Hết')));
+    const parsed = richTextSchema.parse(input);
+    expect(parsed).toEqual(input);
+    expect(imageNodesOf(parsed)).toEqual([{ illustrationId: ID, alt: 'Đồ thị hàm số' }]);
+  });
+
+  it.each([
+    ['thiếu alt', { illustrationId: ID }],
+    ['alt rỗng', { illustrationId: ID, alt: '' }],
+    ['alt chỉ có khoảng trắng', { illustrationId: ID, alt: '   ' }],
+    ['alt quá 250 ký tự', { illustrationId: ID, alt: 'a'.repeat(251) }],
+    ['id không phải uuid', { illustrationId: 'abc', alt: 'x' }],
+    ['thuộc tính lạ (src)', { illustrationId: ID, alt: 'x', src: 'http://x/y.png' }],
+  ])('từ chối ảnh %s', (_name, attrs) => {
+    expect(richTextSchema.safeParse(doc(image(attrs))).success).toBe(false);
+  });
+
+  it('nhận alt đúng 250 ký tự', () => {
+    expect(
+      richTextSchema.safeParse(doc(image({ illustrationId: ID, alt: 'a'.repeat(250) }))).success,
+    ).toBe(true);
+  });
+
+  it('từ chối ảnh nằm trong mục danh sách hoặc trong đoạn văn', () => {
+    expect(
+      richTextSchema.safeParse(
+        doc({ type: 'bulletList', content: [{ type: 'listItem', content: [image()] }] }),
+      ).success,
+    ).toBe(false);
+    expect(richTextSchema.safeParse(doc(para(image()))).success).toBe(false);
+  });
+
+  it('plainTextOf gồm alt để tìm kiếm được', () => {
+    expect(plainTextOf(richTextSchema.parse(doc(para(text('Cho')), image())))).toBe(
+      'Cho Đồ thị hàm số',
+    );
   });
 });

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  imageNodesOf,
   mathNodesOf,
   normalizeForSearch,
   plainTextOf,
@@ -26,6 +27,8 @@ export const TAGS_MAX = 10;
 export const TAG_MAX_CHARS = 30;
 // Giới hạn công thức mỗi Câu hỏi: số lượng, và tổng ký tự để server dựng thử KaTeX không tốn quá nhiều CPU mỗi lần lưu.
 export const MATH_MAX_PER_QUESTION = 50;
+/** Số Hình minh họa tối đa trong một Câu hỏi, tính trên mọi nội dung (Q137). */
+export const IMAGE_MAX_PER_QUESTION = 10;
 export const MATH_MAX_TOTAL_CHARS = 10_000;
 
 /** Nội dung có chữ (không rỗng) và không dài quá `max` ký tự văn bản. */
@@ -172,6 +175,12 @@ export const questionInputSchema = z
     },
     {
       message: `Tối đa ${MATH_MAX_PER_QUESTION} công thức và ${MATH_MAX_TOTAL_CHARS} ký tự công thức trong một Câu hỏi`,
+    },
+  )
+  .refine(
+    (q) => richTextFieldsOf(q).flatMap((f) => imageNodesOf(f.doc)).length <= IMAGE_MAX_PER_QUESTION,
+    {
+      message: `Tối đa ${IMAGE_MAX_PER_QUESTION} hình minh họa trong một Câu hỏi`,
     },
   );
 

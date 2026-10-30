@@ -16,6 +16,14 @@ const envSchema = z.object({
   }),
   // Thư mục lưu file (MediaStore): file tải lên tạm, Phiếu tài khoản. Trên production là volume.
   MEDIA_DIR: z.string().default('./media-data'),
+  // Hạn mức dung lượng Hình minh họa mỗi Người ra đề (Q139), mặc định 500 MB.
+  ILLUSTRATION_QUOTA_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(500 * 1024 * 1024),
+  // Nếu có (ví dụ /_media), api trả ảnh bằng X-Accel-Redirect để nginx đọc file thay vì api (Q141).
+  MEDIA_ACCEL_PREFIX: z.string().optional(),
   // Origin được phép gửi request đổi dữ liệu (chống CSRF), cách nhau bằng dấu phẩy.
   APP_ORIGINS: z
     .string()

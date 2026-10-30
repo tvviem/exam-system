@@ -199,12 +199,15 @@ export function Dialog({
   title,
   children,
   dismissible = true,
+  size = 'md',
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   dismissible?: boolean;
+  /** `xl` cho nội dung rộng như ảnh phóng to. */
+  size?: 'md' | 'xl';
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
@@ -225,7 +228,9 @@ export function Dialog({
         e.preventDefault();
         if (dismissible) onClose();
       }}
-      className="m-0 mt-auto w-full max-w-none rounded-t-2xl bg-surface-raised p-0 text-fg sm:m-auto sm:max-w-lg sm:rounded-2xl"
+      className={`m-0 mt-auto w-full max-w-none rounded-t-2xl bg-surface-raised p-0 text-fg sm:m-auto sm:rounded-2xl ${
+        size === 'xl' ? 'sm:max-w-4xl' : 'sm:max-w-lg'
+      }`}
     >
       {open && (
         <div className="flex max-h-[85dvh] flex-col gap-4 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">

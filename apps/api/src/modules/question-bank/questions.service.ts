@@ -4,6 +4,7 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { type Page, paginate } from '../../common/pagination';
 import { type Database, DB } from '../../db/db.module';
+import { IllustrationsService } from './illustrations/illustrations.service';
 import { assertLatexValid } from './latex';
 import { questions, topics } from './question-bank.schema';
 import { TopicsService } from './topics.service';
@@ -48,17 +49,21 @@ export class QuestionsService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly topics: TopicsService,
+    private readonly illustrations: IllustrationsService,
   ) {}
 
   async create(ownerId: string, input: QuestionInput) {
     assertLatexValid(input);
     await this.topics.requireUsable(ownerId, input.topicId);
-    const [row] = await this.db
-      .insert(questions)
-      .values({ ownerId, ...this.valuesOf(input) })
-      .returning(fullColumns);
-    if (!row) throw new Error('Không tạo được Câu hỏi');
-    return present(row);
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(questions)
+        .values({ ownerId, ...this.valuesOf(input) })
+        .returning(fullColumns);
+      if (!row) throw new Error('Không tạo được Câu hỏi');
+      await this.illustrations.syncUsage(tx, ownerId, row.id, input);
+      return present(row);
+    });
   }
 
   async get(ownerId: string, id: string) {
@@ -79,34 +84,40 @@ export class QuestionsService {
     assertLatexValid(input);
     const current = await this.get(ownerId, id);
     if (input.topicId !== current.topicId) await this.topics.requireUsable(ownerId, input.topicId);
-    const [row] = await this.db
-      .update(questions)
-      .set({ ...this.valuesOf(input), version: sql`${questions.version} + 1` })
-      .where(
-        and(eq(questions.id, id), eq(questions.ownerId, ownerId), eq(questions.version, version)),
-      )
-      .returning(fullColumns);
-    if (!row) throw new ApiError('CONFLICT', { field: 'version' });
-    return present(row);
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(questions)
+        .set({ ...this.valuesOf(input), version: sql`${questions.version} + 1` })
+        .where(
+          and(eq(questions.id, id), eq(questions.ownerId, ownerId), eq(questions.version, version)),
+        )
+        .returning(fullColumns);
+      if (!row) throw new ApiError('CONFLICT', { field: 'version' });
+      await this.illustrations.syncUsage(tx, ownerId, id, input);
+      return present(row);
+    });
   }
 
   async duplicate(ownerId: string, id: string) {
     const source = await this.load(ownerId, id);
-    const [row] = await this.db
-      .insert(questions)
-      .values({
-        ownerId,
-        topicId: source.topicId,
-        type: source.type,
-        stem: source.stem,
-        payload: source.payload,
-        defaultPoints: String(source.defaultPoints),
-        tags: source.tags,
-        searchText: source.searchText,
-      })
-      .returning(fullColumns);
-    if (!row) throw new Error('Không nhân bản được Câu hỏi');
-    return present(row);
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(questions)
+        .values({
+          ownerId,
+          topicId: source.topicId,
+          type: source.type,
+          stem: source.stem,
+          payload: source.payload,
+          defaultPoints: String(source.defaultPoints),
+          tags: source.tags,
+          searchText: source.searchText,
+        })
+        .returning(fullColumns);
+      if (!row) throw new Error('Không nhân bản được Câu hỏi');
+      await this.illustrations.copyUsage(tx, id, row.id);
+      return present(row);
+    });
   }
 
   async move(ownerId: string, ids: string[], topicId: string) {

@@ -1,10 +1,15 @@
 import { z } from 'zod';
 
 // Nội dung có định dạng (Q114): JSON của TipTap theo schema giới hạn. Node hoặc thuộc tính ngoài danh sách đều bị từ chối.
-// Node `math` (PR 2b) nhúng trong dòng; node `image` (PR 2c) được thêm khi tới PR đó.
+// Node `math` (PR 2b) nhúng trong dòng; node `image` (PR 2c) là node khối tham chiếu Hình minh họa (Q137).
 // Server còn kiểm LaTeX dựng được bằng KaTeX và chặn lệnh nguy hiểm (apps/api), schema này chỉ kiểm hình dạng.
 
 export const MATH_MAX_CHARS = 2_000;
+export const IMAGE_ALT_MAX_CHARS = 250;
+/** Cạnh dài (px) của các biến thể Hình minh họa mà api phục vụ (Q140, Q141). */
+export const ILLUSTRATION_VARIANT_SIDES = [480, 960, 1600] as const;
+/** Loại ảnh được tải lên (Q122). */
+export const ILLUSTRATION_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
 /**
  * Tùy chọn dựng KaTeX dùng chung cho server (kiểm khi lưu) và web (hiển thị, báo lỗi sớm) để hai bên không lệch nhau.
@@ -45,6 +50,15 @@ const mathSchema = z.strictObject({
   }),
 });
 
+// Hình minh họa đứng riêng một khối, chỉ tham chiếu bằng id; `alt` bắt buộc để người dùng trình đọc màn hình hiểu hình (Q137).
+const imageSchema = z.strictObject({
+  type: z.literal('image'),
+  attrs: z.strictObject({
+    illustrationId: z.uuid(),
+    alt: z.string().trim().min(1).max(IMAGE_ALT_MAX_CHARS),
+  }),
+});
+
 const paragraphSchema = z.strictObject({
   type: z.literal('paragraph'),
   content: z
@@ -72,7 +86,14 @@ const orderedListSchema = z.strictObject({
 export const richTextSchema = z.strictObject({
   type: z.literal('doc'),
   content: z
-    .array(z.discriminatedUnion('type', [paragraphSchema, bulletListSchema, orderedListSchema]))
+    .array(
+      z.discriminatedUnion('type', [
+        paragraphSchema,
+        bulletListSchema,
+        orderedListSchema,
+        imageSchema,
+      ]),
+    )
     .min(1),
 });
 
@@ -81,6 +102,7 @@ export type RichText = z.infer<typeof richTextSchema>;
 type Block = RichText['content'][number];
 
 const blockTexts = (block: Block): string[] => {
+  if (block.type === 'image') return [block.attrs.alt];
   if (block.type === 'paragraph') {
     return [
       (block.content ?? [])
@@ -93,14 +115,21 @@ const blockTexts = (block: Block): string[] => {
   return block.content.flatMap((item) => item.content.flatMap(blockTexts));
 };
 
-const blockMath = (block: Block): { latex: string; display: boolean }[] =>
-  block.type === 'paragraph'
+const blockMath = (block: Block): { latex: string; display: boolean }[] => {
+  if (block.type === 'image') return [];
+  return block.type === 'paragraph'
     ? (block.content ?? []).flatMap((node) => (node.type === 'math' ? [node.attrs] : []))
     : block.content.flatMap((item) => item.content.flatMap(blockMath));
+};
 
 /** Các công thức trong nội dung, theo thứ tự xuất hiện (kể cả trong danh sách). */
 export function mathNodesOf(doc: RichText): { latex: string; display: boolean }[] {
   return doc.content.flatMap(blockMath);
+}
+
+/** Các Hình minh họa trong nội dung, theo thứ tự xuất hiện. */
+export function imageNodesOf(doc: RichText): { illustrationId: string; alt: string }[] {
+  return doc.content.flatMap((block) => (block.type === 'image' ? [block.attrs] : []));
 }
 
 /** Số công thức trong nội dung. */

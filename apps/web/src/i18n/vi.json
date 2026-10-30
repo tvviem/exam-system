@@ -116,7 +116,12 @@
     "CONFLICT_name": "Đã có Chủ đề trùng tên (không phân biệt hoa thường và dấu).",
     "CONFLICT_version": "Câu hỏi đã được sửa ở nơi khác. Hãy tải lại bản mới.",
     "INVALID_STATE_TOPIC_NOT_EMPTY": "Chủ đề còn Câu hỏi nên không xóa được. Hãy chuyển hoặc xóa các Câu hỏi trước, hoặc Lưu trữ Chủ đề.",
-    "INVALID_STATE_TOPIC_ARCHIVED": "Chủ đề đã Lưu trữ. Hãy khôi phục Chủ đề hoặc chọn Chủ đề khác."
+    "INVALID_STATE_TOPIC_ARCHIVED": "Chủ đề đã Lưu trữ. Hãy khôi phục Chủ đề hoặc chọn Chủ đề khác.",
+    "VALIDATION_unsupported_type": "Chỉ nhận ảnh JPEG, PNG hoặc WebP.",
+    "VALIDATION_quota_exceeded": "Bạn đã dùng hết dung lượng ảnh. Hãy xóa bớt ảnh không dùng rồi thử lại.",
+    "VALIDATION_image_unavailable": "Có hình minh họa không dùng được (đã bị xóa, chưa xử lý xong hoặc xử lý lỗi). Hãy mở hình đó và chọn lại.",
+    "INVALID_STATE_ILLUSTRATION_IN_USE": "Ảnh này đang được Câu hỏi sử dụng nên chưa xóa được.",
+    "VALIDATION_image_too_large": "Ảnh quá lớn. Tối đa 5 MB."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -522,7 +527,14 @@
     "mathSave": "Lưu công thức",
     "mathDelete": "Xóa công thức",
     "mathInvalid": "Công thức chưa đúng. Hãy kiểm tra các ngoặc và lệnh.",
-    "mathForbidden": "Công thức có lệnh không được phép (liên kết, ảnh hoặc nhúng file)."
+    "mathForbidden": "Công thức có lệnh không được phép (liên kết, ảnh hoặc nhúng file).",
+    "image": "Hình minh họa",
+    "imageNode": "Hình minh họa: {{alt}}. Bấm để sửa",
+    "imageInsertTitle": "Chèn hình minh họa",
+    "imageEditTitle": "Sửa hình minh họa",
+    "imageInsert": "Chèn hình",
+    "imageSave": "Lưu mô tả",
+    "imageRemove": "Gỡ hình khỏi Câu hỏi"
   },
   "questionType": {
     "single_choice": "Chọn một",
@@ -623,7 +635,8 @@
       "tags": "Mỗi tag 1–30 ký tự, tối đa 10 tag.",
       "maxLength": "Từ 100 đến 5.000.",
       "topic": "Hãy chọn một Chủ đề. Nếu chưa có, tạo Chủ đề ở trang Ngân hàng câu hỏi.",
-      "math": "Một Câu hỏi có tối đa 50 công thức và 10.000 ký tự công thức."
+      "math": "Một Câu hỏi có tối đa 50 công thức và 10.000 ký tự công thức.",
+      "images": "Một Câu hỏi có tối đa 10 hình minh họa."
     },
     "problemShort": {
       "stem": "Phần dẫn",
@@ -635,7 +648,8 @@
       "tags": "tags",
       "maxLength": "số ký tự tối đa",
       "topic": "Chủ đề",
-      "math": "số công thức"
+      "math": "số công thức",
+      "images": "số hình minh họa"
     },
     "moveUp": "Chuyển lên",
     "moveDown": "Chuyển xuống",
@@ -668,5 +682,30 @@
     "targetTopic": "Chủ đề đích",
     "chooseTopic": "Chọn Chủ đề…",
     "moved": "Đã chuyển {{count}} Câu hỏi"
+  },
+  "illustration": {
+    "title": "Hình minh họa",
+    "unavailable": "Không hiển thị được hình này",
+    "zoom": "Xem hình lớn: {{alt}}",
+    "hint": "Ảnh JPEG, PNG hoặc WebP, tối đa 5 MB. Ảnh lớn được thu nhỏ trước khi tải lên.",
+    "choose": "Chọn ảnh từ máy",
+    "uploading": "Đang tải lên…",
+    "processing": "Đang xử lý ảnh…",
+    "failed": {
+      "dimensions_too_large": "Ảnh quá lớn (quá 8.000 px một cạnh). Hãy chọn ảnh nhỏ hơn.",
+      "corrupt": "Không đọc được ảnh này. Hãy thử ảnh khác.",
+      "error": "Xử lý ảnh bị lỗi. Hãy thử tải lại ảnh này."
+    },
+    "library": "Ảnh đã tải lên của tôi",
+    "libraryEmpty": "Chưa có ảnh nào. Ảnh bạn tải lên sẽ nằm ở đây để dùng lại.",
+    "pick": "Chọn ảnh này",
+    "delete": "Xóa ảnh khỏi thư viện",
+    "deleteConfirm": "Xóa ảnh",
+    "inUse": "Đang được Câu hỏi sử dụng",
+    "page": "Trang {{page}}/{{pages}}",
+    "change": "Chọn ảnh khác",
+    "preview": "Xem trước",
+    "alt": "Mô tả hình (bắt buộc)",
+    "altHint": "Mô tả ngắn để người dùng trình đọc màn hình hiểu hình. {{count}}/{{max}}"
   }
 }

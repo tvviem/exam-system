@@ -373,6 +373,11 @@ export function ClusterFields({
   );
 }
 
+const isEmptyDoc = (doc: RichText) => {
+  const [only] = doc.content;
+  return doc.content.length === 1 && only?.type === 'paragraph' && !only.content;
+};
+
 export function EssayFields({
   draft,
   patch,
@@ -407,7 +412,7 @@ export function EssayFields({
           value={draft.rubric ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
           onChange={(rubric) =>
             patch({
-              rubric: rubric.content.length === 1 && !rubric.content[0]?.content ? null : rubric,
+              rubric: isEmptyDoc(rubric) ? null : rubric,
             })
           }
         />
