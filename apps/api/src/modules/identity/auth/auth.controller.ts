@@ -12,9 +12,11 @@ import {
 } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import type { Actor } from '../../../common/actor';
 import { ApiError } from '../../../common/api-error';
 import {
   AllowPendingPasswordChange,
+  CurrentActor,
   CurrentAuthSessionId,
   CurrentUser,
   Public,
@@ -102,9 +104,16 @@ export class AuthController {
     @Body() body: unknown,
     @CurrentUser() user: AuthenticatedUser,
     @CurrentAuthSessionId() authSessionId: string,
+    @CurrentActor() actor: Actor,
   ) {
     const input = changePasswordSchema.parse(body ?? {});
-    await this.auth.changePassword(user, authSessionId, input.currentPassword, input.newPassword);
+    await this.auth.changePassword(
+      user,
+      authSessionId,
+      input.currentPassword,
+      input.newPassword,
+      actor,
+    );
     return { ok: true };
   }
 

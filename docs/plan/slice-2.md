@@ -99,6 +99,17 @@ Thêm mục **Ngân hàng câu hỏi** vào thanh bên của Người ra đề. 
 - **Q130 Soạn:** nút Σ "Công thức" trên thanh công cụ (hoặc bấm vào công thức có sẵn) mở hộp thoại có ô MathLive, bàn phím toán ảo gắn vào `<dialog>`, ô "Hiện riêng một dòng", báo lỗi ngay bằng KaTeX; điện thoại hiện dạng bottom sheet.
 - **Q131 Font và dung lượng:** KaTeX và MathLive tự host (font woff2 qua Vite), tải lười; gói chính tăng khoảng 0,3 KB gzip, KaTeX ~77 KB và hộp thoại MathLive ~218 KB gzip chỉ tải khi cần. Chuỗi của MathLive để tiếng Anh.
 
+## PR 2e: Tài khoản của tôi (Q132–Q136)
+
+Phát hiện sau PR 2a: đổi mật khẩu chỉ có ở luồng bắt buộc đổi mật khẩu tạm, và chưa ai xem hoặc sửa được thông tin của chính mình. Bổ sung cho mọi vai trò (Quản trị viên, Người ra đề, Người dự thi):
+
+- **Trang `/account`** (mở từ menu tài khoản, mục "Tài khoản của tôi"): khối **Thông tin** (sửa được phần được phép, phần còn lại chỉ xem kèm ghi chú "liên hệ Quản trị viên"), khối **Đổi mật khẩu** (dùng lại API `POST /api/auth/change-password` và biểu mẫu của trang bắt buộc đổi), liên kết sang **Phiên đăng nhập**.
+- **API:** `GET /api/account` (kèm `editable`: danh sách trường tự sửa được) và `PATCH /api/account`. Trường ngoài quyền, kể cả trường lạ, bị từ chối `VALIDATION_FAILED` với `{ path, code: 'not_editable' }`.
+- **Quyền tự sửa (Q133):** Người ra đề: họ tên, ngày sinh, giới tính, học vị, học hàm. Quản trị viên: họ tên, ngày sinh, giới tính. Người dự thi: ngày sinh, giới tính. Mã định danh, lớp, email, tên đăng nhập, Đơn vị, Nhãn vai trò và họ tên của Người dự thi chỉ Quản trị viên sửa (họ tên in trên Phiếu tài khoản và Kết quả).
+- **Email (Q134):** giai đoạn 1 chưa cho tự đổi vì chưa có email để xác minh.
+- **Nhật ký (Q135):** `account.update` (chỉ các trường thật sự đổi, kèm trước và sau) và `account.change-password` (không ghi mật khẩu); không ghi gì nếu không có thay đổi.
+- **Đổi mật khẩu (Q136):** giữ chính sách hiện có, thu hồi mọi phiên khác, phiên đang dùng giữ nguyên.
+
 ## PR 2c: Hình minh họa (Q122)
 
 ```text
@@ -195,3 +206,8 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q129 | LaTeX nguyên văn nằm trong `search_text` |
 | Q130 | Hộp thoại MathLive từ nút Σ hoặc bấm công thức có sẵn; bottom sheet trên điện thoại |
 | Q131 | KaTeX và MathLive tự host, tải lười; MathLive tiếng Anh |
+| Q132 | Trang `/account` cho mọi vai trò: Thông tin, Đổi mật khẩu, liên kết Phiên đăng nhập; lối vào ở menu tài khoản |
+| Q133 | Quyền tự sửa theo vai trò; mã, lớp, email, tên đăng nhập, Đơn vị, họ tên Người dự thi do Quản trị viên sửa |
+| Q134 | Chưa cho tự đổi email ở giai đoạn 1 |
+| Q135 | Ghi `account.update` và `account.change-password`, không ghi mật khẩu, không ghi khi không đổi gì |
+| Q136 | Đổi mật khẩu giữ phiên hiện tại, thu hồi phiên khác |
