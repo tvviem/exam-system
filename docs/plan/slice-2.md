@@ -102,10 +102,11 @@ Thêm mục **Ngân hàng câu hỏi** vào thanh bên của Người ra đề. 
 ## PR 2c: Hình minh họa (Q122)
 
 ```text
-Người ra đề tải ảnh (JPEG/PNG/WebP ≤ 5 MB) ─► API kiểm nội dung thật, lưu bản tạm (MediaStore)
-   ─► job "illustration.process" (worker, sharp): xoay đúng chiều, bỏ EXIF, giữ bản gốc đã làm sạch,
-      tạo WebP 480 / 960 / 1600 px ─► illustrations.status = ready
-Gắn vào Phần dẫn / Phương án / Mệnh đề bằng node `image` ─► phục vụ qua /media (kiểm quyền)
+Người ra đề chọn ảnh ─► trình duyệt thu nhỏ về ≤ 2.400 px (Q142) ─► POST /api/illustrations (≤ 5 MB)
+   ─► API kiểm magic bytes + hạn mức + trùng SHA-256, lưu bản tạm (MediaStore), status = processing
+   ─► job "illustration.process" (worker, sharp): xoay đúng chiều, bỏ EXIF, tạo WebP ≤ 1600 / 960 / 480 px,
+      xóa bản tạm (không giữ bản gốc, Q140) ─► status = ready (hoặc failed + lý do)
+Gắn vào Câu hỏi bằng node `image` ─► khi lưu, ghi question_illustrations ─► phục vụ qua /api/media (kiểm quyền)
 ```
 
 - Không nhận SVG và GIF động (rủi ro XSS và hiệu năng); kiểm magic bytes, không tin đuôi file hay MIME của client; ảnh quá 8.000 px mỗi cạnh bị từ chối (chống nén bom).
@@ -113,6 +114,15 @@ Gắn vào Phần dẫn / Phương án / Mệnh đề bằng node `image` ─►
 - Một ảnh dùng lại được trong nhiều Câu hỏi của cùng chủ; chỉ xóa được khi không còn Câu hỏi nào dùng. Hạn mức mặc định 500 MB mỗi Người ra đề (cấu hình bằng biến môi trường).
 - **Phục vụ:** `GET /api/media/:id/:variant` kiểm quyền rồi trả file; production dùng nginx `X-Accel-Redirect` để api không phải đọc file, môi trường dev api tự trả. Lát cắt 2 chỉ chủ sở hữu xem được; token ký 2 giờ cho Người dự thi thêm ở lát cắt 4.
 - Ảnh được tải lười, chạm để phóng to (architecture.md mục 7).
+
+### Chi tiết đã duyệt khi làm PR 2c (Q137–Q142)
+
+- **Q137 Node `image`:** node khối `image` với `attrs: { illustrationId (uuid), alt (1–250 ký tự) }`, schema chặt. Đứng ở cấp ngoài cùng của Phần dẫn, Phương án, Mệnh đề và hướng dẫn chấm (không nằm trong mục danh sách). Tối đa 10 ảnh mỗi Câu hỏi (tính trên mọi nội dung); `alt` nằm trong `search_text`.
+- **Q138 Chọn ảnh khi soạn:** nút "Ảnh" trên thanh công cụ mở hộp thoại: tải ảnh mới (xem trước, bắt buộc nhập mô tả) hoặc chọn từ "Ảnh đã tải lên của tôi" (20 ảnh mỗi trang). Xóa được ngay trong hộp thoại nếu chưa Câu hỏi nào dùng. Bảng `question_illustrations (question_id, illustration_id)` được cập nhật mỗi lần tạo hoặc sửa Câu hỏi; khi lưu, mọi `illustrationId` phải là ảnh `ready` của chính chủ, nếu không trả `VALIDATION_FAILED` với `code: image_unavailable`.
+- **Q139 Hạn mức và trùng ảnh:** 500 MB (`ILLUSTRATION_QUOTA_BYTES`) tính trên tổng dung lượng các biến thể đang lưu. Tải trùng nội dung (SHA-256 của file gửi lên, trong cùng chủ) thì trả lại ảnh có sẵn, không tốn thêm dung lượng; ảnh trùng đang `failed` thì xử lý lại.
+- **Q140 Tải lên và tối ưu dung lượng (đã sửa):** API nhận multipart ≤ 5 MB, kiểm magic bytes (JPEG/PNG/WebP). Worker dùng sharp: giới hạn số điểm ảnh khi đọc, từ chối cạnh > 8.000 px, xoay theo EXIF rồi bỏ EXIF, mã hóa lại. **Không giữ bản gốc**, chỉ lưu các biến thể WebP có cạnh dài tối đa 1600 / 960 / 480 px; không phóng to (ảnh nhỏ chỉ có biến thể bằng cỡ thật). JPEG và WebP nén chất lượng ~80; PNG (sơ đồ, ảnh chụp màn hình có chữ) nén không mất dữ liệu để chữ không mờ. Ảnh hỏng hoặc quá khổ: `status = failed` kèm lý do. Giao diện hỏi lại trạng thái đến khi `ready`.
+- **Q141 Phục vụ và hiển thị:** `GET /api/media/:id/:variant` (`variant` là 480, 960 hoặc 1600; trả biến thể lớn nhất không vượt quá cỡ xin, hoặc biến thể nhỏ nhất nếu ảnh nhỏ hơn), chỉ chủ sở hữu. Production dùng `X-Accel-Redirect`, dev api tự trả. Web dùng `srcset`/`sizes`, tải lười, chạm để phóng to trong hộp thoại.
+- **Q142 Thu nhỏ ở trình duyệt:** hộp thoại Ảnh thu nhỏ ảnh về cạnh dài ≤ 2.400 px trước khi tải lên để tiết kiệm dữ liệu di động; không làm được thì gửi file gốc. Server vẫn kiểm tra và mã hóa lại, không tin client.
 
 ## PR 2d: Nhập Excel, Chuyển giao, Xóa người dùng
 
@@ -185,7 +195,7 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q119 | Lưu bằng nút (không tự lưu lên server), cảnh báo rời trang, bản nháp nhớ trên thiết bị; Nhân bản, di chuyển, xóa hàng loạt |
 | Q120 | `QuestionView` dùng chung với khu làm bài và Xem thử Bộ đề; công tắc "Hiện Đáp án đúng" chỉ cho chủ |
 | Q121 | Công thức LaTeX trong node `math`; MathLive soạn, KaTeX hiển thị, cả hai tải lười; server kiểm LaTeX và chặn lệnh nguy hiểm |
-| Q122 | Ảnh JPEG/PNG/WebP ≤ 5 MB, không SVG/GIF; worker bỏ EXIF và tạo WebP 480/960/1600; `alt` bắt buộc; phục vụ có kiểm quyền |
+| Q122 | Ảnh JPEG/PNG/WebP ≤ 5 MB, không SVG/GIF; worker bỏ EXIF và tạo WebP 480/960/1600 (không giữ bản gốc, Q140); `alt` bắt buộc; phục vụ có kiểm quyền |
 | Q123 | Nhập Excel chỉ cho câu chọn một và chọn nhiều; xem trước từng dòng rồi mới tạo; công thức viết trong `$...$`; ≤ 500 dòng |
 | Q124 | Chuyển giao nhiều Chủ đề trong một giao dịch, người nhận hợp lệ, trùng tên thì thêm hậu tố, ghi nhật ký |
 | Q125 | Xóa người dùng còn Chủ đề thì từ chối `HAS_CONTENT`; hộp thoại cho chọn người nhận và Chuyển giao rồi Xóa trong một bước |
@@ -195,3 +205,9 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q129 | LaTeX nguyên văn nằm trong `search_text` |
 | Q130 | Hộp thoại MathLive từ nút Σ hoặc bấm công thức có sẵn; bottom sheet trên điện thoại |
 | Q131 | KaTeX và MathLive tự host, tải lười; MathLive tiếng Anh |
+| Q137 | Node khối `image { illustrationId, alt ≤ 250 }`, ở cấp ngoài cùng, ≤ 10 ảnh mỗi Câu hỏi |
+| Q138 | Hộp thoại Ảnh: tải mới (alt bắt buộc) hoặc chọn từ thư viện; xóa khi chưa dùng; `question_illustrations` cập nhật khi lưu; `image_unavailable` |
+| Q139 | Hạn mức 500 MB tính trên biến thể; trùng SHA-256 trong cùng chủ thì dùng lại |
+| Q140 | Multipart ≤ 5 MB, worker sharp: bỏ EXIF, từ chối > 8.000 px, chỉ lưu biến thể WebP ≤ 1600/960/480, không giữ bản gốc; `processing → ready/failed` |
+| Q141 | `GET /api/media/:id/:variant` chỉ chủ; `X-Accel-Redirect` ở production; `srcset`, tải lười, chạm phóng to |
+| Q142 | Trình duyệt thu nhỏ ≤ 2.400 px trước khi tải lên; server không tin client |

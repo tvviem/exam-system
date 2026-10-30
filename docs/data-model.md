@@ -142,11 +142,15 @@ questions (
 -- Tìm kiếm: chuẩn hóa chuỗi tìm bằng cùng hàm rồi LIKE trên search_text (thoát %, _). Khác Người dùng (unaccent lúc truy vấn):
 -- cách này xử lý được cả "đ" và không cần gọi hàm trên từng dòng. `version` tăng mỗi lần sửa nội dung hoặc đổi Chủ đề.
 
-illustrations (                           -- Hình minh họa
-  id, owner_id → users, object_key text, width, height, mime, bytes, alt text
+illustrations (                           -- Hình minh họa (Q139, Q140)
+  id, owner_id → users, sha256 char(64), status enum('processing','ready','failed'), failure_reason text,
+  width, height,                          -- của biến thể lớn nhất
+  variants int[],                         -- các cạnh dài đã tạo, ví dụ {480,960,1600}; file WebP tại illustrations/<id>/<cạnh>.webp
+  bytes int,                              -- tổng các biến thể, tính vào hạn mức
+  created_at, UNIQUE (owner_id, sha256)
 )
-question_illustrations (question_id, illustration_id, position text, sort int)
--- position: 'stem' | 'option:<id>' | 'statement:<id>'
+question_illustrations (question_id → questions ON DELETE CASCADE, illustration_id → illustrations, PK (question_id, illustration_id))
+-- Cập nhật mỗi lần tạo hoặc sửa Câu hỏi từ các node `image`; không có bản gốc, `alt` nằm trong node (Q137).
 ```
 
 Ví dụ `payload` theo từng loại:
