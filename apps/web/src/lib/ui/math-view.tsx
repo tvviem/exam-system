@@ -1,3 +1,4 @@
+import { KATEX_OPTIONS } from '@exam/shared';
 import { useEffect, useRef, useState } from 'react';
 
 // Hiển thị công thức LaTeX bằng KaTeX (Q121, Q131). KaTeX và font tải lười lần đầu có công thức,
@@ -37,13 +38,7 @@ export function MathView({ latex, display }: { latex: string; display: boolean }
     void loadKatex().then((katex) => {
       if (cancelled || !host.current) return;
       try {
-        katex.render(latex, host.current, {
-          displayMode: display,
-          throwOnError: true,
-          trust: false,
-          strict: 'ignore',
-          maxExpand: 1000,
-        });
+        katex.render(latex, host.current, { ...KATEX_OPTIONS, displayMode: display });
       } catch {
         setFailed(true);
       }

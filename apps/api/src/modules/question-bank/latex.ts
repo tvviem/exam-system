@@ -1,4 +1,10 @@
-import { hasForbiddenLatex, type QuestionInput, type RichText } from '@exam/shared';
+import {
+  hasForbiddenLatex,
+  KATEX_OPTIONS,
+  type QuestionInput,
+  type RichText,
+  richTextFieldsOf,
+} from '@exam/shared';
 import katex from 'katex';
 import { ApiError } from '../../common/api-error';
 
@@ -10,13 +16,7 @@ export type LatexProblem = 'math_invalid' | 'math_forbidden';
 export function checkLatex(latex: string): LatexProblem | null {
   if (hasForbiddenLatex(latex)) return 'math_forbidden';
   try {
-    katex.renderToString(latex, {
-      throwOnError: true,
-      trust: false,
-      strict: 'ignore',
-      maxExpand: 1000,
-      output: 'html',
-    });
+    katex.renderToString(latex, { ...KATEX_OPTIONS, output: 'html' });
     return null;
   } catch {
     return 'math_invalid';
@@ -35,21 +35,8 @@ const paragraphLatex = (paragraph: Extract<RichText['content'][number], { type: 
 
 /** Ném `VALIDATION_FAILED` với `path` của từng trường có công thức không hợp lệ. */
 export function assertLatexValid(question: QuestionInput): void {
-  const fields: { path: string; doc: RichText }[] = [{ path: 'stem', doc: question.stem }];
-  if (question.type === 'single_choice' || question.type === 'multiple_choice') {
-    for (const [i, option] of question.payload.options.entries()) {
-      fields.push({ path: `payload.options.${i}.content`, doc: option.content });
-    }
-  } else if (question.type === 'true_false_cluster') {
-    for (const [i, statement] of question.payload.statements.entries()) {
-      fields.push({ path: `payload.statements.${i}.content`, doc: statement.content });
-    }
-  } else if (question.payload.rubric) {
-    fields.push({ path: 'payload.rubric', doc: question.payload.rubric });
-  }
-
   const issues: { path: string; code: LatexProblem }[] = [];
-  for (const { path, doc } of fields) {
+  for (const { path, doc } of richTextFieldsOf(question)) {
     const problems = latexOf(doc).map(checkLatex);
     const code = problems.includes('math_forbidden')
       ? 'math_forbidden'

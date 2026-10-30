@@ -125,23 +125,28 @@ const common = {
   tags: tagsSchema,
 };
 
-/** Mọi nội dung có định dạng của Câu hỏi: Phần dẫn, Phương án, Mệnh đề, hướng dẫn chấm. */
-function richTextsOf(question: {
-  stem: RichText;
-  type: QuestionType;
-  payload: unknown;
-}): RichText[] {
-  const payload = question.payload as {
-    options?: { content: RichText }[];
-    statements?: { content: RichText }[];
-    rubric?: RichText;
-  };
-  return [
-    question.stem,
-    ...(payload.options ?? []).map((o) => o.content),
-    ...(payload.statements ?? []).map((s) => s.content),
-    ...(payload.rubric ? [payload.rubric] : []),
-  ];
+// Hình dạng tối thiểu của Câu hỏi để duyệt nội dung; không dùng `QuestionInput` vì schema còn gọi hàm này (vòng kiểu).
+type RichTextHolder = { stem: RichText } & (
+  | { type: 'single_choice' | 'multiple_choice'; payload: { options: { content: RichText }[] } }
+  | { type: 'true_false_cluster'; payload: { statements: { content: RichText }[] } }
+  | { type: 'essay'; payload: { rubric?: RichText } }
+);
+
+/** Mọi nội dung có định dạng của Câu hỏi kèm đường dẫn trường: Phần dẫn, Phương án, Mệnh đề, hướng dẫn chấm. */
+export function richTextFieldsOf(question: RichTextHolder): { path: string; doc: RichText }[] {
+  const fields = [{ path: 'stem', doc: question.stem }];
+  if (question.type === 'single_choice' || question.type === 'multiple_choice') {
+    for (const [i, option] of question.payload.options.entries()) {
+      fields.push({ path: `payload.options.${i}.content`, doc: option.content });
+    }
+  } else if (question.type === 'true_false_cluster') {
+    for (const [i, statement] of question.payload.statements.entries()) {
+      fields.push({ path: `payload.statements.${i}.content`, doc: statement.content });
+    }
+  } else if (question.type === 'essay' && question.payload.rubric) {
+    fields.push({ path: 'payload.rubric', doc: question.payload.rubric });
+  }
+  return fields;
 }
 
 export const questionInputSchema = z
@@ -156,7 +161,9 @@ export const questionInputSchema = z
     z.strictObject({ type: z.literal('essay'), ...common, payload: essayPayload }),
   ])
   .refine(
-    (q) => richTextsOf(q).reduce((sum, doc) => sum + countMath(doc), 0) <= MATH_MAX_PER_QUESTION,
+    (q) =>
+      richTextFieldsOf(q).reduce((sum, field) => sum + countMath(field.doc), 0) <=
+      MATH_MAX_PER_QUESTION,
     {
       message: `Tối đa ${MATH_MAX_PER_QUESTION} công thức trong một Câu hỏi`,
     },

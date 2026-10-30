@@ -6,6 +6,17 @@ import { z } from 'zod';
 
 export const MATH_MAX_CHARS = 2_000;
 
+/**
+ * Tùy chọn dựng KaTeX dùng chung cho server (kiểm khi lưu) và web (hiển thị, báo lỗi sớm) để hai bên không lệch nhau.
+ * `trust: false` là chốt chặn thật sự với liên kết và ảnh; `strict: 'ignore'` để chữ có dấu trong `\text` không bị từ chối.
+ */
+export const KATEX_OPTIONS = {
+  throwOnError: true,
+  trust: false,
+  strict: 'ignore',
+  maxExpand: 1000,
+} as const;
+
 /** `\href`, `\url` (liên kết ra ngoài), `\includegraphics`, `\input`, `\include` và nhóm `\html*` (gắn lớp, kiểu, id). */
 const FORBIDDEN_LATEX = /\\(?:href|url|includegraphics|input|include|html[A-Za-z]*)(?![A-Za-z])/;
 
