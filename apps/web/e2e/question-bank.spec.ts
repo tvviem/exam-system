@@ -181,3 +181,33 @@ for (const width of [360, 768, 1024, 1440]) {
     }
   });
 }
+
+// Trình soạn đo bề rộng vùng nội dung (không phải màn hình): đủ rộng thì Soạn và Xem thử đứng cạnh nhau,
+// hẹp thì là hai tab; ẩn thanh bên nới thêm chỗ nên laptop 1024 px cũng chia cột được.
+test('trình soạn chia cột Soạn / Xem thử theo chỗ còn lại, ẩn thanh bên thì nới thêm', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'bố cục máy tính');
+  await signIn(page, `e2e-ch-rong-${testInfo.project.name}`);
+  const tabs = page.getByRole('tablist', { name: 'Soạn hoặc xem thử' });
+  const editor = page.getByRole('textbox', { name: 'Phần dẫn' });
+  const preview = page.getByRole('heading', { name: 'Xem thử' });
+
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto('/examiner/questions/new?type=single_choice');
+  await expect(editor).toBeVisible();
+  await expect(tabs).toBeVisible();
+  await expect(preview).toBeHidden();
+
+  await page.getByRole('button', { name: 'Ẩn thanh điều hướng' }).click();
+  await expect(tabs).toBeHidden();
+  const [stem, view] = await Promise.all([editor.boundingBox(), preview.boundingBox()]);
+  expect(stem && view && view.x > stem.x + stem.width - 1).toBe(true);
+  expect(stem?.width).toBeGreaterThan(450);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('button', { name: 'Hiện thanh điều hướng' }).click();
+  await expect(tabs).toBeHidden();
+  const wide = await editor.boundingBox();
+  expect(wide?.width).toBeGreaterThan(500);
+});

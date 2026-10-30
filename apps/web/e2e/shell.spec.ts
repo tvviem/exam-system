@@ -69,6 +69,33 @@ test.describe('khung ứng dụng thích ứng', () => {
   });
 });
 
+// Thanh bên ẩn/hiện được bằng nút ở đầu trang để nới chỗ soạn; lựa chọn được nhớ trên trình duyệt.
+test('thanh bên ẩn/hiện bằng nút và được nhớ sau khi tải lại', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'thanh bên chỉ có từ 1024 px');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page, `e2e-yc-gv-${testInfo.project.name}`);
+  const nav = main(page);
+  await expect(nav).toBeVisible();
+  const before = await page.getByRole('main').boundingBox();
+
+  await page.getByRole('button', { name: 'Ẩn thanh điều hướng' }).click();
+  await expect(nav).toBeHidden();
+  const after = await page.getByRole('main').boundingBox();
+  // nội dung rộng ra chiếm chỗ thanh bên (256 px)
+  expect((after?.width ?? 0) - (before?.width ?? 0)).toBeGreaterThan(100);
+
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Hiện thanh điều hướng' })).toBeVisible();
+  await expect(nav).toBeHidden();
+
+  await page.getByRole('button', { name: 'Hiện thanh điều hướng' }).click();
+  await expect(nav).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ẩn thanh điều hướng' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+});
+
 // Q108: thông báo nổi cho thao tác thành công, tự mất, không chiếm focus.
 test('thao tác thành công hiện thông báo nổi rồi tự mất', async ({ page }, testInfo) => {
   const project = testInfo.project.name;

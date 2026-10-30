@@ -90,6 +90,8 @@ export function QuestionEditor({
 
   const dirty = serialize(draft) !== baseline;
   const problems = problemsOf(draft);
+  // Form mới còn trống thì chưa tô đỏ: lỗi chỉ hiện sau khi người dùng đã sửa gì đó (nút Lưu vẫn khóa cho tới khi đủ).
+  const shown = dirty ? problems : [];
   const skipBlock = useRef(false);
 
   // Câu mới chưa có Chủ đề thì mặc định Chủ đề đầu tiên chưa lưu trữ; đây là giá trị gốc, không tính là thay đổi.
@@ -193,15 +195,15 @@ export function QuestionEditor({
   };
 
   const form = (
-    <div key={formKey} className="flex flex-col gap-4">
+    <div key={formKey} className="@container flex flex-col gap-4">
       <Card className="flex flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md:grid-cols-2 @xl:grid-cols-3">
           <SelectField
             id="q-topic"
             label={t('questionBank.topic')}
             value={draft.topicId}
             onChange={(e) => patch({ topicId: e.target.value })}
-            error={problems.includes('topic') && t('questionBank.problem.topic')}
+            error={shown.includes('topic') && t('questionBank.problem.topic')}
           >
             {activeTopics.map((topic) => (
               <option key={topic.id} value={topic.id}>
@@ -231,24 +233,26 @@ export function QuestionEditor({
             step={0.25}
             value={draft.defaultPoints}
             onChange={(e) => patch({ defaultPoints: Number(e.target.value) })}
-            error={problems.includes('points') && t('questionBank.problem.points')}
+            error={shown.includes('points') && t('questionBank.problem.points')}
           />
-          <TextField
-            id="q-tags"
-            label={t('questionBank.tags')}
-            hint={t('questionBank.tagsHint')}
-            value={tagsText}
-            onChange={(e) => {
-              setTagsText(e.target.value);
-              patch({
-                tags: e.target.value
-                  .split(',')
-                  .map((tag) => tag.trim())
-                  .filter(Boolean),
-              });
-            }}
-            error={problems.includes('tags') && t('questionBank.problem.tags')}
-          />
+          <div className="@xl:col-span-3">
+            <TextField
+              id="q-tags"
+              label={t('questionBank.tags')}
+              hint={t('questionBank.tagsHint')}
+              value={tagsText}
+              onChange={(e) => {
+                setTagsText(e.target.value);
+                patch({
+                  tags: e.target.value
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter(Boolean),
+                });
+              }}
+              error={shown.includes('tags') && t('questionBank.problem.tags')}
+            />
+          </div>
         </div>
       </Card>
 
@@ -259,26 +263,26 @@ export function QuestionEditor({
           label={t('questionBank.stem')}
           value={draft.stem}
           onChange={(stem) => patch({ stem })}
-          invalid={problems.includes('stem')}
-          minHeight="min-h-32"
+          invalid={shown.includes('stem')}
+          minHeight="min-h-48"
         />
-        {problems.includes('stem') && (
+        {shown.includes('stem') && (
           <p className="text-sm text-danger">{t('questionBank.problem.stem')}</p>
         )}
       </Card>
 
       {(draft.type === 'single_choice' || draft.type === 'multiple_choice') && (
-        <ChoiceFields draft={draft} setDraft={setDraft} problems={problems} />
+        <ChoiceFields draft={draft} setDraft={setDraft} problems={shown} />
       )}
       {draft.type === 'true_false_cluster' && (
-        <ClusterFields draft={draft} setDraft={setDraft} problems={problems} />
+        <ClusterFields draft={draft} setDraft={setDraft} problems={shown} />
       )}
-      {draft.type === 'essay' && <EssayFields draft={draft} patch={patch} problems={problems} />}
+      {draft.type === 'essay' && <EssayFields draft={draft} patch={patch} problems={shown} />}
     </div>
   );
 
   const preview = (
-    <Card className="flex flex-col gap-4 lg:sticky lg:top-[calc(var(--app-header-h)+1rem)]">
+    <Card className="flex flex-col gap-4 @4xl:sticky @4xl:top-[calc(var(--app-header-h)+1rem)] @4xl:max-h-[calc(100dvh-var(--app-header-h)-2rem)] @4xl:overflow-y-auto">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{t('questionBank.preview')}</h2>
         <label className="inline-flex min-h-12 cursor-pointer items-center gap-2 text-sm pointer-fine:min-h-9">
@@ -355,28 +359,31 @@ export function QuestionEditor({
       />
 
       <StickyActionBar>
-        {conflict ? (
-          <div className="flex flex-col gap-2">
-            <ErrorMessage>{t('questionBank.versionConflict')}</ErrorMessage>
-            <Button onClick={reload}>{t('questionBank.reload')}</Button>
-          </div>
-        ) : (
-          <ErrorMessage>
-            {save.isError
-              ? errorMessage(t, save.error)
-              : problems.length > 0 &&
-                t('questionBank.fixBeforeSave', {
-                  problems: problems.map((p) => t(`questionBank.problemShort.${p}`)).join(', '),
-                })}
-          </ErrorMessage>
-        )}
-        <PrimaryButton
-          disabled={problems.length > 0 || !dirty || save.isPending}
-          onClick={() => save.mutate()}
-        >
-          <Save aria-hidden className="size-5" />
-          {save.isPending ? t('questionBank.saving') : t('questionBank.save')}
-        </PrimaryButton>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {conflict ? (
+            <div className="flex flex-col gap-2">
+              <ErrorMessage>{t('questionBank.versionConflict')}</ErrorMessage>
+              <Button onClick={reload}>{t('questionBank.reload')}</Button>
+            </div>
+          ) : (
+            <ErrorMessage>
+              {save.isError
+                ? errorMessage(t, save.error)
+                : shown.length > 0 &&
+                  t('questionBank.fixBeforeSave', {
+                    problems: shown.map((p) => t(`questionBank.problemShort.${p}`)).join(', '),
+                  })}
+            </ErrorMessage>
+          )}
+          <PrimaryButton
+            className="lg:ml-auto lg:min-w-40"
+            disabled={problems.length > 0 || !dirty || save.isPending}
+            onClick={() => save.mutate()}
+          >
+            <Save aria-hidden className="size-5" />
+            {save.isPending ? t('questionBank.saving') : t('questionBank.save')}
+          </PrimaryButton>
+        </div>
       </StickyActionBar>
 
       <Dialog

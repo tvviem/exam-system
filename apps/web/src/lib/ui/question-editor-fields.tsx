@@ -342,7 +342,7 @@ export function ClusterFields({
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium">{t('questionBank.ladder')}</legend>
           <p className="text-sm text-fg-muted">{t('questionBank.ladderHint')}</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 @md:grid-cols-3">
             {draft.ladder.map((value, index) => (
               <TextField
                 // biome-ignore lint/suspicious/noArrayIndexKey: số ô cố định theo số Mệnh đề

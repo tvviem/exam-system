@@ -18,7 +18,10 @@ export function Tabs({
   value: string;
   onChange: (id: string) => void;
   label: string;
-  /** Từ 1024 px bỏ thanh tab và trải các nội dung thành các cột cạnh nhau (mẫu Soạn, ui-design mục 10). */
+  /**
+   * Khi vùng chứa rộng từ 56 rem (896 px) thì bỏ thanh tab và trải các nội dung thành hai cột cạnh nhau
+   * (mẫu Soạn, ui-design mục 10). Đo theo vùng chứa chứ không theo màn hình, nên ẩn thanh bên cũng đổi bố cục.
+   */
   split?: boolean;
 }) {
   const base = useId();
@@ -35,11 +38,11 @@ export function Tabs({
   };
   const active = items.find((i) => i.id === value) ?? items[0];
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${split ? '@container' : ''}`}>
       <div
         role="tablist"
         aria-label={label}
-        className={`flex gap-1 border-b border-border ${split ? 'lg:hidden' : ''}`}
+        className={`flex gap-1 border-b border-border ${split ? '@4xl:hidden' : ''}`}
       >
         {items.map((item, index) => {
           const selected = item.id === active?.id;
@@ -70,7 +73,9 @@ export function Tabs({
       </div>
       <div
         className={
-          split ? 'flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6' : ''
+          split
+            ? 'flex flex-col gap-4 @4xl:grid @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @4xl:items-start @4xl:gap-6'
+            : ''
         }
       >
         {items.map((item) => (
@@ -79,7 +84,7 @@ export function Tabs({
             role="tabpanel"
             id={`${base}-${item.id}-panel`}
             aria-labelledby={`${base}-${item.id}-tab`}
-            className={item.id === active?.id ? '' : split ? 'hidden lg:block' : 'hidden'}
+            className={item.id === active?.id ? '' : split ? 'hidden @4xl:block' : 'hidden'}
           >
             {item.content}
           </div>

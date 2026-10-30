@@ -10,6 +10,8 @@
     "accountRequests": "Yêu cầu cấp tài khoản",
     "notifications": "Thông báo",
     "main": "Điều hướng chính",
+    "hideSidebar": "Ẩn thanh điều hướng",
+    "showSidebar": "Hiện thanh điều hướng",
     "more": "Thêm",
     "short": {
       "users": "Người dùng",
