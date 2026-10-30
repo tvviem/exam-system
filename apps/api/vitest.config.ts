@@ -28,6 +28,8 @@ export default defineConfig({
             APP_ORIGINS: 'http://localhost:5173',
             SLIP_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'),
             MEDIA_DIR: path.join(tmpdir(), 'exam-test-media'),
+            // Nhỏ để thử hạn mức bằng vài ảnh nhiễu.
+            ILLUSTRATION_QUOTA_BYTES: '100000',
           },
           testTimeout: 15000,
         },
