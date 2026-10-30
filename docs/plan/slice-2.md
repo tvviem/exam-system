@@ -10,12 +10,13 @@ Sau lát cắt 2:
 - Quản trị viên Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Xóa người dùng là Người ra đề buộc chọn người nhận.
 - Nội dung Câu hỏi chỉ chủ sở hữu thấy, kể cả Đáp án đúng.
 
-Lát cắt chia thành 4 PR. Merge xong PR nào thì hệ thống chạy được tới đó.
+Lát cắt chia thành 5 PR (2a–2e, kèm 2f đề xuất ở Q153). Merge xong PR nào thì hệ thống chạy được tới đó.
 
 ```text
 2a Chủ đề + Câu hỏi (4 loại, văn bản có định dạng)  ──► 2b Công thức toán
                                                     ├──► 2c Hình minh họa
-                                                    └──► 2d Nhập Excel + Chuyển giao + Xóa người dùng chọn người nhận
+                                                    ├──► 2d Nhập Excel
+                                                    └──► 2f Chuyển giao + Xóa người dùng chọn người nhận (đề xuất, Q153)
 ```
 
 | PR | Nội dung | Đưa vào dùng được |
@@ -23,7 +24,8 @@ Lát cắt chia thành 4 PR. Merge xong PR nào thì hệ thống chạy đượ
 | 2a | Bảng `topics`, `questions`; schema nội dung và `payload` dùng chung; CRUD, tìm và lọc; trình soạn và Xem thử; Nhân bản, di chuyển, xóa | Người ra đề soạn và quản lý Câu hỏi bằng chữ |
 | 2b | Node công thức (MathLive soạn, KaTeX hiển thị, kiểm LaTeX ở server) | Câu hỏi có công thức |
 | 2c | `illustrations`, tải ảnh, worker xử lý (sharp), phục vụ có kiểm quyền | Câu hỏi có hình |
-| 2d | Nhập Excel; Chuyển giao Chủ đề; Xóa người dùng chọn người nhận | Vòng đời nội dung khi đổi người |
+| 2d | Nhập Excel (Q123, Q145–Q147) | Nạp hàng loạt Câu hỏi chọn một và chọn nhiều |
+| 2f | Chuyển giao Chủ đề; Xóa người dùng chọn người nhận (Q124, Q125, Q148–Q151) | Vòng đời nội dung khi đổi người |
 
 ## Thiết kế chung
 
@@ -160,6 +162,68 @@ Quản trị viên chọn một người ra đề, chọn một hoặc nhiều C
 
 Nếu người đó còn Chủ đề, API từ chối với `HAS_CONTENT` kèm danh sách Chủ đề. Hộp thoại Xóa người dùng cho **chọn người nhận ngay trong một bước**: hệ thống Chuyển giao toàn bộ rồi mới Xóa, trong cùng một giao dịch. Tài khoản không còn nội dung thì Xóa như hiện nay.
 
+### Chi tiết đề xuất cho PR 2d (Q145–Q153, chờ duyệt)
+
+Q143 và Q144 đã được duyệt (xem bảng quyết định); hai câu đó chỉ ghi lại, chưa làm gì ở lát cắt 2.
+
+**Nhập Excel**
+
+- **Q145 File mẫu và quy tắc đọc ô.**
+  - Mẫu tạo bằng `exceljs` như mẫu của Yêu cầu cấp tài khoản. Hàng tiêu đề khớp không phân biệt hoa thường và dấu; cột thừa bị bỏ qua, thiếu cột bắt buộc (Nội dung, Phương án A, Phương án B, Đáp án) thì cả file bị từ chối `missing_columns`.
+  - **Điểm trống = 1.** Điểm có mặt phải thuộc 0,25–100, bước 0,25 (cùng quy tắc `defaultPoints`).
+  - **Quy tắc chấm:** trống thì câu chọn nhiều lấy Tỷ lệ. Điền ở dòng chọn một là lỗi `scoring_rule_not_allowed`, không bỏ qua im lặng.
+  - **Công thức:** `$...$` thành node `math` trong dòng (`display: false`); `\$` là dấu đô la thật; không hỗ trợ `$$...$$`. Công thức đi qua đúng bước kiểm của lúc lưu (KaTeX ở api, lệnh cấm, ≤ 50 công thức mỗi Câu hỏi), lỗi báo `math_invalid` hoặc `math_forbidden` ở dòng đó.
+  - Ô trống giữa các Phương án (A, C có, B trống) là lỗi `gap_in_options`, không tự dồn lên. Xuống dòng trong ô thành `hardBreak`. Tags tách bằng dấu phẩy, chuẩn hóa như lúc lưu.
+  - Mã lỗi từng dòng (mở rộng danh sách ở Q123): `missing_content`, `too_few_options`, `answer_mismatch`, `invalid_points`, `scoring_rule_not_allowed`, `gap_in_options`, `math_invalid`, `math_forbidden`, `field_too_long`, `too_many_tags`.
+
+- **Q146 Lô nhập (batch).**
+  - Bảng `question_import_batches` (`id`, `owner_id`, `topic_id`, `original_filename`, `upload_key`, `status`, `parse_error`, `row_count`, `created_at`, `committed_at`, `expires_at` = tạo + 30 ngày) và `question_import_items` (`batch_id`, `row_number`, `payload jsonb` là đúng `QuestionInput` đã đổi xong, `error_code`, `duplicate_of_question_id`, `selected bool`, `outcome` `pending | created | skipped`).
+  - Trạng thái: `parsing → parse_failed | ready → committing → committed`. File tải lên xóa ngay sau khi đọc xong (như Yêu cầu cấp tài khoản); phần còn lại là `payload`, đủ để xem lại 30 ngày.
+  - **Chọn dòng:** mặc định chọn mọi dòng hợp lệ và bỏ chọn dòng nghi trùng; dòng lỗi không chọn được. `PATCH` cập nhật `selected` cho từng dòng hoặc cho cả nhóm. Không có dòng nào được chọn thì không xác nhận được.
+  - **Xác nhận chạy một lần:** `POST .../commit` chuyển `ready → committing` bằng một câu `UPDATE ... WHERE status = 'ready'`; lần gọi thứ hai nhận `INVALID_STATE`. Job tạo mọi Câu hỏi đã chọn **trong một giao dịch** rồi đặt `committed`; job lỗi thì lô trở lại `ready` để thử lại, không tạo nửa chừng.
+  - **Chủ đề đích** đổi sau khi tải lên: nếu đã bị Lưu trữ hoặc xóa lúc xác nhận thì `INVALID_STATE` (`topic_unavailable`), lô giữ nguyên. Nghi trùng chỉ tính theo `search_text` đã chuẩn hóa trong Chủ đề đích lúc đọc file, kèm trùng giữa các dòng trong file (dòng sau được đánh dấu trùng dòng trước).
+  - Ghi **một** dòng `audit_logs` `question.import` mỗi lần xác nhận (số dòng tạo, số bỏ qua, Chủ đề đích). Job dọn hằng ngày (Q96) xóa lô quá 30 ngày.
+  - Chỉ chủ lô thấy lô; người khác nhận `NOT_FOUND`.
+
+- **Q147 Giao diện nhập.**
+  - Nút "Nhập từ Excel" ở danh sách Câu hỏi → trang `/examiner/questions/import` với bốn bước: (1) chọn Chủ đề đích, tải file mẫu; (2) tải file lên; (3) xem trước; (4) kết quả kèm liên kết sang danh sách Chủ đề đó.
+  - Bước 3 hỏi lại mỗi giây khi `parsing`. Bảng có bộ lọc Tất cả / Hợp lệ / Lỗi / Nghi trùng kèm số lượng, ô chọn từng dòng, cột lý do tiếng Việt; bấm một dòng để xem trước nội dung dựng sẵn (`RichTextView`, có đáp án đúng vì là nội dung của chính Người ra đề).
+  - Dưới 768 px bảng thành danh sách thẻ, thanh "Tạo N câu hỏi" dính đáy màn hình.
+  - Đóng trang giữa chừng thì lô còn đó: trang có danh sách "Lô nhập gần đây" (30 ngày) để mở lại.
+
+**Chuyển giao và Xóa người dùng (PR 2f)**
+
+- **Q148 Chuyển giao Chủ đề.**
+  - API quản trị: `GET /api/admin/users/:id/content` trả tên Chủ đề, số Câu hỏi, trạng thái Lưu trữ (không trả nội dung, Q113); `POST /api/admin/users/:id/transfer { topicIds[], recipientId }`.
+  - Chọn được cả Chủ đề đã Lưu trữ. Người nhận: Nhãn Người ra đề, không phải Quản trị viên, chưa Khóa, chưa Xóa, khác người cho; không hợp lệ thì `VALIDATION_FAILED recipientId`.
+  - Tên trùng với Chủ đề chưa Lưu trữ của người nhận thì thêm " (từ <tên người cũ>)"; vẫn trùng thì thêm " (2)", " (3)"... Chủ đề đã Lưu trữ không cần đổi tên (không nằm trong ràng buộc duy nhất; Khôi phục sau đó đã có `CONFLICT`).
+  - Một giao dịch; khóa dòng hai người dùng theo thứ tự `id` để tránh bế tắc. Ghi `topic.transfer` với số Chủ đề, số Câu hỏi, số ảnh, người cũ, người mới. Câu hỏi giữ nguyên `version`, trừ câu bị viết lại nội dung ảnh ở Q149.
+
+- **Q149 Hình minh họa khi Chuyển giao.** Phần "đổi `illustrations.owner_id`" của Q124 chưa đủ vì gặp hai ca: ràng buộc `UNIQUE(owner_id, sha256)` (người nhận đã có ảnh trùng) và ảnh dùng chung với Câu hỏi không chuyển. Với mỗi ảnh mà các Câu hỏi đang chuyển tham chiếu:
+  1. Chỉ các Câu hỏi đang chuyển dùng **và** người nhận chưa có ảnh cùng SHA-256: đổi `owner_id`.
+  2. Người nhận đã có ảnh `ready` cùng SHA-256: dùng ảnh đó.
+  3. Còn dùng chung với Câu hỏi không chuyển: tạo bản sao cho người nhận (`MediaStore.get` rồi `put` từng biến thể, không thêm phương thức mới).
+  Ở ca 2 và 3, viết lại `illustrationId` trong nội dung các Câu hỏi đã chuyển và cập nhật `question_illustrations`, tăng `version` của những câu đó. Sao chép file làm **trước** giao dịch; giao dịch lỗi thì xóa các file vừa chép. Chuyển giao không bị hạn mức ảnh chặn (hạn mức mềm, hành động của Quản trị viên). Ảnh thư viện chưa dùng của người cho không chuyển; hệ quả: sau khi Xóa người dùng chúng nằm lại trong kho, việc dọn thuộc chính sách lưu trữ ở giai đoạn sau.
+
+- **Q150 Xóa người dùng kèm người nhận.**
+  - Giữ `DELETE /api/admin/users/:id`, thêm tham số tùy chọn `?recipientId=`. Còn Chủ đề mà không có `recipientId` thì `409 HAS_CONTENT` kèm `{ topics: [{ id, name, questionCount }] }`; có `recipientId` thì Chuyển giao **toàn bộ** (cả đã Lưu trữ) rồi Xóa trong cùng giao dịch, nhật ký `topic.transfer` rồi `user.remove`. Không còn nội dung mà vẫn gửi `recipientId` thì bỏ qua tham số.
+  - `identity` không đọc bảng của `question-bank` và `question-bank` không import `identity`: `identity` định nghĩa cổng `OwnedContent` (`summaryOf(userId)`, `transfer(tx, from, to, topicIds)`), `question-bank` cung cấp bản cài đặt, nối ở `AppModule`, giống `JobQueue` (Q87).
+  - Giới hạn đã biết: nếu Người ra đề đang tạo Chủ đề đúng lúc bị Xóa, Chủ đề mới có thể nằm lại dưới tài khoản đã Xóa (cửa sổ rất hẹp, vì mọi phiên bị thu hồi khi giao dịch xong). Quản trị viên chuyển tiếp được qua bộ lọc "Đã xóa".
+
+- **Q151 Giao diện quản trị và thông báo.**
+  - Trang chi tiết người dùng có Nhãn Người ra đề (kể cả đã Xóa thì chỉ xem) thêm thẻ "Nội dung": danh sách Chủ đề có ô chọn, nút "Chuyển giao…".
+  - Hộp thoại chọn người nhận dùng chung cho Chuyển giao và Xóa: tìm theo tên, tên đăng nhập, chỉ hiện Người ra đề hợp lệ (dùng `GET /api/admin/users?roleTag=examiner&status=active&q=`), tóm tắt "N Chủ đề, M Câu hỏi, K ảnh", một nút xác nhận. Hộp thoại Xóa chỉ hiện phần chọn người nhận khi API trả `HAS_CONTENT`.
+  - Người nhận nhận thông báo `topics.transferred` ("Quản trị viên đã chuyển giao N Chủ đề cho bạn"), thêm một loại vào bảng `notifications` (Q95); người cho không cần.
+
+**Phạm vi và kiểm thử**
+
+- **Q152 Seam test.**
+  - *Unit (không DB):* đọc file Excel/CSV nhập câu hỏi với các file mẫu đúng và lỗi (từng mã lỗi ở Q145); bộ đổi ô sang node (`$...$`, `\$`, xuống dòng); hàm đặt tên khi trùng (hậu tố, đánh số); hàm viết lại `illustrationId` trong nội dung.
+  - *Tích hợp (HTTP + PostgreSQL + Redis, `JobQueue` chạy tại chỗ, `MediaStore` thư mục tạm):* lô nhập từ tải lên đến xác nhận, xác nhận hai lần chỉ tạo một lần, Chủ đề đích đã Lưu trữ giữa chừng, người khác `NOT_FOUND`; Chuyển giao nguyên tử bằng `MediaStore` giả ném lỗi khi chép file (kiểm không đổi gì, file tạm được dọn), ba ca ảnh của Q149, người nhận không hợp lệ, `HAS_CONTENT` rồi Xóa kèm người nhận, nhật ký và thông báo.
+  - *E2E (desktop và mobile):* nhập file Excel qua giao diện đến khi Câu hỏi hiện trong danh sách; Quản trị viên Chuyển giao một Chủ đề và Xóa người dùng kèm người nhận, rồi người nhận đăng nhập thấy Chủ đề và thông báo; kiểm "không cuộn ngang" ở các trang mới.
+
+- **Q153 Tách PR.** 2d chỉ gồm Nhập Excel (Q145–Q147); 2f gồm Chuyển giao và Xóa người dùng (Q148–Q151). Hai phần không dùng chung mã, tách ra để mỗi PR đủ nhỏ để duyệt. Làm 2d trước.
+
 ## Test (seam đã duyệt)
 
 1. **Unit (không DB):**
@@ -191,7 +255,7 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 - Rút ngẫu nhiên câu hỏi theo Chủ đề, thống kê câu hỏi, nhập từ Word, ảnh trong Câu tự luận: giai đoạn sau (architecture.md mục 9).
 - Chia sẻ Chủ đề giữa các Người ra đề: ngoài giai đoạn 1 (GLOSSARY: mỗi Chủ đề chỉ có một chủ).
 
-## Quyết định (Q111–Q126, đã duyệt)
+## Quyết định (Q111–Q144 đã duyệt; Q145–Q153 chờ duyệt)
 
 | Câu | Quyết định |
 |---|---|
@@ -227,3 +291,14 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q140 | Multipart ≤ 5 MB, worker sharp: bỏ EXIF, từ chối > 8.000 px, chỉ lưu biến thể WebP ≤ 1600/960/480, không giữ bản gốc; `processing → ready/failed` |
 | Q141 | `GET /api/media/:id/:variant` chỉ chủ; `X-Accel-Redirect` ở production; `srcset`, tải lười, chạm phóng to |
 | Q142 | Trình duyệt thu nhỏ ≤ 2.400 px trước khi tải lên; server không tin client |
+| Q143 | Người mang cả hai Nhãn vai trò chuyển khu "Soạn đề" ↔ "Làm bài" ở menu tài khoản; thanh bên chỉ hiện mục của khu đang xem. Làm ở lát cắt 4, khi có `/take` |
+| Q144 | Người ra đề không được có tên trong Danh sách dự thi của Phiên thi do chính mình sở hữu (server từ chối `owner_cannot_sit`); vẫn thi được đề của Người ra đề khác. Làm ở lát cắt 4 |
+| Q145 | File mẫu Nhập Excel: tiêu đề khớp không dấu, điểm trống = 1, `$...$` thành công thức trong dòng, `\$` là dấu đô la, Quy tắc chấm trên câu chọn một là lỗi |
+| Q146 | Lô nhập: trạng thái `parsing → ready → committing → committed`; chọn dòng để tạo (mặc định hợp lệ, bỏ nghi trùng); xác nhận chỉ chạy một lần; Chủ đề đích đổi trạng thái thì từ chối |
+| Q147 | Giao diện nhập: trang `/examiner/questions/import`, bốn bước, xem trước từng dòng có bộ lọc, điện thoại hiện thẻ |
+| Q148 | Chuyển giao: Quản trị viên chọn Chủ đề (cả đã Lưu trữ) và người nhận; tên trùng thêm hậu tố; một giao dịch; ghi `topic.transfer` |
+| Q149 | Hình minh họa khi Chuyển giao: chuyển chủ nếu chỉ các Câu hỏi đang chuyển dùng và người nhận chưa có ảnh trùng; ngược lại dùng ảnh sẵn có của người nhận hoặc sao chép rồi trỏ lại |
+| Q150 | Xóa người dùng kèm người nhận: `DELETE ...?recipientId=`; `HAS_CONTENT` kèm danh sách Chủ đề; identity gọi question-bank qua cổng `OwnedContent` |
+| Q151 | Giao diện quản trị: thẻ "Nội dung" ở trang người dùng, hộp thoại chọn người nhận dùng chung cho Chuyển giao và Xóa; người nhận được thông báo `topics.transferred` |
+| Q152 | Seam test của PR 2d (xem mục "Chi tiết đề xuất cho PR 2d") |
+| Q153 | Tách PR 2d thành 2d (Nhập Excel) và 2f (Chuyển giao + Xóa người dùng chọn người nhận) |
