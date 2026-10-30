@@ -178,6 +178,38 @@
     "roleTags": ["examiner"]
   },
   {
+    "username": "e2e-tk-gv-desktop",
+    "fullName": "Giảng viên Tài khoản desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-tk-sv-desktop",
+    "fullName": "Sinh viên Tài khoản desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"]
+  },
+  {
+    "username": "e2e-tk-gv-mobile",
+    "fullName": "Giảng viên Tài khoản mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-tk-sv-mobile",
+    "fullName": "Sinh viên Tài khoản mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"]
+  },
+  {
     "username": "e2e-ch-anh-desktop",
     "fullName": "Giảng viên Hình minh họa desktop",
     "password": "mat-khau-on-dinh",

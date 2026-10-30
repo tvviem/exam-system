@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from '@tanstack/react-router';
-import { CircleUserRound, LogOut, MonitorSmartphone } from 'lucide-react';
+import { CircleUserRound, LogOut, MonitorSmartphone, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { logout, meQuery } from '../lib/auth';
@@ -60,6 +60,16 @@ function AuthedLayout() {
       </AppShell>
       <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} title={me.fullName}>
         <div className="flex flex-col gap-4">
+          {!me.mustChangePassword && (
+            <Link
+              to="/account"
+              onClick={() => setMenuOpen(false)}
+              className="inline-flex min-h-12 items-center gap-3 rounded-lg px-2 font-medium hover:bg-primary-soft"
+            >
+              <UserRound aria-hidden className="size-5 text-fg-muted" />
+              {t('nav.myAccount')}
+            </Link>
+          )}
           {!me.mustChangePassword && (
             <Link
               to="/account/auth-sessions"

@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import type { Actor } from '../../../common/actor';
 import { ApiError, type ApiErrorCode } from '../../../common/api-error';
 import { CLOCK, type Clock } from '../../../common/clock';
 import { type Database, DB } from '../../../db/db.module';
+import { AuditService } from '../../audit/audit.service';
 import { loginEvents, users } from '../identity.schema';
 import { hashPassword, verifyPassword } from '../password/password-hasher';
 import { checkPasswordPolicy } from '../password/password-policy';
@@ -21,6 +23,7 @@ export class AuthService {
     private readonly authSessions: AuthSessionStore,
     private readonly rateLimiter: LoginRateLimiter,
     private readonly loginBlock: LoginBlock,
+    private readonly audit: AuditService,
   ) {}
 
   async login(rawIdentifier: string, password: string, meta: AuthSessionMeta) {
@@ -71,6 +74,7 @@ export class AuthService {
     authSessionId: string,
     currentPassword: string,
     newPassword: string,
+    actor: Actor,
   ) {
     const row = await this.usersRepo.findById(user.id);
     if (!row || !(await verifyPassword(row.passwordHash, currentPassword))) {
@@ -79,14 +83,21 @@ export class AuthService {
     const violations = checkPasswordPolicy(newPassword, user);
     if (violations.length > 0) throw new ApiError('PASSWORD_POLICY', { violations });
 
-    await this.db
-      .update(users)
-      .set({
-        passwordHash: await hashPassword(newPassword),
-        mustChangePassword: false,
-        passwordExpiresAt: null,
-      })
-      .where(eq(users.id, user.id));
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({
+          passwordHash: await hashPassword(newPassword),
+          mustChangePassword: false,
+          passwordExpiresAt: null,
+        })
+        .where(eq(users.id, user.id));
+      // Chỉ ghi việc đã đổi, tuyệt đối không ghi mật khẩu.
+      await this.audit.record(
+        { actor, action: 'account.change-password', entityType: 'user', entityId: user.id },
+        tx,
+      );
+    });
     await this.authSessions.revokeAllForUser(user.id, 'password_changed', authSessionId);
   }
 

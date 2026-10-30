@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AuditModule } from '../audit/audit.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AccountController } from './account/account.controller';
+import { AccountService } from './account/account.service';
 import { AccountRequestApproveJob } from './account-requests/account-request-approve.job';
 import { AccountRequestParseJob } from './account-requests/account-request-parse.job';
 import { AccountRequestsController } from './account-requests/account-requests.controller';
@@ -36,6 +38,7 @@ import { UsersRepository } from './users.repository';
   imports: [AuditModule, NotificationsModule],
   controllers: [
     AuthController,
+    AccountController,
     UserManagementController,
     AdminsController,
     UnitsController,
@@ -48,6 +51,7 @@ import { UsersRepository } from './users.repository';
   ],
   providers: [
     AuthService,
+    AccountService,
     AuthSessionStore,
     LoginRateLimiter,
     LoginBlock,
