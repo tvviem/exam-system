@@ -6,6 +6,10 @@ import { z } from 'zod';
 
 export const MATH_MAX_CHARS = 2_000;
 export const IMAGE_ALT_MAX_CHARS = 250;
+/** Cạnh dài (px) của các biến thể Hình minh họa mà api phục vụ (Q140, Q141). */
+export const ILLUSTRATION_VARIANT_SIDES = [480, 960, 1600] as const;
+/** Loại ảnh được tải lên (Q122). */
+export const ILLUSTRATION_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
 /**
  * Tùy chọn dựng KaTeX dùng chung cho server (kiểm khi lưu) và web (hiển thị, báo lỗi sớm) để hai bên không lệch nhau.
@@ -51,7 +55,7 @@ const imageSchema = z.strictObject({
   type: z.literal('image'),
   attrs: z.strictObject({
     illustrationId: z.uuid(),
-    alt: z.string().min(1).max(IMAGE_ALT_MAX_CHARS),
+    alt: z.string().trim().min(1).max(IMAGE_ALT_MAX_CHARS),
   }),
 });
 

@@ -11,13 +11,14 @@ import { type Database, DB } from '../../../db/db.module';
 import { MEDIA_STORE, type MediaStore } from '../../../media/media-store';
 import { JOB_QUEUE, type JobQueue } from '../../../queue/job-queue';
 import { illustrations, questionIllustrations } from '../question-bank.schema';
+import { uploadKeyOf, variantKeyOf } from './illustration-keys';
 import { MAX_ILLUSTRATION_UPLOAD_BYTES, sniffImage } from './image-processing';
-
-export const uploadKeyOf = (id: string) => `tmp/illustrations/${id}`;
-export const variantKeyOf = (id: string, side: number) => `illustrations/${id}/${side}.webp`;
 
 type Row = typeof illustrations.$inferSelect;
 type Db = Pick<Database, 'select' | 'insert' | 'delete'>;
+
+const isForeignKeyViolation = (error: unknown) =>
+  (error as { cause?: { code?: string } }).cause?.code === '23503';
 
 const present = (row: Row, inUse: boolean) => ({
   id: row.id,
@@ -45,7 +46,7 @@ export class IllustrationsService {
   async upload(ownerId: string, content: Buffer) {
     if (content.length === 0) throw validationFailed('file', 'required');
     if (content.length > MAX_ILLUSTRATION_UPLOAD_BYTES) {
-      throw validationFailed('file', 'file_too_large');
+      throw validationFailed('file', 'image_too_large');
     }
     if (!sniffImage(content)) throw validationFailed('file', 'unsupported_type');
 
@@ -64,20 +65,42 @@ export class IllustrationsService {
     await this.media.put(uploadKeyOf(id), content);
     let row: Row | undefined;
     try {
-      [row] = existing
-        ? await this.db
-            .update(illustrations)
-            .set({ status: 'processing', failureReason: null, bytes: content.length })
-            .where(eq(illustrations.id, id))
-            .returning()
-        : await this.db
-            .insert(illustrations)
-            .values({ id, ownerId, sha256, status: 'processing', bytes: content.length })
-            .returning();
+      if (existing) {
+        [row] = await this.db
+          .update(illustrations)
+          .set({ status: 'processing', failureReason: null, bytes: content.length })
+          .where(eq(illustrations.id, id))
+          .returning();
+      } else {
+        // Hai lần tải cùng một ảnh gần như đồng thời (bấm đúp, thử lại trên mạng yếu): chỉ một lần được tạo,
+        // lần còn lại dùng lại ảnh đó.
+        [row] = await this.db
+          .insert(illustrations)
+          .values({ id, ownerId, sha256, status: 'processing', bytes: content.length })
+          .onConflictDoNothing()
+          .returning();
+        if (!row) {
+          await this.media.delete(uploadKeyOf(id));
+          const [winner] = await this.db
+            .select()
+            .from(illustrations)
+            .where(and(eq(illustrations.ownerId, ownerId), eq(illustrations.sha256, sha256)));
+          if (!winner) throw new Error('Không lưu được Hình minh họa');
+          return { ...present(winner, await this.isUsed(this.db, winner.id)), reused: true };
+        }
+      }
       await this.queue.enqueue('illustration.process', { illustrationId: id });
     } catch (error) {
       await this.media.delete(uploadKeyOf(id));
-      if (!existing) await this.db.delete(illustrations).where(eq(illustrations.id, id));
+      if (existing) {
+        // Trả ảnh lỗi về trạng thái cũ để lần tải sau xử lý lại được, thay vì kẹt ở "đang xử lý".
+        await this.db
+          .update(illustrations)
+          .set({ status: 'failed', failureReason: existing.failureReason, bytes: 0 })
+          .where(eq(illustrations.id, id));
+      } else {
+        await this.db.delete(illustrations).where(eq(illustrations.id, id));
+      }
       throw error;
     }
     if (!row) throw new Error('Không lưu được Hình minh họa');
@@ -114,23 +137,29 @@ export class IllustrationsService {
 
   /** Chỉ xóa được ảnh chưa Câu hỏi nào dùng. */
   async remove(ownerId: string, id: string) {
-    const row = await this.load(ownerId, id);
+    await this.load(ownerId, id);
+    let variants: number[];
     try {
-      await this.db.transaction(async (tx) => {
+      variants = await this.db.transaction(async (tx) => {
         if (await this.isUsed(tx, id)) {
           throw new ApiError('INVALID_STATE', { reason: 'ILLUSTRATION_IN_USE' });
         }
-        await tx.delete(illustrations).where(eq(illustrations.id, id));
+        // Lấy danh sách biến thể từ chính dòng vừa xóa: job có thể vừa xử lý xong sau lúc đọc ở trên.
+        const [deleted] = await tx
+          .delete(illustrations)
+          .where(eq(illustrations.id, id))
+          .returning({ variants: illustrations.variants });
+        return deleted?.variants ?? [];
       });
     } catch (error) {
       // Có Câu hỏi gắn ảnh này ngay lúc xóa: khóa ngoại chặn lại.
-      if ((error as { cause?: { code?: string } }).cause?.code === '23503') {
+      if (isForeignKeyViolation(error)) {
         throw new ApiError('INVALID_STATE', { reason: 'ILLUSTRATION_IN_USE' });
       }
       throw error;
     }
     await this.media.delete(uploadKeyOf(id));
-    for (const side of row.variants) await this.media.delete(variantKeyOf(id, side));
+    for (const side of variants) await this.media.delete(variantKeyOf(id, side));
     return { id };
   }
 
@@ -174,9 +203,19 @@ export class IllustrationsService {
 
     await tx.delete(questionIllustrations).where(eq(questionIllustrations.questionId, questionId));
     if (wanted.length > 0) {
-      await tx
-        .insert(questionIllustrations)
-        .values(wanted.map((illustrationId) => ({ questionId, illustrationId })));
+      try {
+        await tx
+          .insert(questionIllustrations)
+          .values(wanted.map((illustrationId) => ({ questionId, illustrationId })));
+      } catch (error) {
+        // Ảnh vừa bị xóa giữa lúc kiểm tra và lúc ghi: báo như ảnh không dùng được thay vì lỗi máy chủ.
+        if (!isForeignKeyViolation(error)) throw error;
+        throw new ApiError('VALIDATION_FAILED', {
+          issues: fields
+            .filter((field) => field.ids.length > 0)
+            .map((field) => ({ path: field.path, code: 'image_unavailable' })),
+        });
+      }
     }
   }
 

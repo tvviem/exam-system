@@ -1,11 +1,14 @@
+import { ILLUSTRATION_VARIANT_SIDES as VARIANT_SIDES } from '@exam/shared';
 import sharp from 'sharp';
 
 // Xử lý ảnh tải lên cho Hình minh họa (Q140): chỉ giữ các biến thể WebP đã bỏ EXIF, không giữ bản gốc.
 
 export const MAX_ILLUSTRATION_UPLOAD_BYTES = 5 * 1024 * 1024;
-/** Cạnh dài của các biến thể; client xin một trong ba cỡ này. */
-export const VARIANT_SIDES = [480, 960, 1600] as const;
+export { VARIANT_SIDES };
 export const MAX_IMAGE_SIDE = 8_000;
+
+// Ảnh 8.000 x 8.000 px giải mã tốn cỡ 256 MB: không giữ bộ nhớ đệm giữa các ảnh để worker không phình dần.
+sharp.cache(false);
 
 type ImageType = 'jpeg' | 'png' | 'webp';
 
@@ -25,8 +28,11 @@ export function sniffImage(data: Buffer): ImageType | null {
   return null;
 }
 
+/** Lý do ảnh `failed`; `error` là lỗi bất ngờ khi xử lý (ghi đĩa, hết bộ nhớ), tải lại ảnh sẽ xử lý lại. */
+export type ImageFailureReason = 'dimensions_too_large' | 'corrupt' | 'error';
+
 export class ImageProcessingError extends Error {
-  constructor(readonly reason: 'dimensions_too_large' | 'corrupt') {
+  constructor(readonly reason: ImageFailureReason) {
     super(reason);
   }
 }
@@ -53,7 +59,10 @@ export async function makeVariants(input: Buffer): Promise<ImageVariant[]> {
   if (!type) throw new ImageProcessingError('corrupt');
   const encoder = type === 'png' ? { lossless: true } : { quality: 80 };
   try {
-    const source = sharp(input, { limitInputPixels: MAX_IMAGE_SIDE * MAX_IMAGE_SIDE });
+    const source = sharp(input, {
+      limitInputPixels: MAX_IMAGE_SIDE * MAX_IMAGE_SIDE,
+      sequentialRead: true,
+    });
     const meta = await source.metadata();
     const swap = (meta.orientation ?? 1) >= 5;
     const width = (swap ? meta.height : meta.width) ?? 0;

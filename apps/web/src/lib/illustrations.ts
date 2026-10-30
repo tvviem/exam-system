@@ -1,3 +1,8 @@
+import {
+  ILLUSTRATION_MIME_TYPES,
+  ILLUSTRATION_VARIANT_SIDES,
+  IMAGE_ALT_MAX_CHARS,
+} from '@exam/shared';
 import { queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
@@ -7,7 +12,7 @@ import { apiFetch } from './api';
 export interface Illustration {
   id: string;
   status: 'processing' | 'ready' | 'failed';
-  failureReason: 'dimensions_too_large' | 'corrupt' | null;
+  failureReason: 'dimensions_too_large' | 'corrupt' | 'error' | null;
   width: number | null;
   height: number | null;
   variants: number[];
@@ -17,11 +22,11 @@ export interface Illustration {
   createdAt: string;
 }
 
-export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-export const IMAGE_ALT_MAX = 250;
+export const ACCEPTED_IMAGE_TYPES: readonly string[] = ILLUSTRATION_MIME_TYPES;
+export const IMAGE_ALT_MAX = IMAGE_ALT_MAX_CHARS;
 
 /** Cạnh dài của các biến thể api phục vụ; `mediaSrcSet` để trình duyệt tự chọn cỡ vừa màn hình. */
-const SIDES = [480, 960, 1600] as const;
+const SIDES = ILLUSTRATION_VARIANT_SIDES;
 export const mediaUrl = (id: string, side: (typeof SIDES)[number]) => `/api/media/${id}/${side}`;
 export const mediaSrcSet = (id: string) =>
   SIDES.map((side) => `${mediaUrl(id, side)} ${side}w`).join(', ');
@@ -74,14 +79,15 @@ export async function shrinkForUpload(file: File): Promise<File> {
     canvas.height = Math.round(bitmap.height * scale);
     canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
-    // PNG (sơ đồ, ảnh chụp màn hình) giữ không mất dữ liệu; còn lại là JPEG.
-    const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+    // Giữ đúng định dạng gốc để không mất kênh trong suốt: PNG (sơ đồ, ảnh chụp màn hình) không mất dữ liệu,
+    // WebP và JPEG nén chất lượng cao.
+    const type = file.type;
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, type, UPLOAD_QUALITY),
     );
-    if (!blob || blob.size >= file.size) return file;
-    const extension = type === 'image/png' ? 'png' : 'jpg';
-    return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.${extension}`, { type });
+    // Trình duyệt không mã hóa được định dạng này (ví dụ WebP trên Safari cũ) hoặc không nhỏ hơn: gửi file gốc.
+    if (!blob || blob.type !== type || blob.size >= file.size) return file;
+    return new File([blob], file.name, { type });
   } catch {
     return file;
   }

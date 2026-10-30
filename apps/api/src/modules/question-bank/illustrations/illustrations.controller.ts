@@ -33,8 +33,11 @@ export class IllustrationsController {
     if (!req.isMultipart()) throw validationFailed('file', 'required');
     const part = await req.file({ limits: { fileSize: MAX_ILLUSTRATION_UPLOAD_BYTES, files: 1 } });
     if (!part) throw validationFailed('file', 'required');
-    const content = await part.toBuffer().catch(() => {
-      throw validationFailed('file', 'file_too_large');
+    const content = await part.toBuffer().catch((error: { code?: string }) => {
+      // Chỉ lỗi quá cỡ mới báo quá cỡ; ngắt kết nối giữa chừng hay lỗi khác thì để lỗi gốc đi tiếp.
+      throw error.code === 'FST_REQ_FILE_TOO_LARGE'
+        ? validationFailed('file', 'image_too_large')
+        : error;
     });
     return this.illustrations.upload(user.id, content);
   }

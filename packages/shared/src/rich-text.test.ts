@@ -207,6 +207,7 @@ describe('node image (Hình minh họa)', () => {
   it.each([
     ['thiếu alt', { illustrationId: ID }],
     ['alt rỗng', { illustrationId: ID, alt: '' }],
+    ['alt chỉ có khoảng trắng', { illustrationId: ID, alt: '   ' }],
     ['alt quá 250 ký tự', { illustrationId: ID, alt: 'a'.repeat(251) }],
     ['id không phải uuid', { illustrationId: 'abc', alt: 'x' }],
     ['thuộc tính lạ (src)', { illustrationId: ID, alt: 'x', src: 'http://x/y.png' }],

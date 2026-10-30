@@ -143,10 +143,10 @@ questions (
 -- cách này xử lý được cả "đ" và không cần gọi hàm trên từng dòng. `version` tăng mỗi lần sửa nội dung hoặc đổi Chủ đề.
 
 illustrations (                           -- Hình minh họa (Q139, Q140)
-  id, owner_id → users, sha256 char(64), status enum('processing','ready','failed'), failure_reason text,
+  id, owner_id → users, sha256 text (hex, 64 ký tự), status enum('processing','ready','failed'), failure_reason text,
   width, height,                          -- của biến thể lớn nhất
   variants int[],                         -- các cạnh dài đã tạo, ví dụ {480,960,1600}; file WebP tại illustrations/<id>/<cạnh>.webp
-  bytes int,                              -- tổng các biến thể, tính vào hạn mức
+  bytes int,                              -- dung lượng đang chiếm, tính vào hạn mức: cỡ file tải lên khi `processing`, tổng các biến thể khi `ready`, 0 khi `failed`
   created_at, UNIQUE (owner_id, sha256)
 )
 question_illustrations (question_id → questions ON DELETE CASCADE, illustration_id → illustrations, PK (question_id, illustration_id))

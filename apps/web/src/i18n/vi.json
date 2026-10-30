@@ -96,7 +96,8 @@
     "VALIDATION_unsupported_type": "Chỉ nhận ảnh JPEG, PNG hoặc WebP.",
     "VALIDATION_quota_exceeded": "Bạn đã dùng hết dung lượng ảnh. Hãy xóa bớt ảnh không dùng rồi thử lại.",
     "VALIDATION_image_unavailable": "Có hình minh họa không dùng được (đã bị xóa, chưa xử lý xong hoặc xử lý lỗi). Hãy mở hình đó và chọn lại.",
-    "INVALID_STATE_ILLUSTRATION_IN_USE": "Ảnh này đang được Câu hỏi sử dụng nên chưa xóa được."
+    "INVALID_STATE_ILLUSTRATION_IN_USE": "Ảnh này đang được Câu hỏi sử dụng nên chưa xóa được.",
+    "VALIDATION_image_too_large": "Ảnh quá lớn. Tối đa 5 MB."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -668,7 +669,8 @@
     "processing": "Đang xử lý ảnh…",
     "failed": {
       "dimensions_too_large": "Ảnh quá lớn (quá 8.000 px một cạnh). Hãy chọn ảnh nhỏ hơn.",
-      "corrupt": "Không đọc được ảnh này. Hãy thử ảnh khác."
+      "corrupt": "Không đọc được ảnh này. Hãy thử ảnh khác.",
+      "error": "Xử lý ảnh bị lỗi. Hãy thử tải lại ảnh này."
     },
     "library": "Ảnh đã tải lên của tôi",
     "libraryEmpty": "Chưa có ảnh nào. Ảnh bạn tải lên sẽ nằm ở đây để dùng lại.",

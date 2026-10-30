@@ -1,6 +1,7 @@
 import { type QuestionInput, type RichText, textDoc } from '@exam/shared';
 import sharp from 'sharp';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { MEDIA_STORE, type MediaStore } from '../src/media/media-store';
 import { createTestApp, type TestApp } from './support/app';
 import { call, login, upload } from './support/http';
 import { brokenJpeg, gif, jpeg, jpegWithExif, noisePng, png, svg, webp } from './support/images';
@@ -135,7 +136,7 @@ describe('tải Hình minh họa lên (Q138–Q141)', () => {
     const big = Buffer.concat([await jpeg(100, 100), Buffer.alloc(5 * 1024 * 1024)]);
     const res = await send(big);
     expect(res.statusCode).toBe(400);
-    expect(res.json().issues[0]).toEqual({ path: 'file', code: 'file_too_large' });
+    expect(res.json().issues[0]).toEqual({ path: 'file', code: 'image_too_large' });
   });
 
   it('báo failed khi ảnh quá 8.000 px một cạnh, ảnh hỏng, và không để lại file', async () => {
@@ -169,6 +170,44 @@ describe('tải Hình minh họa lên (Q138–Q141)', () => {
     expect(t.queue.pending).toBe(0);
     const list = (await call(t.app, 'GET', '/api/illustrations', { cookie })).json();
     expect(list.total).toBe(1);
+  });
+
+  it('hai lần tải trùng nội dung cùng lúc vẫn ra một ảnh và một job', async () => {
+    const source = await jpeg(800, 600);
+    const queued = t.queue.history.length;
+    const [a, b] = await Promise.all([send(source), send(source)]);
+    expect([a.statusCode, b.statusCode], `${a.body} ${b.body}`).toEqual([201, 201]);
+    expect(a.json().id).toBe(b.json().id);
+    expect(t.queue.history.length - queued).toBe(1);
+    const list = (await call(t.app, 'GET', '/api/illustrations', { cookie })).json();
+    expect(list.total).toBe(1);
+  });
+
+  it('lỗi bất ngờ khi xử lý thì ảnh failed chứ không kẹt đang xử lý, tải lại thì xử lý lại', async () => {
+    const media = t.app.get<MediaStore>(MEDIA_STORE);
+    const put = media.put.bind(media);
+    const source = await jpeg(800, 600);
+    const res = await send(source);
+    media.put = async (key, data) => {
+      if (key.startsWith('illustrations/')) throw new Error('đĩa đầy');
+      return put(key, data);
+    };
+    try {
+      await t.queue.drain();
+    } finally {
+      media.put = put;
+    }
+    const failed = (
+      await call(t.app, 'GET', `/api/illustrations/${res.json().id}`, { cookie })
+    ).json();
+    expect(failed).toMatchObject({ status: 'failed', failureReason: 'error', bytes: 0 });
+
+    const again = await send(source);
+    expect(again.json()).toMatchObject({ id: res.json().id, status: 'processing' });
+    await t.queue.drain();
+    expect(
+      (await call(t.app, 'GET', `/api/illustrations/${res.json().id}`, { cookie })).json().status,
+    ).toBe('ready');
   });
 
   it('ảnh trùng đã failed thì xử lý lại', async () => {
