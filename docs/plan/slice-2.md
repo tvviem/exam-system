@@ -6,7 +6,7 @@
 
 Sau lát cắt 2:
 - Người ra đề tạo Chủ đề và soạn Câu hỏi thuộc sở hữu riêng, đủ 4 Loại câu hỏi, kèm công thức toán và Hình minh họa.
-- Nhập hàng loạt Câu chọn một và Câu chọn nhiều từ Excel, có xem trước từng dòng.
+- Nhập hàng loạt cả bốn Loại câu hỏi từ một file Excel bốn sheet (Q156; ban đầu chỉ Câu chọn một và chọn nhiều), có xem trước từng dòng.
 - Quản trị viên Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Xóa người dùng là Người ra đề buộc chọn người nhận.
 - Nội dung Câu hỏi chỉ chủ sở hữu thấy, kể cả Đáp án đúng.
 
@@ -24,7 +24,7 @@ Lát cắt chia thành 5 PR (2a–2e, kèm 2f ở Q153). Merge xong PR nào thì
 | 2a | Bảng `topics`, `questions`; schema nội dung và `payload` dùng chung; CRUD, tìm và lọc; trình soạn và Xem thử; Nhân bản, di chuyển, xóa | Người ra đề soạn và quản lý Câu hỏi bằng chữ |
 | 2b | Node công thức (MathLive soạn, KaTeX hiển thị, kiểm LaTeX ở server) | Câu hỏi có công thức |
 | 2c | `illustrations`, tải ảnh, worker xử lý (sharp), phục vụ có kiểm quyền | Câu hỏi có hình |
-| 2d | Nhập Excel (Q123, Q145–Q147) | Nạp hàng loạt Câu hỏi chọn một và chọn nhiều |
+| 2d | Nhập Excel (Q123, Q145–Q147) | Nạp hàng loạt Câu hỏi cả bốn Loại (mở rộng ở Q156) |
 | 2f | Chuyển giao Chủ đề; Xóa người dùng chọn người nhận (Q124, Q125, Q148–Q151) | Vòng đời nội dung khi đổi người |
 
 ## Thiết kế chung
@@ -141,7 +141,7 @@ Gắn vào Câu hỏi bằng node `image` ─► khi lưu, ghi question_illustra
 
 ### Nhập Excel (Q123)
 
-Chỉ **Câu chọn một và Câu chọn nhiều** (README, architecture.md). Luồng giống Yêu cầu cấp tài khoản ở lát cắt 1:
+Ban đầu chỉ **Câu chọn một và Câu chọn nhiều**; Q156 mở rộng sang cả bốn Loại, mỗi Loại một sheet (xem mục "Nhập Excel bốn Loại" bên dưới, phần mô tả cột dưới đây là của bản đầu). Luồng giống Yêu cầu cấp tài khoản ở lát cắt 1:
 
 ```text
 Chọn Chủ đề đích ─► tải file mẫu, điền, tải lên (.xlsx/.csv, ≤ 2 MB, ≤ 500 dòng)
@@ -242,9 +242,9 @@ Q143 và Q144 chỉ ghi lại, chưa làm gì ở lát cắt 2 (làm ở lát c�
 - Bước 0,05 chứa cả bội của 0,1 và của 0,25, nên Câu hỏi đã lưu với điểm 0,25 hoặc 0,75 vẫn lưu lại được. (Ban đầu chọn 0,1, chủ dự án đổi sang 0,05 để vẫn đặt được 0,25.)
 - Bộ đọc file so sánh với sai số (`0,15 / 0,05` không tròn đúng 3 trong số thực), và chỉ nhận số thập phân thường như trước.
 
-## Đề xuất chờ duyệt sau PR 2d (Q155–Q157)
+## Nhập Excel bốn Loại, hủy lô, file mẫu (Q155–Q157, đã duyệt)
 
-Trạng thái `proposed`: chưa viết mã, chờ chủ dự án duyệt.
+Chủ dự án duyệt sau khi so ba cách nhập (bảng so sánh ở cuối mục); làm trong PR #18.
 
 - **Q155 Hủy lô nhập.**
   - `DELETE /api/question-imports/:id`: chỉ chủ lô; chỉ khi lô `ready` hoặc `parse_failed`. Lô `parsing` hoặc `committing` (job đang chạy) và `committed` (đã tạo Câu hỏi) trả `INVALID_STATE`.
@@ -271,6 +271,17 @@ Trạng thái `proposed`: chưa viết mã, chờ chủ dự án duyệt.
   - Hai tệp tải về, cùng bố cục: **file mẫu trống** (bốn sheet có tiêu đề, một dòng gợi ý, sheet "Hướng dẫn") và **file ví dụ** có 8 Câu hỏi: mỗi Loại 2 câu, một câu Toán rời rạc có công thức (`$...$`) và một câu Tin học căn bản.
   - Sheet "Hướng dẫn" nêu thứ tự điền, cột từng sheet, cách viết công thức và điểm bước 0,05, Bậc thang, mã lỗi thường gặp.
   - File ví dụ nhập được nguyên vẹn để thử; nhập lần hai sẽ bị đánh dấu Nghi trùng.
+
+**Bổ sung khi làm Q155–Q157** (không đổi điều đã duyệt):
+- Cột mới của `question_import_items` tên `type` (dùng enum `question_type` sẵn có) và `duplicate_of_type`; migration `0009_question_import_types` chuyển dữ liệu cũ (Loại lấy từ `payload`, dòng lỗi cũ coi là Câu chọn một). Khóa duy nhất là `(batch_id, type, row_number)`.
+- Mã lỗi `scoring_rule_not_allowed` bỏ: sheet "Chọn một" không có cột Quy tắc chấm nên không còn tình huống đó. Thêm lỗi cả file `duplicate_sheet` (hai sheet cùng một Loại, ví dụ "Chọn một" và "chon mot").
+- Lỗi cả file gắn với sheet được lưu dạng `mã:tên sheet` trong `parse_error` (ví dụ `missing_columns:Chọn một`); giao diện tách ra để hiện tên sheet.
+- Sheet không có dòng dữ liệu bị bỏ qua trước khi kiểm cột, nên xóa hoặc sửa dòng tiêu đề của sheet không dùng không gây lỗi; chỉ cần ít nhất một sheet có dữ liệu (nếu không: `empty_file`). Chỉ dùng sheet "Chọn một" là cách dùng bình thường.
+- Bậc thang tách bằng dấu chấm phẩy hoặc khoảng trắng (dấu phẩy là dấu thập phân); `0, 0.5, 1` bị từ chối `invalid_ladder`. Bậc thang đi cùng quy tắc Bậc thang: điền một trong hai mà thiếu bên kia là `invalid_ladder`.
+- `GET /api/question-imports/template` (mẫu trống, không có dòng mẫu nào để không bị nhập nhầm; ghi chú từng cột nằm ở ô tiêu đề và danh sách chọn cho Quy tắc chấm) và `GET /api/question-imports/example` (8 câu). Sheet "Hướng dẫn" đứng đầu.
+- `DELETE /api/question-imports/:id` trả 200 không nội dung như các `DELETE` khác; lô không hủy được trả `INVALID_STATE` với `reason: 'BATCH_NOT_CANCELLABLE'`.
+- `GET .../items` nhận thêm `type`; `GET .../:id` trả thêm `types` (số dòng mỗi Loại) để giao diện chỉ hiện bộ lọc Loại khi lô có từ hai Loại.
+- Chuỗi điểm bước 0,05 (Q154) áp dụng cho cả bốn sheet.
 
 ### So sánh ba cách nhập (cơ sở của Q156)
 
@@ -318,7 +329,7 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 - Rút ngẫu nhiên câu hỏi theo Chủ đề, thống kê câu hỏi, nhập từ Word, ảnh trong Câu tự luận: giai đoạn sau (architecture.md mục 9).
 - Chia sẻ Chủ đề giữa các Người ra đề: ngoài giai đoạn 1 (GLOSSARY: mỗi Chủ đề chỉ có một chủ).
 
-## Quyết định (Q111–Q154, đã duyệt)
+## Quyết định (Q111–Q157, đã duyệt)
 
 | Câu | Quyết định |
 |---|---|
@@ -366,3 +377,6 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q152 | Seam test của PR 2d (xem mục "Chi tiết đề xuất cho PR 2d") |
 | Q153 | Tách PR 2d thành 2d (Nhập Excel) và 2f (Chuyển giao + Xóa người dùng chọn người nhận) |
 | Q154 | Điểm mặc định từ 0,05 đến 100, bước 0,05 (thay 0,25), dùng chung cho soạn tay và Nhập Excel |
+| Q155 | Hủy lô nhập: `DELETE /api/question-imports/:id`, chỉ lô `ready` hoặc `parse_failed`, xóa cứng; giao diện có hộp xác nhận rồi về trang tải lên với Chủ đề đã chọn |
+| Q156 | Nhập đủ bốn Loại bằng một file `.xlsx` bốn sheet (Chọn một, Chọn nhiều, Chùm đúng sai, Tự luận); Loại do sheet quyết định; bỏ CSV; Phương án/Mệnh đề A–H |
+| Q157 | Hai file tải về: mẫu trống (có sheet Hướng dẫn) và ví dụ 8 câu (Toán rời rạc có công thức và Tin học căn bản, mỗi Loại 2 câu) |

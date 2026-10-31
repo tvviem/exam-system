@@ -1,4 +1,4 @@
-import { searchTextOf } from '@exam/shared';
+import { type QuestionType, searchTextOf } from '@exam/shared';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 import { type Database, DB } from '../../../db/db.module';
@@ -49,21 +49,25 @@ export class QuestionImportParseJob implements OnModuleInit {
         drafts.flatMap((d) => (d.searchText ? [d.searchText] : [])),
       );
 
-      const firstRowOf = new Map<string, number>();
+      const firstRowOf = new Map<string, { type: QuestionType; row: number }>();
       const values = drafts.map(({ row, searchText }) => {
-        const duplicateOfRow = searchText ? (firstRowOf.get(searchText) ?? null) : null;
-        if (searchText && duplicateOfRow === null) firstRowOf.set(searchText, row.rowNumber);
+        const first = searchText ? (firstRowOf.get(searchText) ?? null) : null;
+        if (searchText && first === null) {
+          firstRowOf.set(searchText, { type: row.type, row: row.rowNumber });
+        }
         const duplicateOfQuestionId = searchText ? (existing.get(searchText) ?? null) : null;
         return {
           batchId,
+          type: row.type,
           rowNumber: row.rowNumber,
           payload: row.input,
           searchText,
           errorCode: row.error,
           duplicateOfQuestionId,
-          duplicateOfRow,
+          duplicateOfRow: first?.row ?? null,
+          duplicateOfType: first?.type ?? null,
           // Dòng hợp lệ chọn sẵn; nghi trùng để người dùng quyết định (Q146).
-          selected: !row.error && duplicateOfQuestionId === null && duplicateOfRow === null,
+          selected: !row.error && duplicateOfQuestionId === null && first === null,
         };
       });
 
@@ -89,9 +93,12 @@ export class QuestionImportParseJob implements OnModuleInit {
       const code: ImportFileErrorCode | 'internal_error' =
         error instanceof QuestionImportFileError ? error.code : 'internal_error';
       if (code === 'internal_error') this.logger.error(`Đọc lô nhập ${batchId} lỗi`, error);
+      // Lỗi gắn với một sheet thì ghi kèm tên sheet sau dấu hai chấm: `missing_columns:Chọn một`.
+      const parseError =
+        error instanceof QuestionImportFileError && error.sheet ? `${code}:${error.sheet}` : code;
       await this.db
         .update(questionImportBatches)
-        .set({ status: 'parse_failed', parseError: code, uploadKey: null })
+        .set({ status: 'parse_failed', parseError, uploadKey: null })
         .where(
           and(eq(questionImportBatches.id, batchId), eq(questionImportBatches.status, 'parsing')),
         );

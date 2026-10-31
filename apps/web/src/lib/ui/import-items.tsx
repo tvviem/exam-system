@@ -46,7 +46,10 @@ function Status({ item }: { item: ImportItem }) {
         <span className="text-sm text-fg-muted">
           {item.duplicateOfQuestionId
             ? t('questionImport.duplicateExisting')
-            : t('questionImport.duplicateRow', { n: item.duplicateOfRow })}
+            : t('questionImport.duplicateRow', {
+                n: item.duplicateOfRow,
+                type: item.duplicateOfType ? t(`questionType.${item.duplicateOfType}`) : '',
+              })}
         </span>
       </div>
     );
@@ -71,6 +74,8 @@ export function ImportItems({
   const [viewing, setViewing] = useState<ImportItem | null>(null);
   const viewingQuestion = viewing ? viewOf(viewing) : null;
 
+  const typeLabel = (item: ImportItem) => t(`questionType.${item.type}`);
+
   const checkbox = (item: ImportItem) =>
     item.kind === 'error' ? (
       <span className="inline-block size-12 pointer-fine:size-9" />
@@ -81,7 +86,7 @@ export function ImportItems({
           className="size-5"
           checked={item.selected}
           disabled={pending}
-          aria-label={t('questionImport.selectRow', { n: item.rowNumber })}
+          aria-label={t('questionImport.selectRow', { n: item.rowNumber, type: typeLabel(item) })}
           onChange={() => onToggle(item)}
         />
       </label>
@@ -92,12 +97,12 @@ export function ImportItems({
       <span className="line-clamp-2 break-words">
         {item.stem ? plainTextOf(item.stem) : t('questionImport.noContent')}
       </span>
-      {item.type && (
-        <span className="text-sm text-fg-muted">
-          {t(`questionType.${item.type}`)} ·{' '}
-          {t('questionBank.points', { points: item.defaultPoints })}
-        </span>
-      )}
+      <span className="text-sm text-fg-muted">
+        {typeLabel(item)}
+        {item.defaultPoints !== null && (
+          <> · {t('questionBank.points', { points: item.defaultPoints })}</>
+        )}
+      </span>
     </div>
   );
 
@@ -105,7 +110,7 @@ export function ImportItems({
     viewOf(item) ? (
       <Button
         onClick={() => setViewing(item)}
-        aria-label={t('questionImport.viewRow', { n: item.rowNumber })}
+        aria-label={t('questionImport.viewRow', { n: item.rowNumber, type: typeLabel(item) })}
       >
         <Eye aria-hidden className="size-5" />
         <span className={labelClass}>{t('questionImport.view')}</span>
@@ -157,7 +162,10 @@ export function ImportItems({
       <Dialog
         open={viewing !== null}
         onClose={() => setViewing(null)}
-        title={t('questionImport.row', { n: viewing?.rowNumber })}
+        title={t('questionImport.rowOfType', {
+          n: viewing?.rowNumber,
+          type: viewing ? typeLabel(viewing) : '',
+        })}
       >
         {viewingQuestion && <QuestionView question={viewingQuestion} showAnswer />}
       </Dialog>

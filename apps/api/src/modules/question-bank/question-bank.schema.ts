@@ -168,6 +168,9 @@ export const questionImportItems = pgTable(
     batchId: uuid('batch_id')
       .notNull()
       .references(() => questionImportBatches.id, { onDelete: 'cascade' }),
+    /** Loại câu hỏi, do sheet của file quyết định (Q156); có cả ở dòng lỗi. */
+    type: questionTypeEnum('type').notNull(),
+    /** Số dòng trong sheet của nó, không phải trong cả file. */
     rowNumber: integer('row_number').notNull(),
     /** Câu hỏi chưa gắn Chủ đề (`DraftQuestion`); NULL khi dòng lỗi. */
     payload: jsonb('payload').$type<Record<string, unknown>>(),
@@ -176,8 +179,10 @@ export const questionImportItems = pgTable(
     /** Nghi trùng: Câu hỏi đã có trong Chủ đề đích, hoặc dòng trước trong cùng file. */
     duplicateOfQuestionId: uuid('duplicate_of_question_id'),
     duplicateOfRow: integer('duplicate_of_row'),
+    /** Sheet của dòng trùng; đi cùng `duplicateOfRow` vì số dòng chỉ duy nhất trong một sheet. */
+    duplicateOfType: questionTypeEnum('duplicate_of_type'),
     selected: boolean('selected').notNull().default(false),
     outcome: importItemOutcomeEnum('outcome').notNull().default('pending'),
   },
-  (t) => [uniqueIndex('question_import_items_batch_row_unique').on(t.batchId, t.rowNumber)],
+  (t) => [uniqueIndex('question_import_items_batch_row_unique').on(t.batchId, t.type, t.rowNumber)],
 );

@@ -1,4 +1,4 @@
-import type { QuestionInput } from '@exam/shared';
+import type { QuestionInput, QuestionType } from '@exam/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
@@ -43,19 +43,24 @@ export interface ImportBatch {
   committedAt: string | null;
   expiresAt: string;
   counts: ImportCounts;
+  /** Số dòng theo Loại câu hỏi; chỉ gồm Loại có dòng. */
+  types: Partial<Record<QuestionType, number>>;
 }
 
 export interface ImportItem {
   id: string;
+  /** Loại câu hỏi, do sheet quyết định; có cả ở dòng lỗi. */
+  type: QuestionType;
+  /** Số dòng trong sheet của Loại này, không phải trong cả file. */
   rowNumber: number;
   kind: ImportKind;
   errorCode: string | null;
   duplicateOfQuestionId: string | null;
   duplicateOfRow: number | null;
+  duplicateOfType: QuestionType | null;
   selected: boolean;
   outcome: 'pending' | 'created' | 'skipped';
   /** Nội dung đã đổi từ dòng Excel; null khi dòng lỗi. */
-  type: QuestionInput['type'] | null;
   stem: QuestionInput['stem'] | null;
   payload: QuestionInput['payload'] | null;
   defaultPoints: number | null;
@@ -63,6 +68,16 @@ export interface ImportItem {
 }
 
 export const IMPORT_TEMPLATE_URL = '/api/question-imports/template';
+export const IMPORT_EXAMPLE_URL = '/api/question-imports/example';
+
+/** `missing_columns:Chọn một` → mã lỗi và tên sheet gây lỗi (rỗng nếu lỗi không gắn với sheet). */
+export function parseErrorOf(value: string | null): { code: string; sheet: string } {
+  if (!value) return { code: 'internal_error', sheet: '' };
+  const at = value.indexOf(':');
+  return at < 0
+    ? { code: value, sheet: '' }
+    : { code: value.slice(0, at), sheet: value.slice(at + 1) };
+}
 
 export const importBatchesQuery = (page?: number) =>
   queryOptions({
@@ -83,7 +98,7 @@ export const importBatchQuery = (id: string) =>
 
 export const importItemsQuery = (
   id: string,
-  params: { kind?: ImportKind; page?: number },
+  params: { kind?: ImportKind; type?: QuestionType; page?: number },
   refreshKey: string,
 ) =>
   queryOptions({
@@ -113,6 +128,9 @@ export const selectImportItems = (
     method: 'PATCH',
     body: { ...selection, selected },
   });
+
+export const cancelImport = (id: string) =>
+  apiFetch<void>(`/question-imports/${id}`, { method: 'DELETE' });
 
 export const commitImport = (id: string) =>
   apiFetch<{ id: string; status: ImportStatus }>(`/question-imports/${id}/commit`, {

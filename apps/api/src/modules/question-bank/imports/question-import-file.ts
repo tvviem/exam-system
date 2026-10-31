@@ -2,26 +2,38 @@ import {
   ITEM_MAX_CHARS,
   MATH_MAX_PER_QUESTION,
   normalizeForSearch,
-  normalizeTag,
-  POINTS_MAX,
-  POINTS_MIN,
-  POINTS_STEP,
   plainTextOf,
   type QuestionInput,
+  type QuestionType,
   questionInputSchema,
   type RichText,
   STEM_MAX_CHARS,
-  TAG_MAX_CHARS,
-  TAGS_MAX,
 } from '@exam/shared';
-import { type Cell, isFilled, readTable, SpreadsheetError } from '../../../common/spreadsheet';
+import {
+  type Cell,
+  isFilled,
+  readWorkbook,
+  SpreadsheetError,
+  type Table,
+} from '../../../common/spreadsheet';
 import { checkLatex } from '../latex';
+import {
+  cellToDoc,
+  formulasOf,
+  parseChoiceAnswer,
+  parseLadder,
+  parseMaxLength,
+  parsePoints,
+  parseScoringRule,
+  parseStatementKeys,
+  parseTags,
+} from './question-import-cells';
 
-// Đọc file Excel/CSV nhập Câu hỏi (Q123, Q145): chỉ Câu chọn một và Câu chọn nhiều. Hàm thuần, không chạm DB.
+// Đọc file Excel nhập Câu hỏi (Q123, Q145, Q156): một file `.xlsx`, mỗi Loại câu hỏi một sheet. Hàm thuần, không chạm DB.
 
 export const MAX_IMPORT_ROWS = 500;
-export const MAX_OPTIONS = 6;
-const DEFAULT_POINTS = 1;
+/** Số cột Phương án (A–H) hoặc Mệnh đề (a–h) của mẫu, bằng giới hạn của trình soạn. */
+export const MAX_OPTIONS = 8;
 // Chỉ để chạy `questionInputSchema` (cần `topicId`); Chủ đề thật gắn lúc tạo Câu hỏi.
 const PLACEHOLDER_TOPIC_ID = '00000000-0000-4000-8000-000000000000';
 
@@ -29,11 +41,16 @@ export type ImportFileErrorCode =
   | 'unsupported_file'
   | 'missing_columns'
   | 'empty_file'
-  | 'too_many_rows';
+  | 'too_many_rows'
+  | 'unknown_sheet'
+  | 'duplicate_sheet';
 
-/** Lỗi của cả file (khác lỗi từng dòng). */
+/** Lỗi của cả file (khác lỗi từng dòng); `sheet` là tên sheet gây lỗi, nếu có. */
 export class QuestionImportFileError extends Error {
-  constructor(readonly code: ImportFileErrorCode) {
+  constructor(
+    readonly code: ImportFileErrorCode,
+    readonly sheet?: string,
+  ) {
     super(code);
   }
 }
@@ -43,9 +60,11 @@ export type ImportRowErrorCode =
   | 'too_few_options'
   | 'gap_in_options'
   | 'answer_mismatch'
+  | 'invalid_statement_key'
   | 'invalid_points'
-  | 'scoring_rule_not_allowed'
   | 'invalid_scoring_rule'
+  | 'invalid_ladder'
+  | 'invalid_max_length'
   | 'field_too_long'
   | 'too_many_tags'
   | 'too_many_formulas'
@@ -58,118 +77,181 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 export type DraftQuestion = DistributiveOmit<QuestionInput, 'topicId'>;
 
 export interface ParsedQuestionRow {
-  /** Số dòng trong file (dòng tiêu đề là dòng 1). */
+  /** Loại câu hỏi, do sheet quyết định. */
+  type: QuestionType;
+  /** Số dòng trong sheet của nó (dòng tiêu đề là dòng 1). */
   rowNumber: number;
   input: DraftQuestion | null;
   error: ImportRowErrorCode | null;
 }
 
-type Field = 'content' | 'answer' | 'points' | 'scoringRule' | 'tags' | `option${number}`;
+type Field =
+  | 'content'
+  | 'answer'
+  | 'points'
+  | 'scoringRule'
+  | 'ladder'
+  | 'maxLength'
+  | 'rubric'
+  | 'tags'
+  | `item${number}`;
+type TextOf = (field: Field) => string;
 
-const HEADERS: Record<string, Field> = {
+/** Phần riêng của từng Loại câu hỏi sau khi đọc xong các ô của nó. */
+interface Part {
+  candidate: { type: QuestionType; payload: unknown };
+  /** Phương án hoặc Mệnh đề (giới hạn `ITEM_MAX_CHARS`). */
+  items: RichText[];
+  /** Hướng dẫn chấm (giới hạn như Phần dẫn). */
+  notes: RichText[];
+}
+
+interface SheetSpec {
+  type: QuestionType;
+  /** Tên sheet đã chuẩn hóa (không dấu, chữ thường). */
+  name: string;
+  /** Tiền tố tiêu đề cột của Phương án / Mệnh đề; null nếu Loại này không có. */
+  itemTitle: string | null;
+  required: Field[];
+  read: (text: TextOf) => Part | ImportRowErrorCode;
+}
+
+const SHEETS: SheetSpec[] = [
+  {
+    type: 'single_choice',
+    name: 'chon mot',
+    itemTitle: 'phuong an',
+    required: ['content', 'item0', 'item1', 'answer'],
+    read: (text) => readChoice(text, false),
+  },
+  {
+    type: 'multiple_choice',
+    name: 'chon nhieu',
+    itemTitle: 'phuong an',
+    required: ['content', 'item0', 'item1', 'answer'],
+    read: (text) => readChoice(text, true),
+  },
+  {
+    type: 'true_false_cluster',
+    name: 'chum dung sai',
+    itemTitle: 'menh de',
+    required: ['content', 'item0', 'answer'],
+    read: readCluster,
+  },
+  { type: 'essay', name: 'tu luan', itemTitle: null, required: ['content'], read: readEssay },
+];
+const GUIDE_SHEET = 'huong dan';
+
+const searchKey = (title: string) =>
+  normalizeForSearch(title)
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const COMMON_HEADERS: Record<string, Field> = {
   'noi dung': 'content',
   'dap an': 'answer',
   diem: 'points',
   'quy tac cham': 'scoringRule',
+  'bac thang': 'ladder',
+  'do dai toi da': 'maxLength',
+  'huong dan cham': 'rubric',
   tags: 'tags',
   tag: 'tags',
 };
-for (let i = 0; i < MAX_OPTIONS; i++) {
-  HEADERS[`phuong an ${String.fromCharCode(97 + i)}`] = `option${i}`;
-}
 
-const REQUIRED: Field[] = ['content', 'option0', 'option1', 'answer'];
+function columnsOf(header: Cell[], spec: SheetSpec): Map<Field, number> {
+  const titles: Record<string, Field> = { ...COMMON_HEADERS };
+  if (spec.itemTitle) {
+    for (let i = 0; i < MAX_OPTIONS; i++) {
+      titles[`${spec.itemTitle} ${String.fromCharCode(97 + i)}`] = `item${i}`;
+    }
+  }
+  const columns = new Map<Field, number>();
+  header.forEach((title, index) => {
+    const field = titles[searchKey(title instanceof Date ? '' : title)];
+    if (field && !columns.has(field)) columns.set(field, index);
+  });
+  return columns;
+}
 
 export async function parseQuestionImportFile(
   buffer: Buffer,
 ): Promise<{ rows: ParsedQuestionRow[] }> {
-  let table: Awaited<ReturnType<typeof readTable>>;
+  let sheets: Awaited<ReturnType<typeof readWorkbook>>;
   try {
-    table = await readTable(buffer, MAX_IMPORT_ROWS);
+    sheets = await readWorkbook(buffer, MAX_IMPORT_ROWS);
   } catch (error) {
     if (error instanceof SpreadsheetError) throw new QuestionImportFileError(error.code);
     throw error;
   }
 
-  const columns = new Map<Field, number>();
-  table.header.forEach((title, index) => {
-    const key = normalizeForSearch(title instanceof Date ? '' : title)
-      .replace(/[^a-z0-9 ]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const field = HEADERS[key];
-    if (field && !columns.has(field)) columns.set(field, index);
-  });
-  if (REQUIRED.some((field) => !columns.has(field))) {
-    throw new QuestionImportFileError('missing_columns');
+  const tables = new Map<SheetSpec, { name: string; table: Table }>();
+  for (const { name, table } of sheets) {
+    const key = searchKey(name);
+    if (key === GUIDE_SHEET) continue;
+    const spec = SHEETS.find((s) => s.name === key);
+    if (!spec) throw new QuestionImportFileError('unknown_sheet', name);
+    if (tables.has(spec)) throw new QuestionImportFileError('duplicate_sheet', name);
+    tables.set(spec, { name, table });
   }
 
-  const records = table.records.filter((r) => r.cells.some(isFilled));
-  if (records.length === 0) throw new QuestionImportFileError('empty_file');
-  if (records.length > MAX_IMPORT_ROWS) throw new QuestionImportFileError('too_many_rows');
+  const rows: ParsedQuestionRow[] = [];
+  // Theo thứ tự sheet của mẫu, không theo thứ tự trong file.
+  for (const spec of SHEETS) {
+    const found = tables.get(spec);
+    const records = found?.table.records.filter((r) => r.cells.some(isFilled)) ?? [];
+    // Sheet không có dòng dữ liệu thì bỏ qua, kể cả khi dòng tiêu đề bị sửa hay xóa.
+    if (!found || records.length === 0) continue;
 
-  return {
-    rows: records.map(({ rowNumber, cells }) => {
-      const text = (field: Field) => {
+    const columns = columnsOf(found.table.header, spec);
+    if (spec.required.some((field) => !columns.has(field))) {
+      throw new QuestionImportFileError('missing_columns', found.name);
+    }
+    for (const { rowNumber, cells } of records) {
+      const text: TextOf = (field) => {
         const index = columns.get(field);
         const cell: Cell = index === undefined ? '' : (cells[index] ?? '');
         return cell instanceof Date ? '' : cell.trim();
       };
-      const result = buildQuestion(text);
-      return { rowNumber, ...result };
-    }),
-  };
+      rows.push({ type: spec.type, rowNumber, ...buildQuestion(spec, text) });
+    }
+    if (rows.length > MAX_IMPORT_ROWS) throw new QuestionImportFileError('too_many_rows');
+  }
+  if (rows.length === 0) throw new QuestionImportFileError('empty_file');
+  return { rows };
 }
 
 type Built = { input: DraftQuestion; error: null } | { input: null; error: ImportRowErrorCode };
 const fail = (error: ImportRowErrorCode): Built => ({ input: null, error });
 
-function buildQuestion(text: (field: Field) => string): Built {
+function buildQuestion(spec: SheetSpec, text: TextOf): Built {
   const stem = cellToDoc(text('content'));
   if (!stem) return fail('missing_content');
 
-  const optionTexts = Array.from({ length: MAX_OPTIONS }, (_, i) => text(`option${i}`));
-  const filled = optionTexts.filter((t) => t !== '').length;
-  // Ô trống nằm giữa các Phương án có chữ: không tự dồn lên vì sẽ làm lệch chữ cái của Đáp án.
-  if (optionTexts.slice(0, filled).some((t) => t === '')) return fail('gap_in_options');
-  if (filled < 2) return fail('too_few_options');
-  const options = optionTexts.slice(0, filled).map((t, i) => ({
-    id: `o${i + 1}`,
-    content: cellToDoc(t) as RichText,
-  }));
-
-  const key = parseAnswer(text('answer'), filled);
-  if (!key) return fail('answer_mismatch');
+  const part = spec.read(text);
+  if (typeof part === 'string') return fail(part);
 
   const points = parsePoints(text('points'));
   if (points === null) return fail('invalid_points');
-
-  const rule = parseScoringRule(text('scoringRule'), key.length > 1);
-  if (rule === 'scoring_rule_not_allowed' || rule === 'invalid_scoring_rule') return fail(rule);
-
   const tags = parseTags(text('tags'));
-  if (tags === 'too_many_tags' || tags === 'field_too_long') return fail(tags);
+  if (typeof tags === 'string') return fail(tags);
 
-  const docs = [stem, ...options.map((o) => o.content)];
   if (plainTextOf(stem).length > STEM_MAX_CHARS) return fail('field_too_long');
-  if (options.some((o) => plainTextOf(o.content).length > ITEM_MAX_CHARS)) {
+  if (part.items.some((doc) => plainTextOf(doc).length > ITEM_MAX_CHARS)) {
     return fail('field_too_long');
   }
-  const latex = docs.flatMap(formulasOf);
+  if (part.notes.some((doc) => plainTextOf(doc).length > STEM_MAX_CHARS)) {
+    return fail('field_too_long');
+  }
+  const latex = [stem, ...part.items, ...part.notes].flatMap(formulasOf);
   if (latex.length > MATH_MAX_PER_QUESTION) return fail('too_many_formulas');
   const problems = latex.map(checkLatex);
   if (problems.includes('math_forbidden')) return fail('math_forbidden');
   if (problems.includes('math_invalid')) return fail('math_invalid');
 
-  const candidate =
-    key.length > 1
-      ? {
-          type: 'multiple_choice' as const,
-          payload: { options, key, scoringRule: rule, shuffleOptions: true },
-        }
-      : { type: 'single_choice' as const, payload: { options, key, shuffleOptions: true } };
   const parsed = questionInputSchema.safeParse({
-    ...candidate,
+    ...part.candidate,
     topicId: PLACEHOLDER_TOPIC_ID,
     stem,
     defaultPoints: points,
@@ -180,120 +262,89 @@ function buildQuestion(text: (field: Field) => string): Built {
   return { input, error: null };
 }
 
-/** `A`, `A,C`, `a; c`... → mã Phương án; null nếu trống, sai chữ, lặp hoặc trỏ Phương án không có. */
-function parseAnswer(value: string, optionCount: number): string[] | null {
-  const letters = value.split(/[\s,;]+/).filter((t) => t !== '');
-  if (letters.length === 0) return null;
-  const indexes = letters.map((l) =>
-    /^[a-fA-F]$/.test(l) ? l.toLowerCase().charCodeAt(0) - 97 : -1,
-  );
-  if (indexes.some((i) => i < 0 || i >= optionCount)) return null;
-  if (new Set(indexes).size !== indexes.length) return null;
-  return indexes.map((i) => `o${i + 1}`);
-}
-
-/** Trống = 1; chấp nhận dấu phẩy thập phân. null nếu không phải số 0,05–100 chia hết cho 0,05. */
-function parsePoints(value: string): number | null {
-  if (value === '') return DEFAULT_POINTS;
-  // Chỉ nhận số thập phân thường: `Number()` cũng nhận `0x10` hay `1e1`.
-  if (!/^\d+([.,]\d+)?$/.test(value)) return null;
-  const points = Number(value.replace(',', '.'));
-  if (points < POINTS_MIN || points > POINTS_MAX) return null;
-  // So sánh với sai số: 0,15 / 0,05 trong số thực không tròn đúng 3.
-  const steps = points / POINTS_STEP;
-  return Math.abs(steps - Math.round(steps)) < 1e-9 ? points : null;
-}
-
-function parseScoringRule(
-  value: string,
-  multiple: boolean,
-): 'proportional' | 'all_or_nothing' | 'scoring_rule_not_allowed' | 'invalid_scoring_rule' {
-  if (value === '') return 'proportional';
-  if (!multiple) return 'scoring_rule_not_allowed';
-  const key = normalizeForSearch(value);
-  if (key === 'ty le') return 'proportional';
-  if (key === 'dung het') return 'all_or_nothing';
-  return 'invalid_scoring_rule';
-}
-
-function parseTags(value: string): string[] | 'too_many_tags' | 'field_too_long' {
-  const tags = [
-    ...new Set(
-      value
-        .split(/[,;]/)
-        .map(normalizeTag)
-        .filter((t) => t !== ''),
-    ),
-  ];
-  if (tags.some((t) => t.length > TAG_MAX_CHARS)) return 'field_too_long';
-  return tags.length > TAGS_MAX ? 'too_many_tags' : tags;
-}
-
-type Inline =
-  | { type: 'text'; text: string }
-  | { type: 'hardBreak' }
-  | { type: 'math'; attrs: { latex: string; display: false } };
-
-const formulasOf = (doc: RichText): string[] =>
-  doc.content.flatMap((block) =>
-    block.type === 'paragraph'
-      ? (block.content ?? []).flatMap((node) => (node.type === 'math' ? [node.attrs.latex] : []))
-      : [],
-  );
-
 /**
- * Ô → nội dung có định dạng: một đoạn, xuống dòng thành `hardBreak`, `$...$` thành công thức trong dòng,
- * `\$` là dấu đô la thật. `$` lẻ hoặc `$$` rỗng giữ nguyên là chữ.
+ * Các ô Phương án / Mệnh đề từ cột đầu tiên. Ô trống nằm giữa các ô có chữ là lỗi: không tự dồn lên vì sẽ làm lệch
+ * chữ cái của Đáp án.
  */
-function cellToDoc(text: string): RichText | null {
-  if (text.trim() === '') return null;
-  const nodes: Inline[] = [];
-  text.split(/\r?\n/).forEach((line, i) => {
-    if (i > 0) nodes.push({ type: 'hardBreak' });
-    nodes.push(...inlineOf(line));
-  });
-  return { type: 'doc', content: [{ type: 'paragraph', content: nodes }] } as RichText;
+function itemsOf(text: TextOf, minimum: number): { docs: RichText[] } | ImportRowErrorCode {
+  const texts = Array.from({ length: MAX_OPTIONS }, (_, i) => text(`item${i}`));
+  const filled = texts.filter((t) => t !== '').length;
+  if (texts.slice(0, filled).some((t) => t === '')) return 'gap_in_options';
+  if (filled < minimum) return 'too_few_options';
+  return { docs: texts.slice(0, filled).map((t) => cellToDoc(t) as RichText) };
 }
 
-function inlineOf(line: string): Inline[] {
-  const nodes: Inline[] = [];
-  let buffer = '';
-  const flush = () => {
-    if (buffer !== '') nodes.push({ type: 'text', text: buffer });
-    buffer = '';
-  };
-  let i = 0;
-  while (i < line.length) {
-    const char = line[i];
-    if (char === '\\' && line[i + 1] === '$') {
-      buffer += '$';
-      i += 2;
-    } else if (char === '$' && line[i + 1] === '$') {
-      // `$$...$$` không hỗ trợ (Q145): giữ nguyên là chữ, không tách thành công thức.
-      buffer += '$$';
-      i += 2;
-    } else if (char === '$') {
-      let j = i + 1;
-      let latex = '';
-      while (j < line.length && line[j] !== '$') {
-        // `\$` trong công thức là lệnh LaTeX in dấu đô la, giữ nguyên.
-        const step = line[j] === '\\' && line[j + 1] === '$' ? 2 : 1;
-        latex += line.slice(j, j + step);
-        j += step;
-      }
-      if (j < line.length && latex.trim() !== '') {
-        flush();
-        nodes.push({ type: 'math', attrs: { latex: latex.trim(), display: false } });
-        i = j + 1;
-      } else {
-        buffer += '$';
-        i++;
-      }
-    } else {
-      buffer += char;
-      i++;
-    }
+function readChoice(text: TextOf, multiple: boolean): Part | ImportRowErrorCode {
+  const items = itemsOf(text, 2);
+  if (typeof items === 'string') return items;
+  const options = items.docs.map((content, i) => ({ id: `o${i + 1}`, content }));
+
+  const indexes = parseChoiceAnswer(text('answer'), options.length);
+  // Loại do sheet quyết định: một Đáp án ở "Chọn một", từ một ở "Chọn nhiều"; không tự đổi Loại theo số chữ.
+  if (!indexes || (!multiple && indexes.length !== 1)) return 'answer_mismatch';
+  const key = indexes.map((i) => `o${i + 1}`);
+
+  if (!multiple) {
+    return {
+      candidate: { type: 'single_choice', payload: { options, key, shuffleOptions: true } },
+      items: items.docs,
+      notes: [],
+    };
   }
-  flush();
-  return nodes;
+  const rule = parseScoringRule(text('scoringRule'), ['proportional', 'all_or_nothing']);
+  if (!rule) return 'invalid_scoring_rule';
+  return {
+    candidate: {
+      type: 'multiple_choice',
+      payload: { options, key, scoringRule: rule, shuffleOptions: true },
+    },
+    items: items.docs,
+    notes: [],
+  };
+}
+
+function readCluster(text: TextOf): Part | ImportRowErrorCode {
+  const items = itemsOf(text, 1);
+  if (typeof items === 'string') return items;
+
+  const keys = parseStatementKeys(text('answer'), items.docs.length);
+  if (!keys) return 'invalid_statement_key';
+  const rule = parseScoringRule(text('scoringRule'), ['proportional', 'all_or_nothing', 'ladder']);
+  if (!rule) return 'invalid_scoring_rule';
+
+  // Bậc thang chỉ đi cùng quy tắc Bậc thang: điền một trong hai mà thiếu bên kia là lỗi, không đoán ý người nhập.
+  const ladderText = text('ladder');
+  let ladder: number[] | undefined;
+  if (rule === 'ladder') {
+    const parsed = parseLadder(ladderText, items.docs.length);
+    if (!parsed) return 'invalid_ladder';
+    ladder = parsed;
+  } else if (ladderText !== '') {
+    return 'invalid_ladder';
+  }
+
+  const statements = items.docs.map((content, i) => ({
+    id: `s${i + 1}`,
+    content,
+    key: keys[i] as boolean,
+  }));
+  return {
+    candidate: {
+      type: 'true_false_cluster',
+      payload: { statements, scoringRule: rule, ...(ladder ? { ladder } : {}) },
+    },
+    items: items.docs,
+    notes: [],
+  };
+}
+
+function readEssay(text: TextOf): Part | ImportRowErrorCode {
+  const maxLength = parseMaxLength(text('maxLength'));
+  if (maxLength === null) return 'invalid_max_length';
+  const rubric = cellToDoc(text('rubric'));
+  return {
+    candidate: { type: 'essay', payload: { maxLength, ...(rubric ? { rubric } : {}) } },
+    items: [],
+    notes: rubric ? [rubric] : [],
+  };
 }

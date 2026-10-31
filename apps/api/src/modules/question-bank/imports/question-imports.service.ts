@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type { QuestionType } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   and,
@@ -33,6 +34,11 @@ export const IMPORT_RETENTION_DAYS = 30;
 const MAX_SELECTION_IDS = 500;
 
 export type ImportKind = 'valid' | 'duplicate' | 'error';
+
+export interface ItemsFilter {
+  kind?: ImportKind;
+  type?: QuestionType;
+}
 
 export interface ItemSelection {
   itemIds?: string[];
@@ -80,7 +86,8 @@ export class QuestionImportsService {
   ) {
     if (!upload.topicId) throw validationFailed('topicId', 'topic_required');
     if (upload.content.length > MAX_UPLOAD_BYTES) throw validationFailed('file', 'file_too_large');
-    if (!sniffUpload(upload.content)) throw validationFailed('file', 'unsupported_file');
+    // Chỉ `.xlsx`: mỗi Loại câu hỏi một sheet (Q156), CSV không có nhiều sheet.
+    if (sniffUpload(upload.content) !== 'xlsx') throw validationFailed('file', 'unsupported_file');
     await this.topics.requireUsable(ownerId, upload.topicId);
 
     const id = uuidv7();
@@ -173,12 +180,21 @@ export class QuestionImportsService {
       );
     if (!batch) throw new ApiError('NOT_FOUND');
     const { topicId, topicName, ...rest } = batch;
-    return { ...rest, topic: { id: topicId, name: topicName }, counts: await this.countsOf(id) };
+    return {
+      ...rest,
+      topic: { id: topicId, name: topicName },
+      counts: await this.countsOf(id),
+      types: await this.typesOf(id),
+    };
   }
 
-  async items(ownerId: string, id: string, { page, pageSize, kind }: Page & { kind?: ImportKind }) {
+  async items(ownerId: string, id: string, { page, pageSize, kind, type }: Page & ItemsFilter) {
     await this.requireOwned(ownerId, id);
-    const where = and(eq(questionImportItems.batchId, id), kind ? kindCondition(kind) : undefined);
+    const where = and(
+      eq(questionImportItems.batchId, id),
+      kind ? kindCondition(kind) : undefined,
+      type ? eq(questionImportItems.type, type) : undefined,
+    );
     return paginate(
       { page, pageSize },
       () => this.db.select({ total: count() }).from(questionImportItems).where(where),
@@ -186,23 +202,24 @@ export class QuestionImportsService {
         const rows = await this.db
           .select({
             id: questionImportItems.id,
+            type: questionImportItems.type,
             rowNumber: questionImportItems.rowNumber,
             kind: kindSql,
             errorCode: questionImportItems.errorCode,
             duplicateOfQuestionId: questionImportItems.duplicateOfQuestionId,
             duplicateOfRow: questionImportItems.duplicateOfRow,
+            duplicateOfType: questionImportItems.duplicateOfType,
             selected: questionImportItems.selected,
             outcome: questionImportItems.outcome,
             draft: questionImportItems.payload,
           })
           .from(questionImportItems)
           .where(where)
-          .orderBy(asc(questionImportItems.rowNumber))
+          .orderBy(asc(questionImportItems.type), asc(questionImportItems.rowNumber))
           .limit(limit)
           .offset(offset);
         return rows.map(({ draft, ...row }) => ({
           ...row,
-          type: draft?.type ?? null,
           stem: draft?.stem ?? null,
           payload: draft?.payload ?? null,
           defaultPoints: draft?.defaultPoints ?? null,
@@ -284,6 +301,32 @@ export class QuestionImportsService {
       throw error;
     }
     return { id, status: 'committing' as const };
+  }
+
+  /**
+   * Hủy lô (Q155): xóa lô và các dòng của nó. Chỉ lô `ready` hoặc `parse_failed`; lô đang đọc hoặc đang tạo có job
+   * chạy, lô đã tạo Câu hỏi thì giữ lại làm lịch sử đến khi hết hạn.
+   */
+  async cancel(ownerId: string, id: string) {
+    await this.db.transaction(async (tx) => {
+      const batch = await this.lockOwned(tx, ownerId, id);
+      if (batch.status !== 'ready' && batch.status !== 'parse_failed') {
+        throw new ApiError('INVALID_STATE', { reason: 'BATCH_NOT_CANCELLABLE' });
+      }
+      await tx.delete(questionImportBatches).where(eq(questionImportBatches.id, id));
+    });
+  }
+
+  /** Số dòng theo Loại câu hỏi, để giao diện chỉ hiện bộ lọc Loại khi lô có nhiều Loại. */
+  private async typesOf(id: string) {
+    const rows = await this.db
+      .select({ type: questionImportItems.type, total: count() })
+      .from(questionImportItems)
+      .where(eq(questionImportItems.batchId, id))
+      .groupBy(questionImportItems.type);
+    return Object.fromEntries(rows.map((row) => [row.type, row.total])) as Partial<
+      Record<QuestionType, number>
+    >;
   }
 
   private async countsOf(id: string) {

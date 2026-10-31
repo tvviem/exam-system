@@ -4,6 +4,7 @@ import {
   applySelectionToItems,
   type ImportCounts,
   type ImportItem,
+  parseErrorOf,
 } from './question-imports';
 
 const item = (id: string, kind: ImportItem['kind'], selected: boolean): ImportItem => ({
@@ -13,9 +14,10 @@ const item = (id: string, kind: ImportItem['kind'], selected: boolean): ImportIt
   errorCode: kind === 'error' ? 'answer_mismatch' : null,
   duplicateOfQuestionId: null,
   duplicateOfRow: null,
+  duplicateOfType: null,
   selected,
   outcome: 'pending',
-  type: null,
+  type: 'single_choice',
   stem: null,
   payload: null,
   defaultPoints: null,
@@ -85,5 +87,23 @@ describe('applySelectionToCounts', () => {
       selected: 6,
       selectedDuplicate: 2,
     });
+  });
+});
+
+describe('mã lỗi đọc file kèm tên sheet (Q156)', () => {
+  it('tách mã và tên sheet ở dấu hai chấm đầu tiên', () => {
+    expect(parseErrorOf('missing_columns:Chọn một')).toEqual({
+      code: 'missing_columns',
+      sheet: 'Chọn một',
+    });
+    expect(parseErrorOf('unknown_sheet:Câu hỏi: lớp 10')).toEqual({
+      code: 'unknown_sheet',
+      sheet: 'Câu hỏi: lớp 10',
+    });
+  });
+
+  it('mã không kèm sheet và giá trị rỗng', () => {
+    expect(parseErrorOf('empty_file')).toEqual({ code: 'empty_file', sheet: '' });
+    expect(parseErrorOf(null)).toEqual({ code: 'internal_error', sheet: '' });
   });
 });

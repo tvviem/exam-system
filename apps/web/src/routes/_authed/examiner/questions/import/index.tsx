@@ -7,6 +7,7 @@ import { errorMessage } from '../../../../../lib/errors';
 import { formatDateTime } from '../../../../../lib/format';
 import { topicsQuery } from '../../../../../lib/question-bank';
 import {
+  IMPORT_EXAMPLE_URL,
   IMPORT_TEMPLATE_URL,
   type ImportStatus,
   importBatchesQuery,
@@ -22,6 +23,7 @@ import {
 } from '../../../../../lib/ui';
 import { EmptyState, ListSkeleton, Pagination } from '../../../../../lib/ui/admin';
 import { Breadcrumb } from '../../../../../lib/ui/breadcrumb';
+import { CancelImportButton } from '../../../../../lib/ui/cancel-import';
 import { PageHeader } from '../../../../../lib/ui/page-header';
 
 export const Route = createFileRoute('/_authed/examiner/questions/import/')({
@@ -67,11 +69,14 @@ function ImportPage() {
         <>
           <ul className="flex flex-col gap-3">
             {batches.data.items.map((batch) => (
-              <li key={batch.id}>
+              <li
+                key={batch.id}
+                className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2"
+              >
                 <Link
                   to="/examiner/questions/import/$batchId"
                   params={{ batchId: batch.id }}
-                  className="flex min-h-12 flex-col gap-1 rounded-xl border border-border bg-surface p-4 hover:bg-primary-soft"
+                  className="flex min-h-12 min-w-0 flex-1 flex-col gap-1 rounded-xl border border-border bg-surface p-4 hover:bg-primary-soft"
                 >
                   <span className="flex flex-wrap items-center justify-between gap-2">
                     <span className="min-w-0 break-words font-medium">
@@ -90,6 +95,9 @@ function ImportPage() {
                         : ''}
                   </span>
                 </Link>
+                {(batch.status === 'ready' || batch.status === 'parse_failed') && (
+                  <CancelImportButton batchId={batch.id} className="w-fit" />
+                )}
               </li>
             ))}
           </ul>
@@ -142,10 +150,17 @@ function UploadCard() {
         <ol className="flex flex-col gap-4">
           <li className="flex flex-col gap-2">
             <Step n={1}>{t('questionImport.step1')}</Step>
-            <a href={IMPORT_TEMPLATE_URL} download className={buttonClass('secondary', 'w-fit')}>
-              <Download aria-hidden className="size-5" />
-              {t('questionImport.downloadTemplate')}
-            </a>
+            <div className="flex flex-wrap gap-2">
+              <a href={IMPORT_TEMPLATE_URL} download className={buttonClass('secondary')}>
+                <Download aria-hidden className="size-5" />
+                {t('questionImport.downloadTemplate')}
+              </a>
+              <a href={IMPORT_EXAMPLE_URL} download className={buttonClass('secondary')}>
+                <Download aria-hidden className="size-5" />
+                {t('questionImport.downloadExample')}
+              </a>
+            </div>
+            <p className="text-sm text-fg-muted">{t('questionImport.templateHint')}</p>
           </li>
           <li className="flex flex-col gap-2">
             <Step n={2}>{t('questionImport.step2')}</Step>
@@ -169,7 +184,7 @@ function UploadCard() {
             <input
               id="import-file"
               type="file"
-              accept=".xlsx,.csv"
+              accept=".xlsx"
               required
               aria-label={t('questionImport.chooseFile')}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}

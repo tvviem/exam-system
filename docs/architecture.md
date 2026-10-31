@@ -239,7 +239,7 @@ Một container api (Node.js) trên máy WSL hiện tại đủ đáp ứng vớ
 
 **Giai đoạn 1** gồm các nghiệp vụ đã chốt trong [GLOSSARY.md](../GLOSSARY.md):
 - Người dùng: Quản trị viên, Nhãn vai trò, Lời mời, Yêu cầu cấp tài khoản kèm Phiếu tài khoản, Khóa đăng nhập, Xóa người dùng, Chuyển giao.
-- Ngân hàng câu hỏi: 4 Loại câu hỏi, Hình minh họa, soạn công thức trực quan, nhập Excel cho câu trắc nghiệm.
+- Ngân hàng câu hỏi: 4 Loại câu hỏi, Hình minh họa, soạn công thức trực quan, nhập Excel cả bốn Loại (mỗi Loại một sheet).
 - Bộ đề: danh sách câu cố định, Phần, đặt điểm nhanh, Phát hành, Xem thử.
 - Phiên thi: Mã vào thi, Khung giờ, nhiều lượt làm bài, theo dõi trực tiếp, cộng giờ, Cho phép đổi thiết bị, Vi phạm và Đình chỉ.
 - Kết quả: chấm tự động, chấm Câu tự luận theo câu (có thể ẩn tên), Công bố kết quả, Phúc khảo, Đính chính đáp án, Chốt kết quả, xuất Excel, thông báo trong ứng dụng.

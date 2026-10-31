@@ -1,6 +1,8 @@
+import { questionTypeSchema } from '@exam/shared';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -19,7 +21,10 @@ import { pageSchema } from '../../../common/pagination';
 import { MAX_UPLOAD_BYTES } from '../../../common/spreadsheet';
 import { CurrentActor, CurrentUser, RequireTag } from '../../identity/auth/auth.decorators';
 import type { AuthenticatedUser } from '../../identity/auth/auth.types';
-import { buildQuestionImportTemplate } from './question-import-template';
+import {
+  buildQuestionImportExample,
+  buildQuestionImportTemplate,
+} from './question-import-template';
 import { QuestionImportsService } from './question-imports.service';
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -27,6 +32,7 @@ const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.s
 const itemsQuerySchema = pageSchema.extend({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   kind: z.enum(['valid', 'duplicate', 'error']).optional(),
+  type: questionTypeSchema.optional(),
 });
 
 // Đúng một trong hai: danh sách id, hoặc một nhóm.
@@ -45,12 +51,16 @@ const selectionSchema = z
 export class QuestionImportsController {
   constructor(private readonly imports: QuestionImportsService) {}
 
+  /** File mẫu trống: bốn sheet có tiêu đề và sheet "Hướng dẫn" (Q157). */
   @Get('template')
-  async template(@Res({ passthrough: true }) reply: FastifyReply) {
-    reply
-      .header('content-type', XLSX_TYPE)
-      .header('content-disposition', 'attachment; filename="mau-nhap-cau-hoi.xlsx"');
-    return buildQuestionImportTemplate();
+  template(@Res({ passthrough: true }) reply: FastifyReply) {
+    return this.download(reply, 'mau-nhap-cau-hoi.xlsx', buildQuestionImportTemplate());
+  }
+
+  /** File ví dụ: cùng bố cục, có 8 Câu hỏi mẫu để thử nhập (Q157). */
+  @Get('example')
+  example(@Res({ passthrough: true }) reply: FastifyReply) {
+    return this.download(reply, 'vi-du-nhap-cau-hoi.xlsx', buildQuestionImportExample());
   }
 
   /** multipart/form-data: trường `topicId` phải đứng trước trường `file` vì file được đọc theo luồng. */
@@ -101,9 +111,21 @@ export class QuestionImportsController {
     return this.imports.select(user.id, id, selectionSchema.parse(body ?? {}));
   }
 
+  @Delete(':id')
+  async cancel(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    await this.imports.cancel(user.id, id);
+  }
+
   @Post(':id/commit')
   @HttpCode(200)
   commit(@Param('id', ParseUUIDPipe) id: string, @CurrentActor() actor: Actor) {
     return this.imports.commit(actor, id);
+  }
+
+  private download(reply: FastifyReply, filename: string, file: Promise<Buffer>) {
+    reply
+      .header('content-type', XLSX_TYPE)
+      .header('content-disposition', `attachment; filename="${filename}"`);
+    return file;
   }
 }

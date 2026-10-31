@@ -88,15 +88,17 @@ export interface Table {
   records: { rowNumber: number; cells: Cell[] }[];
 }
 
-async function readXlsx(buffer: Buffer, maxRecords: number): Promise<Table> {
+async function loadWorkbook(buffer: Buffer): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook();
   try {
     await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
   } catch {
     throw new SpreadsheetError('unsupported_file');
   }
-  const sheet = workbook.worksheets[0];
-  if (!sheet) throw new SpreadsheetError('empty_file');
+  return workbook;
+}
+
+function tableOfSheet(sheet: ExcelJS.Worksheet, maxRecords: number): Table {
   const columns = Math.min(sheet.columnCount, MAX_COLUMNS);
   const cellsOf = (row: ExcelJS.Row) =>
     Array.from({ length: columns }, (_, i) => cellValue(row.getCell(i + 1).value));
@@ -112,6 +114,28 @@ async function readXlsx(buffer: Buffer, maxRecords: number): Promise<Table> {
     if (cells.some(isFilled) && records.length <= maxRecords) records.push({ rowNumber, cells });
   });
   return { header, records };
+}
+
+async function readXlsx(buffer: Buffer, maxRecords: number): Promise<Table> {
+  const sheet = (await loadWorkbook(buffer)).worksheets[0];
+  if (!sheet) throw new SpreadsheetError('empty_file');
+  return tableOfSheet(sheet, maxRecords);
+}
+
+/**
+ * Đọc mọi sheet của file xlsx (Nhập Câu hỏi, Q156); mỗi sheet giữ tối đa `maxRecords + 1` dòng có dữ liệu.
+ * CSV không có nhiều sheet nên bị từ chối.
+ */
+export async function readWorkbook(
+  buffer: Buffer,
+  maxRecords: number,
+): Promise<{ name: string; table: Table }[]> {
+  if (sniffUpload(buffer) !== 'xlsx') throw new SpreadsheetError('unsupported_file');
+  const workbook = await loadWorkbook(buffer);
+  return workbook.worksheets.map((sheet) => ({
+    name: sheet.name,
+    table: tableOfSheet(sheet, maxRecords),
+  }));
 }
 
 function cellValue(value: ExcelJS.CellValue): Cell {

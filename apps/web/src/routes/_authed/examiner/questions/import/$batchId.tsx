@@ -1,3 +1,4 @@
+import { QUESTION_TYPES, type QuestionType } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { CheckCircle2, Loader2, Plus } from 'lucide-react';
@@ -16,11 +17,13 @@ import {
   type ImportSelection,
   importBatchQuery,
   importItemsQuery,
+  parseErrorOf,
   selectImportItems,
 } from '../../../../../lib/question-imports';
 import { buttonClass, Card, ErrorMessage, PrimaryButton } from '../../../../../lib/ui';
 import { EmptyState, ListSkeleton, Pagination } from '../../../../../lib/ui/admin';
 import { Breadcrumb } from '../../../../../lib/ui/breadcrumb';
+import { CancelImportButton } from '../../../../../lib/ui/cancel-import';
 import { Chip, ChipGroup } from '../../../../../lib/ui/chips';
 import { ImportItems } from '../../../../../lib/ui/import-items';
 import { PageHeader } from '../../../../../lib/ui/page-header';
@@ -29,8 +32,13 @@ import { StickyActionBar } from '../../../../../lib/ui/sticky-action-bar';
 const KINDS: ImportKind[] = ['valid', 'duplicate', 'error'];
 
 export const Route = createFileRoute('/_authed/examiner/questions/import/$batchId')({
-  validateSearch: (search: Record<string, unknown>): { kind?: ImportKind; page?: number } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { kind?: ImportKind; type?: QuestionType; page?: number } => ({
     kind: KINDS.includes(search.kind as ImportKind) ? (search.kind as ImportKind) : undefined,
+    type: QUESTION_TYPES.includes(search.type as QuestionType)
+      ? (search.type as QuestionType)
+      : undefined,
     page: Number(search.page) > 1 ? Number(search.page) : undefined,
   }),
   component: ImportBatchPage,
@@ -64,21 +72,31 @@ function ImportBatchPage() {
 
 function BatchBody({ batch }: { batch: ImportBatch }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  // Hủy xong thì về trang tải lên với Chủ đề đã chọn sẵn, để sửa file rồi tải lại ngay (Q155).
+  const backToUpload = () =>
+    navigate({ to: '/examiner/questions/import', search: { topicId: batch.topic.id } });
+  const cancellable = batch.status === 'ready' || batch.status === 'parse_failed';
+  const parseError = parseErrorOf(batch.parseError);
   return (
     <>
-      <Card className="flex flex-col gap-1">
-        <p className="break-words font-medium">{batch.originalFilename}</p>
-        <p className="text-sm text-fg-muted">
-          {t('questionImport.intoTopic', { topic: batch.topic.name })} ·{' '}
-          {formatDateTime(batch.createdAt)}
-        </p>
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="break-words font-medium">{batch.originalFilename}</p>
+          <p className="text-sm text-fg-muted">
+            {t('questionImport.intoTopic', { topic: batch.topic.name })} ·{' '}
+            {formatDateTime(batch.createdAt)}
+          </p>
+        </div>
+        {cancellable && <CancelImportButton batchId={batch.id} onCancelled={backToUpload} />}
       </Card>
 
       {batch.status === 'parsing' && <BusyCard>{t('questionImport.parsingHint')}</BusyCard>}
       {batch.status === 'parse_failed' && (
         <>
           <ErrorMessage>
-            {t(`questionImport.parseError.${batch.parseError}`, {
+            {t(`questionImport.parseError.${parseError.code}`, {
+              sheet: parseError.sheet,
               defaultValue: t('questionImport.parseError.internal_error'),
             })}
           </ErrorMessage>
@@ -100,13 +118,13 @@ function BatchBody({ batch }: { batch: ImportBatch }) {
 
 function Preview({ batch }: { batch: ImportBatch }) {
   const { t } = useTranslation();
-  const { kind, page } = Route.useSearch();
+  const { kind, type, page } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const ready = batch.status === 'ready';
   const { counts } = batch;
   const items = useQuery(
-    importItemsQuery(batch.id, { kind, page }, `${batch.status}:${batch.createdCount}`),
+    importItemsQuery(batch.id, { kind, type, page }, `${batch.status}:${batch.createdCount}`),
   );
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['question-imports'] });
@@ -153,7 +171,11 @@ function Preview({ batch }: { batch: ImportBatch }) {
 
   const setKind = (next?: ImportKind) =>
     navigate({ search: (s) => ({ ...s, kind: next, page: undefined }) });
+  const setType = (next?: QuestionType) =>
+    navigate({ search: (s) => ({ ...s, type: next, page: undefined }) });
   const total = batch.rowCount ?? 0;
+  // Bộ lọc Loại chỉ có ích khi lô có từ hai Loại trở lên.
+  const types = QUESTION_TYPES.filter((q) => (batch.types[q] ?? 0) > 0);
 
   return (
     <>
@@ -197,6 +219,24 @@ function Preview({ batch }: { batch: ImportBatch }) {
           </Chip>
         ))}
       </ChipGroup>
+
+      {types.length > 1 && (
+        <ChipGroup label={t('questionImport.filterType')}>
+          <Chip active={!type} count={total} onClick={() => setType(undefined)}>
+            {t('questionImport.allTypes')}
+          </Chip>
+          {types.map((q) => (
+            <Chip
+              key={q}
+              active={type === q}
+              count={batch.types[q] ?? 0}
+              onClick={() => setType(q)}
+            >
+              {t(`questionType.${q}`)}
+            </Chip>
+          ))}
+        </ChipGroup>
+      )}
 
       {ready && (
         <div className="flex flex-wrap gap-x-6 gap-y-1">

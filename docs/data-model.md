@@ -163,17 +163,20 @@ question_import_batches (                 -- Lô nhập Câu hỏi từ Excel (Q
   committed_at NULL, expires_at           -- = created_at + 30 ngày
 )
 question_import_items (
-  id, batch_id → question_import_batches ON DELETE CASCADE, row_number int,   -- số dòng thật trong file
+  id, batch_id → question_import_batches ON DELETE CASCADE,
+  type question_type,                     -- Loại câu hỏi do sheet của file quyết định (Q156); có cả ở dòng lỗi
+  row_number int,                         -- số dòng thật trong sheet của Loại đó
   payload jsonb NULL,                     -- Câu hỏi đã đổi từ dòng Excel (chưa có topicId); NULL khi dòng lỗi
   search_text text NULL,                  -- cùng cách chuẩn hóa với questions.search_text, để so nghi trùng
   error_code text NULL,
   duplicate_of_question_id uuid NULL,     -- nghi trùng: Câu hỏi đã có trong Chủ đề đích (không có FK: câu có thể bị xóa sau)
   duplicate_of_row int NULL,              -- nghi trùng: dòng đầu tiên cùng nội dung trong file
+  duplicate_of_type question_type NULL,   -- sheet của dòng trùng đó (số dòng chỉ duy nhất trong một sheet)
   selected bool,                          -- mặc định: dòng hợp lệ true; nghi trùng và lỗi false
   outcome enum('pending','created','skipped'),
-  UNIQUE (batch_id, row_number)
+  UNIQUE (batch_id, type, row_number)
 )
--- Loại của dòng suy ra từ cột, không lưu: có error_code là lỗi; có một trong hai cột duplicate_* là nghi trùng; còn lại hợp lệ.
+-- Trạng thái của dòng suy ra từ cột, không lưu: có error_code là lỗi; có một trong hai cột duplicate_* là nghi trùng; còn lại hợp lệ.
 ```
 
 Ví dụ `payload` theo từng loại:
