@@ -79,6 +79,9 @@ const hasContent = (topics: { id: string; name: string; questionCount: number }[
     topics: topics.map(({ id, name, questionCount }) => ({ id, name, questionCount })),
   });
 
+const isUniqueViolation = (error: unknown) =>
+  (error as { cause?: { code?: string } }).cause?.code === '23505';
+
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /** Quản lý Người dùng của Quản trị viên (PR 1b). */
@@ -316,6 +319,9 @@ export class UserManagementService {
    * nêu `recipientId` thì Chuyển giao toàn bộ rồi Xóa trong cùng một giao dịch (Q150).
    */
   async remove(actor: Actor, id: string, recipientId?: string): Promise<void> {
+    // Kiểm tra trạng thái trước khi tốn công xem nội dung hay chép file ảnh.
+    if (actor.id === id) throw new ApiError('CANNOT_TARGET_SELF');
+    this.assertTarget(actor, await this.findOrThrow(id));
     const { topics, totals } = await this.ownedContent.summaryOf(id);
     if (totals.topics === 0) return this.removeWithoutContent(actor, id);
     if (!recipientId) throw hasContent(topics);
@@ -401,6 +407,8 @@ export class UserManagementService {
       result = await this.db.transaction(work);
     } catch (error) {
       await prepared.finish(false);
+      // Người nhận vừa tạo Chủ đề trùng tên hoặc tải cùng một ảnh đúng lúc này: bảo thử lại thay vì trả lỗi 500.
+      if (isUniqueViolation(error)) throw new ApiError('CONFLICT', { reason: 'CONTENT_CHANGED' });
       throw error;
     }
     await prepared.finish(true);

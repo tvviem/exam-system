@@ -57,7 +57,7 @@ Phiếu in cho từng Người dự thi, ghi tên đăng nhập và mật khẩu
 _Avoid_: phiếu mật khẩu, thẻ dự thi
 
 **Xóa người dùng** (`Remove`):
-Đưa Người dùng ra khỏi sử dụng vĩnh viễn nhưng vẫn giữ toàn bộ lịch sử và kết quả liên quan.
+Đưa Người dùng ra khỏi sử dụng vĩnh viễn nhưng vẫn giữ toàn bộ lịch sử và kết quả liên quan. Người ra đề còn Chủ đề thì phải Chuyển giao cho người nhận ngay trong lúc Xóa.
 _Avoid_: hủy tài khoản
 
 ## Ngân hàng câu hỏi
@@ -74,7 +74,7 @@ Một đơn vị nội dung kiểm tra thuộc một Chủ đề, có một Lo�
 _Avoid_: xóa mềm câu hỏi
 
 **Chuyển giao** (`Transfer`):
-Hành động của Quản trị viên chuyển quyền sở hữu một Chủ đề, cùng mọi Câu hỏi trong đó, từ Người ra đề này sang Người ra đề khác. Tại mọi thời điểm, mỗi Chủ đề chỉ có một chủ.
+Hành động của Quản trị viên chuyển quyền sở hữu một Chủ đề, cùng mọi Câu hỏi trong đó, từ Người ra đề này sang Người ra đề khác. Tại mọi thời điểm, mỗi Chủ đề chỉ có một chủ. Chủ đề trùng tên với Chủ đề của người nhận được thêm "(từ <tên người cho>)"; Hình minh họa đi theo Câu hỏi (đổi chủ, dùng ảnh sẵn có của người nhận, hoặc sao chép khi còn dùng chung với Câu hỏi ở lại); Lô nhập gắn với Chủ đề đó bị xóa.
 _Avoid_: chia sẻ, bàn giao
 
 **Phần dẫn** (`Stem`):

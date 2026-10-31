@@ -49,6 +49,17 @@ describe('đặt tên Chủ đề khi Chuyển giao (Q148)', () => {
     expect(second).not.toBe(first);
   });
 
+  it('tên người cho rất dài (tới 200 ký tự) vẫn cho tên mới ≤ 100 ký tự và còn phần tên gốc', () => {
+    const owner = 'Nguyễn '.repeat(40).trim();
+    const first = transferredTopicName('Giải tích', owner, keys('Giải tích'));
+    expect(first.length).toBeLessThanOrEqual(100);
+    expect(first.startsWith('Giải tích (từ Nguyễn')).toBe(true);
+    const second = transferredTopicName('Giải tích', owner, keys('Giải tích', first));
+    expect(second.length).toBeLessThanOrEqual(100);
+    expect(second).not.toBe(first);
+    expect(second.endsWith(' (2)')).toBe(true);
+  });
+
   it('tên người cho có khoảng trắng thừa được gọn lại', () => {
     expect(transferredTopicName('A', '  Trần   Thị B ', keys('A'))).toBe('A (từ Trần Thị B)');
   });

@@ -258,18 +258,18 @@ class Prepared implements PreparedTransfer {
     }
 
     await this.moveTopics(tx, rows, donorName);
-    const moved = await tx
-      .update(questions)
-      .set({ ownerId: toId })
-      .where(inArray(questions.topicId, ids))
-      .returning({ id: questions.id });
-
     // Lô nhập gắn với Chủ đề của người cho: xóa (chỉ có nghĩa với chủ cũ); file tạm của lô đang đọc dọn sau khi xong.
     const batches = await tx
       .delete(questionImportBatches)
       .where(inArray(questionImportBatches.topicId, ids))
       .returning({ id: questionImportBatches.id, uploadKey: questionImportBatches.uploadKey });
     this.uploadKeys = batches.map((b) => b.uploadKey ?? importUploadKeyOf(b.id));
+
+    const moved = await tx
+      .update(questions)
+      .set({ ownerId: toId })
+      .where(inArray(questions.topicId, ids))
+      .returning({ id: questions.id });
 
     await this.moveIllustrations(tx, plans, ids);
     return { topics: ids.length, questions: moved.length, illustrations: plans.size };

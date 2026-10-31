@@ -360,6 +360,7 @@
     "user.lock": "Khóa đăng nhập",
     "user.unlock": "Mở khóa",
     "user.remove": "Xóa người dùng",
+    "topic.transfer": "Chuyển giao Chủ đề",
     "user.role-tag.grant": "Gắn Nhãn vai trò",
     "user.role-tag.revoke": "Gỡ Nhãn vai trò",
     "user.temporary-password.reissue": "Cấp lại mật khẩu tạm",

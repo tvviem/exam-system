@@ -150,3 +150,29 @@ test('Xóa người dùng còn Chủ đề: chọn người nhận, chuyển gia
   await expect(recipientPage.getByText(topic).locator('visible=true').first()).toBeVisible();
   await recipient.close();
 });
+
+test('chuyển hết Chủ đề: hộp thoại vẫn báo kết quả dù thẻ Nội dung đã trống', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  const donor = await browser.newContext({ baseURL: ORIGIN });
+  const donorPage = await donor.newPage();
+  await signIn(donorPage, `e2e-cg-cu3-${p}`);
+  await seedTopic(donorPage, `Duy nhất CG ${p}`);
+  await donor.close();
+
+  await signIn(page, `e2e-cg-qt-${p}`);
+  await openUser(page, `cu ba ${p}`, new RegExp(`Cũ Ba ${p}`));
+  await page.getByRole('checkbox', { name: 'Chọn tất cả Chủ đề' }).check();
+  await page.getByRole('button', { name: 'Chuyển giao…' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Tìm Người ra đề theo tên hoặc tên đăng nhập').fill(`Mới Nhận ${p}`);
+  await dialog.getByRole('radio', { name: new RegExp(`Mới Nhận ${p}`) }).check();
+  await dialog.getByRole('button', { name: 'Chuyển giao', exact: true }).click();
+  await expect(dialog.getByRole('status')).toHaveText(
+    `Đã chuyển giao 1 Chủ đề (1 câu hỏi) cho Mới Nhận ${p}.`,
+  );
+  await dialog.getByRole('button', { name: 'Đóng', exact: true }).first().click();
+  await expect(page.getByText('Người này không còn Chủ đề nào.')).toBeVisible();
+});

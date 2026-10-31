@@ -605,15 +605,16 @@ function ContentCard({ user }: { user: UserDetail }) {
           >
             {t('admin.transfer.action')}
           </Button>
-          <TransferDialog
-            open={open}
-            onClose={() => setOpen(false)}
-            user={user}
-            mode="transfer"
-            topicIds={selected}
-          />
         </>
       )}
+      {/* Ngoài các nhánh trên: chuyển hết Chủ đề thì thẻ đổi sang "không còn Chủ đề" mà hộp thoại còn phải báo kết quả. */}
+      <TransferDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        user={user}
+        mode="transfer"
+        topicIds={selected}
+      />
     </SectionCard>
   );
 }

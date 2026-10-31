@@ -535,6 +535,28 @@ describe('Xóa người dùng kèm người nhận (Q150)', () => {
     expect(await audit('user.remove')).toEqual([]);
   });
 
+  it('người đã bị Xóa: INVALID_STATE trước mọi việc khác (không báo HAS_CONTENT, không chép file)', async () => {
+    const gone = await seedUser({ removed: true, roleTags: ['examiner'] });
+    await sql(
+      "INSERT INTO topics (id, owner_id, name, name_key, created_at, updated_at) VALUES (gen_random_uuid(), $1, 'Sót', 'sot', now(), now())",
+      [gone.id],
+    );
+    expect((await removeUser(gone.id)).json()).toMatchObject({ code: 'INVALID_STATE' });
+    const withRecipient = await removeUser(gone.id, `?recipientId=${recipient.id}`);
+    expect(withRecipient.json()).toMatchObject({ code: 'INVALID_STATE' });
+  });
+
+  it('va chạm khóa duy nhất giữa chừng trả CONFLICT bảo thử lại thay vì lỗi 500', async () => {
+    const a = await topic('A');
+    vi.spyOn(t.app.get(NotificationsService), 'notify').mockRejectedValue(
+      Object.assign(new Error('trùng'), { cause: { code: '23505' } }),
+    );
+    const res = await transfer(donor.id, { topicIds: [a], recipientId: recipient.id });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ code: 'CONFLICT', reason: 'CONTENT_CHANGED' });
+    expect(await ownerOfTopic(a)).toBe(donor.id);
+  });
+
   it('người dùng không phải Người ra đề: xóa như hiện nay', async () => {
     const student = await seedUser({ roleTags: ['candidate'] });
     const res = await removeUser(student.id);
