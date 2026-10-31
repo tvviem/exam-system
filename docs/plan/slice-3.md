@@ -26,7 +26,7 @@ Chưa có Phiên thi, Lượt làm bài, đồng hồ, chấm điểm: đó là 
 |---|---|
 | 3a | Người ra đề soạn và lưu Bộ đề nháp từ ngân hàng Câu hỏi |
 | 3b | Đặt điểm hàng loạt; xem thử toàn bộ Bộ đề như Người dự thi |
-| 3c | Phát hành Bộ đề, Lưu trữ Câu hỏi đã dùng, vòng đời Bộ đề |
+| 3c | Phát hành và Thu hồi Phát hành, Lưu trữ Câu hỏi đã dùng, vòng đời Bộ đề |
 | 3d | Đổi người không làm mất hay kẹt Bộ đề |
 
 ## Mô hình và vòng đời
@@ -35,16 +35,18 @@ Chưa có Phiên thi, Lượt làm bài, đồng hồ, chấm điểm: đó là 
 
 ```text
 draft ──Phát hành──► published ◄──Khôi phục──┐
-  │                      │                    │
-  └─Xóa hẳn              └──Lưu trữ──► archived ┘      (không có đường từ published về draft)
+  ▲ │                    │ │                  │
+  │ └─Xóa hẳn            │ └──Lưu trữ──► archived ┘
+  └──Thu hồi Phát hành───┘   (chỉ khi chưa có Phiên thi, Q160)
 ```
 
 - **Q159 Chia 4 PR** như sơ đồ trên. Xem thử qua Phiên thi (tương tác, đồng hồ) lùi sang lát cắt 4; lát cắt 3 chỉ có Xem thử Bộ đề dạng chỉ đọc. *Loại:* gộp 3a–3c thành một PR (quá lớn để duyệt); đưa Chuyển giao vào 3c (làm 3d sau khi vòng đời Bộ đề đã ổn định).
 - **Q160 Bộ đề và vòng đời.**
   - Trường: `title` (1–200 ký tự, không bắt buộc duy nhất, vì Nhân bản sinh tên gần giống), `instructions` (Q165), `status`, `version` (khóa lạc quan, Q163), `published_at`, `archived_at`.
   - Chỉ Bộ đề `draft` sửa được; ghi vào Bộ đề khác nháp trả `INVALID_STATE` với `reason: EXAM_NOT_DRAFT`.
-  - **Không có "hủy Phát hành"**: sai sót nhỏ thì Nhân bản thành nháp mới (Q177); sai Đáp án sau khi đã thi thì có Đính chính đáp án (lát cắt 5). *Loại:* mở lại về nháp khi chưa có Phiên thi, vì để làm đúng phải biết Phiên thi đã tồn tại ở lát cắt 4 và tạo hai đường sửa cho cùng một việc.
-  - Kiểm: mọi thao tác ghi bị từ chối ở trạng thái khác `draft`; chuyển trạng thái đúng sơ đồ, đường khác là `INVALID_STATE`.
+  - **Thu hồi Phát hành** (chủ dự án quyết định, 1/11/2026): Bộ đề `published` đưa về `draft` khi **chưa có Phiên thi nào dùng nó**, để sửa lỗi phát hành nhầm. `POST /api/exams/:id/unpublish`: khóa dòng Bộ đề, hỏi cổng `ExamUsage.sessionsOf` (Q174; lát cắt 3 chưa có Phiên thi nên luôn rỗng, lát cắt 4 cài đặt thật); có Phiên thi thì `INVALID_STATE` với `reason: EXAM_HAS_SESSIONS`. Thu hồi **xóa `snapshot` và `exam_item_illustrations`**, `status = draft`, `published_at = NULL`, `version` tăng: nháp lại tham chiếu bản hiện tại của Câu hỏi. Chỉ Bộ đề `published` thu hồi được; `archived` phải Khôi phục trước.
+  - Hệ quả cần ghi rõ: một khi có Phiên thi (kể cả chưa mở) thì hết đường thu hồi; lúc đó sai sót nhỏ dùng Nhân bản (Q177) và sai Đáp án sau khi đã thi dùng Đính chính đáp án (lát cắt 5). Phiên thi ở lát cắt 4 phải **khóa dòng Bộ đề** khi tạo để Thu hồi và tạo Phiên thi không chạy chồng nhau.
+  - Kiểm: mọi thao tác ghi bị từ chối ở trạng thái khác `draft`; chuyển trạng thái đúng sơ đồ, đường khác là `INVALID_STATE`; Thu hồi xóa sạch bản chụp và dòng dùng ảnh, Phát hành lại cho bản chụp mới theo nội dung hiện tại; Thu hồi bị chặn khi cổng báo có Phiên thi (test dùng cổng giả).
 - **Q161 Phần và giới hạn.**
   - Bộ đề luôn có ít nhất một Phần. Bộ đề không chia Phần có đúng một Phần mặc định không tiêu đề; giao diện ẩn khối Phần cho tới khi bấm "Chia Phần" (đúng GLOSSARY).
   - Tối đa **20 Phần** và **200 câu** mỗi Bộ đề (đủ cho đề thi thật; chặn payload và bản chụp phình). Tiêu đề Phần ≤ 200 ký tự, tùy chọn; hướng dẫn Phần theo Q165.
@@ -99,11 +101,11 @@ draft ──Phát hành──► published ◄──Khôi phục──┐
   - Kiểm: mỗi mã có một test; Phát hành khi có vấn đề trả `INVALID_STATE` với `reason: PUBLISH_BLOCKED` kèm danh sách.
 - **Q172 Bản chụp.**
   - Một giao dịch, đồng bộ (không job, tối đa 200 câu): với mỗi `exam_items` ghi `snapshot = { questionId, questionVersion, type, stem, payload, illustrations: [{ id, width, height, variants }] }` rồi đặt `status = published`, `published_at`. Điểm nằm ở `exam_items.points`, không lặp trong bản chụp. `payload` có Đáp án đúng, `scoringRule`, `ladder`, `shuffleOptions` (ADR-0005).
-  - **Ngăn sửa ở tầng cơ sở dữ liệu**: trigger từ chối `UPDATE` và `DELETE` trên `exam_items`, `exam_sections` và `exams` (trừ chuyển trạng thái, `archived_at` và `owner_id`) khi Bộ đề không còn `draft`. Service đã chặn trước; trigger là lớp thứ hai cho bất biến lõi của hệ thống (chấm điểm chỉ tin bản chụp). *Loại:* chỉ dựa vào service.
+  - **Ngăn sửa ở tầng cơ sở dữ liệu**: trigger từ chối `UPDATE` và `DELETE` trên `exam_items`, `exam_sections` và `exams` (trừ chuyển trạng thái, `archived_at` và `owner_id`) khi Bộ đề không còn `draft`. Ngoại lệ duy nhất xóa nội dung là Thu hồi Phát hành (Q160): chạy trong một giao dịch đặt biến phiên `exam.unpublishing = <exam_id>` mà trigger chấp nhận cho đúng Bộ đề đó, chỉ để đặt `snapshot = NULL`. Service đã chặn trước; trigger là lớp thứ hai cho bất biến lõi của hệ thống (chấm điểm chỉ tin bản chụp). *Loại:* chỉ dựa vào service.
   - Kiểm: tích hợp ghi trực tiếp bằng SQL vào Bộ đề đã Phát hành bị từ chối; sửa Câu hỏi sau Phát hành không đổi `snapshot`; hai lần Phát hành đồng thời chỉ một lần thành công.
-- **Q173 Sửa lỗi sau Phát hành** (Q160): Nhân bản.
+- **Q173 Sửa lỗi sau Phát hành** (Q160): trước khi có Phiên thi thì **Thu hồi Phát hành** rồi sửa; sau đó thì Nhân bản.
 - **Q174 Dùng và Lưu trữ Câu hỏi (hoàn thành Q117).**
-  - Cổng `ExamUsage` trong `src/common` (như `OwnedContent`, Q150), module `exam` cài đặt, nối ở cấp ứng dụng: `questionUsage(questionIds)` → với mỗi câu: các Bộ đề nháp chứa nó (id, tên) và số Bộ đề đã Phát hành hoặc Lưu trữ chứa nó; `illustrationUsage(illustrationIds)` (Q176). `question-bank` không import `exam`.
+  - Cổng `ExamUsage` trong `src/common` (như `OwnedContent`, Q150), module `exam` cài đặt, nối ở cấp ứng dụng: `questionUsage(questionIds)` → với mỗi câu: các Bộ đề nháp chứa nó (id, tên) và số Bộ đề đã Phát hành hoặc Lưu trữ chứa nó; `illustrationUsage(illustrationIds)` (Q176); `sessionsOf(examId)` cho Thu hồi Phát hành (Q160) và, ở lát cắt 4, cho việc xóa hay Lưu trữ Bộ đề. `question-bank` không import `exam`.
   - Quy tắc: câu còn trong Bộ đề nháp thì không xóa (Q166); câu có trong Bộ đề đã Phát hành hoặc Lưu trữ thì **chỉ Lưu trữ** (`questions.archived_at`, cột đã có từ PR 2a); còn lại xóa hẳn như hiện nay.
   - Giao diện: nút "Lưu trữ" thay "Xóa" cho câu đã dùng (hàng loạt như Xóa); bộ lọc "Đã lưu trữ" và **Khôi phục**; câu đã Lưu trữ mặc định ẩn khỏi danh sách và bảng chọn câu của Bộ đề.
   - Kiểm: tích hợp cho từng nhánh (xóa được, bị chặn bởi nháp, chỉ Lưu trữ vì đã Phát hành); Lưu trữ rồi Khôi phục; Bộ đề đã Phát hành không đổi khi Lưu trữ câu.
@@ -116,7 +118,7 @@ draft ──Phát hành──► published ◄──Khôi phục──┐
 ## Vòng đời Bộ đề
 
 - **Q177 Nhân bản.** Bộ đề ở trạng thái nào cũng nhân bản thành **nháp mới** của cùng chủ: sao chép Phần, thứ tự, điểm; câu lấy theo **bản hiện tại** của ngân hàng (không lấy từ bản chụp, vì nháp là để sửa tiếp), tên thêm " (bản sao)" cắt ở 200 ký tự. Câu đã Lưu trữ vẫn vào bản sao nhưng sẽ chặn Phát hành (Q171).
-- **Q178 Xóa Bộ đề.** Nháp: xóa hẳn có xác nhận. **Đã Phát hành hoặc Lưu trữ: không xóa** ở lát cắt 3; lát cắt 4 xét lại khi biết Bộ đề nào đã có Phiên thi. *Loại:* cho xóa Bộ đề đã Phát hành chưa có Phiên thi: có ích cho dữ liệu thử nhưng mở cửa mất dấu "đã từng dùng" của Câu hỏi.
+- **Q178 Xóa Bộ đề.** Nháp: xóa hẳn có xác nhận. **Đã Phát hành hoặc Lưu trữ: không xóa** ở lát cắt 3; lát cắt 4 xét lại khi biết Bộ đề nào đã có Phiên thi. Muốn bỏ một Bộ đề đã Phát hành mà chưa có Phiên thi thì **Thu hồi Phát hành rồi xóa nháp** (Q160): hai bước có chủ ý, vì Thu hồi mới là lúc quyết định "chưa từng dùng" và trả Câu hỏi về trạng thái xóa được.
 - **Q179 Lưu trữ và Khôi phục Bộ đề.** `published ↔ archived`: Bộ đề Lưu trữ không còn chọn được cho Phiên thi mới (lát cắt 4), vẫn xem và nhân bản được, không sửa; Khôi phục đưa về `published`. Nháp không Lưu trữ (xóa).
 - **Q180 Danh sách Bộ đề.** Lọc theo trạng thái (mặc định Nháp và Đã phát hành), tìm theo tên không dấu (như Q69/Q118), cột: tên, trạng thái, số câu, tổng điểm, cập nhật lần cuối; 20 mỗi trang; thẻ dưới 768 px.
 
@@ -139,7 +141,7 @@ draft ──Phát hành──► published ◄──Khôi phục──┐
 - **Q185 Điều hướng và trang soạn** (ui-ux-pro-max: thao tác thay thế cho kéo thả ở Q164; phản hồi sau lưu).
   - Menu Người ra đề: Ngân hàng câu hỏi, **Bộ đề**, Yêu cầu cấp tài khoản (đúng thứ tự tần suất của ui-design; mục thứ 4 trở đi dồn vào "Khác"). Đường dẫn `/examiner/exams` và `/examiner/exams/$examId`.
   - Trang soạn (tuyến rộng như trình soạn Câu hỏi, Q107): tiêu đề và hướng dẫn ở đầu; mỗi Phần là một khối thu gọn được; mỗi câu là một hàng (thẻ trên điện thoại): số thứ tự, trích Phần dẫn, Loại, Chủ đề, ô điểm (`inputmode="decimal"`), Lên/Xuống/Chuyển Phần/Gỡ. Thanh dưới dính: số câu, tổng điểm, "Đặt điểm nhanh", Lưu, "Phát hành…". Tab "Soạn" và "Xem thử".
-  - Bộ đề đã Phát hành mở ở chế độ chỉ đọc kèm huy hiệu và thao tác Nhân bản, Lưu trữ.
+  - Bộ đề đã Phát hành mở ở chế độ chỉ đọc kèm huy hiệu và thao tác Nhân bản, Lưu trữ, **Thu hồi Phát hành** (hộp xác nhận; báo rõ khi bị chặn vì đã có Phiên thi).
 - **Q186 Chọn câu từ ngân hàng.** Hộp thoại (toàn màn hình trên điện thoại) dùng cùng bộ lọc và ô tìm của danh sách Câu hỏi (Chủ đề, Loại, tag, từ khóa); tick nhiều, nút "Thêm N câu vào <Phần>"; câu đã có trong Bộ đề hiện "Đã có" và không tick được; câu Lưu trữ không hiện; thêm tối đa số chỗ còn lại (≤ 200 câu).
 - **Q187 Hộp thoại Phát hành.** Mở bằng "Phát hành…": chạy `publish-check`; có vấn đề thì liệt kê, mỗi dòng dẫn tới câu hay Phần đó; không vấn đề thì hiện tên, số câu, tổng điểm và dòng cảnh báo "Sau khi Phát hành không sửa được Bộ đề này; muốn đổi hãy Nhân bản". Xác nhận gọi `POST /publish`; thành công thì toast và chuyển sang chế độ chỉ đọc.
 
@@ -150,10 +152,10 @@ draft ──Phát hành──► published ◄──Khôi phục──┐
   - *Tích hợp (HTTP + PostgreSQL + Redis; `MediaStore` thư mục tạm):*
     - 3a: CRUD, `PUT` toàn tài liệu và xung đột `version`, câu của người khác, giới hạn, quyền chủ sở hữu, Quản trị viên `403`.
     - 3b: `/preview` không chứa Đáp án (quét JSON).
-    - 3c: từng mã `publish-check`, Phát hành nguyên tử và đồng thời, trigger chặn ghi SQL trực tiếp, sửa Câu hỏi sau Phát hành không đổi bản chụp, xóa hay Lưu trữ Câu hỏi theo từng nhánh, `usage`, ảnh không xóa được, quyền xem ảnh theo Bộ đề, Nhân bản, Lưu trữ và Khôi phục.
+    - 3c: từng mã `publish-check`, Phát hành nguyên tử và đồng thời, Thu hồi Phát hành (xóa bản chụp, chặn khi có Phiên thi, Phát hành lại), trigger chặn ghi SQL trực tiếp, sửa Câu hỏi sau Phát hành không đổi bản chụp, xóa hay Lưu trữ Câu hỏi theo từng nhánh, `usage`, ảnh không xóa được, quyền xem ảnh theo Bộ đề, Nhân bản, Lưu trữ và Khôi phục.
     - 3d: Chuyển giao và Xóa với nháp trộn, nháp thuần, Bộ đề đã Phát hành, ảnh của Bộ đề khi Chuyển giao (sao chép), thông báo.
   - *E2E (desktop và mobile, kiểm không cuộn ngang):* tạo Bộ đề từ ngân hàng, chia Phần, sắp xếp bằng nút, đặt điểm nhanh, xem thử, rời trang khi chưa lưu, Phát hành (kể cả bị chặn vì câu Lưu trữ), sửa câu sau Phát hành rồi xem thử thấy bản cũ, Nhân bản, Lưu trữ; Quản trị viên Chuyển giao và Xóa người dùng có Bộ đề.
-- **Q189 Thuật ngữ cần đồng ý để thêm vào GLOSSARY.** **Bản chụp** (`Snapshot`: ADR-0005 đã dùng, GLOSSARY chưa có); **Đặt điểm nhanh** (data-model đã dùng, GLOSSARY chưa có); **Lưu trữ Bộ đề** (mở rộng "Lưu trữ" của Câu hỏi: ẩn khỏi lựa chọn mới nhưng giữ để xem và nhân bản). Không đặt thêm thuật ngữ "hủy Phát hành" vì không có thao tác đó (Q160).
+- **Q189 Thuật ngữ cần đồng ý để thêm vào GLOSSARY.** **Bản chụp** (`Snapshot`: ADR-0005 đã dùng, GLOSSARY chưa có); **Đặt điểm nhanh** (data-model đã dùng, GLOSSARY chưa có); **Lưu trữ Bộ đề** (mở rộng "Lưu trữ" của Câu hỏi: ẩn khỏi lựa chọn mới nhưng giữ để xem và nhân bản). **Thu hồi Phát hành** (đưa Bộ đề đã Phát hành về nháp khi chưa có Phiên thi; chữ "thu hồi" do chủ dự án dùng).
 - **Q190 Dữ liệu** (đề xuất đổi data-model mục 3 khi được duyệt).
 
 ```sql
@@ -188,12 +190,12 @@ Các điểm tôi đã chọn một hướng nhưng có phương án hợp lý k
 
 | Điểm | Đề xuất | Phương án khác |
 |---|---|---|
-| Q160 Hủy Phát hành | Không có; sửa bằng Nhân bản | Cho mở lại về nháp khi chưa có Phiên thi |
+| Q160 Thu hồi Phát hành | **Đã chốt (chủ dự án):** có, khi chưa có Phiên thi | Không có, chỉ Nhân bản |
 | Q161 Cột `shuffle_items` của Phần | Bỏ, xáo trộn là của Phiên thi | Giữ cột, mặc định tắt |
 | Q166 Xóa câu đang ở nháp | Chặn, nêu tên Bộ đề | Tự gỡ khỏi nháp sau xác nhận |
 | Q170 Người dự thi thấy `scoringRule` và `ladder` | Thấy (giải thích cách tính điểm) | Ẩn hoàn toàn, chỉ hiện điểm tối đa |
 | Q172 Trigger chặn ghi | Có, lớp thứ hai ngoài service | Chỉ service |
-| Q178 Xóa Bộ đề đã Phát hành | Không xóa, chỉ Lưu trữ | Cho xóa khi chưa có Phiên thi |
+| Q178 Xóa Bộ đề đã Phát hành | Không xóa trực tiếp: Thu hồi rồi xóa nháp, hoặc Lưu trữ | Cho xóa thẳng khi chưa có Phiên thi |
 | Q182 Nháp trộn khi Chuyển giao | Chuyển nháp, gỡ các câu không chuyển, nói trước | Chặn Chuyển giao |
 
 ## Quyết định (Q159–Q191, đề xuất)
@@ -201,7 +203,7 @@ Các điểm tôi đã chọn một hướng nhưng có phương án hợp lý k
 | Q | Nội dung |
 |---|---|
 | Q159 | Chia 4 PR 3a–3d; Xem thử qua Phiên thi lùi sang lát cắt 4 |
-| Q160 | Vòng đời `draft → published ↔ archived`; chỉ nháp sửa được; không hủy Phát hành |
+| Q160 | Vòng đời `draft → published ↔ archived`; chỉ nháp sửa được; Thu hồi Phát hành về nháp khi chưa có Phiên thi |
 | Q161 | Luôn có ≥ 1 Phần; ≤ 20 Phần, ≤ 200 câu; bỏ `exam_sections.shuffle_items` |
 | Q162 | Chỉ câu của mình, chưa Lưu trữ, mỗi câu một lần; điểm khởi tạo = điểm mặc định |
 | Q163 | `PUT` cả tài liệu một giao dịch, khóa lạc quan `version`, hộp hỏi chưa lưu |
@@ -219,7 +221,7 @@ Các điểm tôi đã chọn một hướng nhưng có phương án hợp lý k
 | Q175 | Trình soạn Câu hỏi hiện số Bộ đề đang dùng (chỉ báo) |
 | Q176 | `exam_item_illustrations`; ảnh không xóa được; quyền xem ảnh cho chủ Bộ đề; Chuyển giao sao chép ảnh còn được Bộ đề đã Phát hành dùng |
 | Q177 | Nhân bản thành nháp mới, lấy câu theo bản hiện tại |
-| Q178 | Chỉ xóa Bộ đề nháp |
+| Q178 | Chỉ xóa Bộ đề nháp (Bộ đề đã Phát hành: Thu hồi trước) |
 | Q179 | Lưu trữ và Khôi phục Bộ đề `published ↔ archived` |
 | Q180 | Danh sách Bộ đề: lọc trạng thái, tìm không dấu, 20 mỗi trang |
 | Q181 | Chỉ chủ sở hữu; Quản trị viên không đọc Bộ đề |
