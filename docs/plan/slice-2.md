@@ -298,6 +298,16 @@ Chủ dự án duyệt sau khi so ba cách nhập (bảng so sánh ở cuối m�
 
 Bốn bộ đọc dòng (theo Loại) có ở cả cách 1 và 2 nên công sức mã của hai cách gần bằng nhau; cách 2 chỉ đơn giản hơn ở chỗ không phải đọc nhiều sheet. Cách 1 hợp Người ra đề soạn đề hỗn hợp (một file, một lần tải lên, hướng dẫn đi kèm) và để lỗi nhập tay ít nhất vì mỗi sheet chỉ có cột của Loại đó. Cách 3 ít việc nhất nhưng Chùm đúng/sai (nhiều Mệnh đề + Bậc thang), loại tốn công soạn tay nhất, vẫn phải làm từng câu một.
 
+**Bổ sung khi làm PR 2f** (không đổi điều đã duyệt ở Q148–Q151):
+- Cổng `OwnedContent` đặt ở `src/common/owned-content.ts` (không trong `identity`) để `question-bank` cài đặt mà không phải import `identity`; `OwnedContentWiringModule` ở cấp ứng dụng nối cổng cho cả api, worker và CLI (cùng cách nối `JOB_QUEUE`).
+- Cổng tách hai bước thay cho `transfer(tx, from, to, topicIds)`: `prepareTransfer` (ngoài giao dịch: kiểm Chủ đề, phân loại ảnh theo Q149, sao chép file) trả một đối tượng có `apply(tx, tênNgườiCho)` (trong giao dịch) và `finish(committed)` (dọn file thừa dù thành công hay không). Lý do: Q149 yêu cầu chép file trước giao dịch. Trong giao dịch, `apply` khóa lại các Chủ đề, phân loại lại ảnh; nếu nội dung vừa đổi và cần chép thêm ảnh chưa chép thì `CONFLICT` với `reason: CONTENT_CHANGED` (bảo thử lại) thay vì chép file trong giao dịch.
+- `summaryOf(userId, { topicIds? })` trả thêm số liệu đúng cho các Chủ đề đang chọn (`selected`, ảnh dùng chung chỉ đếm một lần) để hộp thoại hiện "N Chủ đề, M câu hỏi, K ảnh" chính xác; API: `GET /api/admin/users/:id/content?topicIds=a,b`. Mỗi Chủ đề có `illustrationCount`.
+- Chuyển giao từ người đã bị Xóa được phép (Q150 nói Quản trị viên chuyển tiếp Chủ đề còn sót qua bộ lọc "Đã xóa"); giao diện cho Quản trị viên chuyển cả khi tài khoản đã Xóa. Người nhận vẫn phải hợp lệ.
+- Người nhận đã có ảnh cùng SHA-256 mà ảnh đó chưa `ready` (đang xử lý hoặc lỗi): không dùng được (ràng buộc duy nhất) và không chép được, nên `CONFLICT` với `reason: RECIPIENT_ILLUSTRATION_NOT_READY`; ảnh của người cho chưa `ready` mà phải chép: `ILLUSTRATION_NOT_READY`. Hiếm, bảo thử lại sau.
+- **Chờ chủ dự án xác nhận (Q158):** Lô nhập (Q146) gắn với Chủ đề được chuyển thì bị **xóa** khi Chuyển giao (lô chỉ có nghĩa với chủ cũ; để lại thì người cho vẫn thấy lô của Chủ đề không còn của mình và xác nhận sẽ tạo Câu hỏi sai chủ). File tạm của lô đang đọc được dọn sau khi giao dịch xong.
+- Mã lỗi mới `HAS_CONTENT` (409), `VALIDATION_FAILED` với `recipientId: invalid_recipient` và `topicIds: unknown_topic`. Thông báo `topics.transferred` có `data: { topics }`; bảng `notifications.type` là text nên không cần migration; PR này không có migration.
+- Nhật ký `topic.transfer`: `entity_id` là người cho, `after: { from, to, topics, questions, illustrations }`.
+
 ## Test (seam đã duyệt)
 
 1. **Unit (không DB):**

@@ -20,6 +20,7 @@ export const API_ERROR_STATUS = {
   CONFLICT: HttpStatus.CONFLICT,
   SLIP_EXPIRED: HttpStatus.GONE,
   INVALID_STATE: HttpStatus.CONFLICT,
+  HAS_CONTENT: HttpStatus.CONFLICT,
 } as const;
 
 export type ApiErrorCode = keyof typeof API_ERROR_STATUS;

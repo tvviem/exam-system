@@ -21,11 +21,14 @@ import {
   unitsQuery,
   unlockUser,
   updateUser,
+  userContentQuery,
   userQuery,
 } from '../../../../lib/admin';
+import { ApiError } from '../../../../lib/api';
 import { errorMessage } from '../../../../lib/errors';
 import { formatDateTime } from '../../../../lib/format';
 import {
+  Badge,
   Button,
   Card,
   Dialog,
@@ -36,6 +39,7 @@ import {
 } from '../../../../lib/ui';
 import { StatusBadge, TemporaryPasswordDialog } from '../../../../lib/ui/admin';
 import { useToast } from '../../../../lib/ui/toast';
+import { TransferDialog } from '../../../../lib/ui/transfer-dialog';
 
 export const Route = createFileRoute('/_authed/admin/users/$userId')({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(userQuery(params.userId)),
@@ -49,6 +53,9 @@ function UserDetailPage() {
   const { data: user } = useSuspenseQuery(userQuery(userId));
   const editable = user.status !== 'removed';
   const isSelf = user.id === me.id;
+  // Hộp thoại chọn người nhận khi Xóa nằm ở trang, không ở thẻ Thao tác: xóa xong thẻ đó biến mất mà hộp thoại còn phải
+  // báo kết quả.
+  const [choosingRecipient, setChoosingRecipient] = useState(false);
 
   return (
     <section className="flex flex-col gap-5">
@@ -80,12 +87,22 @@ function UserDetailPage() {
           {user.roleTags.includes('examiner') && (
             <ExaminerProfileForm user={user} editable={editable} />
           )}
+          {/* Cả người đã bị Xóa: Chủ đề còn sót lại vẫn chuyển giao được (Q150). */}
+          {user.roleTags.includes('examiner') && <ContentCard user={user} />}
         </div>
         <aside className="flex flex-col gap-5">
           <AccountCard user={user} />
-          {editable && !isSelf && <ActionsCard user={user} />}
+          {editable && !isSelf && (
+            <ActionsCard user={user} onHasContent={() => setChoosingRecipient(true)} />
+          )}
         </aside>
       </div>
+      <TransferDialog
+        open={choosingRecipient}
+        onClose={() => setChoosingRecipient(false)}
+        user={user}
+        mode="remove"
+      />
     </section>
   );
 }
@@ -403,7 +420,7 @@ function AccountCard({ user }: { user: UserDetail }) {
 
 type PendingAction = 'lock' | 'unlock' | 'password' | 'remove' | null;
 
-function ActionsCard({ user }: { user: UserDetail }) {
+function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: () => void }) {
   const { t } = useTranslation();
   const [pending, setPending] = useState<PendingAction>(null);
   const [reason, setReason] = useState('');
@@ -420,9 +437,19 @@ function ActionsCard({ user }: { user: UserDetail }) {
     setPassword({ ...result, title: t('admin.users.passwordReissued') });
     return result;
   });
+  // Người còn Chủ đề: api trả `HAS_CONTENT`, chuyển sang bước chọn người nhận (Q150, Q151).
   const confirm = (event: FormEvent) => {
     event.preventDefault();
-    if (pending) mutation.mutate(pending, { onSuccess: close });
+    if (!pending) return;
+    mutation.mutate(pending, {
+      onSuccess: close,
+      onError: (error) => {
+        if (error instanceof ApiError && error.code === 'HAS_CONTENT') {
+          close();
+          onHasContent();
+        }
+      },
+    });
   };
 
   const dialog: Record<
@@ -507,6 +534,87 @@ function ActionsCard({ user }: { user: UserDetail }) {
         )}
       </Dialog>
       <TemporaryPasswordDialog value={password} onClose={() => setPassword(null)} />
+    </SectionCard>
+  );
+}
+
+function ContentCard({ user }: { user: UserDetail }) {
+  const { t } = useTranslation();
+  const content = useQuery(userContentQuery(user.id));
+  const [chosen, setChosen] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const topics = content.data?.topics ?? [];
+  // Chủ đề đã chuyển đi thì bỏ khỏi phần đang chọn.
+  const selected = chosen.filter((id) => topics.some((topic) => topic.id === id));
+  const all = topics.length > 0 && selected.length === topics.length;
+  const toggle = (id: string) =>
+    setChosen(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+
+  return (
+    <SectionCard title={t('admin.transfer.cardTitle')}>
+      <p className="text-sm text-fg-muted">{t('admin.transfer.cardHint')}</p>
+      {content.isPending ? (
+        <p className="text-fg-muted">…</p>
+      ) : content.isError ? (
+        <ErrorMessage>{errorMessage(t, content.error)}</ErrorMessage>
+      ) : topics.length === 0 ? (
+        <p className="text-fg-muted">{t('admin.transfer.empty')}</p>
+      ) : (
+        <>
+          <label className="flex min-h-12 cursor-pointer items-center gap-3 font-medium pointer-fine:min-h-10">
+            <input
+              type="checkbox"
+              className="size-5"
+              checked={all}
+              onChange={() => setChosen(all ? [] : topics.map((topic) => topic.id))}
+            />
+            {t('admin.transfer.selectAll')}
+          </label>
+          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+            {topics.map((topic) => (
+              <li key={topic.id}>
+                <label className="flex min-h-12 cursor-pointer items-start gap-3 px-3 py-2 pointer-fine:min-h-10">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-5 shrink-0"
+                    checked={selected.includes(topic.id)}
+                    aria-label={t('admin.transfer.selectTopic', { name: topic.name })}
+                    onChange={() => toggle(topic.id)}
+                  />
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="break-words font-medium">{topic.name}</span>
+                      {topic.archived && <Badge>{t('admin.transfer.archived')}</Badge>}
+                    </span>
+                    <span className="text-sm text-fg-muted">
+                      {t('admin.transfer.topicMeta', {
+                        questions: topic.questionCount,
+                        images: topic.illustrationCount,
+                      })}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <Button
+            variant="primary"
+            className="w-fit"
+            disabled={selected.length === 0}
+            onClick={() => setOpen(true)}
+          >
+            {t('admin.transfer.action')}
+          </Button>
+        </>
+      )}
+      {/* Ngoài các nhánh trên: chuyển hết Chủ đề thì thẻ đổi sang "không còn Chủ đề" mà hộp thoại còn phải báo kết quả. */}
+      <TransferDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        user={user}
+        mode="transfer"
+        topicIds={selected}
+      />
     </SectionCard>
   );
 }

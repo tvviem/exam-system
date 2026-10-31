@@ -171,8 +171,45 @@ export const unlockUser = (id: string, reason: string) =>
     body: reason ? { reason } : {},
   });
 
-export const removeUser = (id: string) =>
-  apiFetch<UserDetail>(`/admin/users/${id}`, { method: 'DELETE' });
+/** `recipientId`: người nhận Chủ đề còn lại của người bị Xóa; thiếu mà còn Chủ đề thì api trả `HAS_CONTENT` (Q150). */
+export const removeUser = (id: string, recipientId?: string) =>
+  apiFetch<UserDetail>(`/admin/users/${id}${queryString({ recipientId })}`, { method: 'DELETE' });
+
+export interface OwnedTopic {
+  id: string;
+  name: string;
+  archived: boolean;
+  questionCount: number;
+  illustrationCount: number;
+}
+
+export interface OwnedCounts {
+  topics: number;
+  questions: number;
+  illustrations: number;
+}
+
+export interface UserContent {
+  topics: OwnedTopic[];
+  totals: OwnedCounts;
+  /** Có khi hỏi theo các Chủ đề đang chọn: số liệu đúng, ảnh dùng chung chỉ đếm một lần. */
+  selected?: OwnedCounts;
+}
+
+export const userContentQuery = (id: string, topicIds?: string[]) =>
+  queryOptions({
+    queryKey: ['admin', 'users', id, 'content', topicIds?.join(',') ?? 'all'],
+    queryFn: () =>
+      apiFetch<UserContent>(
+        `/admin/users/${id}/content${queryString({ topicIds: topicIds?.join(',') })}`,
+      ),
+  });
+
+export const transferTopics = (id: string, topicIds: string[], recipientId: string) =>
+  apiFetch<OwnedCounts>(`/admin/users/${id}/transfer`, {
+    method: 'POST',
+    body: { topicIds, recipientId },
+  });
 
 export const setRoleTag = (id: string, tag: RoleTag, granted: boolean) =>
   apiFetch<UserDetail>(`/admin/users/${id}/role-tags/${tag}`, {
