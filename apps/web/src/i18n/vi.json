@@ -127,7 +127,13 @@
     "VALIDATION_item_has_error": "Dòng lỗi không chọn được. Hãy sửa file rồi tải lại.",
     "VALIDATION_unknown_item": "Dòng này không thuộc lô nhập.",
     "INVALID_STATE_BATCH_NOT_READY": "Lô nhập không còn ở bước xem trước (đã tạo hoặc đang xử lý).",
-    "INVALID_STATE_BATCH_NOT_CANCELLABLE": "Lô đang được xử lý hoặc đã tạo câu hỏi nên không hủy được."
+    "INVALID_STATE_BATCH_NOT_CANCELLABLE": "Lô đang được xử lý hoặc đã tạo câu hỏi nên không hủy được.",
+    "HAS_CONTENT": "Người này còn Chủ đề. Hãy chọn người nhận để chuyển giao trước khi xóa.",
+    "VALIDATION_invalid_recipient": "Người nhận phải là Người ra đề đang hoạt động, khác người cho.",
+    "VALIDATION_unknown_topic": "Có Chủ đề không còn thuộc người này. Hãy tải lại trang.",
+    "CONFLICT_CONTENT_CHANGED": "Nội dung của người này vừa thay đổi. Hãy tải lại trang rồi thử lại.",
+    "CONFLICT_RECIPIENT_ILLUSTRATION_NOT_READY": "Người nhận đang có Hình minh họa cùng nội dung chưa xử lý xong. Hãy thử lại sau ít phút.",
+    "CONFLICT_ILLUSTRATION_NOT_READY": "Có Hình minh họa chưa xử lý xong nên chưa chuyển giao được. Hãy thử lại sau ít phút."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -322,6 +328,31 @@
       "copyLink": "Sao chép link",
       "linkExpires": "Hết hạn lúc {{time}}. Mỗi link chỉ dùng được một lần.",
       "linkSaved": "Tôi đã sao chép link"
+    },
+    "transfer": {
+      "cardTitle": "Nội dung",
+      "cardHint": "Chủ đề và Câu hỏi người này đang sở hữu. Chuyển giao cho Người ra đề khác trước khi xóa tài khoản.",
+      "empty": "Người này không còn Chủ đề nào.",
+      "selectAll": "Chọn tất cả Chủ đề",
+      "selectTopic": "Chọn Chủ đề {{name}}",
+      "archived": "Đã lưu trữ",
+      "topicMeta": "{{questions}} câu hỏi · {{images}} ảnh",
+      "action": "Chuyển giao…",
+      "title": "Chuyển giao Chủ đề của {{name}}",
+      "titleRemove": "Xóa {{name}} và chuyển giao nội dung",
+      "removeIntro": "Người này còn Chủ đề, nên phải chuyển toàn bộ cho một Người ra đề trước khi xóa. Việc chuyển giao và xóa diễn ra cùng lúc.",
+      "summary": "{{topics}} Chủ đề, {{questions}} câu hỏi, {{images}} ảnh",
+      "summaryLoading": "Đang tính…",
+      "recipient": "Người nhận",
+      "searchRecipient": "Tìm Người ra đề theo tên hoặc tên đăng nhập",
+      "noCandidates": "Không có Người ra đề nào phù hợp.",
+      "confirm": "Chuyển giao",
+      "confirmRemove": "Chuyển giao và xóa",
+      "working": "Đang xử lý…",
+      "doneTransfer": "Đã chuyển giao {{topics}} Chủ đề ({{questions}} câu hỏi) cho {{name}}.",
+      "doneRemove": "Đã chuyển giao {{topics}} Chủ đề cho {{name}} và xóa tài khoản.",
+      "renameNote": "Chủ đề trùng tên với Chủ đề của người nhận sẽ được thêm “(từ {{name}})” vào tên.",
+      "close": "Đóng"
     }
   },
   "auditAction": {
@@ -479,7 +510,8 @@
     "account_request.reviewed_partially_approved": "Yêu cầu cấp tài khoản của bạn đã được duyệt một phần.",
     "credential_slip.ready_ready": "Phiếu tài khoản đã sẵn sàng để tải.",
     "credential_slip.ready_failed": "Không dựng được Phiếu tài khoản. Hãy cấp lại mật khẩu tạm.",
-    "account_request.approve_interrupted": "Việc duyệt yêu cầu bị gián đoạn. Hãy mở yêu cầu và duyệt lại các dòng còn chờ."
+    "account_request.approve_interrupted": "Việc duyệt yêu cầu bị gián đoạn. Hãy mở yêu cầu và duyệt lại các dòng còn chờ.",
+    "topics.transferred": "Quản trị viên đã chuyển giao {{topics}} Chủ đề cho bạn."
   },
   "credentialSlips": {
     "heading": "Phiếu tài khoản",

@@ -4,6 +4,7 @@ import { ConfigModule } from '../config/config.module';
 import { DbModule } from '../db/db.module';
 import { MediaModule } from '../media/media-store';
 import { IdentityModule } from '../modules/identity/identity.module';
+import { OwnedContentWiringModule } from '../owned-content-wiring.module';
 import { QueueModule } from '../queue/job-queue';
 import { RedisModule } from '../redis/redis.module';
 
@@ -12,7 +13,7 @@ export class CliModule {
   static create(clock?: Clock): DynamicModule {
     return {
       module: CliModule,
-      // IdentityModule cần cả MediaStore và JobQueue dù CLI không dùng tới.
+      // IdentityModule cần cả MediaStore, JobQueue và cổng OWNED_CONTENT dù CLI không dùng tới.
       imports: [
         ConfigModule,
         ClockModule.forRoot(clock),
@@ -21,6 +22,7 @@ export class CliModule {
         MediaModule,
         QueueModule,
         IdentityModule,
+        OwnedContentWiringModule,
       ],
     };
   }

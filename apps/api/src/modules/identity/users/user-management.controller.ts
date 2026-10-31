@@ -54,6 +54,21 @@ const updateSchema = z
   })
   .strict();
 
+const topicIdsSchema = z
+  .array(z.uuid())
+  .min(1)
+  .max(500)
+  .refine((ids) => new Set(ids).size === ids.length, 'Chủ đề trùng');
+const transferSchema = z.strictObject({ topicIds: topicIdsSchema, recipientId: z.uuid() });
+// `?topicIds=a,b,c`: số liệu đúng cho các Chủ đề đang chọn (ảnh dùng chung chỉ đếm một lần).
+const contentQuerySchema = z.object({
+  topicIds: z
+    .string()
+    .optional()
+    .transform((value) => (value ? value.split(',') : undefined))
+    .pipe(z.array(z.uuid()).max(500).optional()),
+});
+const removeQuerySchema = z.object({ recipientId: z.uuid().optional() });
 const lockSchema = z.object({ reason: z.string().trim().min(1).max(500) }).strict();
 const unlockSchema = z.object({ reason: z.string().trim().max(500).optional() }).strict();
 
@@ -116,9 +131,29 @@ export class UserManagementController {
     return this.users.detail(id);
   }
 
+  @Get(':id/content')
+  content(@Param('id', ParseUUIDPipe) id: string, @Query() query: unknown) {
+    return this.users.contentOf(id, contentQuerySchema.parse(query ?? {}).topicIds);
+  }
+
+  @Post(':id/transfer')
+  @HttpCode(200)
+  transfer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+    @CurrentActor() actor: Actor,
+  ) {
+    return this.users.transfer(actor, id, transferSchema.parse(body ?? {}));
+  }
+
   @Delete(':id')
-  async remove(@Param('id', ParseUUIDPipe) id: string, @CurrentActor() actor: Actor) {
-    await this.users.remove(actor, id);
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: unknown,
+    @CurrentActor() actor: Actor,
+  ) {
+    const { recipientId } = removeQuerySchema.parse(query ?? {});
+    await this.users.remove(actor, id, recipientId);
     return this.users.detail(id);
   }
 

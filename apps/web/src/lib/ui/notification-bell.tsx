@@ -30,6 +30,10 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
   const openNotification = async (n: AppNotification) => {
     if (!n.readAt) markRead.mutate([n.id]);
     setOpen(false);
+    if (n.type === 'topics.transferred') {
+      await navigate({ to: '/examiner/questions' });
+      return;
+    }
     const requestId = typeof n.data.requestId === 'string' ? n.data.requestId : null;
     if (
       (n.type.startsWith('account_request.') || n.type.startsWith('credential_slip.')) &&

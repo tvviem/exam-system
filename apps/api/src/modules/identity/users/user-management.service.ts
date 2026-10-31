@@ -16,10 +16,17 @@ import {
 import type { Actor } from '../../../common/actor';
 import { ApiError, validationFailed } from '../../../common/api-error';
 import { CLOCK, type Clock } from '../../../common/clock';
+import {
+  OWNED_CONTENT,
+  type OwnedContent,
+  type OwnedCounts,
+  type PreparedTransfer,
+} from '../../../common/owned-content';
 import { type Page, paginate } from '../../../common/pagination';
 import { mapUniqueToConflict } from '../../../common/pg-error';
 import { type Database, DB, type Transaction as Tx } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import type { RoleTag } from '../auth/auth.types';
 import { type AuthSessionRevokeReason, AuthSessionStore } from '../auth/auth-session-store';
 import { LoginBlock } from '../auth/login-block';
@@ -66,6 +73,12 @@ const UNIQUE_FIELDS: Record<string, string> = {
   users_code_active_key: 'code',
 };
 
+/** `409 HAS_CONTENT`: người này còn Chủ đề, Quản trị viên phải chọn người nhận (Q150). */
+const hasContent = (topics: { id: string; name: string; questionCount: number }[]) =>
+  new ApiError('HAS_CONTENT', {
+    topics: topics.map(({ id, name, questionCount }) => ({ id, name, questionCount })),
+  });
+
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /** Quản lý Người dùng của Quản trị viên (PR 1b). */
@@ -78,6 +91,8 @@ export class UserManagementService {
     private readonly authSessions: AuthSessionStore,
     private readonly loginBlock: LoginBlock,
     private readonly usersRepository: UsersRepository,
+    private readonly notifications: NotificationsService,
+    @Inject(OWNED_CONTENT) private readonly ownedContent: OwnedContent,
   ) {}
 
   async list({ page, pageSize, ...filter }: Page & UserFilter) {
@@ -267,28 +282,166 @@ export class UserManagementService {
     });
   }
 
+  /** Chủ đề của một người dùng (kể cả đã bị Xóa) để Quản trị viên chọn Chuyển giao (Q148). */
+  async contentOf(id: string, topicIds?: string[]) {
+    await this.findOrThrow(id);
+    return this.ownedContent.summaryOf(id, { topicIds });
+  }
+
   /**
-   * Xóa người dùng (soft-delete), thu hồi mọi Phiên đăng nhập. Ở lát cắt 1 Người ra đề chưa sở hữu
-   * Chủ đề, Bộ đề hay Phiên thi nên xóa thẳng; việc chọn người nhận làm ở lát cắt 2–4.
+   * Chuyển giao Chủ đề của một người dùng cho Người ra đề khác (Q148, Q149). Cho phép cả khi người cho đã bị Xóa
+   * (Chủ đề còn sót lại dưới tài khoản đã Xóa). Phần sao chép file ảnh làm trước giao dịch.
    */
-  async remove(actor: Actor, id: string): Promise<void> {
+  async transfer(
+    actor: Actor,
+    id: string,
+    input: { topicIds: string[]; recipientId: string },
+  ): Promise<OwnedCounts> {
+    const donor = await this.findOrThrow(id);
+    await this.assertRecipient(this.db, id, input.recipientId);
+    const prepared = await this.ownedContent.prepareTransfer({
+      fromId: id,
+      toId: input.recipientId,
+      topicIds: input.topicIds,
+    });
+    return this.runPrepared(prepared, async (tx) => {
+      const locked = await this.lockUsersInOrder(tx, [id, input.recipientId]);
+      await this.assertRecipient(tx, id, input.recipientId, locked.get(input.recipientId));
+      return this.applyTransfer(tx, actor, donor, input.recipientId, prepared);
+    });
+  }
+
+  /**
+   * Xóa người dùng (soft-delete), thu hồi mọi Phiên đăng nhập. Còn Chủ đề mà không nêu người nhận thì `HAS_CONTENT`;
+   * nêu `recipientId` thì Chuyển giao toàn bộ rồi Xóa trong cùng một giao dịch (Q150).
+   */
+  async remove(actor: Actor, id: string, recipientId?: string): Promise<void> {
+    const { topics, totals } = await this.ownedContent.summaryOf(id);
+    if (totals.topics === 0) return this.removeWithoutContent(actor, id);
+    if (!recipientId) throw hasContent(topics);
+
+    await this.assertRecipient(this.db, id, recipientId);
+    const prepared = await this.ownedContent.prepareTransfer({
+      fromId: id,
+      toId: recipientId,
+      topicIds: 'all',
+    });
+    await this.runPrepared(prepared, async (tx) => {
+      const locked = await this.lockUsersInOrder(tx, [id, recipientId]);
+      const donor = locked.get(id);
+      if (!donor) throw new ApiError('NOT_FOUND');
+      this.assertTarget(actor, donor);
+      await this.assertRecipient(tx, id, recipientId, locked.get(recipientId));
+      await this.applyTransfer(tx, actor, donor, recipientId, prepared);
+      await this.softDelete(tx, actor, id);
+    });
+  }
+
+  private async removeWithoutContent(actor: Actor, id: string): Promise<void> {
     await this.db.transaction(async (tx) => {
       await this.lockTargetOrThrow(tx, actor, id);
-      const removedAt = this.clock.now();
-      await tx.update(users).set({ removedAt, removedBy: actor.id }).where(eq(users.id, id));
-      await this.audit.record(
-        {
-          actor,
-          action: 'user.remove',
-          entityType: 'user',
-          entityId: id,
-          before: { removedAt: null },
-          after: { removedAt },
-        },
-        tx,
-      );
-      await this.revokeBeforeCommit(id, 'user_removed');
+      // Chủ đề có thể vừa được tạo giữa lúc kiểm tra và lúc khóa dòng.
+      const { topics, totals } = await this.ownedContent.summaryOf(id);
+      if (totals.topics > 0) throw hasContent(topics);
+      await this.softDelete(tx, actor, id);
     });
+  }
+
+  private async softDelete(tx: Tx, actor: Actor, id: string): Promise<void> {
+    const removedAt = this.clock.now();
+    await tx.update(users).set({ removedAt, removedBy: actor.id }).where(eq(users.id, id));
+    await this.audit.record(
+      {
+        actor,
+        action: 'user.remove',
+        entityType: 'user',
+        entityId: id,
+        before: { removedAt: null },
+        after: { removedAt },
+      },
+      tx,
+    );
+    await this.revokeBeforeCommit(id, 'user_removed');
+  }
+
+  /** Ghi nhật ký `topic.transfer` và báo cho người nhận (Q148, Q151). */
+  private async applyTransfer(
+    tx: Tx,
+    actor: Actor,
+    donor: UserRow,
+    recipientId: string,
+    prepared: PreparedTransfer,
+  ): Promise<OwnedCounts> {
+    const counts = await prepared.apply(tx, donor.fullName);
+    if (counts.topics === 0) return counts;
+    await this.audit.record(
+      {
+        actor,
+        action: 'topic.transfer',
+        entityType: 'user',
+        entityId: donor.id,
+        after: { from: donor.id, to: recipientId, ...counts },
+      },
+      tx,
+    );
+    await this.notifications.notify(
+      { userIds: [recipientId], type: 'topics.transferred', data: { topics: counts.topics } },
+      tx,
+    );
+    return counts;
+  }
+
+  /** Chạy phần trong giao dịch của một lần Chuyển giao đã chuẩn bị, rồi dọn file thừa dù thành công hay không. */
+  private async runPrepared<T>(
+    prepared: PreparedTransfer,
+    work: (tx: Tx) => Promise<T>,
+  ): Promise<T> {
+    let result: T;
+    try {
+      result = await this.db.transaction(work);
+    } catch (error) {
+      await prepared.finish(false);
+      throw error;
+    }
+    await prepared.finish(true);
+    return result;
+  }
+
+  /** Người nhận: Nhãn Người ra đề, không phải Quản trị viên, chưa Khóa, chưa Xóa, khác người cho (Q148). */
+  private async assertRecipient(
+    db: Executor,
+    donorId: string,
+    recipientId: string,
+    locked?: UserRow,
+  ): Promise<void> {
+    const user = locked ?? (await this.usersRepository.findById(recipientId));
+    const [examiner] = user
+      ? await db
+          .select({ tag: userRoleTags.tag })
+          .from(userRoleTags)
+          .where(and(eq(userRoleTags.userId, recipientId), eq(userRoleTags.tag, 'examiner')))
+      : [];
+    if (
+      !user ||
+      !examiner ||
+      user.id === donorId ||
+      user.isAdmin ||
+      user.removedAt ||
+      user.status !== 'active'
+    ) {
+      throw validationFailed('recipientId', 'invalid_recipient');
+    }
+  }
+
+  /** Khóa dòng nhiều người dùng theo thứ tự `id`, để hai Chuyển giao ngược chiều không bế tắc nhau. */
+  private async lockUsersInOrder(tx: Tx, ids: string[]): Promise<Map<string, UserRow>> {
+    const rows = await tx
+      .select()
+      .from(users)
+      .where(inArray(users.id, ids))
+      .orderBy(asc(users.id))
+      .for('update');
+    return new Map(rows.map((row) => [row.id, row]));
   }
 
   /** Gắn Nhãn vai trò; gắn `examiner` thì tạo hồ sơ Người ra đề trống nếu chưa có (Q64). */
@@ -406,8 +559,13 @@ export class UserManagementService {
   private async lockTargetOrThrow(tx: Tx, actor: Actor, id: string): Promise<UserRow> {
     if (actor.id === id) throw new ApiError('CANNOT_TARGET_SELF');
     const user = await this.lockRowOrThrow(tx, id);
-    if (user.removedAt) throw new ApiError('INVALID_STATE');
+    this.assertTarget(actor, user);
     return user;
+  }
+
+  private assertTarget(actor: Actor, user: UserRow): void {
+    if (actor.id === user.id) throw new ApiError('CANNOT_TARGET_SELF');
+    if (user.removedAt) throw new ApiError('INVALID_STATE');
   }
 
   private async lockRowOrThrow(tx: Tx, id: string): Promise<UserRow> {

@@ -12,6 +12,7 @@ import { QuestionsController } from './questions.controller';
 import { QuestionsService } from './questions.service';
 import { TopicsController } from './topics.controller';
 import { TopicsService } from './topics.service';
+import { QuestionBankOwnedContent } from './transfer/question-bank-owned-content';
 
 // Quyền truy cập (AuthGuard) do IdentityModule đăng ký toàn cục.
 @Module({
@@ -32,6 +33,8 @@ import { TopicsService } from './topics.service';
     QuestionImportParseJob,
     QuestionImportCommitJob,
     QuestionImportCleanupJob,
+    QuestionBankOwnedContent,
   ],
+  exports: [QuestionBankOwnedContent],
 })
 export class QuestionBankModule {}
