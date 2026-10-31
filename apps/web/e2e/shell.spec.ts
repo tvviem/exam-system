@@ -12,7 +12,7 @@ async function signIn(page: Page, username: string) {
 
 const main = (page: Page) => page.getByRole('navigation', { name: 'Điều hướng chính' });
 
-// Q106: từ 1024 px thanh bên, dưới đó thanh tab dưới đáy (tối đa 5 mục, mục thứ 5 là "Thêm").
+// Q106: từ 1024 px thanh bên, dưới đó thanh tab dưới đáy (tối đa 5 mục, mục thứ 5 là "Khác").
 test.describe('khung ứng dụng thích ứng', () => {
   test('từ 1024 px: thanh bên có đủ mục của Quản trị viên, không có tab ngang trong nội dung', async ({
     page,
@@ -50,7 +50,7 @@ test.describe('khung ứng dụng thích ứng', () => {
     expect(box?.height).toBeLessThanOrEqual(lineHeight + 1);
   });
 
-  test('dưới 1024 px: thanh tab dưới đáy 4 mục + "Thêm" mở các mục còn lại', async ({
+  test('dưới 1024 px: thanh tab dưới đáy 4 mục + "Khác" mở các mục còn lại', async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width: 768, height: 900 });
@@ -62,7 +62,7 @@ test.describe('khung ứng dụng thích ứng', () => {
     await expect(nav.getByRole('link')).toHaveCount(4);
     await expect(nav.getByRole('link', { name: 'Yêu cầu' })).toBeVisible();
 
-    await nav.getByRole('button', { name: 'Thêm' }).click();
+    await nav.getByRole('button', { name: 'Khác' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('link', { name: 'Lịch sử đăng nhập' })).toBeVisible();
     await dialog.getByRole('link', { name: 'Nhật ký thao tác' }).click();
@@ -124,19 +124,19 @@ test('thao tác thành công hiện thông báo nổi rồi tự mất', async (
   await expect(toast).toBeHidden({ timeout: 8000 });
 });
 
-// Q106/Q107: các điểm gãy sát ranh giới, quy tắc 5 mục, mục đang chọn trong "Thêm", trạng thái trên URL, mật độ theo thiết bị trỏ.
+// Q106/Q107: các điểm gãy sát ranh giới, quy tắc 5 mục, mục đang chọn trong "Khác", trạng thái trên URL, mật độ theo thiết bị trỏ.
 test.describe('khung ứng dụng: biên và quy tắc', () => {
   test('1023 px vẫn là thanh tab dưới đáy, 1440 px là thanh bên và nội dung không rộng quá 1152 px', async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width: 1023, height: 800 });
     await signIn(page, `e2e-khung-${testInfo.project.name}`);
-    await expect(main(page).getByRole('button', { name: 'Thêm' })).toBeVisible();
+    await expect(main(page).getByRole('button', { name: 'Khác' })).toBeVisible();
     await expect(page.locator('aside')).toBeHidden();
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await expect(page.locator('aside')).toBeVisible();
-    await expect(main(page).getByRole('button', { name: 'Thêm' })).toBeHidden();
+    await expect(main(page).getByRole('button', { name: 'Khác' })).toBeHidden();
     const content = await page.locator('main').boundingBox();
     expect(content?.width).toBeLessThanOrEqual(1152 + 1);
   });
@@ -148,11 +148,11 @@ test.describe('khung ứng dụng: biên và quy tắc', () => {
     await signIn(page, `e2e-khung-${testInfo.project.name}`);
     const nav = main(page);
     await expect(nav.getByRole('link')).toHaveCount(4);
-    await expect(nav.getByRole('button', { name: 'Thêm' })).not.toHaveClass(/text-primary/);
+    await expect(nav.getByRole('button', { name: 'Khác' })).not.toHaveClass(/text-primary/);
 
     await page.goto('/admin/audit-logs');
     await expect(page.getByRole('heading', { name: 'Nhật ký thao tác', level: 1 })).toBeVisible();
-    await expect(nav.getByRole('button', { name: 'Thêm' })).toHaveClass(/text-primary/);
+    await expect(nav.getByRole('button', { name: 'Khác' })).toHaveClass(/text-primary/);
   });
 
   test('tìm kiếm nằm trên URL: mở một người rồi Quay lại vẫn giữ từ khóa', async ({
