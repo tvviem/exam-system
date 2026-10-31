@@ -2,7 +2,7 @@
 
 Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên điện thoại. Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi tại lớp hoặc phòng máy. Người dự thi đăng nhập, nhập Mã vào thi và làm bài ngay trên điện thoại hoặc máy tính.
 
-> **Trạng thái:** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án) và **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản). Lát cắt tiếp theo là 2 (Chủ đề, Câu hỏi). Muốn tự dùng thử những gì đã làm thì xem [Dùng thử lát cắt 1](#dùng-thử-lát-cắt-1).
+> **Trạng thái:** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án) **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi: Chủ đề, 4 Loại câu hỏi, công thức, Hình minh họa, Nhập Excel, Chuyển giao). Lát cắt tiếp theo là 3 (Bộ đề). Muốn tự dùng thử những gì đã làm thì xem [Dùng thử lát cắt 1](#dùng-thử-lát-cắt-1) và [Dùng thử lát cắt 2](#dùng-thử-lát-cắt-2).
 
 ## Tính năng giai đoạn 1
 
@@ -184,6 +184,15 @@ Mục này dẫn anh đi qua toàn bộ chức năng đã làm, theo đúng lu�
 - **Người dùng**: tìm không dấu theo tên, mã, email, lớp; lọc theo trạng thái và Nhãn vai trò; mở một người để sửa thông tin, gắn/gỡ Nhãn vai trò, **Khóa đăng nhập** (bắt buộc lý do, người đó bị đăng xuất ngay), **Cấp lại mật khẩu tạm** (hiện một lần, hạn 7 ngày), **Xóa người dùng**. Có **Tạo Quản trị viên** cho người quản trị thứ hai.
 - **Lịch sử đăng nhập** (bấm tên để lọc theo người) và **Nhật ký thao tác** (ai làm gì lúc nào, chỉ ghi thêm, không sửa được).
 - **Giao diện sáng/tối**: nút **Tài khoản** ở góc phải trên cùng → chọn Hệ thống / Sáng / Tối. Thử thu nhỏ cửa sổ về cỡ điện thoại (khoảng 360 px): danh sách chuyển thành thẻ, nút đủ lớn để bấm.
+
+## Dùng thử lát cắt 2
+
+Cần như lát cắt 1: cả hai terminal đang chạy (worker xử lý ảnh và đọc file Excel), một Quản trị viên và ít nhất hai Người ra đề (mời qua **Lời mời**).
+
+1. **Soạn câu hỏi** (Người ra đề): **Ngân hàng câu hỏi** → **Quản lý Chủ đề** → thêm Chủ đề → **Soạn câu hỏi**, chọn một trong 4 Loại. Thử công thức (nút Σ, gõ LaTeX hoặc dùng bàn phím toán), chèn **Hình minh họa** (bắt buộc mô tả), xem trước bên phải (tab **Xem thử** trên điện thoại). Điểm từ 0,05 đến 100, bước 0,05. Rời trang khi còn thay đổi chưa lưu sẽ được hỏi; lưu xong thì không.
+2. **Nhập từ Excel**: nút **Nhập từ Excel** → tải **file ví dụ** (8 câu, 4 Loại) hoặc **file mẫu trống** (sheet "Hướng dẫn" giải thích từng cột) → chọn Chủ đề, tải lên, xem trước từng dòng (lọc theo trạng thái và Loại, bỏ chọn dòng, xem nội dung), **Tạo N câu hỏi**. **Hủy lô** nếu cần sửa file rồi tải lại.
+3. **Chuyển giao** (Quản trị viên): **Người dùng** → mở một Người ra đề → thẻ **Nội dung** → tick Chủ đề → **Chuyển giao…** → chọn người nhận. Chủ đề trùng tên được thêm "(từ …)"; Hình minh họa đi theo Câu hỏi; người nhận có thông báo.
+4. **Xóa người dùng còn Chủ đề**: **Xóa người dùng** → hộp thoại tự chuyển sang bước chọn người nhận (**Chuyển giao và xóa**).
 
 ## Vận hành
 

@@ -1,6 +1,6 @@
 # Lát cắt 2: Ngân hàng câu hỏi
 
-> Trạng thái: **accepted** (29/10/2026): chủ dự án đã duyệt Q111–Q126 (Q112 giữ Chủ đề phẳng) và các seam test. Làm theo [data-model.md](../data-model.md) mục 2, [architecture.md](../architecture.md) mục 3 và 6, [GLOSSARY.md](../../GLOSSARY.md) mục Ngân hàng câu hỏi, [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md) và [ui-design.md](../ui-design.md) (khung ứng dụng, mẫu "Soạn", Q100–Q110). Quyết định đánh số tiếp từ Q111 ([lát cắt 1](slice-1.md) dừng ở Q99; Q100–Q110 là của giao diện).
+> Trạng thái: **hoàn tất** (1/11/2026: 2a–2f đã merge); trước đó **accepted** (29/10/2026): chủ dự án đã duyệt Q111–Q126 (Q112 giữ Chủ đề phẳng) và các seam test. Làm theo [data-model.md](../data-model.md) mục 2, [architecture.md](../architecture.md) mục 3 và 6, [GLOSSARY.md](../../GLOSSARY.md) mục Ngân hàng câu hỏi, [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md) và [ui-design.md](../ui-design.md) (khung ứng dụng, mẫu "Soạn", Q100–Q110). Quyết định đánh số tiếp từ Q111 ([lát cắt 1](slice-1.md) dừng ở Q99; Q100–Q110 là của giao diện).
 
 ## Mục tiêu
 
@@ -304,7 +304,7 @@ Bốn bộ đọc dòng (theo Loại) có ở cả cách 1 và 2 nên công sứ
 - `summaryOf(userId, { topicIds? })` trả thêm số liệu đúng cho các Chủ đề đang chọn (`selected`, ảnh dùng chung chỉ đếm một lần) để hộp thoại hiện "N Chủ đề, M câu hỏi, K ảnh" chính xác; API: `GET /api/admin/users/:id/content?topicIds=a,b`. Mỗi Chủ đề có `illustrationCount`.
 - Chuyển giao từ người đã bị Xóa được phép (Q150 nói Quản trị viên chuyển tiếp Chủ đề còn sót qua bộ lọc "Đã xóa"); giao diện cho Quản trị viên chuyển cả khi tài khoản đã Xóa. Người nhận vẫn phải hợp lệ.
 - Người nhận đã có ảnh cùng SHA-256 mà ảnh đó chưa `ready` (đang xử lý hoặc lỗi): không dùng được (ràng buộc duy nhất) và không chép được, nên `CONFLICT` với `reason: RECIPIENT_ILLUSTRATION_NOT_READY`; ảnh của người cho chưa `ready` mà phải chép: `ILLUSTRATION_NOT_READY`. Hiếm, bảo thử lại sau.
-- **Chờ chủ dự án xác nhận (Q158):** Lô nhập (Q146) gắn với Chủ đề được chuyển thì bị **xóa** khi Chuyển giao (lô chỉ có nghĩa với chủ cũ; để lại thì người cho vẫn thấy lô của Chủ đề không còn của mình và xác nhận sẽ tạo Câu hỏi sai chủ). File tạm của lô đang đọc được dọn sau khi giao dịch xong.
+- **Q158, chủ dự án đã kiểm và chấp nhận khi duyệt PR 2f:** Lô nhập (Q146) gắn với Chủ đề được chuyển thì bị **xóa** khi Chuyển giao (lô chỉ có nghĩa với chủ cũ; để lại thì người cho vẫn thấy lô của Chủ đề không còn của mình và xác nhận sẽ tạo Câu hỏi sai chủ). File tạm của lô đang đọc được dọn sau khi giao dịch xong.
 - Mã lỗi mới `HAS_CONTENT` (409), `VALIDATION_FAILED` với `recipientId: invalid_recipient` và `topicIds: unknown_topic`. Thông báo `topics.transferred` có `data: { topics }`; bảng `notifications.type` là text nên không cần migration; PR này không có migration.
 - Nhật ký `topic.transfer`: `entity_id` là người cho, `after: { from, to, topics, questions, illustrations }`.
 
@@ -339,7 +339,7 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 - Rút ngẫu nhiên câu hỏi theo Chủ đề, thống kê câu hỏi, nhập từ Word, ảnh trong Câu tự luận: giai đoạn sau (architecture.md mục 9).
 - Chia sẻ Chủ đề giữa các Người ra đề: ngoài giai đoạn 1 (GLOSSARY: mỗi Chủ đề chỉ có một chủ).
 
-## Quyết định (Q111–Q157, đã duyệt)
+## Quyết định (Q111–Q158, đã duyệt)
 
 | Câu | Quyết định |
 |---|---|
@@ -390,3 +390,4 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q155 | Hủy lô nhập: `DELETE /api/question-imports/:id`, chỉ lô `ready` hoặc `parse_failed`, xóa cứng; giao diện có hộp xác nhận rồi về trang tải lên với Chủ đề đã chọn |
 | Q156 | Nhập đủ bốn Loại bằng một file `.xlsx` bốn sheet (Chọn một, Chọn nhiều, Chùm đúng sai, Tự luận); Loại do sheet quyết định; bỏ CSV; Phương án/Mệnh đề A–H |
 | Q157 | Hai file tải về: mẫu trống (có sheet Hướng dẫn) và ví dụ 8 câu (Toán rời rạc có công thức và Tin học căn bản, mỗi Loại 2 câu) |
+| Q158 | Chuyển giao xóa Lô nhập gắn với các Chủ đề được chuyển (kèm file tạm của lô đang đọc); chuyển giao từ người đã bị Xóa được phép |
