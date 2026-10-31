@@ -21,8 +21,8 @@ export type QuestionType = z.infer<typeof questionTypeSchema>;
 
 export const STEM_MAX_CHARS = 20_000;
 export const ITEM_MAX_CHARS = 2_000;
-export const POINTS_MIN = 0.1;
-export const POINTS_STEP = 0.1;
+export const POINTS_MIN = 0.05;
+export const POINTS_STEP = 0.05;
 export const POINTS_MAX = 100;
 export const TAGS_MAX = 10;
 export const TAG_MAX_CHARS = 30;

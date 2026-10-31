@@ -60,7 +60,7 @@ Phía client **dựng giao diện từ JSON**, không dùng `dangerouslySetInner
 | Chùm đúng/sai | 1–8 Mệnh đề, mỗi Mệnh đề có đúng/sai; `scoringRule` Tỷ lệ, Đúng hết hoặc Bậc thang; Bậc thang dài (số Mệnh đề + 1), giá trị từ 0 đến 1, không giảm dần, phần tử đầu 0 và phần tử cuối 1 |
 | Câu tự luận | `maxLength` 100–5.000 (mặc định 2.000); `rubric` tùy chọn, không hiển thị cho Người dự thi |
 
-- Điểm mặc định `default_points` từ 0,1 đến 100, bước 0,1 (Q154; trước đó 0,25).
+- Điểm mặc định `default_points` từ 0,05 đến 100, bước 0,05 (Q154; trước đó 0,25).
 - Mỗi Phương án và Mệnh đề có `id` ổn định (`o1`, `s1`...), thứ tự lưu là thứ tự soạn; việc xáo trộn chỉ xảy ra lúc thi.
 - `tags` tự do: tối đa 10, mỗi tag 1–30 ký tự, chuẩn hóa chữ thường và bỏ khoảng trắng thừa.
 
@@ -170,7 +170,7 @@ Q143 và Q144 chỉ ghi lại, chưa làm gì ở lát cắt 2 (làm ở lát c�
 
 - **Q145 File mẫu và quy tắc đọc ô.**
   - Mẫu tạo bằng `exceljs` như mẫu của Yêu cầu cấp tài khoản. Hàng tiêu đề khớp không phân biệt hoa thường và dấu; cột thừa bị bỏ qua, thiếu cột bắt buộc (Nội dung, Phương án A, Phương án B, Đáp án) thì cả file bị từ chối `missing_columns`.
-  - **Điểm trống = 1.** Điểm có mặt phải thuộc 0,1–100, bước 0,1 (cùng quy tắc `defaultPoints`; Q154 đổi từ 0,25).
+  - **Điểm trống = 1.** Điểm có mặt phải thuộc 0,05–100, bước 0,05 (cùng quy tắc `defaultPoints`; Q154 đổi từ 0,25).
   - **Quy tắc chấm:** trống thì câu chọn nhiều lấy Tỷ lệ. Điền ở dòng chọn một là lỗi `scoring_rule_not_allowed`, không bỏ qua im lặng.
   - **Công thức:** `$...$` thành node `math` trong dòng (`display: false`); `\$` là dấu đô la thật; không hỗ trợ `$$...$$`. Công thức đi qua đúng bước kiểm của lúc lưu (KaTeX ở api, lệnh cấm, ≤ 50 công thức mỗi Câu hỏi), lỗi báo `math_invalid` hoặc `math_forbidden` ở dòng đó.
   - Ô trống giữa các Phương án (A, C có, B trống) là lỗi `gap_in_options`, không tự dồn lên. Xuống dòng trong ô thành `hardBreak`. Tags tách bằng dấu phẩy, chuẩn hóa như lúc lưu.
@@ -235,12 +235,12 @@ Q143 và Q144 chỉ ghi lại, chưa làm gì ở lát cắt 2 (làm ở lát c�
 - Hai thuật ngữ mới được thêm vào GLOSSARY: **Lô nhập** và **Nghi trùng** (đều có trong văn bản đã duyệt của Q123 và Q146).
 - Giao diện cập nhật ô chọn ngay trên màn hình, không chờ server (mạng chậm trên điện thoại); server vẫn là nguồn đúng, lỗi thì trả về như cũ.
 
-### Điểm bước 0,1 (Q154, chủ dự án yêu cầu sau khi kiểm PR 2d)
+### Điểm bước 0,05 (Q154, chủ dự án yêu cầu sau khi kiểm PR 2d)
 
-- `POINTS_MIN = 0,1`, `POINTS_STEP = 0,1` trong `@exam/shared`; một hằng dùng cho schema, ô nhập điểm ở trình soạn, bộ đọc file Nhập Excel và file mẫu.
+- `POINTS_MIN = 0,05`, `POINTS_STEP = 0,05` trong `@exam/shared`; một hằng dùng cho schema, ô nhập điểm ở trình soạn, bộ đọc file Nhập Excel và file mẫu.
 - Cột `default_points numeric(6,2)` đã đủ chính xác, **không cần migration**. Ngoài `defaultPoints`, các tỷ lệ của Bậc thang vẫn là số từ 0 đến 1, không đổi.
-- Câu hỏi đã lưu với điểm 0,25 hoặc 0,75 vẫn đọc được; khi sửa và lưu lại, người dùng phải chọn điểm mới thuộc bước 0,1.
-- Bộ đọc file so sánh với sai số (`0,3 / 0,1` không tròn đúng 3 trong số thực), và chỉ nhận số thập phân thường như trước.
+- Bước 0,05 chứa cả bội của 0,1 và của 0,25, nên Câu hỏi đã lưu với điểm 0,25 hoặc 0,75 vẫn lưu lại được. (Ban đầu chọn 0,1, chủ dự án đổi sang 0,05 để vẫn đặt được 0,25.)
+- Bộ đọc file so sánh với sai số (`0,15 / 0,05` không tròn đúng 3 trong số thực), và chỉ nhận số thập phân thường như trước.
 
 ## Đề xuất chờ duyệt sau PR 2d (Q155–Q157)
 
@@ -251,17 +251,41 @@ Trạng thái `proposed`: chưa viết mã, chờ chủ dự án duyệt.
   - Xóa cứng lô và các dòng (CASCADE). Không ghi `audit_logs` vì chưa tạo gì. Dùng khóa dòng `FOR UPDATE` như `commit` để Hủy và Xác nhận không chạy đồng thời.
   - Giao diện: nút "Hủy lô" ở màn xem trước (có hộp xác nhận), ở lô `parse_failed`, và ở từng lô `ready` trong "Lô nhập gần đây". Sau khi hủy, quay về trang tải lên với Chủ đề đã chọn sẵn.
   - Lưu ý: không cần Hủy vẫn tải lô mới được; Hủy giúp danh sách gọn và tránh xác nhận nhầm lô cũ.
-- **Q156 Nhập đủ bốn Loại câu hỏi** (thay phạm vi hẹp của Q123).
-  - Một sheet "Câu hỏi", thêm cột **Loại** (`Chọn một`, `Chọn nhiều`, `Chùm đúng/sai`, `Tự luận`; không phân biệt hoa thường và dấu). Để trống thì suy ra như hiện nay (một Đáp án → Chọn một, từ hai → Chọn nhiều), nên file cũ vẫn dùng được.
-  - Cột Phương án A–F đổi thành **A–H** (8, khớp trình soạn) và dùng cho cả Mệnh đề của Chùm đúng/sai.
-  - **Chùm đúng/sai:** Đáp án viết `Đ`/`S` theo thứ tự Mệnh đề (ví dụ `Đ,S,Đ,S`; nhận cả `Đúng`/`Sai`). Quy tắc chấm: Tỷ lệ, Đúng hết hoặc Bậc thang. Cột **Bậc thang** (`0; 0,1; 0,25; 0,5; 1`, bắt buộc khi chọn Bậc thang, dài đúng số Mệnh đề + 1).
-  - **Tự luận:** cột **Độ dài tối đa** (100–5.000, trống = 2.000) và **Hướng dẫn chấm** (tùy chọn). Các cột Phương án và Đáp án để trống.
-  - Mã lỗi dòng mới: `invalid_type`, `invalid_statement_key`, `invalid_ladder`, `invalid_max_length`, `column_not_allowed` (điền cột không thuộc Loại, như Bậc thang ở Chọn một).
-  - Cách khác đã cân nhắc: mỗi Loại một sheet. Rõ hơn cho người mới nhưng CSV không có nhiều sheet, mỗi dòng phải mang thêm tên sheet, parser và bảng `question_import_items` phức tạp hơn; nên chọn một sheet có cột Loại.
-  - Việc nhập vẫn chạy qua `questionInputSchema` chung nên mọi ràng buộc của trình soạn áp dụng nguyên vẹn.
+- **Q156 Nhập đủ bốn Loại câu hỏi bằng một file Excel bốn sheet** (thay phạm vi hẹp của Q123). Đã so ba cách ở mục dưới; đề xuất cách 1.
+  - **Một file `.xlsx`, bốn sheet dữ liệu + sheet "Hướng dẫn".** Tên sheet quyết định Loại, so khớp không phân biệt hoa thường và dấu: `Chọn một`, `Chọn nhiều`, `Chùm đúng sai`, `Tự luận`. Sheet nào để trống (chỉ có tiêu đề) thì bỏ qua; mọi sheet trống thì `empty_file`. Sheet lạ (khác "Hướng dẫn") làm cả file bị từ chối `unknown_sheet` kèm tên sheet, để đổi tên nhầm không làm mất câu hỏi trong im lặng.
+  - **Cột từng sheet** (tiêu đề khớp không dấu như Q145; Nội dung bắt buộc ở mọi sheet; Điểm trống = 1; Tags như cũ):
+
+    | Sheet | Cột riêng |
+    |---|---|
+    | Chọn một | Phương án A–H (tối thiểu A, B), Đáp án: đúng **một** chữ |
+    | Chọn nhiều | Phương án A–H, Đáp án: từ **một** chữ (`A,C`), Quy tắc chấm (Tỷ lệ hoặc Đúng hết) |
+    | Chùm đúng sai | Mệnh đề a–h (tối thiểu a), Đáp án `Đ,S,Đ,S` đúng thứ tự Mệnh đề (nhận cả `Đúng`/`Sai`), Quy tắc chấm (Tỷ lệ, Đúng hết hoặc Bậc thang), Bậc thang (`0; 0,1; 0,25; 0,5; 1`, bắt buộc khi chọn Bậc thang, dài đúng số Mệnh đề + 1) |
+    | Tự luận | Độ dài tối đa (100–5.000, trống = 2.000), Hướng dẫn chấm (tùy chọn) |
+
+  - Phương án nâng từ 6 lên 8 để khớp trình soạn (Q115). Vì loại do sheet quyết định nên **không còn suy ra loại từ số Đáp án**: gõ thiếu `A,C` thành `A` ở sheet Chọn nhiều vẫn là Câu chọn nhiều, không đổi loại im lặng.
+  - **Dữ liệu:** `question_import_items` thêm cột `sheet` (mã Loại); khóa duy nhất đổi từ `(batch_id, row_number)` sang `(batch_id, sheet, row_number)`. Migration `0009` chỉ thêm cột (các dòng cũ là `single_choice`/`multiple_choice` theo `payload`). Bản xem trước hiện nhãn Loại và số dòng trong sheet; thêm bộ lọc theo Loại.
+  - **Mã lỗi dòng mới:** `invalid_statement_key` (Đáp án Chùm sai chữ hoặc thiếu), `invalid_ladder`, `invalid_max_length`. Tên cột không thuộc Loại không phải lỗi (cột thừa bị bỏ qua như Q145). Tổng tối đa 500 dòng cả file.
+  - **Hệ quả:** nhập Câu hỏi chỉ nhận `.xlsx` (một CSV không có nhiều sheet). Yêu cầu cấp tài khoản vẫn nhận CSV. Bộ test và E2E của PR 2d đang dùng CSV nên chuyển sang tạo `.xlsx` bằng `exceljs`.
+  - Mọi dòng vẫn qua `questionInputSchema` chung nên ràng buộc của trình soạn áp dụng nguyên vẹn.
 - **Q157 File mẫu và file ví dụ.**
-  - Hai tệp tải về: **file mẫu trống** (đúng tiêu đề, một dòng gợi ý) và **file ví dụ** có 8 Câu hỏi: mỗi Loại 2 câu, một câu Toán rời rạc có công thức (`$...$`) và một câu Tin học căn bản. Mỗi tệp có sheet "Hướng dẫn" nêu cột nào dùng cho Loại nào, kèm ví dụ điểm 0,1 và Bậc thang.
-  - File ví dụ nhập được nguyên vẹn để Người ra đề thử; gặp lại lần hai sẽ bị đánh dấu Nghi trùng.
+  - Hai tệp tải về, cùng bố cục: **file mẫu trống** (bốn sheet có tiêu đề, một dòng gợi ý, sheet "Hướng dẫn") và **file ví dụ** có 8 Câu hỏi: mỗi Loại 2 câu, một câu Toán rời rạc có công thức (`$...$`) và một câu Tin học căn bản.
+  - Sheet "Hướng dẫn" nêu thứ tự điền, cột từng sheet, cách viết công thức và điểm bước 0,05, Bậc thang, mã lỗi thường gặp.
+  - File ví dụ nhập được nguyên vẹn để thử; nhập lần hai sẽ bị đánh dấu Nghi trùng.
+
+### So sánh ba cách nhập (cơ sở của Q156)
+
+| | 1. Một file, bốn sheet | 2. Mỗi Loại một file mẫu | 3. Giữ hai Loại như cũ |
+|---|---|---|---|
+| Loại nhập được | 4 | 4 | Chọn một, Chọn nhiều |
+| Người dùng tải | 1 file | 4 file, chọn đúng file | 1 file |
+| Một lần tải lên | Trộn mọi Loại | Một Loại; trộn thì tải 4 lần, 4 lô | Hai Loại |
+| Hướng dẫn | Cùng file, sheet riêng | Phải lặp trong 4 file hoặc tách ra | Cùng file |
+| Lỗi hay gặp | Đổi tên sheet (đã chặn bằng `unknown_sheet`) | Tải nhầm file với Loại đã chọn (bắt bằng `missing_columns`) | Gõ thiếu Đáp án đổi loại im lặng |
+| Cột trong mỗi bảng | Chỉ cột của Loại đó, gọn | Như cách 1 | Một bảng, tối đa 11 cột |
+| Công sức mã | Đọc nhiều sheet, cột `sheet`, bốn bộ đọc dòng | Cột `question_type` của lô, chọn Loại ở UI, bốn bộ đọc dòng | Không thêm |
+| CSV | Bỏ | Giữ được | Giữ |
+
+Bốn bộ đọc dòng (theo Loại) có ở cả cách 1 và 2 nên công sức mã của hai cách gần bằng nhau; cách 2 chỉ đơn giản hơn ở chỗ không phải đọc nhiều sheet. Cách 1 hợp Người ra đề soạn đề hỗn hợp (một file, một lần tải lên, hướng dẫn đi kèm) và để lỗi nhập tay ít nhất vì mỗi sheet chỉ có cột của Loại đó. Cách 3 ít việc nhất nhưng Chùm đúng/sai (nhiều Mệnh đề + Bậc thang), loại tốn công soạn tay nhất, vẫn phải làm từng câu một.
 
 ## Test (seam đã duyệt)
 
@@ -302,7 +326,7 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q112 | Chủ đề phẳng, tên không trùng trong cùng chủ; còn Câu hỏi thì không xóa được, có Lưu trữ Chủ đề; phân nhóm nhỏ bằng `tags` |
 | Q113 | Chỉ chủ sở hữu thấy nội dung Câu hỏi; Quản trị viên chỉ thấy tên Chủ đề và số câu để Chuyển giao |
 | Q114 | Nội dung là TipTap JSON theo schema giới hạn, kiểm bằng Zod dùng chung; client dựng từ JSON, không HTML thô |
-| Q115 | Ràng buộc từng Loại câu hỏi (2–8 Phương án, 1–8 Mệnh đề, Bậc thang hợp lệ, điểm 0,1–100 (Q154), tự luận 100–5.000 ký tự) |
+| Q115 | Ràng buộc từng Loại câu hỏi (2–8 Phương án, 1–8 Mệnh đề, Bậc thang hợp lệ, điểm 0,05–100 (Q154), tự luận 100–5.000 ký tự) |
 | Q116 | `version` tăng mỗi lần sửa, không lưu lịch sử bản cũ (đã có bản chụp lúc Phát hành) |
 | Q117 | Chưa dùng thì xóa hẳn, đã dùng thì Lưu trữ; Lưu trữ thêm ở lát cắt 3 qua cổng `QuestionUsage` |
 | Q118 | Tìm không dấu qua cột `search_text`; lọc Chủ đề, Loại, tag; phân trang 20 trên URL |
@@ -341,4 +365,4 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q151 | Giao diện quản trị: thẻ "Nội dung" ở trang người dùng, hộp thoại chọn người nhận dùng chung cho Chuyển giao và Xóa; người nhận được thông báo `topics.transferred` |
 | Q152 | Seam test của PR 2d (xem mục "Chi tiết đề xuất cho PR 2d") |
 | Q153 | Tách PR 2d thành 2d (Nhập Excel) và 2f (Chuyển giao + Xóa người dùng chọn người nhận) |
-| Q154 | Điểm mặc định từ 0,1 đến 100, bước 0,1 (thay 0,25), dùng chung cho soạn tay và Nhập Excel |
+| Q154 | Điểm mặc định từ 0,05 đến 100, bước 0,05 (thay 0,25), dùng chung cho soạn tay và Nhập Excel |

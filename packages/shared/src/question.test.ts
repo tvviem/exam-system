@@ -160,11 +160,11 @@ describe('Câu tự luận', () => {
 });
 
 describe('phần chung', () => {
-  it('điểm mặc định từ 0,1 đến 100, bước 0,1', () => {
-    for (const points of [0.1, 0.2, 0.3, 0.7, 1.1, 2.5, 33.3, 99.9, 100]) {
+  it('điểm mặc định từ 0,05 đến 100, bước 0,05', () => {
+    for (const points of [0.05, 0.1, 0.15, 0.25, 0.3, 0.75, 1.1, 2.5, 33.35, 99.95, 100]) {
       expect(ok(single({ defaultPoints: points }))).toBe(true);
     }
-    for (const points of [0, 0.05, 0.25, 1.15, 100.1]) {
+    for (const points of [0, 0.01, 0.07, 0.12, 1.123, 100.05]) {
       expect(ok(single({ defaultPoints: points }))).toBe(false);
     }
   });

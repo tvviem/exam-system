@@ -32,7 +32,7 @@ export async function buildQuestionImportTemplate(): Promise<Buffer> {
     'Nội dung: bắt buộc. Xuống dòng trong ô (Alt+Enter) được giữ nguyên.',
     `Phương án A đến ${String.fromCharCode(64 + MAX_OPTIONS)}: ít nhất A và B; điền liên tục từ A, không để ô trống ở giữa.`,
     'Đáp án: chữ cái của Phương án đúng. Một chữ (B) là Câu chọn một; từ hai chữ (A,C) là Câu chọn nhiều.',
-    'Điểm: từ 0,1 đến 100, bước 0,1. Để trống thì lấy 1 điểm.',
+    'Điểm: từ 0,05 đến 100, bước 0,05. Để trống thì lấy 1 điểm.',
     'Quy tắc chấm (chỉ Câu chọn nhiều): "Tỷ lệ" hoặc "Đúng hết". Để trống thì lấy "Tỷ lệ".',
     `Tags: cách nhau bằng dấu phẩy, tối đa ${TAGS_MAX} tag, mỗi tag tối đa ${TAG_MAX_CHARS} ký tự.`,
     'Công thức toán: viết LaTeX giữa hai dấu đô la, ví dụ $x^2 + 1$. Muốn in dấu đô la thật thì viết \\$. Không dùng $$...$$.',
