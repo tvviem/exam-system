@@ -151,6 +151,32 @@ illustrations (                           -- Hình minh họa (Q139, Q140)
 )
 question_illustrations (question_id → questions ON DELETE CASCADE, illustration_id → illustrations, PK (question_id, illustration_id))
 -- Cập nhật mỗi lần tạo hoặc sửa Câu hỏi từ các node `image`; không có bản gốc, `alt` nằm trong node (Q137).
+
+question_import_batches (                 -- Lô nhập Câu hỏi từ Excel (Q123, Q146); sống 30 ngày
+  id, owner_id → users, topic_id → topics ON DELETE CASCADE,   -- Chủ đề đích; xóa Chủ đề thì lô đi theo
+  original_filename text,                 -- chỉ để hiển thị
+  upload_key text NULL,                   -- file chờ đọc trong MediaStore; xóa ngay sau khi đọc xong
+  status enum('parsing','parse_failed','ready','committing','committed'),
+  parse_error text NULL,                  -- mã lỗi cả file khi status = parse_failed; lỗi gắn với một sheet ghi `mã:tên sheet` (vd `missing_columns:Chọn một`)
+  row_count int NULL, created_count int NULL,
+  created_at, commit_requested_at NULL,   -- lúc bấm xác nhận; `committing` quá 15 phút thì job dọn đưa về `ready`
+  committed_at NULL, expires_at           -- = created_at + 30 ngày
+)
+question_import_items (
+  id, batch_id → question_import_batches ON DELETE CASCADE,
+  type question_type,                     -- Loại câu hỏi do sheet của file quyết định (Q156); có cả ở dòng lỗi
+  row_number int,                         -- số dòng thật trong sheet của Loại đó
+  payload jsonb NULL,                     -- Câu hỏi đã đổi từ dòng Excel (chưa có topicId); NULL khi dòng lỗi
+  search_text text NULL,                  -- cùng cách chuẩn hóa với questions.search_text, để so nghi trùng
+  error_code text NULL,
+  duplicate_of_question_id uuid NULL,     -- nghi trùng: Câu hỏi đã có trong Chủ đề đích (không có FK: câu có thể bị xóa sau)
+  duplicate_of_row int NULL,              -- nghi trùng: dòng đầu tiên cùng nội dung trong file
+  duplicate_of_type question_type NULL,   -- sheet của dòng trùng đó (số dòng chỉ duy nhất trong một sheet)
+  selected bool,                          -- mặc định: dòng hợp lệ true; nghi trùng và lỗi false
+  outcome enum('pending','created','skipped'),
+  UNIQUE (batch_id, type, row_number)
+)
+-- Trạng thái của dòng suy ra từ cột, không lưu: có error_code là lỗi; có một trong hai cột duplicate_* là nghi trùng; còn lại hợp lệ.
 ```
 
 Ví dụ `payload` theo từng loại:

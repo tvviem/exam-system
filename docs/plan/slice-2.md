@@ -6,16 +6,17 @@
 
 Sau lát cắt 2:
 - Người ra đề tạo Chủ đề và soạn Câu hỏi thuộc sở hữu riêng, đủ 4 Loại câu hỏi, kèm công thức toán và Hình minh họa.
-- Nhập hàng loạt Câu chọn một và Câu chọn nhiều từ Excel, có xem trước từng dòng.
+- Nhập hàng loạt cả bốn Loại câu hỏi từ một file Excel bốn sheet (Q156; ban đầu chỉ Câu chọn một và chọn nhiều), có xem trước từng dòng.
 - Quản trị viên Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Xóa người dùng là Người ra đề buộc chọn người nhận.
 - Nội dung Câu hỏi chỉ chủ sở hữu thấy, kể cả Đáp án đúng.
 
-Lát cắt chia thành 4 PR. Merge xong PR nào thì hệ thống chạy được tới đó.
+Lát cắt chia thành 5 PR (2a–2e, kèm 2f ở Q153). Merge xong PR nào thì hệ thống chạy được tới đó.
 
 ```text
 2a Chủ đề + Câu hỏi (4 loại, văn bản có định dạng)  ──► 2b Công thức toán
                                                     ├──► 2c Hình minh họa
-                                                    └──► 2d Nhập Excel + Chuyển giao + Xóa người dùng chọn người nhận
+                                                    ├──► 2d Nhập Excel
+                                                    └──► 2f Chuyển giao + Xóa người dùng chọn người nhận (Q153)
 ```
 
 | PR | Nội dung | Đưa vào dùng được |
@@ -23,7 +24,8 @@ Lát cắt chia thành 4 PR. Merge xong PR nào thì hệ thống chạy đượ
 | 2a | Bảng `topics`, `questions`; schema nội dung và `payload` dùng chung; CRUD, tìm và lọc; trình soạn và Xem thử; Nhân bản, di chuyển, xóa | Người ra đề soạn và quản lý Câu hỏi bằng chữ |
 | 2b | Node công thức (MathLive soạn, KaTeX hiển thị, kiểm LaTeX ở server) | Câu hỏi có công thức |
 | 2c | `illustrations`, tải ảnh, worker xử lý (sharp), phục vụ có kiểm quyền | Câu hỏi có hình |
-| 2d | Nhập Excel; Chuyển giao Chủ đề; Xóa người dùng chọn người nhận | Vòng đời nội dung khi đổi người |
+| 2d | Nhập Excel (Q123, Q145–Q147) | Nạp hàng loạt Câu hỏi cả bốn Loại (mở rộng ở Q156) |
+| 2f | Chuyển giao Chủ đề; Xóa người dùng chọn người nhận (Q124, Q125, Q148–Q151) | Vòng đời nội dung khi đổi người |
 
 ## Thiết kế chung
 
@@ -58,7 +60,7 @@ Phía client **dựng giao diện từ JSON**, không dùng `dangerouslySetInner
 | Chùm đúng/sai | 1–8 Mệnh đề, mỗi Mệnh đề có đúng/sai; `scoringRule` Tỷ lệ, Đúng hết hoặc Bậc thang; Bậc thang dài (số Mệnh đề + 1), giá trị từ 0 đến 1, không giảm dần, phần tử đầu 0 và phần tử cuối 1 |
 | Câu tự luận | `maxLength` 100–5.000 (mặc định 2.000); `rubric` tùy chọn, không hiển thị cho Người dự thi |
 
-- Điểm mặc định `default_points` từ 0,25 đến 100, bước 0,25.
+- Điểm mặc định `default_points` từ 0,05 đến 100, bước 0,05 (Q154; trước đó 0,25).
 - Mỗi Phương án và Mệnh đề có `id` ổn định (`o1`, `s1`...), thứ tự lưu là thứ tự soạn; việc xáo trộn chỉ xảy ra lúc thi.
 - `tags` tự do: tối đa 10, mỗi tag 1–30 ký tự, chuẩn hóa chữ thường và bỏ khoảng trắng thừa.
 
@@ -139,7 +141,7 @@ Gắn vào Câu hỏi bằng node `image` ─► khi lưu, ghi question_illustra
 
 ### Nhập Excel (Q123)
 
-Chỉ **Câu chọn một và Câu chọn nhiều** (README, architecture.md). Luồng giống Yêu cầu cấp tài khoản ở lát cắt 1:
+Ban đầu chỉ **Câu chọn một và Câu chọn nhiều**; Q156 mở rộng sang cả bốn Loại, mỗi Loại một sheet (xem mục "Nhập Excel bốn Loại" bên dưới, phần mô tả cột dưới đây là của bản đầu). Luồng giống Yêu cầu cấp tài khoản ở lát cắt 1:
 
 ```text
 Chọn Chủ đề đích ─► tải file mẫu, điền, tải lên (.xlsx/.csv, ≤ 2 MB, ≤ 500 dòng)
@@ -159,6 +161,142 @@ Quản trị viên chọn một người ra đề, chọn một hoặc nhiều C
 ### Xóa người dùng là Người ra đề (Q125)
 
 Nếu người đó còn Chủ đề, API từ chối với `HAS_CONTENT` kèm danh sách Chủ đề. Hộp thoại Xóa người dùng cho **chọn người nhận ngay trong một bước**: hệ thống Chuyển giao toàn bộ rồi mới Xóa, trong cùng một giao dịch. Tài khoản không còn nội dung thì Xóa như hiện nay.
+
+### Chi tiết đã duyệt cho PR 2d và 2f (Q145–Q153)
+
+Q143 và Q144 chỉ ghi lại, chưa làm gì ở lát cắt 2 (làm ở lát cắt 4).
+
+**Nhập Excel**
+
+- **Q145 File mẫu và quy tắc đọc ô.**
+  - Mẫu tạo bằng `exceljs` như mẫu của Yêu cầu cấp tài khoản. Hàng tiêu đề khớp không phân biệt hoa thường và dấu; cột thừa bị bỏ qua, thiếu cột bắt buộc (Nội dung, Phương án A, Phương án B, Đáp án) thì cả file bị từ chối `missing_columns`.
+  - **Điểm trống = 1.** Điểm có mặt phải thuộc 0,05–100, bước 0,05 (cùng quy tắc `defaultPoints`; Q154 đổi từ 0,25).
+  - **Quy tắc chấm:** trống thì câu chọn nhiều lấy Tỷ lệ. Điền ở dòng chọn một là lỗi `scoring_rule_not_allowed`, không bỏ qua im lặng.
+  - **Công thức:** `$...$` thành node `math` trong dòng (`display: false`); `\$` là dấu đô la thật; không hỗ trợ `$$...$$`. Công thức đi qua đúng bước kiểm của lúc lưu (KaTeX ở api, lệnh cấm, ≤ 50 công thức mỗi Câu hỏi), lỗi báo `math_invalid` hoặc `math_forbidden` ở dòng đó.
+  - Ô trống giữa các Phương án (A, C có, B trống) là lỗi `gap_in_options`, không tự dồn lên. Xuống dòng trong ô thành `hardBreak`. Tags tách bằng dấu phẩy, chuẩn hóa như lúc lưu.
+  - Mã lỗi từng dòng (mở rộng danh sách ở Q123): `missing_content`, `too_few_options`, `answer_mismatch`, `invalid_points`, `scoring_rule_not_allowed`, `gap_in_options`, `math_invalid`, `math_forbidden`, `field_too_long`, `too_many_tags`.
+
+- **Q146 Lô nhập (batch).**
+  - Bảng `question_import_batches` (`id`, `owner_id`, `topic_id`, `original_filename`, `upload_key`, `status`, `parse_error`, `row_count`, `created_at`, `committed_at`, `expires_at` = tạo + 30 ngày) và `question_import_items` (`batch_id`, `row_number`, `payload jsonb` là đúng `QuestionInput` đã đổi xong, `error_code`, `duplicate_of_question_id`, `selected bool`, `outcome` `pending | created | skipped`).
+  - Trạng thái: `parsing → parse_failed | ready → committing → committed`. File tải lên xóa ngay sau khi đọc xong (như Yêu cầu cấp tài khoản); phần còn lại là `payload`, đủ để xem lại 30 ngày.
+  - **Chọn dòng:** mặc định chọn mọi dòng hợp lệ và bỏ chọn dòng nghi trùng; dòng lỗi không chọn được. `PATCH` cập nhật `selected` cho từng dòng hoặc cho cả nhóm. Không có dòng nào được chọn thì không xác nhận được.
+  - **Xác nhận chạy một lần:** `POST .../commit` chuyển `ready → committing` bằng một câu `UPDATE ... WHERE status = 'ready'`; lần gọi thứ hai nhận `INVALID_STATE`. Job tạo mọi Câu hỏi đã chọn **trong một giao dịch** rồi đặt `committed`; job lỗi thì lô trở lại `ready` để thử lại, không tạo nửa chừng.
+  - **Chủ đề đích** đổi sau khi tải lên: nếu đã bị Lưu trữ hoặc xóa lúc xác nhận thì `INVALID_STATE` (`topic_unavailable`), lô giữ nguyên. Nghi trùng chỉ tính theo `search_text` đã chuẩn hóa trong Chủ đề đích lúc đọc file, kèm trùng giữa các dòng trong file (dòng sau được đánh dấu trùng dòng trước).
+  - Ghi **một** dòng `audit_logs` `question.import` mỗi lần xác nhận (số dòng tạo, số bỏ qua, Chủ đề đích). Job dọn hằng ngày (Q96) xóa lô quá 30 ngày.
+  - Chỉ chủ lô thấy lô; người khác nhận `NOT_FOUND`.
+
+- **Q147 Giao diện nhập.**
+  - Nút "Nhập từ Excel" ở danh sách Câu hỏi → trang `/examiner/questions/import` với bốn bước: (1) chọn Chủ đề đích, tải file mẫu; (2) tải file lên; (3) xem trước; (4) kết quả kèm liên kết sang danh sách Chủ đề đó.
+  - Bước 3 hỏi lại mỗi giây khi `parsing`. Bảng có bộ lọc Tất cả / Hợp lệ / Lỗi / Nghi trùng kèm số lượng, ô chọn từng dòng, cột lý do tiếng Việt; bấm một dòng để xem trước nội dung dựng sẵn (`RichTextView`, có đáp án đúng vì là nội dung của chính Người ra đề).
+  - Dưới 768 px bảng thành danh sách thẻ, thanh "Tạo N câu hỏi" dính đáy màn hình.
+  - Đóng trang giữa chừng thì lô còn đó: trang có danh sách "Lô nhập gần đây" (30 ngày) để mở lại.
+
+**Chuyển giao và Xóa người dùng (PR 2f)**
+
+- **Q148 Chuyển giao Chủ đề.**
+  - API quản trị: `GET /api/admin/users/:id/content` trả tên Chủ đề, số Câu hỏi, trạng thái Lưu trữ (không trả nội dung, Q113); `POST /api/admin/users/:id/transfer { topicIds[], recipientId }`.
+  - Chọn được cả Chủ đề đã Lưu trữ. Người nhận: Nhãn Người ra đề, không phải Quản trị viên, chưa Khóa, chưa Xóa, khác người cho; không hợp lệ thì `VALIDATION_FAILED recipientId`.
+  - Tên trùng với Chủ đề chưa Lưu trữ của người nhận thì thêm " (từ <tên người cũ>)"; vẫn trùng thì thêm " (2)", " (3)"... Chủ đề đã Lưu trữ không cần đổi tên (không nằm trong ràng buộc duy nhất; Khôi phục sau đó đã có `CONFLICT`).
+  - Một giao dịch; khóa dòng hai người dùng theo thứ tự `id` để tránh bế tắc. Ghi `topic.transfer` với số Chủ đề, số Câu hỏi, số ảnh, người cũ, người mới. Câu hỏi giữ nguyên `version`, trừ câu bị viết lại nội dung ảnh ở Q149.
+
+- **Q149 Hình minh họa khi Chuyển giao.** Phần "đổi `illustrations.owner_id`" của Q124 chưa đủ vì gặp hai ca: ràng buộc `UNIQUE(owner_id, sha256)` (người nhận đã có ảnh trùng) và ảnh dùng chung với Câu hỏi không chuyển. Với mỗi ảnh mà các Câu hỏi đang chuyển tham chiếu:
+  1. Chỉ các Câu hỏi đang chuyển dùng **và** người nhận chưa có ảnh cùng SHA-256: đổi `owner_id`.
+  2. Người nhận đã có ảnh `ready` cùng SHA-256: dùng ảnh đó.
+  3. Còn dùng chung với Câu hỏi không chuyển: tạo bản sao cho người nhận (`MediaStore.get` rồi `put` từng biến thể, không thêm phương thức mới).
+  Ở ca 2 và 3, viết lại `illustrationId` trong nội dung các Câu hỏi đã chuyển và cập nhật `question_illustrations`, tăng `version` của những câu đó. Sao chép file làm **trước** giao dịch; giao dịch lỗi thì xóa các file vừa chép. Chuyển giao không bị hạn mức ảnh chặn (hạn mức mềm, hành động của Quản trị viên). Ảnh thư viện chưa dùng của người cho không chuyển; hệ quả: sau khi Xóa người dùng chúng nằm lại trong kho, việc dọn thuộc chính sách lưu trữ ở giai đoạn sau.
+
+- **Q150 Xóa người dùng kèm người nhận.**
+  - Giữ `DELETE /api/admin/users/:id`, thêm tham số tùy chọn `?recipientId=`. Còn Chủ đề mà không có `recipientId` thì `409 HAS_CONTENT` kèm `{ topics: [{ id, name, questionCount }] }`; có `recipientId` thì Chuyển giao **toàn bộ** (cả đã Lưu trữ) rồi Xóa trong cùng giao dịch, nhật ký `topic.transfer` rồi `user.remove`. Không còn nội dung mà vẫn gửi `recipientId` thì bỏ qua tham số.
+  - `identity` không đọc bảng của `question-bank` và `question-bank` không import `identity`: `identity` định nghĩa cổng `OwnedContent` (`summaryOf(userId)`, `transfer(tx, from, to, topicIds)`), `question-bank` cung cấp bản cài đặt, nối ở `AppModule`, giống `JobQueue` (Q87).
+  - Giới hạn đã biết: nếu Người ra đề đang tạo Chủ đề đúng lúc bị Xóa, Chủ đề mới có thể nằm lại dưới tài khoản đã Xóa (cửa sổ rất hẹp, vì mọi phiên bị thu hồi khi giao dịch xong). Quản trị viên chuyển tiếp được qua bộ lọc "Đã xóa".
+
+- **Q151 Giao diện quản trị và thông báo.**
+  - Trang chi tiết người dùng có Nhãn Người ra đề (kể cả đã Xóa thì chỉ xem) thêm thẻ "Nội dung": danh sách Chủ đề có ô chọn, nút "Chuyển giao…".
+  - Hộp thoại chọn người nhận dùng chung cho Chuyển giao và Xóa: tìm theo tên, tên đăng nhập, chỉ hiện Người ra đề hợp lệ (dùng `GET /api/admin/users?roleTag=examiner&status=active&q=`), tóm tắt "N Chủ đề, M Câu hỏi, K ảnh", một nút xác nhận. Hộp thoại Xóa chỉ hiện phần chọn người nhận khi API trả `HAS_CONTENT`.
+  - Người nhận nhận thông báo `topics.transferred` ("Quản trị viên đã chuyển giao N Chủ đề cho bạn"), thêm một loại vào bảng `notifications` (Q95); người cho không cần.
+
+**Phạm vi và kiểm thử**
+
+- **Q152 Seam test.**
+  - *Unit (không DB):* đọc file Excel/CSV nhập câu hỏi với các file mẫu đúng và lỗi (từng mã lỗi ở Q145); bộ đổi ô sang node (`$...$`, `\$`, xuống dòng); hàm đặt tên khi trùng (hậu tố, đánh số); hàm viết lại `illustrationId` trong nội dung.
+  - *Tích hợp (HTTP + PostgreSQL + Redis, `JobQueue` chạy tại chỗ, `MediaStore` thư mục tạm):* lô nhập từ tải lên đến xác nhận, xác nhận hai lần chỉ tạo một lần, Chủ đề đích đã Lưu trữ giữa chừng, người khác `NOT_FOUND`; Chuyển giao nguyên tử bằng `MediaStore` giả ném lỗi khi chép file (kiểm không đổi gì, file tạm được dọn), ba ca ảnh của Q149, người nhận không hợp lệ, `HAS_CONTENT` rồi Xóa kèm người nhận, nhật ký và thông báo.
+  - *E2E (desktop và mobile):* nhập file Excel qua giao diện đến khi Câu hỏi hiện trong danh sách; Quản trị viên Chuyển giao một Chủ đề và Xóa người dùng kèm người nhận, rồi người nhận đăng nhập thấy Chủ đề và thông báo; kiểm "không cuộn ngang" ở các trang mới.
+
+- **Q153 Tách PR.** 2d chỉ gồm Nhập Excel (Q145–Q147); 2f gồm Chuyển giao và Xóa người dùng (Q148–Q151). Hai phần không dùng chung mã, tách ra để mỗi PR đủ nhỏ để duyệt. Làm 2d trước.
+
+**Bổ sung khi làm PR 2d** (nhỏ, không đổi quyết định đã duyệt):
+- Job dọn lô có tên riêng `question-import.cleanup` (lịch 3 giờ 15), vì `JobRegistry` chỉ nhận một hàm cho mỗi tên job nên không đăng ký thêm vào `maintenance.cleanup` của identity được. Job này cũng cứu lô kẹt do worker chết: `parsing` quá 15 phút thành `parse_failed`, `committing` quá 15 phút trở lại `ready` (cột `commit_requested_at`).
+- Mã lỗi dòng thêm ngoài danh sách Q145: `invalid_scoring_rule` (Quy tắc chấm không phải Tỷ lệ hay Đúng hết), `too_many_formulas` (quá 50 công thức), `invalid_content` (lưới an toàn: schema chung từ chối mà không rơi vào mã nào ở trên).
+- API: `PATCH /api/question-imports/:id/items` nhận đúng một trong `itemIds` hoặc `group` (`valid` | `duplicate`) kèm `selected`; `counts` có thêm `selectedValid`, `selectedDuplicate` để giao diện hiện ô chọn nhóm ở trạng thái chọn một phần. Mã lỗi xác nhận không có dòng nào là `nothing_to_import`, thiếu Chủ đề là `topic_required`.
+- Cột ngoài danh sách đã duyệt: `question_import_batches.created_count` và `commit_requested_at`, `question_import_items.search_text` (so nghi trùng) và `duplicate_of_row` (nghi trùng với dòng trước trong file). Có thêm `GET /api/question-imports` (danh sách phân trang cho "Lô nhập gần đây") và kiểm tra loại file, cỡ file ngay lúc tải lên như Yêu cầu cấp tài khoản. Lô quá hạn không còn hiện dù job dọn chưa chạy.
+- Chủ đề đích đã Lưu trữ lúc xác nhận trả `INVALID_STATE` với `reason: 'TOPIC_ARCHIVED'` (dùng lại mã sẵn có thay cho `topic_unavailable`); Chủ đề đã xóa thì lô bị xóa theo (`ON DELETE CASCADE`) nên trả `NOT_FOUND`. Nếu Chủ đề bị Lưu trữ đúng giữa lúc xếp job và lúc job chạy thì lô lặng lẽ trở lại `ready` (cửa sổ rất hẹp); bấm xác nhận lại sẽ nhận `TOPIC_ARCHIVED`.
+- "Xác nhận chạy một lần" làm bằng khóa dòng lô (`FOR UPDATE`) rồi đổi `ready → committing` trong cùng giao dịch, thay cho một câu `UPDATE ... WHERE status = 'ready'`; kết quả như nhau và có thêm kiểm tra Chủ đề, số dòng chọn trong cùng giao dịch. Số dòng "bỏ qua" ghi trong nhật ký gồm cả dòng lỗi.
+- Ô điểm chỉ nhận số thập phân thường (`0,5`, `2`); `0x10` hay `1e1` là `invalid_points`. `$$...$$` giữ nguyên là chữ.
+- Hai thuật ngữ mới được thêm vào GLOSSARY: **Lô nhập** và **Nghi trùng** (đều có trong văn bản đã duyệt của Q123 và Q146).
+- Giao diện cập nhật ô chọn ngay trên màn hình, không chờ server (mạng chậm trên điện thoại); server vẫn là nguồn đúng, lỗi thì trả về như cũ.
+
+### Điểm bước 0,05 (Q154, chủ dự án yêu cầu sau khi kiểm PR 2d)
+
+- `POINTS_MIN = 0,05`, `POINTS_STEP = 0,05` trong `@exam/shared`; một hằng dùng cho schema, ô nhập điểm ở trình soạn, bộ đọc file Nhập Excel và file mẫu.
+- Cột `default_points numeric(6,2)` đã đủ chính xác, **không cần migration**. Ngoài `defaultPoints`, các tỷ lệ của Bậc thang vẫn là số từ 0 đến 1, không đổi.
+- Bước 0,05 chứa cả bội của 0,1 và của 0,25, nên Câu hỏi đã lưu với điểm 0,25 hoặc 0,75 vẫn lưu lại được. (Ban đầu chọn 0,1, chủ dự án đổi sang 0,05 để vẫn đặt được 0,25.)
+- Bộ đọc file so sánh với sai số (`0,15 / 0,05` không tròn đúng 3 trong số thực), và chỉ nhận số thập phân thường như trước.
+
+## Nhập Excel bốn Loại, hủy lô, file mẫu (Q155–Q157, đã duyệt)
+
+Chủ dự án duyệt sau khi so ba cách nhập (bảng so sánh ở cuối mục); làm trong PR #18.
+
+- **Q155 Hủy lô nhập.**
+  - `DELETE /api/question-imports/:id`: chỉ chủ lô; chỉ khi lô `ready` hoặc `parse_failed`. Lô `parsing` hoặc `committing` (job đang chạy) và `committed` (đã tạo Câu hỏi) trả `INVALID_STATE`.
+  - Xóa cứng lô và các dòng (CASCADE). Không ghi `audit_logs` vì chưa tạo gì. Dùng khóa dòng `FOR UPDATE` như `commit` để Hủy và Xác nhận không chạy đồng thời.
+  - Giao diện: nút "Hủy lô" ở màn xem trước (có hộp xác nhận), ở lô `parse_failed`, và ở từng lô `ready` trong "Lô nhập gần đây". Sau khi hủy, quay về trang tải lên với Chủ đề đã chọn sẵn.
+  - Lưu ý: không cần Hủy vẫn tải lô mới được; Hủy giúp danh sách gọn và tránh xác nhận nhầm lô cũ.
+- **Q156 Nhập đủ bốn Loại câu hỏi bằng một file Excel bốn sheet** (thay phạm vi hẹp của Q123). Đã so ba cách ở mục dưới; đề xuất cách 1.
+  - **Một file `.xlsx`, bốn sheet dữ liệu + sheet "Hướng dẫn".** Tên sheet quyết định Loại, so khớp không phân biệt hoa thường và dấu: `Chọn một`, `Chọn nhiều`, `Chùm đúng sai`, `Tự luận`. Sheet nào để trống (chỉ có tiêu đề) thì bỏ qua; mọi sheet trống thì `empty_file`. Sheet lạ (khác "Hướng dẫn") làm cả file bị từ chối `unknown_sheet` kèm tên sheet, để đổi tên nhầm không làm mất câu hỏi trong im lặng.
+  - **Cột từng sheet** (tiêu đề khớp không dấu như Q145; Nội dung bắt buộc ở mọi sheet; Điểm trống = 1; Tags như cũ):
+
+    | Sheet | Cột riêng |
+    |---|---|
+    | Chọn một | Phương án A–H (tối thiểu A, B), Đáp án: đúng **một** chữ |
+    | Chọn nhiều | Phương án A–H, Đáp án: từ **một** chữ (`A,C`), Quy tắc chấm (Tỷ lệ hoặc Đúng hết) |
+    | Chùm đúng sai | Mệnh đề a–h (tối thiểu a), Đáp án `Đ,S,Đ,S` đúng thứ tự Mệnh đề (nhận cả `Đúng`/`Sai`), Quy tắc chấm (Tỷ lệ, Đúng hết hoặc Bậc thang), Bậc thang (`0; 0,1; 0,25; 0,5; 1`, bắt buộc khi chọn Bậc thang, dài đúng số Mệnh đề + 1) |
+    | Tự luận | Độ dài tối đa (100–5.000, trống = 2.000), Hướng dẫn chấm (tùy chọn) |
+
+  - Phương án nâng từ 6 lên 8 để khớp trình soạn (Q115). Vì loại do sheet quyết định nên **không còn suy ra loại từ số Đáp án**: gõ thiếu `A,C` thành `A` ở sheet Chọn nhiều vẫn là Câu chọn nhiều, không đổi loại im lặng.
+  - **Dữ liệu:** `question_import_items` thêm cột `sheet` (mã Loại); khóa duy nhất đổi từ `(batch_id, row_number)` sang `(batch_id, sheet, row_number)`. Migration `0009` chỉ thêm cột (các dòng cũ là `single_choice`/`multiple_choice` theo `payload`). Bản xem trước hiện nhãn Loại và số dòng trong sheet; thêm bộ lọc theo Loại.
+  - **Mã lỗi dòng mới:** `invalid_statement_key` (Đáp án Chùm sai chữ hoặc thiếu), `invalid_ladder`, `invalid_max_length`. Tên cột không thuộc Loại không phải lỗi (cột thừa bị bỏ qua như Q145). Tổng tối đa 500 dòng cả file.
+  - **Hệ quả:** nhập Câu hỏi chỉ nhận `.xlsx` (một CSV không có nhiều sheet). Yêu cầu cấp tài khoản vẫn nhận CSV. Bộ test và E2E của PR 2d đang dùng CSV nên chuyển sang tạo `.xlsx` bằng `exceljs`.
+  - Mọi dòng vẫn qua `questionInputSchema` chung nên ràng buộc của trình soạn áp dụng nguyên vẹn.
+- **Q157 File mẫu và file ví dụ.**
+  - Hai tệp tải về, cùng bố cục: **file mẫu trống** (bốn sheet có tiêu đề, sheet "Hướng dẫn"; không có dòng gợi ý để không bị nhập nhầm, xem phần bổ sung) và **file ví dụ** có 8 Câu hỏi: mỗi Loại 2 câu, một câu Toán rời rạc có công thức (`$...$`) và một câu Tin học căn bản.
+  - Sheet "Hướng dẫn" nêu thứ tự điền, cột từng sheet, cách viết công thức và điểm bước 0,05, Bậc thang, và các lỗi thường gặp kèm cách sửa (nêu bằng lời, không liệt kê mã lỗi).
+  - File ví dụ nhập được nguyên vẹn để thử; nhập lần hai sẽ bị đánh dấu Nghi trùng.
+
+**Bổ sung khi làm Q155–Q157** (không đổi điều đã duyệt):
+- Cột mới của `question_import_items` tên `type` (dùng enum `question_type` sẵn có) và `duplicate_of_type`; migration `0009_question_import_types` chuyển dữ liệu cũ (Loại lấy từ `payload`, dòng lỗi cũ coi là Câu chọn một). Khóa duy nhất là `(batch_id, type, row_number)`.
+- Mã lỗi `scoring_rule_not_allowed` bỏ: sheet "Chọn một" không có cột Quy tắc chấm nên không còn tình huống đó. Thêm lỗi cả file `duplicate_sheet` (hai sheet cùng một Loại, ví dụ "Chọn một" và "chon mot").
+- Lỗi cả file gắn với sheet được lưu dạng `mã:tên sheet` trong `parse_error` (ví dụ `missing_columns:Chọn một`); giao diện tách ra để hiện tên sheet.
+- Sheet không có dòng dữ liệu bị bỏ qua trước khi kiểm cột, nên xóa hoặc sửa dòng tiêu đề của sheet không dùng không gây lỗi; chỉ cần ít nhất một sheet có dữ liệu (nếu không: `empty_file`). Chỉ dùng sheet "Chọn một" là cách dùng bình thường.
+- Bậc thang tách bằng dấu chấm phẩy hoặc khoảng trắng (dấu phẩy là dấu thập phân); `0, 0.5, 1` bị từ chối `invalid_ladder`. Bậc thang đi cùng quy tắc Bậc thang: điền một trong hai mà thiếu bên kia là `invalid_ladder`.
+- `GET /api/question-imports/template` (mẫu trống, không có dòng mẫu nào để không bị nhập nhầm; ghi chú từng cột nằm ở ô tiêu đề và danh sách chọn cho Quy tắc chấm) và `GET /api/question-imports/example` (8 câu). Sheet "Hướng dẫn" đứng đầu.
+- `DELETE /api/question-imports/:id` trả 200 không nội dung như các `DELETE` khác; lô không hủy được trả `INVALID_STATE` với `reason: 'BATCH_NOT_CANCELLABLE'`.
+- `GET .../items` nhận thêm `type`; `GET .../:id` trả thêm `types` (số dòng mỗi Loại) để giao diện chỉ hiện bộ lọc Loại khi lô có từ hai Loại.
+- Chuỗi điểm bước 0,05 (Q154) áp dụng cho cả bốn sheet.
+
+### So sánh ba cách nhập (cơ sở của Q156)
+
+| | 1. Một file, bốn sheet | 2. Mỗi Loại một file mẫu | 3. Giữ hai Loại như cũ |
+|---|---|---|---|
+| Loại nhập được | 4 | 4 | Chọn một, Chọn nhiều |
+| Người dùng tải | 1 file | 4 file, chọn đúng file | 1 file |
+| Một lần tải lên | Trộn mọi Loại | Một Loại; trộn thì tải 4 lần, 4 lô | Hai Loại |
+| Hướng dẫn | Cùng file, sheet riêng | Phải lặp trong 4 file hoặc tách ra | Cùng file |
+| Lỗi hay gặp | Đổi tên sheet (đã chặn bằng `unknown_sheet`) | Tải nhầm file với Loại đã chọn (bắt bằng `missing_columns`) | Gõ thiếu Đáp án đổi loại im lặng |
+| Cột trong mỗi bảng | Chỉ cột của Loại đó, gọn | Như cách 1 | Một bảng, tối đa 11 cột |
+| Công sức mã | Đọc nhiều sheet, cột `sheet`, bốn bộ đọc dòng | Cột `question_type` của lô, chọn Loại ở UI, bốn bộ đọc dòng | Không thêm |
+| CSV | Bỏ | Giữ được | Giữ |
+
+Bốn bộ đọc dòng (theo Loại) có ở cả cách 1 và 2 nên công sức mã của hai cách gần bằng nhau; cách 2 chỉ đơn giản hơn ở chỗ không phải đọc nhiều sheet. Cách 1 hợp Người ra đề soạn đề hỗn hợp (một file, một lần tải lên, hướng dẫn đi kèm) và để lỗi nhập tay ít nhất vì mỗi sheet chỉ có cột của Loại đó. Cách 3 ít việc nhất nhưng Chùm đúng/sai (nhiều Mệnh đề + Bậc thang), loại tốn công soạn tay nhất, vẫn phải làm từng câu một.
 
 ## Test (seam đã duyệt)
 
@@ -191,7 +329,7 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 - Rút ngẫu nhiên câu hỏi theo Chủ đề, thống kê câu hỏi, nhập từ Word, ảnh trong Câu tự luận: giai đoạn sau (architecture.md mục 9).
 - Chia sẻ Chủ đề giữa các Người ra đề: ngoài giai đoạn 1 (GLOSSARY: mỗi Chủ đề chỉ có một chủ).
 
-## Quyết định (Q111–Q126, đã duyệt)
+## Quyết định (Q111–Q157, đã duyệt)
 
 | Câu | Quyết định |
 |---|---|
@@ -199,7 +337,7 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q112 | Chủ đề phẳng, tên không trùng trong cùng chủ; còn Câu hỏi thì không xóa được, có Lưu trữ Chủ đề; phân nhóm nhỏ bằng `tags` |
 | Q113 | Chỉ chủ sở hữu thấy nội dung Câu hỏi; Quản trị viên chỉ thấy tên Chủ đề và số câu để Chuyển giao |
 | Q114 | Nội dung là TipTap JSON theo schema giới hạn, kiểm bằng Zod dùng chung; client dựng từ JSON, không HTML thô |
-| Q115 | Ràng buộc từng Loại câu hỏi (2–8 Phương án, 1–8 Mệnh đề, Bậc thang hợp lệ, điểm 0,25–100, tự luận 100–5.000 ký tự) |
+| Q115 | Ràng buộc từng Loại câu hỏi (2–8 Phương án, 1–8 Mệnh đề, Bậc thang hợp lệ, điểm 0,05–100 (Q154), tự luận 100–5.000 ký tự) |
 | Q116 | `version` tăng mỗi lần sửa, không lưu lịch sử bản cũ (đã có bản chụp lúc Phát hành) |
 | Q117 | Chưa dùng thì xóa hẳn, đã dùng thì Lưu trữ; Lưu trữ thêm ở lát cắt 3 qua cổng `QuestionUsage` |
 | Q118 | Tìm không dấu qua cột `search_text`; lọc Chủ đề, Loại, tag; phân trang 20 trên URL |
@@ -227,3 +365,18 @@ Những điểm PR 2a làm thêm hoặc khác so với văn bản trên, đều 
 | Q140 | Multipart ≤ 5 MB, worker sharp: bỏ EXIF, từ chối > 8.000 px, chỉ lưu biến thể WebP ≤ 1600/960/480, không giữ bản gốc; `processing → ready/failed` |
 | Q141 | `GET /api/media/:id/:variant` chỉ chủ; `X-Accel-Redirect` ở production; `srcset`, tải lười, chạm phóng to |
 | Q142 | Trình duyệt thu nhỏ ≤ 2.400 px trước khi tải lên; server không tin client |
+| Q143 | Người mang cả hai Nhãn vai trò chuyển khu "Soạn đề" ↔ "Làm bài" ở menu tài khoản; thanh bên chỉ hiện mục của khu đang xem. Làm ở lát cắt 4, khi có `/take` |
+| Q144 | Người ra đề không được có tên trong Danh sách dự thi của Phiên thi do chính mình sở hữu (server từ chối `owner_cannot_sit`); vẫn thi được đề của Người ra đề khác. Làm ở lát cắt 4 |
+| Q145 | File mẫu Nhập Excel: tiêu đề khớp không dấu, điểm trống = 1, `$...$` thành công thức trong dòng, `\$` là dấu đô la, Quy tắc chấm trên câu chọn một là lỗi |
+| Q146 | Lô nhập: trạng thái `parsing → ready → committing → committed`; chọn dòng để tạo (mặc định hợp lệ, bỏ nghi trùng); xác nhận chỉ chạy một lần; Chủ đề đích đổi trạng thái thì từ chối |
+| Q147 | Giao diện nhập: trang `/examiner/questions/import`, bốn bước, xem trước từng dòng có bộ lọc, điện thoại hiện thẻ |
+| Q148 | Chuyển giao: Quản trị viên chọn Chủ đề (cả đã Lưu trữ) và người nhận; tên trùng thêm hậu tố; một giao dịch; ghi `topic.transfer` |
+| Q149 | Hình minh họa khi Chuyển giao: chuyển chủ nếu chỉ các Câu hỏi đang chuyển dùng và người nhận chưa có ảnh trùng; ngược lại dùng ảnh sẵn có của người nhận hoặc sao chép rồi trỏ lại |
+| Q150 | Xóa người dùng kèm người nhận: `DELETE ...?recipientId=`; `HAS_CONTENT` kèm danh sách Chủ đề; identity gọi question-bank qua cổng `OwnedContent` |
+| Q151 | Giao diện quản trị: thẻ "Nội dung" ở trang người dùng, hộp thoại chọn người nhận dùng chung cho Chuyển giao và Xóa; người nhận được thông báo `topics.transferred` |
+| Q152 | Seam test của PR 2d (xem mục "Chi tiết đề xuất cho PR 2d") |
+| Q153 | Tách PR 2d thành 2d (Nhập Excel) và 2f (Chuyển giao + Xóa người dùng chọn người nhận) |
+| Q154 | Điểm mặc định từ 0,05 đến 100, bước 0,05 (thay 0,25), dùng chung cho soạn tay và Nhập Excel |
+| Q155 | Hủy lô nhập: `DELETE /api/question-imports/:id`, chỉ lô `ready` hoặc `parse_failed`, xóa cứng; giao diện có hộp xác nhận rồi về trang tải lên với Chủ đề đã chọn |
+| Q156 | Nhập đủ bốn Loại bằng một file `.xlsx` bốn sheet (Chọn một, Chọn nhiều, Chùm đúng sai, Tự luận); Loại do sheet quyết định; bỏ CSV; Phương án/Mệnh đề A–H |
+| Q157 | Hai file tải về: mẫu trống (có sheet Hướng dẫn) và ví dụ 8 câu (Toán rời rạc có công thức và Tin học căn bản, mỗi Loại 2 câu) |

@@ -16,7 +16,7 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
 - Quản lý Chủ đề và Câu hỏi thuộc sở hữu riêng.
   - 4 loại câu: chọn một, chọn nhiều, chùm đúng/sai, tự luận ngắn.
   - Hình minh họa, soạn công thức toán trực quan.
-  - Nhập hàng loạt câu trắc nghiệm từ Excel.
+  - Nhập hàng loạt câu hỏi cả bốn loại từ Excel (mỗi loại một sheet).
 - Soạn Bộ đề: chia Phần, dùng lại Câu hỏi giữa nhiều Bộ đề, đặt điểm nhanh, Xem thử, Phát hành.
 - Tổ chức Phiên thi.
   - Thiết lập: Khung giờ, Thời lượng, Mã vào thi, số lượt làm bài, xáo trộn câu và phương án.

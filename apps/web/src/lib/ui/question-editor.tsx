@@ -1,3 +1,4 @@
+import { POINTS_MAX, POINTS_MIN, POINTS_STEP } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { Copy, Save, Trash2 } from 'lucide-react';
@@ -228,9 +229,9 @@ export function QuestionEditor({
             label={t('questionBank.defaultPoints')}
             type="number"
             inputMode="decimal"
-            min={0.25}
-            max={100}
-            step={0.25}
+            min={POINTS_MIN}
+            max={POINTS_MAX}
+            step={POINTS_STEP}
             value={draft.defaultPoints}
             onChange={(e) => patch({ defaultPoints: Number(e.target.value) })}
             error={shown.includes('points') && t('questionBank.problem.points')}

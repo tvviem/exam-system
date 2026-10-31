@@ -1,6 +1,7 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
+import { queryString } from './query-string';
 
 export type AccountRequestStatus =
   | 'parsing'
@@ -73,15 +74,6 @@ export interface AccountRequestParams {
   status?: AccountRequestStatus;
   page?: number;
 }
-
-const queryString = (params: Record<string, string | number | undefined>) => {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== '') search.set(key, String(value));
-  }
-  const text = search.toString();
-  return text ? `?${text}` : '';
-};
 
 export const accountRequestsQuery = (params: AccountRequestParams) =>
   queryOptions({

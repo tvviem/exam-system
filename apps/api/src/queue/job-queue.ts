@@ -16,6 +16,12 @@ export interface JobPayloads {
   };
   /** Xử lý Hình minh họa vừa tải lên: bỏ EXIF, tạo biến thể WebP (Q140). */
   'illustration.process': { illustrationId: string };
+  /** Đọc file Nhập Excel Câu hỏi thành các dòng xem trước (Q146). */
+  'question-import.parse': { batchId: string };
+  /** Tạo Câu hỏi từ các dòng đã chọn của một lô nhập, trong một giao dịch (Q146). */
+  'question-import.commit': { batchId: string; actorId: string; actorIp: string | null };
+  /** Dọn lô nhập quá 30 ngày và lô kẹt do worker chết (Q146). */
+  'question-import.cleanup': Record<string, never>;
   /** Dọn dẹp định kỳ hằng ngày (Q96). */
   'maintenance.cleanup': Record<string, never>;
 }

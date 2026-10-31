@@ -160,12 +160,13 @@ describe('Câu tự luận', () => {
 });
 
 describe('phần chung', () => {
-  it('điểm mặc định từ 0,25 đến 100, bước 0,25', () => {
-    expect(ok(single({ defaultPoints: 0.25 }))).toBe(true);
-    expect(ok(single({ defaultPoints: 100 }))).toBe(true);
-    expect(ok(single({ defaultPoints: 0 }))).toBe(false);
-    expect(ok(single({ defaultPoints: 100.25 }))).toBe(false);
-    expect(ok(single({ defaultPoints: 1.1 }))).toBe(false);
+  it('điểm mặc định từ 0,05 đến 100, bước 0,05', () => {
+    for (const points of [0.05, 0.1, 0.15, 0.25, 0.3, 0.75, 1.1, 2.5, 33.35, 99.95, 100]) {
+      expect(ok(single({ defaultPoints: points }))).toBe(true);
+    }
+    for (const points of [0, 0.01, 0.07, 0.12, 1.123, 100.05]) {
+      expect(ok(single({ defaultPoints: points }))).toBe(false);
+    }
   });
 
   it('tags: tối đa 10, 1–30 ký tự, chuẩn hóa chữ thường và khoảng trắng, bỏ trùng', () => {

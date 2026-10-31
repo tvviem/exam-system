@@ -12,7 +12,7 @@ export function BrandMark({ className = '' }: { className?: string }) {
       >
         <GraduationCap className="size-5" />
       </span>
-      <span className="min-w-0">{t('app.title')}</span>
+      <span className="min-w-0 whitespace-nowrap">{t('app.title')}</span>
     </span>
   );
 }

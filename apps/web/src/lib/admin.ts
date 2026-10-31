@@ -1,6 +1,7 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { apiFetch } from './api';
 import type { RoleTag } from './auth';
+import { queryString } from './query-string';
 
 export type UserStatus = 'active' | 'locked' | 'removed';
 export type Gender = 'male' | 'female' | 'other';
@@ -89,16 +90,6 @@ export interface AuditLog {
 export interface TemporaryPassword {
   temporaryPassword: string;
   passwordExpiresAt: string;
-}
-
-/** Bỏ tham số rỗng để URL gọn và khóa cache ổn định. */
-function queryString(params: Record<string, string | number | undefined>): string {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== '') search.set(key, String(value));
-  }
-  const text = search.toString();
-  return text ? `?${text}` : '';
 }
 
 export interface UserListParams {

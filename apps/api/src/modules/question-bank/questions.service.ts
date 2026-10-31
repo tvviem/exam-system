@@ -1,4 +1,4 @@
-import { normalizeForSearch, plainTextOf, type QuestionInput, searchTextOf } from '@exam/shared';
+import { normalizeForSearch, plainTextOf, type QuestionInput } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
@@ -7,6 +7,7 @@ import { type Database, DB } from '../../db/db.module';
 import { IllustrationsService } from './illustrations/illustrations.service';
 import { assertLatexValid } from './latex';
 import { questions, topics } from './question-bank.schema';
+import { questionColumnsOf } from './question-columns';
 import { TopicsService } from './topics.service';
 
 export interface QuestionFilter {
@@ -58,7 +59,7 @@ export class QuestionsService {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(questions)
-        .values({ ownerId, ...this.valuesOf(input) })
+        .values({ ownerId, ...questionColumnsOf(input) })
         .returning(fullColumns);
       if (!row) throw new Error('Không tạo được Câu hỏi');
       await this.illustrations.syncUsage(tx, ownerId, row.id, input);
@@ -87,7 +88,7 @@ export class QuestionsService {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .update(questions)
-        .set({ ...this.valuesOf(input), version: sql`${questions.version} + 1` })
+        .set({ ...questionColumnsOf(input), version: sql`${questions.version} + 1` })
         .where(
           and(eq(questions.id, id), eq(questions.ownerId, ownerId), eq(questions.version, version)),
         )
@@ -186,18 +187,6 @@ export class QuestionsService {
         defaultPoints: Number(defaultPoints),
         preview: plainTextOf(stem).slice(0, PREVIEW_CHARS),
       })),
-    };
-  }
-
-  private valuesOf(input: QuestionInput) {
-    return {
-      topicId: input.topicId,
-      type: input.type,
-      stem: input.stem,
-      payload: input.payload,
-      defaultPoints: String(input.defaultPoints),
-      tags: input.tags,
-      searchText: searchTextOf(input),
     };
   }
 }

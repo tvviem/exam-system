@@ -1,7 +1,7 @@
 import { normalizeForSearch } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ChevronRight, FolderCog, Plus, Trash2 } from 'lucide-react';
+import { ChevronRight, FileSpreadsheet, FolderCog, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
@@ -18,6 +18,7 @@ import {
 import {
   Badge,
   Button,
+  buttonClass,
   Card,
   Dialog,
   ErrorMessage,
@@ -127,11 +128,19 @@ function QuestionBankPage() {
       <PageHeader
         title={t('questionBank.title')}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={() => setManaging(true)}>
               <FolderCog aria-hidden className="size-5" />
               {t('questionBank.manageTopics')}
             </Button>
+            <Link
+              to="/examiner/questions/import"
+              search={{ topicId: search.topicId }}
+              className={buttonClass('secondary')}
+            >
+              <FileSpreadsheet aria-hidden className="size-5" />
+              {t('questionBank.importExcel')}
+            </Link>
             <PrimaryButton onClick={() => setChoosingType(true)}>
               <Plus aria-hidden className="size-5" />
               {t('questionBank.newQuestion')}

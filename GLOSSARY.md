@@ -81,6 +81,14 @@ _Avoid_: chia sẻ, bàn giao
 Nội dung chính của Câu hỏi mà Người dự thi đọc trước khi trả lời, có thể kèm Hình minh họa.
 _Avoid_: đề bài, nội dung câu
 
+**Lô nhập** (`QuestionImportBatch`):
+Một lần Người ra đề tải file Excel chứa Câu hỏi vào một Chủ đề; mỗi Loại câu hỏi nằm ở một sheet của file. Lô cho xem trước từng dòng, chọn dòng rồi mới tạo Câu hỏi, và được giữ 30 ngày để xem lại. Lô chờ xác nhận hoặc đọc lỗi có thể hủy (xóa) để sửa file rồi tải lại.
+_Avoid_: import, đợt nhập
+
+**Nghi trùng** (`Duplicate suspect`):
+Dòng của Lô nhập có nội dung giống một Câu hỏi đã có trong Chủ đề đích, hoặc giống một dòng đứng trước trong cùng file. Chỉ là cảnh báo: Người ra đề quyết định có tạo hay không.
+_Avoid_: trùng lặp (khi chưa chắc), duplicate
+
 **Hình minh họa** (`Illustration`):
 Hình ảnh gắn vào Phần dẫn, Phương án hoặc Mệnh đề để diễn đạt nội dung.
 _Avoid_: attachment, media

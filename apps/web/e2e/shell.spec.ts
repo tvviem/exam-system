@@ -38,6 +38,18 @@ test.describe('khung ứng dụng thích ứng', () => {
     expect(box?.height).toBeGreaterThan(200);
   });
 
+  test('từ 1024 px: tên hệ thống trên thanh bên nằm trọn một dòng', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1024, height: 800 });
+    await signIn(page, `e2e-khung-${testInfo.project.name}`);
+    const title = page.locator('#app-sidebar').getByText('Hệ thống thi trực tuyến');
+    await expect(title).toBeVisible();
+    const lineHeight = await title.evaluate((el) =>
+      Number.parseFloat(getComputedStyle(el).lineHeight),
+    );
+    const box = await title.boundingBox();
+    expect(box?.height).toBeLessThanOrEqual(lineHeight + 1);
+  });
+
   test('dưới 1024 px: thanh tab dưới đáy 4 mục + "Thêm" mở các mục còn lại', async ({
     page,
   }, testInfo) => {

@@ -133,9 +133,9 @@ export function AppShell({
       {items.length > 0 && (
         <aside
           id="app-sidebar"
-          className={`fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-surface ${sidebar ? 'lg:flex' : ''}`}
+          className={`fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-surface ${sidebar ? 'lg:flex' : ''}`}
         >
-          <Brand className="h-(--app-header-h) px-5" />
+          <Brand className="h-(--app-header-h) px-4 text-sm" />
           <nav
             aria-label={t('nav.main')}
             className="flex flex-1 flex-col gap-1 overflow-y-auto p-3"
@@ -150,7 +150,7 @@ export function AppShell({
         </aside>
       )}
 
-      <div className={sidebar ? 'lg:pl-64' : ''}>
+      <div className={sidebar ? 'lg:pl-72' : ''}>
         <header className="sticky top-0 z-20 border-b border-border bg-surface">
           <div className="flex h-(--app-header-h) items-center gap-3 px-4 md:px-6 lg:px-8">
             {items.length > 0 && (

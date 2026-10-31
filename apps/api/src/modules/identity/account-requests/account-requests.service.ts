@@ -7,6 +7,7 @@ import type { Actor } from '../../../common/actor';
 import { ApiError, validationFailed } from '../../../common/api-error';
 import { CLOCK, type Clock } from '../../../common/clock';
 import { type Page, paginate } from '../../../common/pagination';
+import { MAX_UPLOAD_BYTES, sniffUpload } from '../../../common/spreadsheet';
 import { type Database, DB } from '../../../db/db.module';
 import { MEDIA_STORE, type MediaStore } from '../../../media/media-store';
 import { JOB_QUEUE, type JobQueue } from '../../../queue/job-queue';
@@ -14,7 +15,6 @@ import { AuditService } from '../../audit/audit.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { accountRequestItems, accountRequests, users } from '../identity.schema';
-import { MAX_UPLOAD_BYTES, sniffUpload } from './account-request-file';
 import { settleRequest } from './account-request-settle';
 
 export type AccountRequestStatus = (typeof accountRequests.$inferSelect)['status'];
