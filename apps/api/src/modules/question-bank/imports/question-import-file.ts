@@ -5,6 +5,7 @@ import {
   normalizeTag,
   POINTS_MAX,
   POINTS_MIN,
+  POINTS_STEP,
   plainTextOf,
   type QuestionInput,
   questionInputSchema,
@@ -191,14 +192,16 @@ function parseAnswer(value: string, optionCount: number): string[] | null {
   return indexes.map((i) => `o${i + 1}`);
 }
 
-/** Trống = 1; chấp nhận dấu phẩy thập phân. null nếu không phải số 0,25–100 chia hết cho 0,25. */
+/** Trống = 1; chấp nhận dấu phẩy thập phân. null nếu không phải số 0,1–100 chia hết cho 0,1. */
 function parsePoints(value: string): number | null {
   if (value === '') return DEFAULT_POINTS;
   // Chỉ nhận số thập phân thường: `Number()` cũng nhận `0x10` hay `1e1`.
   if (!/^\d+([.,]\d+)?$/.test(value)) return null;
   const points = Number(value.replace(',', '.'));
   if (points < POINTS_MIN || points > POINTS_MAX) return null;
-  return Number.isInteger(points * 4) ? points : null;
+  // So sánh với sai số: 0,3 / 0,1 trong số thực không tròn đúng 3.
+  const steps = points / POINTS_STEP;
+  return Math.abs(steps - Math.round(steps)) < 1e-9 ? points : null;
 }
 
 function parseScoringRule(
