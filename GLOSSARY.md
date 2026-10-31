@@ -82,7 +82,7 @@ Nội dung chính của Câu hỏi mà Người dự thi đọc trước khi tr�
 _Avoid_: đề bài, nội dung câu
 
 **Lô nhập** (`QuestionImportBatch`):
-Một lần Người ra đề tải file Excel chứa Câu hỏi vào một Chủ đề. Lô cho xem trước từng dòng, chọn dòng rồi mới tạo Câu hỏi, và được giữ 30 ngày để xem lại.
+Một lần Người ra đề tải file Excel chứa Câu hỏi vào một Chủ đề; mỗi Loại câu hỏi nằm ở một sheet của file. Lô cho xem trước từng dòng, chọn dòng rồi mới tạo Câu hỏi, và được giữ 30 ngày để xem lại. Lô chờ xác nhận hoặc đọc lỗi có thể hủy (xóa) để sửa file rồi tải lại.
 _Avoid_: import, đợt nhập
 
 **Nghi trùng** (`Duplicate suspect`):

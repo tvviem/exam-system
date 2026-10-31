@@ -3,7 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
-import { cancelImport } from '../question-imports';
+import { cancelImport, importKeys } from '../question-imports';
 import { Button, Dialog, ErrorMessage } from '.';
 
 /** Nút "Hủy lô" kèm hộp xác nhận (Q155): xóa lô chờ xác nhận hoặc lô đọc lỗi để sửa file rồi tải lại. */
@@ -23,9 +23,9 @@ export function CancelImportButton({
     mutationFn: () => cancelImport(batchId),
     onSuccess: async () => {
       // Lô đã mất: bỏ khỏi bộ nhớ đệm thay vì nạp lại (sẽ nhận 404), chỉ làm mới danh sách.
-      queryClient.removeQueries({ queryKey: ['question-imports', 'detail', batchId] });
-      queryClient.removeQueries({ queryKey: ['question-imports', 'items', batchId] });
-      await queryClient.invalidateQueries({ queryKey: ['question-imports', 'list'] });
+      queryClient.removeQueries({ queryKey: importKeys.detail(batchId) });
+      queryClient.removeQueries({ queryKey: importKeys.items(batchId) });
+      await queryClient.invalidateQueries({ queryKey: importKeys.list });
       setOpen(false);
       onCancelled?.();
     },

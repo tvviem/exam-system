@@ -99,7 +99,7 @@ type TextOf = (field: Field) => string;
 
 /** Phần riêng của từng Loại câu hỏi sau khi đọc xong các ô của nó. */
 interface Part {
-  candidate: { type: QuestionType; payload: unknown };
+  payload: unknown;
   /** Phương án hoặc Mệnh đề (giới hạn `ITEM_MAX_CHARS`). */
   items: RichText[];
   /** Hướng dẫn chấm (giới hạn như Phần dẫn). */
@@ -251,7 +251,8 @@ function buildQuestion(spec: SheetSpec, text: TextOf): Built {
   if (problems.includes('math_invalid')) return fail('math_invalid');
 
   const parsed = questionInputSchema.safeParse({
-    ...part.candidate,
+    type: spec.type,
+    payload: part.payload,
     topicId: PLACEHOLDER_TOPIC_ID,
     stem,
     defaultPoints: points,
@@ -286,7 +287,7 @@ function readChoice(text: TextOf, multiple: boolean): Part | ImportRowErrorCode 
 
   if (!multiple) {
     return {
-      candidate: { type: 'single_choice', payload: { options, key, shuffleOptions: true } },
+      payload: { options, key, shuffleOptions: true },
       items: items.docs,
       notes: [],
     };
@@ -294,10 +295,7 @@ function readChoice(text: TextOf, multiple: boolean): Part | ImportRowErrorCode 
   const rule = parseScoringRule(text('scoringRule'), ['proportional', 'all_or_nothing']);
   if (!rule) return 'invalid_scoring_rule';
   return {
-    candidate: {
-      type: 'multiple_choice',
-      payload: { options, key, scoringRule: rule, shuffleOptions: true },
-    },
+    payload: { options, key, scoringRule: rule, shuffleOptions: true },
     items: items.docs,
     notes: [],
   };
@@ -329,10 +327,7 @@ function readCluster(text: TextOf): Part | ImportRowErrorCode {
     key: keys[i] as boolean,
   }));
   return {
-    candidate: {
-      type: 'true_false_cluster',
-      payload: { statements, scoringRule: rule, ...(ladder ? { ladder } : {}) },
-    },
+    payload: { statements, scoringRule: rule, ...(ladder ? { ladder } : {}) },
     items: items.docs,
     notes: [],
   };
@@ -343,7 +338,7 @@ function readEssay(text: TextOf): Part | ImportRowErrorCode {
   if (maxLength === null) return 'invalid_max_length';
   const rubric = cellToDoc(text('rubric'));
   return {
-    candidate: { type: 'essay', payload: { maxLength, ...(rubric ? { rubric } : {}) } },
+    payload: { maxLength, ...(rubric ? { rubric } : {}) },
     items: [],
     notes: rubric ? [rubric] : [],
   };

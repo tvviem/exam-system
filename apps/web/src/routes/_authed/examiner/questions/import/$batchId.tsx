@@ -17,6 +17,8 @@ import {
   type ImportSelection,
   importBatchQuery,
   importItemsQuery,
+  importKeys,
+  isCancellable,
   parseErrorOf,
   selectImportItems,
 } from '../../../../../lib/question-imports';
@@ -76,7 +78,6 @@ function BatchBody({ batch }: { batch: ImportBatch }) {
   // Hủy xong thì về trang tải lên với Chủ đề đã chọn sẵn, để sửa file rồi tải lại ngay (Q155).
   const backToUpload = () =>
     navigate({ to: '/examiner/questions/import', search: { topicId: batch.topic.id } });
-  const cancellable = batch.status === 'ready' || batch.status === 'parse_failed';
   const parseError = parseErrorOf(batch.parseError);
   return (
     <>
@@ -88,7 +89,9 @@ function BatchBody({ batch }: { batch: ImportBatch }) {
             {formatDateTime(batch.createdAt)}
           </p>
         </div>
-        {cancellable && <CancelImportButton batchId={batch.id} onCancelled={backToUpload} />}
+        {isCancellable(batch.status) && (
+          <CancelImportButton batchId={batch.id} onCancelled={backToUpload} />
+        )}
       </Card>
 
       {batch.status === 'parsing' && <BusyCard>{t('questionImport.parsingHint')}</BusyCard>}
@@ -127,15 +130,15 @@ function Preview({ batch }: { batch: ImportBatch }) {
     importItemsQuery(batch.id, { kind, type, page }, `${batch.status}:${batch.createdCount}`),
   );
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['question-imports'] });
-  const itemsKey = ['question-imports', 'items', batch.id];
+  const refresh = () => queryClient.invalidateQueries({ queryKey: importKeys.all });
+  const itemsKey = importKeys.items(batch.id);
   const batchKey = importBatchQuery(batch.id).queryKey;
   // Ô chọn đổi ngay, không chờ server (mạng chậm trên điện thoại); lỗi thì trả về như cũ.
   const select = useMutation({
     mutationFn: (args: { selection: ImportSelection; on: boolean }) =>
       selectImportItems(batch.id, args.selection, args.on),
     onMutate: async ({ selection, on }) => {
-      await queryClient.cancelQueries({ queryKey: ['question-imports'] });
+      await queryClient.cancelQueries({ queryKey: importKeys.all });
       const previousItems = queryClient.getQueriesData<PageResult<ImportItem>>({
         queryKey: itemsKey,
       });

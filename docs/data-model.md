@@ -157,7 +157,7 @@ question_import_batches (                 -- Lô nhập Câu hỏi từ Excel (Q
   original_filename text,                 -- chỉ để hiển thị
   upload_key text NULL,                   -- file chờ đọc trong MediaStore; xóa ngay sau khi đọc xong
   status enum('parsing','parse_failed','ready','committing','committed'),
-  parse_error text NULL,                  -- mã lỗi cả file khi status = parse_failed
+  parse_error text NULL,                  -- mã lỗi cả file khi status = parse_failed; lỗi gắn với một sheet ghi `mã:tên sheet` (vd `missing_columns:Chọn một`)
   row_count int NULL, created_count int NULL,
   created_at, commit_requested_at NULL,   -- lúc bấm xác nhận; `committing` quá 15 phút thì job dọn đưa về `ready`
   committed_at NULL, expires_at           -- = created_at + 30 ngày

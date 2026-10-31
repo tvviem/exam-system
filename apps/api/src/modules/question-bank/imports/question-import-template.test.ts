@@ -73,6 +73,17 @@ describe('file ví dụ nhập Câu hỏi (Q157)', () => {
     ]);
   });
 
+  it('mệnh đề ví dụ về số cạnh tối đa của đồ thị đơn 5 đỉnh (10 cạnh) viết đủ nghĩa để đáp án Sai không mơ hồ', async () => {
+    const { rows } = await parseQuestionImportFile(await buildQuestionImportExample());
+    const graph = rows.find((r) => JSON.stringify(r.input).includes('đồ thị đơn có'));
+    const payload = graph?.input?.payload as { statements: { content: unknown; key: boolean }[] };
+    const wrong = payload.statements[3];
+    // "có thể có 20 cạnh" mới sai thật; "tối đa 20 cạnh" đúng theo nghĩa đen (10 ≤ 20).
+    expect(JSON.stringify(wrong?.content)).toContain('có thể có');
+    expect(JSON.stringify(wrong?.content)).not.toContain('tối đa');
+    expect(wrong?.key).toBe(false);
+  });
+
   it('có công thức và Bậc thang bước 0,1 như hướng dẫn', async () => {
     const { rows } = await parseQuestionImportFile(await buildQuestionImportExample());
     const cluster = rows.find((r) => r.type === 'true_false_cluster');

@@ -67,6 +67,18 @@ export interface ImportItem {
   tags: string[] | null;
 }
 
+/** Khóa truy vấn của Nhập Excel; mọi nơi làm mới hoặc bỏ bộ nhớ đệm dùng chung các khóa này. */
+export const importKeys = {
+  all: ['question-imports'] as const,
+  list: ['question-imports', 'list'] as const,
+  detail: (id: string) => ['question-imports', 'detail', id] as const,
+  items: (id: string) => ['question-imports', 'items', id] as const,
+};
+
+/** Lô còn hủy được: đang chờ xác nhận hoặc đọc lỗi (Q155). Khớp quy tắc ở server. */
+export const isCancellable = (status: ImportStatus) =>
+  status === 'ready' || status === 'parse_failed';
+
 export const IMPORT_TEMPLATE_URL = '/api/question-imports/template';
 export const IMPORT_EXAMPLE_URL = '/api/question-imports/example';
 
@@ -81,7 +93,7 @@ export function parseErrorOf(value: string | null): { code: string; sheet: strin
 
 export const importBatchesQuery = (page?: number) =>
   queryOptions({
-    queryKey: ['question-imports', 'list', page],
+    queryKey: [...importKeys.list, page],
     queryFn: () =>
       apiFetch<PageResult<ImportBatchListItem>>(`/question-imports${queryString({ page })}`),
     placeholderData: keepPreviousData,
@@ -90,7 +102,7 @@ export const importBatchesQuery = (page?: number) =>
 /** Đang đọc file hoặc đang tạo Câu hỏi thì hỏi lại mỗi giây. */
 export const importBatchQuery = (id: string) =>
   queryOptions({
-    queryKey: ['question-imports', 'detail', id],
+    queryKey: importKeys.detail(id),
     queryFn: () => apiFetch<ImportBatch>(`/question-imports/${id}`),
     refetchInterval: (query) =>
       ['parsing', 'committing'].includes(query.state.data?.status ?? '') ? 1000 : false,
@@ -102,7 +114,7 @@ export const importItemsQuery = (
   refreshKey: string,
 ) =>
   queryOptions({
-    queryKey: ['question-imports', 'items', id, params, refreshKey],
+    queryKey: [...importKeys.items(id), params, refreshKey],
     queryFn: () =>
       apiFetch<PageResult<ImportItem>>(`/question-imports/${id}/items${queryString(params)}`),
     placeholderData: keepPreviousData,

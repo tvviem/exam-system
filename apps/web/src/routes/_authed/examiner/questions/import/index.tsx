@@ -11,6 +11,8 @@ import {
   IMPORT_TEMPLATE_URL,
   type ImportStatus,
   importBatchesQuery,
+  importKeys,
+  isCancellable,
   uploadQuestionImport,
 } from '../../../../../lib/question-imports';
 import {
@@ -95,7 +97,7 @@ function ImportPage() {
                         : ''}
                   </span>
                 </Link>
-                {(batch.status === 'ready' || batch.status === 'parse_failed') && (
+                {isCancellable(batch.status) && (
                   <CancelImportButton batchId={batch.id} className="w-fit" />
                 )}
               </li>
@@ -124,7 +126,7 @@ function UploadCard() {
   const mutation = useMutation({
     mutationFn: () => uploadQuestionImport(topicId, file as File),
     onSuccess: async ({ id }) => {
-      await queryClient.invalidateQueries({ queryKey: ['question-imports'] });
+      await queryClient.invalidateQueries({ queryKey: importKeys.all });
       await navigate({ to: '/examiner/questions/import/$batchId', params: { batchId: id } });
     },
   });

@@ -178,7 +178,7 @@ const SHEETS: SheetDef[] = [
         'Mệnh đề a': 'Tổng bậc của các đỉnh trong $G$ bằng $14$.',
         'Mệnh đề b': 'Tổng bậc của các đỉnh trong $G$ bằng $7$.',
         'Mệnh đề c': 'Mỗi đỉnh của $G$ có bậc tối đa là $4$.',
-        'Mệnh đề d': 'Một đồ thị đơn có $5$ đỉnh có tối đa $20$ cạnh.',
+        'Mệnh đề d': 'Một đồ thị đơn có $5$ đỉnh có thể có $20$ cạnh.',
         'Đáp án': 'Đ,S,Đ,S',
         Điểm: '1',
         'Quy tắc chấm': 'Bậc thang',
@@ -359,6 +359,22 @@ function addGuide(workbook: ExcelJS.Workbook, withExamples: boolean) {
   line(
     'Đáp án không khớp',
     'Ở sheet "Chọn một" chỉ được một chữ cái. Chữ cái phải thuộc Phương án đã điền.',
+  );
+  line(
+    'Đáp án Đ/S sai',
+    'Ở sheet "Chùm đúng sai", Đáp án phải có đúng một giá trị Đ hoặc S cho mỗi Mệnh đề đã điền, theo thứ tự a, b, c...',
+  );
+  line(
+    'Điểm sai',
+    `Điểm chỉ nhận số từ ${vnNumber(POINTS_MIN)} đến ${POINTS_MAX}, bước ${vnNumber(POINTS_STEP)}; không nhận dạng 1e1 hay 0x10.`,
+  );
+  line(
+    'Độ dài tối đa sai',
+    `Ở sheet "Tự luận", Độ dài tối đa là số nguyên từ ${ESSAY_MAX_LENGTH_RANGE.min} đến ${ESSAY_MAX_LENGTH_RANGE.max}.`,
+  );
+  line(
+    'Công thức lỗi',
+    'LaTeX phải dựng được và không dùng lệnh bị cấm (ví dụ \\href); mỗi câu tối đa 50 công thức. Nhớ đóng dấu $ ở cả hai đầu.',
   );
   line(
     'Ô trống ở giữa',

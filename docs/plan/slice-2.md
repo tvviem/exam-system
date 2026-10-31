@@ -268,8 +268,8 @@ Chủ dự án duyệt sau khi so ba cách nhập (bảng so sánh ở cuối m�
   - **Hệ quả:** nhập Câu hỏi chỉ nhận `.xlsx` (một CSV không có nhiều sheet). Yêu cầu cấp tài khoản vẫn nhận CSV. Bộ test và E2E của PR 2d đang dùng CSV nên chuyển sang tạo `.xlsx` bằng `exceljs`.
   - Mọi dòng vẫn qua `questionInputSchema` chung nên ràng buộc của trình soạn áp dụng nguyên vẹn.
 - **Q157 File mẫu và file ví dụ.**
-  - Hai tệp tải về, cùng bố cục: **file mẫu trống** (bốn sheet có tiêu đề, một dòng gợi ý, sheet "Hướng dẫn") và **file ví dụ** có 8 Câu hỏi: mỗi Loại 2 câu, một câu Toán rời rạc có công thức (`$...$`) và một câu Tin học căn bản.
-  - Sheet "Hướng dẫn" nêu thứ tự điền, cột từng sheet, cách viết công thức và điểm bước 0,05, Bậc thang, mã lỗi thường gặp.
+  - Hai tệp tải về, cùng bố cục: **file mẫu trống** (bốn sheet có tiêu đề, sheet "Hướng dẫn"; không có dòng gợi ý để không bị nhập nhầm, xem phần bổ sung) và **file ví dụ** có 8 Câu hỏi: mỗi Loại 2 câu, một câu Toán rời rạc có công thức (`$...$`) và một câu Tin học căn bản.
+  - Sheet "Hướng dẫn" nêu thứ tự điền, cột từng sheet, cách viết công thức và điểm bước 0,05, Bậc thang, và các lỗi thường gặp kèm cách sửa (nêu bằng lời, không liệt kê mã lỗi).
   - File ví dụ nhập được nguyên vẹn để thử; nhập lần hai sẽ bị đánh dấu Nghi trùng.
 
 **Bổ sung khi làm Q155–Q157** (không đổi điều đã duyệt):
