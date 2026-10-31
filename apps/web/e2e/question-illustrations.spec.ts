@@ -209,3 +209,65 @@ test('dùng lại ảnh trong thư viện, xóa ảnh chưa dùng, từ chối f
     page.getByRole('textbox', { name: 'Phần dẫn' }).getByRole('img', { name: 'Dùng lại' }),
   ).toBeVisible();
 });
+
+// Đã lưu rồi thì rời trang không được hỏi "Có thay đổi chưa lưu": kiểm cả lúc vừa tạo, sau khi mở lại và sau khi sửa.
+test('câu hỏi có hình đã lưu: quay về danh sách không bị hỏi "Có thay đổi chưa lưu"', async ({
+  page,
+}, testInfo) => {
+  const dialogs: string[] = [];
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.message());
+    void dialog.dismiss();
+  });
+  await signIn(page, `e2e-ch-anh-${testInfo.project.name}`);
+  await page.goto('/examiner/questions');
+  await page.getByRole('button', { name: 'Quản lý Chủ đề' }).click();
+  const manager = page.getByRole('dialog');
+  await manager.getByLabel('Tên Chủ đề').fill('Rời trang');
+  await manager.getByRole('button', { name: 'Thêm Chủ đề' }).click();
+  await expect(manager.getByText('Rời trang')).toBeVisible();
+  await manager.getByRole('button', { name: 'Đóng', exact: true }).last().click();
+  await startQuestion(page);
+
+  const photo = await makeImage(page, 800, 600, 'image/png');
+  await typeIn(page, 'Phần dẫn', 'Xem hình. ');
+  await page
+    .getByRole('toolbar', { name: /Phần dẫn/ })
+    .getByRole('button', { name: 'Hình minh họa' })
+    .click();
+  const picker = page.getByRole('dialog', { name: 'Chèn hình minh họa' });
+  await picker
+    .locator('input[type=file]')
+    .setInputFiles({ name: 'hinh.png', mimeType: 'image/png', buffer: photo });
+  await picker.getByLabel('Mô tả hình (bắt buộc)').fill('Hình thử');
+  await picker.getByRole('button', { name: 'Chèn hình', exact: true }).click();
+  await typeIn(page, 'Phương án A', 'a');
+  await typeIn(page, 'Phương án B', 'b');
+  await page.getByRole('radio', { name: /Phương án B/ }).check();
+  await save(page);
+
+  const backToList = async (step: string) => {
+    await page.getByRole('link', { name: 'Ngân hàng câu hỏi' }).first().click();
+    // Nếu bị hỏi, hộp thoại đã bị bỏ qua nên trang không đổi: báo lỗi nêu rõ câu hỏi thay vì chờ phần tử.
+    await expect.poll(() => dialogs.length === 0 || `${step}: ${dialogs[0]}`).toBe(true);
+    await expect(page.getByRole('button', { name: 'Soạn câu hỏi' })).toBeVisible();
+  };
+
+  // 1. Vừa tạo xong (trang chuyển sang "Sửa câu hỏi").
+  await backToList('ngay sau khi tạo');
+  expect(dialogs, 'ngay sau khi tạo').toEqual([]);
+
+  // 2. Mở lại câu đã lưu rồi quay về mà không sửa gì.
+  await page.getByText('Xem hình.').locator('visible=true').first().click();
+  await expect(page.getByRole('heading', { name: 'Sửa câu hỏi', level: 1 })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Phần dẫn' }).getByRole('img')).toBeVisible();
+  await backToList('mở lại, không sửa');
+  expect(dialogs, 'mở lại, không sửa').toEqual([]);
+
+  // 3. Sửa rồi lưu, quay về.
+  await page.getByText('Xem hình.').locator('visible=true').first().click();
+  await typeIn(page, 'Phương án A', ' sửa');
+  await save(page);
+  await backToList('sau khi sửa và lưu');
+  expect(dialogs, 'sau khi sửa và lưu').toEqual([]);
+});
