@@ -127,19 +127,21 @@ export function QuestionEditor({
 
   const patch = (changes: Partial<Draft>) => setDraft((d) => ({ ...d, ...changes }));
 
+  // `sent` là bản đang soạn lúc bấm Lưu: mốc "đã lưu" lấy từ đó chứ không từ bản server trả về, vì server chuẩn hóa nội dung
+  // (khoảng trắng, thứ tự trường) nên bản trả về có thể khác bản vừa gửi dù không ai sửa gì, và trang sẽ báo "chưa lưu".
   const save = useMutation({
-    mutationFn: () =>
+    mutationFn: (sent: Draft) =>
       question
-        ? updateQuestion(question.id, toInput(draft), version)
-        : createQuestion(toInput(draft)),
-    onSuccess: async (saved) => {
+        ? updateQuestion(question.id, toInput(sent), version)
+        : createQuestion(toInput(sent)),
+    onSuccess: async (saved, sent) => {
       writeStored(storageKey, null);
       await queryClient.invalidateQueries({ queryKey: ['questions'] });
       await queryClient.invalidateQueries({ queryKey: ['topics'] });
       toast(t('questionBank.saved'));
       if (question) {
         queryClient.setQueryData(['questions', 'detail', saved.id], saved);
-        setBaseline(serialize(draftFromQuestion(saved)));
+        setBaseline(serialize(sent));
         setVersion(saved.version);
       } else {
         skipBlock.current = true;
@@ -379,7 +381,7 @@ export function QuestionEditor({
           <PrimaryButton
             className="lg:min-w-32"
             disabled={problems.length > 0 || !dirty || save.isPending}
-            onClick={() => save.mutate()}
+            onClick={() => save.mutate(draft)}
           >
             <Save aria-hidden className="size-5" />
             {save.isPending ? t('questionBank.saving') : t('questionBank.save')}
