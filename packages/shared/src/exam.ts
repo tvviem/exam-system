@@ -82,3 +82,44 @@ export function examLayoutProblems(content: Pick<ExamContent, 'sections'>): Exam
   if (total > EXAM_MAX_ITEMS) problems.push({ code: 'too_many_items', path: 'sections' });
   return problems;
 }
+
+export type PointsPlan = { kind: 'each'; points: number } | { kind: 'total'; total: number };
+export type PointsDistribution =
+  | { ok: true; points: number[] }
+  | { ok: false; reason: 'empty' | 'invalid_points' | 'invalid_total' | 'too_little' };
+
+/** Số đơn vị bước điểm nếu `value` là bội của bước; null nếu không (tính nguyên để tránh sai số số thực). */
+const unitsOf = (value: number): number | null => {
+  const units = Math.round(value / POINTS_STEP);
+  return Number.isFinite(value) && Math.abs(value / POINTS_STEP - units) < 1e-9 ? units : null;
+};
+
+/**
+ * Đặt điểm nhanh (Q168): điểm cho `count` câu theo thứ tự.
+ * `each` — mỗi câu cùng số điểm. `total` — chia đều tổng; phần dư cộng thêm một bước cho các câu đầu.
+ */
+export function distributePoints(count: number, plan: PointsPlan): PointsDistribution {
+  if (count < 1) return { ok: false, reason: 'empty' };
+  const minUnits = Math.round(POINTS_MIN / POINTS_STEP);
+  const maxUnits = Math.round(POINTS_MAX / POINTS_STEP);
+  const toPoints = (units: number) => Math.round(units * POINTS_STEP * 100) / 100;
+
+  if (plan.kind === 'each') {
+    const units = unitsOf(plan.points);
+    if (units === null || units < minUnits || units > maxUnits) {
+      return { ok: false, reason: 'invalid_points' };
+    }
+    return { ok: true, points: Array.from({ length: count }, () => toPoints(units)) };
+  }
+
+  const total = unitsOf(plan.total);
+  if (total === null) return { ok: false, reason: 'invalid_total' };
+  const base = Math.floor(total / count);
+  const extra = total % count;
+  if (base < minUnits) return { ok: false, reason: 'too_little' };
+  if (base + (extra > 0 ? 1 : 0) > maxUnits) return { ok: false, reason: 'invalid_total' };
+  return {
+    ok: true,
+    points: Array.from({ length: count }, (_, i) => toPoints(base + (i < extra ? 1 : 0))),
+  };
+}

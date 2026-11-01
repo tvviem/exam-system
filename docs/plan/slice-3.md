@@ -242,3 +242,8 @@ Không đổi điều đã duyệt:
 | Q189 | Thuật ngữ mới: Bản chụp, Đặt điểm nhanh, Lưu trữ Bộ đề |
 | Q190 | Thay đổi data-model mục 3 và kế hoạch migration |
 | Q191 | Ngoài phạm vi lát cắt 3 |
+
+## Điều chỉnh sau khi chủ dự án dùng thử 3a
+
+- **Đặt điểm nhanh (Q168) làm sớm, nằm trong PR 3a** (không chờ 3b): 40 câu cùng điểm mà sửa tay từng ô là không thực tế. Phạm vi: cả Bộ đề, một Phần, một Loại câu hỏi (phạm vi "câu đang tick" để sau vì trình soạn chưa có ô tick). Cách đặt: mỗi câu cùng điểm, hoặc chia đều một tổng. 3b chỉ còn Xem thử.
+- **Nhãn cho ô nhập:** ô điểm của từng câu có nhãn "Điểm" nhìn thấy và chú thích (`title`) nêu khoảng, bước và dấu phẩy; ô "Chuyển sang…" có chú thích. Quy ước: ô nhập nào cũng phải có nhãn nhìn thấy hoặc `title`.

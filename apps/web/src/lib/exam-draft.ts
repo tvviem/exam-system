@@ -1,7 +1,10 @@
 import {
+  distributePoints,
   EXAM_MAX_ITEMS,
   EXAM_MAX_SECTIONS,
   type ExamContent,
+  type PointsDistribution,
+  type PointsPlan,
   type QuestionType,
   type RichText,
   textDoc,
@@ -210,3 +213,42 @@ export const updateSection = (
   key: string,
   changes: Partial<Pick<DraftSection, 'title' | 'instructions'>>,
 ): ExamDraft => mapSection(draft, key, (s) => ({ ...s, ...changes }));
+
+/** Phạm vi của Đặt điểm nhanh: cả Bộ đề, một Phần hoặc một Loại câu hỏi. */
+export type PointsScope =
+  | { kind: 'all' }
+  | { kind: 'section'; key: string }
+  | { kind: 'type'; type: QuestionType };
+
+const inScope = (scope: PointsScope, section: DraftSection, item: DraftItem) =>
+  scope.kind === 'all' ||
+  (scope.kind === 'section' && section.key === scope.key) ||
+  (scope.kind === 'type' && item.question.type === scope.type);
+
+/** Số câu thuộc phạm vi (để hộp thoại hiện trước "áp dụng cho N câu"). */
+export const countInScope = (draft: ExamDraft, scope: PointsScope): number =>
+  draft.sections.reduce((n, s) => n + s.items.filter((i) => inScope(scope, s, i)).length, 0);
+
+/** Đặt điểm nhanh (Q168): câu trong phạm vi nhận điểm mới theo thứ tự trong Bộ đề; câu ngoài phạm vi giữ nguyên. */
+export function applyPoints(
+  draft: ExamDraft,
+  scope: PointsScope,
+  plan: PointsPlan,
+): { ok: true; draft: ExamDraft; count: number } | Extract<PointsDistribution, { ok: false }> {
+  const distribution = distributePoints(countInScope(draft, scope), plan);
+  if (!distribution.ok) return distribution;
+  let next = 0;
+  return {
+    ok: true,
+    count: distribution.points.length,
+    draft: {
+      ...draft,
+      sections: draft.sections.map((s) => ({
+        ...s,
+        items: s.items.map((i) =>
+          inScope(scope, s, i) ? { ...i, points: distribution.points[next++] as number } : i,
+        ),
+      })),
+    },
+  };
+}

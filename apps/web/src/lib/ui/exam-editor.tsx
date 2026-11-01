@@ -1,7 +1,7 @@
 import { POINTS_MAX, POINTS_MIN, POINTS_STEP, plainTextOf } from '@exam/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
-import { ChevronDown, ChevronUp, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, ListChecks, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api';
@@ -31,6 +31,7 @@ import { Breadcrumb } from './breadcrumb';
 import { PageHeader } from './page-header';
 import { Rich } from './question-editor-fields';
 import { QuestionPicker } from './question-picker';
+import { QuickPointsDialog } from './quick-points-dialog';
 import { StickyActionBar } from './sticky-action-bar';
 import { useToast } from './toast';
 
@@ -53,10 +54,12 @@ const pointsValid = (points: number) =>
 function PointsInput({
   points,
   label,
+  hint,
   onChange,
 }: {
   points: number;
   label: string;
+  hint: string;
   onChange: (points: number) => void;
 }) {
   const [text, setText] = useState(String(points));
@@ -68,6 +71,7 @@ function PointsInput({
       type="text"
       inputMode="decimal"
       aria-label={label}
+      title={hint}
       aria-invalid={!pointsValid(points)}
       value={text}
       onChange={(e) => {
@@ -110,11 +114,15 @@ function ItemRow({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <PointsInput
-          points={item.points}
-          label={t('exam.pointsOf', { n: number })}
-          onChange={(points) => onChange((d) => setPoints(d, id, points))}
-        />
+        <label className="flex items-center gap-2 text-sm font-medium text-fg-muted">
+          {t('exam.points')}
+          <PointsInput
+            points={item.points}
+            label={t('exam.pointsOf', { n: number })}
+            hint={t('exam.pointsHint')}
+            onChange={(points) => onChange((d) => setPoints(d, id, points))}
+          />
+        </label>
         <Button
           aria-label={t('exam.moveUp', { n: number })}
           title={t('exam.up')}
@@ -132,6 +140,7 @@ function ItemRow({
         {sections.length > 1 && (
           <select
             aria-label={t('exam.moveToSection', { n: number })}
+            title={t('exam.moveHint')}
             value=""
             onChange={(e) =>
               e.target.value && onChange((d) => moveItemToSection(d, id, e.target.value))
@@ -196,6 +205,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const [version, setVersion] = useState(exam.version);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [removingSection, setRemovingSection] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const skipBlock = useRef(false);
@@ -416,6 +426,12 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
             <span className="text-sm text-fg-muted" aria-live="polite">
               {t('exam.totals', { items: totals.items, points: totals.points })}
             </span>
+            {allItems.length > 0 && (
+              <Button onClick={() => setQuickOpen(true)}>
+                <ListChecks aria-hidden className="size-5" />
+                {t('exam.quick.open')}
+              </Button>
+            )}
             {conflict && (
               <Button onClick={() => window.location.reload()}>{t('exam.reload')}</Button>
             )}
@@ -442,6 +458,16 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
           setPickerFor(null);
         }}
       />
+
+      {quickOpen && (
+        <QuickPointsDialog
+          open
+          draft={draft}
+          sectionName={sectionName}
+          onClose={() => setQuickOpen(false)}
+          onApply={(next) => change(() => next)}
+        />
+      )}
 
       <Dialog
         open={removingSection !== null}

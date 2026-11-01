@@ -133,6 +133,37 @@ test('soạn Bộ đề nháp: thêm câu, đặt điểm, chia Phần, sắp x�
   await expect(page.getByLabel('Tiêu đề Phần').nth(1)).toHaveValue('Phần II: Nâng cao');
   expect(await orderOf(page)).toEqual(['Giới hạn', 'Đạo hàm', 'Tích phân', 'Chuỗi số']);
   await expect(page.getByRole('textbox', { name: 'Điểm câu 2' })).toHaveValue('2.5');
+
+  // Ô điểm có nhãn "Điểm" nhìn thấy và chú thích khi rê chuột (title).
+  await expect(page.getByRole('textbox', { name: 'Điểm câu 2' })).toHaveAttribute(
+    'title',
+    /Điểm của câu hỏi/,
+  );
+
+  // Đặt điểm nhanh: mỗi câu 0,25 cho cả Bộ đề; rồi chia đều tổng 10 điểm cho Phần II.
+  await page.getByRole('button', { name: 'Đặt điểm nhanh' }).click();
+  const quick = page.getByRole('dialog', { name: 'Đặt điểm nhanh' });
+  await quick.getByLabel('Điểm mỗi câu').fill('0,25');
+  await expect(quick.getByText('4 câu nhận 0,25 điểm; tổng 1 điểm.')).toBeVisible();
+  await quick.getByLabel('Điểm mỗi câu').fill('0,07');
+  await expect(quick.getByRole('button', { name: 'Áp dụng' })).toBeDisabled();
+  await quick.getByLabel('Điểm mỗi câu').fill('0,25');
+  expect(await overflow(page), 'hộp Đặt điểm nhanh').toBe(0);
+  await quick.getByRole('button', { name: 'Áp dụng' }).click();
+  await expect(page.getByText('4 câu · 1 điểm')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Điểm câu 3' })).toHaveValue('0.25');
+
+  await page.getByRole('button', { name: 'Đặt điểm nhanh' }).click();
+  await quick.getByLabel('Áp dụng cho').selectOption('section');
+  await quick.getByLabel('Phần', { exact: true }).selectOption({ label: 'Phần II: Nâng cao' });
+  await quick.getByLabel('Cách đặt').selectOption('total');
+  await quick.getByLabel('Tổng điểm cần chia').fill('1');
+  await quick.getByRole('button', { name: 'Áp dụng' }).click();
+  await expect(page.getByRole('textbox', { name: 'Điểm câu 3' })).toHaveValue('0.5');
+  await expect(page.getByRole('textbox', { name: 'Điểm câu 1' })).toHaveValue('0.25');
+  await expect(
+    page.getByText('4 câu · 1,5 điểm').or(page.getByText('4 câu · 1.5 điểm')),
+  ).toBeVisible();
 });
 
 test('rời trang khi chưa lưu bị hỏi; lưu xong rồi rời thì không; danh sách tìm và lọc; xóa Bộ đề nháp', async ({

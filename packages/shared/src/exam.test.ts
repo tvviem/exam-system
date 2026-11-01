@@ -4,6 +4,7 @@ import {
   EXAM_MAX_SECTIONS,
   type ExamContent,
   examContentSchema,
+  distributePoints,
   examLayoutProblems,
 } from './exam.js';
 import { textDoc } from './rich-text.js';
@@ -116,5 +117,68 @@ describe('kiểm bố cục Bộ đề (Q161, Q162)', () => {
       { code: 'too_many_items', path: 'sections' },
     ]);
     expect(examLayoutProblems(withItems(ids.slice(0, EXAM_MAX_ITEMS)))).toEqual([]);
+  });
+});
+
+describe('distributePoints (Q168)', () => {
+  it('đặt mỗi câu P điểm', () => {
+    expect(distributePoints(3, { kind: 'each', points: 0.25 })).toEqual({
+      ok: true,
+      points: [0.25, 0.25, 0.25],
+    });
+  });
+
+  it('chia đều tổng: 40 câu, tổng 10 điểm → mỗi câu 0,25', () => {
+    const result = distributePoints(40, { kind: 'total', total: 10 });
+    expect(result).toEqual({ ok: true, points: Array(40).fill(0.25) });
+  });
+
+  it('chia tổng không chia hết: phần dư cộng 0,05 cho các câu đầu, tổng vẫn đúng', () => {
+    // 10 điểm = 200 đơn vị 0,05; chia 3 được 66 dư 2 → hai câu đầu 67 đơn vị, câu cuối 66.
+    expect(distributePoints(3, { kind: 'total', total: 10 })).toEqual({
+      ok: true,
+      points: [3.35, 3.35, 3.3],
+    });
+  });
+
+  it('một câu nhận cả tổng; tổng đúng n × 0,05 thì mỗi câu 0,05', () => {
+    expect(distributePoints(1, { kind: 'total', total: 7.5 })).toEqual({ ok: true, points: [7.5] });
+    expect(distributePoints(4, { kind: 'total', total: 0.2 })).toEqual({
+      ok: true,
+      points: [0.05, 0.05, 0.05, 0.05],
+    });
+  });
+
+  it('từ chối: không có câu, điểm sai bước, tổng sai bước, tổng quá nhỏ, quá lớn', () => {
+    expect(distributePoints(0, { kind: 'each', points: 1 })).toEqual({ ok: false, reason: 'empty' });
+    expect(distributePoints(2, { kind: 'each', points: 0.07 })).toEqual({
+      ok: false,
+      reason: 'invalid_points',
+    });
+    expect(distributePoints(2, { kind: 'each', points: 100.05 })).toEqual({
+      ok: false,
+      reason: 'invalid_points',
+    });
+    expect(distributePoints(2, { kind: 'total', total: 1.03 })).toEqual({
+      ok: false,
+      reason: 'invalid_total',
+    });
+    expect(distributePoints(5, { kind: 'total', total: 0.2 })).toEqual({
+      ok: false,
+      reason: 'too_little',
+    });
+    expect(distributePoints(1, { kind: 'total', total: 250 })).toEqual({
+      ok: false,
+      reason: 'invalid_total',
+    });
+  });
+
+  it('không sai số số thực với tổng như 0,3 hay 1,15', () => {
+    expect(distributePoints(3, { kind: 'total', total: 0.3 })).toEqual({
+      ok: true,
+      points: [0.1, 0.1, 0.1],
+    });
+    const r = distributePoints(2, { kind: 'total', total: 1.15 });
+    expect(r).toEqual({ ok: true, points: [0.6, 0.55] });
   });
 });

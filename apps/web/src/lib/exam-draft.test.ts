@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addItems,
   addSection,
+  applyPoints,
   type DraftQuestion,
   type ExamDraft,
   moveItem,
@@ -143,5 +144,48 @@ describe('bản nháp Bộ đề (Q161–Q164)', () => {
     expect(content.sections[1]).toMatchObject({ title: null });
     expect(content.sections[1]).not.toHaveProperty('id');
     expect(content.sections[0]?.items[0]).toEqual({ questionId: id(1), points: 1 });
+  });
+});
+
+describe('Đặt điểm nhanh trên bản nháp (Q168)', () => {
+  /** Phần 1: [chọn một, tự luận, chọn một]; Phần 2: [chọn một]. */
+  const typed = (): ExamDraft => {
+    let draft = addSection(newDraft('Đề'), 's2');
+    const first = draft.sections[0]?.key as string;
+    draft = addItems(draft, first, [q(id(1)), { ...q(id(2)), type: 'essay' }, q(id(3))]).draft;
+    return addItems(draft, 's2', [q(id(4))]).draft;
+  };
+  const pointsOf = (draft: ExamDraft) => draft.sections.map((s) => s.items.map((i) => i.points));
+
+  it('cả Bộ đề: 4 câu mỗi câu 0,25', () => {
+    const result = applyPoints(typed(), { kind: 'all' }, { kind: 'each', points: 0.25 });
+    expect(result.ok && result.count).toBe(4);
+    expect(result.ok && pointsOf(result.draft)).toEqual([[0.25, 0.25, 0.25], [0.25]]);
+  });
+
+  it('một Phần: chỉ đổi câu của Phần đó, chia đều tổng', () => {
+    const draft = typed();
+    const first = draft.sections[0]?.key as string;
+    const result = applyPoints(draft, { kind: 'section', key: first }, { kind: 'total', total: 3 });
+    expect(result.ok && pointsOf(result.draft)).toEqual([[1, 1, 1], [1]]);
+  });
+
+  it('một Loại: chỉ đổi câu thuộc Loại đó; không có câu nào thì báo empty', () => {
+    const result = applyPoints(
+      typed(),
+      { kind: 'type', type: 'essay' },
+      { kind: 'each', points: 5 },
+    );
+    expect(result.ok && pointsOf(result.draft)).toEqual([[1, 5, 1], [1]]);
+    expect(
+      applyPoints(
+        typed(),
+        { kind: 'type', type: 'true_false_cluster' },
+        { kind: 'each', points: 5 },
+      ),
+    ).toEqual({
+      ok: false,
+      reason: 'empty',
+    });
   });
 });
