@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Gắn Thiết bị dự thi bằng mã thiết bị trong cookie

@@ -1,6 +1,6 @@
 # Lát cắt 4: Phiên thi, Lượt làm bài và Theo dõi phòng thi
 
-> Trạng thái: **proposed**, chờ chủ dự án duyệt. Q192–Q211 đã được chủ dự án đồng ý trong ba vòng hỏi đáp (1/11/2026); Q212–Q222 là đề xuất kỹ thuật mới của tôi, cần duyệt. Chưa có dòng code nào. Thuật ngữ theo [GLOSSARY.md](../../GLOSSARY.md) (đã thêm **Thiết bị dự thi** và **Thu hồi thiết bị**); nền tảng ở [architecture.md](../architecture.md), [data-model.md](../data-model.md), [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md), [ADR-0007](../adr/0007-gan-thiet-bi-du-thi-bang-ma-thiet-bi.md) (proposed).
+> Trạng thái: **accepted** (1/11/2026): chủ dự án đã đồng ý Q192–Q211 qua ba vòng hỏi đáp và Q212–Q222 cùng năm thuật ngữ mới. Chưa có dòng code nào; mỗi PR 4a–4e vẫn cần thiết kế chi tiết và seam test được duyệt riêng. Thuật ngữ theo [GLOSSARY.md](../../GLOSSARY.md) (đã thêm Thiết bị dự thi, Thu hồi thiết bị, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi); nền tảng ở [architecture.md](../architecture.md), [data-model.md](../data-model.md), [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md), [ADR-0007](../adr/0007-gan-thiet-bi-du-thi-bang-ma-thiet-bi.md) (accepted).
 
 ## Mục tiêu
 
@@ -38,19 +38,19 @@ Bất biến vẫn giữ: Đáp án đúng không bao giờ có trong response g
 | Q209 | Một thiết bị chỉ phục vụ **một** Người dự thi trong một Phiên thi; không có công tắc tắt quy tắc 1 thiết bị | đã duyệt |
 | Q210 | Màn xác nhận trước khi bắt đầu hiện tên Bộ đề, Thời lượng, số câu, số lượt còn lại và nói rõ hệ thống ghi nhận thiết bị, địa chỉ IP, việc rời màn hình | đã duyệt |
 | Q211 | Chuông thông báo cho Người dự thi đúng ba loại: được thêm vào Danh sách, Phiên thi bị Hủy, Phiên thi đổi giờ mở hoặc đóng. Cộng giờ, Cảnh cáo, Đình chỉ hiện trực tiếp trên màn hình bài thi | đã duyệt |
-| Q212 | **Tự nộp bằng job quét lặp** (BullMQ repeatable, mỗi 10 giây) cộng với đóng lười khi có request, thay cho một job trễ riêng cho mỗi Lượt như kiến trúc 5.1 bước 4 | **đề xuất mới** |
-| Q213 | **Heartbeat bằng REST** (15 giây, kèm sự kiện rời màn hình); response mang trạng thái (hạn mới, đã đóng, thiết bị bị thu hồi, Cảnh cáo). **Socket.IO chỉ để đẩy sớm** cho Người dự thi và để cập nhật màn Theo dõi; mất Socket.IO thì hệ thống vẫn đúng, chỉ chậm tối đa 15 giây | **đề xuất mới** |
-| Q214 | **Chưa cache** nội dung Bộ đề trong Redis ở bản đầu; đo bằng k6 ở PR 4e rồi mới quyết (kiến trúc mục 11 dự kiến có cache) | **đề xuất mới** |
-| Q215 | **Mệnh đề** của chùm đúng/sai **không xáo** (giữ nhãn a, b, c, d); chỉ xáo Phương án của câu chọn một và chọn nhiều | **đề xuất mới** |
-| Q216 | Lưu Câu trả lời **theo lô** (tối đa 50 câu mỗi request), idempotent theo `clientSeq`; một lần lưu một câu là lô có một phần tử | **đề xuất mới** |
-| Q217 | Lớp bảo vệ ở **cơ sở dữ liệu** (như Q172): trigger cấm sửa nội dung Lượt làm bài sau khi tạo, cấm sửa `value` của Câu trả lời khi Lượt đã nộp, cấm đổi Bộ đề và xáo trộn của Phiên thi đã có Lượt, cấm bớt người đã có Lượt khỏi Danh sách | **đề xuất mới** |
-| Q218 | **Khóa đăng nhập hoặc Xóa người dùng giữa lúc đang thi** (Q76): `identity` gọi các bên đăng ký qua một cổng `UserDeactivationHooks`, `attempt` đăng ký để nộp Lượt với lý do `account_locked`; `identity` không import `attempt` | **đề xuất mới** |
-| Q219 | **Ảnh cho Người dự thi**: xem được ảnh của Bộ đề khi có Lượt đang làm trên đúng thiết bị đã gắn; qua cổng `CandidateMedia`, `question-bank` không biết Lượt làm bài | **đề xuất mới** |
-| Q220 | **Xem thử qua Phiên thi** của Người ra đề dùng chính giao diện làm bài nhưng không tạo `attempts`, không gắn thiết bị, không lưu Câu trả lời lên server (chỉ giữ trong trình duyệt) | **đề xuất mới** |
-| Q221 | Lát cắt 4 chỉ **ghi Vi phạm** (hành động Cảnh cáo hoặc Đình chỉ, lý do); **Mức xử lý** (trừ phần trăm, hủy kết quả) chọn ở lát cắt 5 khi có điểm. Cột `penalty_*` có sẵn nhưng để mặc định `none` | **đề xuất mới** |
-| Q222 | **Mã vào thi duy nhất theo thời gian**: ràng buộc loại trừ (`EXCLUDE USING gist`) hai Phiên thi chưa hủy trùng mã mà Khung giờ chồng nhau, thay cho "duy nhất khi chưa Chốt" của data-model (vì Chốt chỉ có ở lát cắt 5 và sẽ giữ mã mãi) | **đề xuất mới** |
+| Q212 | **Tự nộp bằng job quét lặp** (BullMQ repeatable, mỗi 10 giây) cộng với đóng lười khi có request, thay cho một job trễ riêng cho mỗi Lượt như kiến trúc 5.1 bước 4 | đã duyệt |
+| Q213 | **Heartbeat bằng REST** (15 giây, kèm sự kiện rời màn hình); response mang trạng thái (hạn mới, đã đóng, thiết bị bị thu hồi, Cảnh cáo). **Socket.IO chỉ để đẩy sớm** cho Người dự thi và để cập nhật màn Theo dõi; mất Socket.IO thì hệ thống vẫn đúng, chỉ chậm tối đa 15 giây | đã duyệt |
+| Q214 | **Chưa cache** nội dung Bộ đề trong Redis ở bản đầu; đo bằng k6 ở PR 4e rồi mới quyết (kiến trúc mục 11 dự kiến có cache) | đã duyệt |
+| Q215 | **Mệnh đề** của chùm đúng/sai **không xáo** (giữ nhãn a, b, c, d); chỉ xáo Phương án của câu chọn một và chọn nhiều | đã duyệt |
+| Q216 | Lưu Câu trả lời **theo lô** (tối đa 50 câu mỗi request), idempotent theo `clientSeq`; một lần lưu một câu là lô có một phần tử | đã duyệt |
+| Q217 | Lớp bảo vệ ở **cơ sở dữ liệu** (như Q172): trigger cấm sửa nội dung Lượt làm bài sau khi tạo, cấm sửa `value` của Câu trả lời khi Lượt đã nộp, cấm đổi Bộ đề và xáo trộn của Phiên thi đã có Lượt, cấm bớt người đã có Lượt khỏi Danh sách | đã duyệt |
+| Q218 | **Khóa đăng nhập hoặc Xóa người dùng giữa lúc đang thi** (Q76): `identity` gọi các bên đăng ký qua một cổng `UserDeactivationHooks`, `attempt` đăng ký để nộp Lượt với lý do `account_locked`; `identity` không import `attempt` | đã duyệt |
+| Q219 | **Ảnh cho Người dự thi**: xem được ảnh của Bộ đề khi có Lượt đang làm trên đúng thiết bị đã gắn; qua cổng `CandidateMedia`, `question-bank` không biết Lượt làm bài | đã duyệt |
+| Q220 | **Xem thử qua Phiên thi** của Người ra đề dùng chính giao diện làm bài nhưng không tạo `attempts`, không gắn thiết bị, không lưu Câu trả lời lên server (chỉ giữ trong trình duyệt) | đã duyệt |
+| Q221 | Lát cắt 4 chỉ **ghi Vi phạm** (hành động Cảnh cáo hoặc Đình chỉ, lý do); **Mức xử lý** (trừ phần trăm, hủy kết quả) chọn ở lát cắt 5 khi có điểm. Cột `penalty_*` có sẵn nhưng để mặc định `none` | đã duyệt |
+| Q222 | **Mã vào thi duy nhất theo thời gian**: ràng buộc loại trừ (`EXCLUDE USING gist`) hai Phiên thi chưa hủy trùng mã mà Khung giờ chồng nhau, thay cho "duy nhất khi chưa Chốt" của data-model (vì Chốt chỉ có ở lát cắt 5 và sẽ giữ mã mãi) | đã duyệt |
 
-### Giải thích các đề xuất mới
+### Lý do của Q212–Q222
 
 - **Q212.** Kiến trúc đặt một job trễ cho mỗi Lượt. Mỗi lần Cộng giờ phải dời job (BullMQ có `changeDelay`, nhưng chỉ khi job còn ở trạng thái chờ), và mất Redis là mất hẹn giờ. Job quét lặp cần thao tác `UPDATE ... WHERE status = 'in_progress' AND deadline + ân hạn < now() ... FOR UPDATE SKIP LOCKED`, đọc hạn từ PostgreSQL (nguồn sự thật duy nhất), nên Cộng giờ không phải đụng hàng đợi và mất Redis không mất bài. Độ trễ tối đa 10 giây không ảnh hưởng điểm: Câu trả lời gửi sau `deadline + ân hạn (30 giây)` đã bị từ chối ngay ở request. *Loại:* job trễ mỗi Lượt (phức tạp hơn, không đúng hơn); chỉ dựa đóng lười (Lượt không ai chạm vào sẽ treo ở `in_progress`, làm sai màn Theo dõi).
 - **Q213.** Safari/iPhone không đáng tin cậy với WebSocket nền và Background Sync (Workbox chỉ phát lại khi service worker khởi động), và Người dự thi chủ yếu dùng điện thoại. 300 người heartbeat mỗi 15 giây chỉ là 20 request/giây. Việc chặn thiết bị cũ luôn được thực thi ở lần lưu kế tiếp, không phụ thuộc kênh đẩy. *Loại:* heartbeat qua WebSocket (như kiến trúc 5.4): thêm một đường lỗi và mỗi kết nối phải xác thực lại.
@@ -371,14 +371,8 @@ Dùng skill `prototype` và `ui-ux-pro-max`, kiểm bằng Playwright ở hai k�
 - `data-model.md`: mục 4–5 theo phần "Mô hình dữ liệu" ở trên.
 - `ui-design.md`: mẫu màn Theo dõi sau khi chọn prototype.
 
-## Thuật ngữ đề xuất thêm (chờ duyệt, chưa vào GLOSSARY)
+## Thuật ngữ mới (đã vào GLOSSARY)
 
-| Thuật ngữ | Nghĩa |
-|---|---|
-| **Đóng cửa vào thi** (`CloseEntry`) | Người ra đề chặn việc bắt đầu Lượt mới trong Phiên thi; người đang làm vẫn làm tiếp |
-| **Hủy Phiên thi** (`Cancel`) | Dừng hẳn một Phiên thi: nộp mọi Lượt đang làm, không ai vào nữa, không tính Kết quả; không hoàn tác |
-| **Cộng giờ** (`ExtendTime`) | Người ra đề thêm phút cho một Lượt đang làm hoặc cả phòng |
-| **Buộc nộp** (`ForceSubmit`) | Người ra đề kết thúc một Lượt hoặc cả phòng ngay lập tức |
-| **Cắt cứng** (`HardClose`) | Thiết lập Phiên thi: Lượt kết thúc lúc đóng Khung giờ thay vì được đủ Thời lượng |
+Thiết bị dự thi, Thu hồi thiết bị, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi. "Nhân bản" cố ý không thành thuật ngữ riêng (chủ dự án: người dùng dùng một lần là hiểu). Các định nghĩa trong GLOSSARY là nguồn để viết hướng dẫn sử dụng cho người dùng cuối, nên giữ chúng chính xác khi hành vi thay đổi.
 
 Trước khi code mỗi PR còn cần: danh sách seam test chi tiết cho PR đó (bảng S1–S9 là khung) và mọi câu hỏi giao diện nảy sinh. Không bắt đầu code khi chưa được duyệt.

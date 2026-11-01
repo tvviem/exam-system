@@ -168,7 +168,7 @@ Mã do Người ra đề đặt trước cho một Phiên thi; Người dự thi
 _Avoid_: mã bộ đề, mã phòng, PIN
 
 **Khung giờ** (`Window`):
-Khoảng thời gian từ lúc mở đến lúc đóng Phiên thi; chỉ được bắt đầu Lượt làm bài trong khoảng này. Mặc định mỗi Lượt được đủ Thời lượng kể cả khi vượt giờ đóng; Phiên thi bật "Cắt cứng" thì Lượt kết thúc lúc đóng Khung giờ.
+Khoảng thời gian từ lúc mở đến lúc đóng Phiên thi; chỉ được bắt đầu Lượt làm bài trong khoảng này. Mặc định mỗi Lượt được đủ Thời lượng kể cả khi vượt giờ đóng; Phiên thi bật Cắt cứng thì Lượt kết thúc lúc đóng Khung giờ.
 _Avoid_: lịch thi
 
 **Thiết bị dự thi** (`ExamDevice`):
@@ -183,6 +183,26 @@ _Avoid_: đổi thiết bị, cho phép đổi thiết bị, đăng xuất
 Thời gian tối đa của một Lượt làm bài tính từ lúc bắt đầu.
 _Avoid_: thời gian thi
 
+**Cắt cứng** (`HardClose`):
+Thiết lập của Phiên thi: Lượt làm bài kết thúc đúng lúc đóng Khung giờ thay vì được đủ Thời lượng. Mặc định tắt; khi tắt, người bắt đầu muộn vẫn được làm đủ Thời lượng dù đã quá giờ đóng. Hợp với phòng thi chỉ mượn được đến một giờ nhất định. Cộng giờ vẫn kéo dài được hạn của một Lượt kể cả khi Cắt cứng đang bật.
+_Avoid_: khóa cứng, hết giờ cứng
+
+**Đóng cửa vào thi** (`CloseEntry`):
+Hành động của Người ra đề chặn việc bắt đầu Lượt làm bài mới trong Phiên thi, dù Khung giờ chưa đóng. Người đang làm bài vẫn làm tiếp đến hết hạn của mình; Người dự thi chưa vào được báo rằng Phiên thi đã đóng cửa vào thi.
+_Avoid_: khóa phòng, đóng Phiên thi
+
+**Cộng giờ** (`ExtendTime`):
+Hành động của Người ra đề thêm số phút vào hạn nộp của một Lượt làm bài đang làm hoặc của mọi Lượt đang làm trong phòng, ví dụ khi mất điện hay mất mạng. Mỗi lần Cộng giờ được ghi lại kèm lý do và hiện ngay trên màn hình của Người dự thi. Người ra đề cũng có thể cộng sẵn giờ cho từng người trong Danh sách dự thi trước khi thi (ví dụ hỗ trợ đặc biệt); phần cộng sẵn tính vào hạn ngay khi họ bắt đầu.
+_Avoid_: gia hạn, kéo dài Phiên thi (kéo dài Khung giờ hoặc Thời lượng của cả Phiên thi là việc khác)
+
+**Buộc nộp** (`ForceSubmit`):
+Hành động của Người ra đề kết thúc ngay một Lượt làm bài, hoặc mọi Lượt đang làm của cả Phiên thi. Các Câu trả lời đã lưu được giữ và Chấm như bình thường. Khác Đình chỉ ở chỗ không kèm Vi phạm.
+_Avoid_: thu bài, ép nộp
+
+**Hủy Phiên thi** (`Cancel`):
+Hành động của Người ra đề dừng hẳn một Phiên thi, thường vì đề sai hoặc lộ đề: mọi Lượt đang làm được nộp ngay, không ai vào thi được nữa, không tính Kết quả nhưng vẫn xem lại được, và Người dự thi được thông báo. Không hoàn tác. Muốn thi lại thì tạo Phiên thi mới (cần sửa đề thì Nhân bản Bộ đề, Phát hành bản mới trước). Phiên thi đã có Lượt làm bài thì chỉ Hủy, không Xóa.
+_Avoid_: xóa Phiên thi, hủy kỳ thi
+
 **Xem thử** (`Preview`):
 Chế độ Người ra đề đi qua Phiên thi của mình đúng như Người dự thi sẽ thấy, không tạo Lượt làm bài và không lưu gì. Người ra đề không được có tên trong Danh sách dự thi của Phiên thi do chính mình tạo.
 _Avoid_: thi thử, demo
@@ -196,7 +216,7 @@ Nội dung Người dự thi chọn hoặc viết cho một Câu hỏi trong Lư
 _Avoid_: đáp án, answer
 
 **Nộp bài** (`Submit`):
-Kết thúc Lượt làm bài, do Người dự thi chủ động hoặc hệ thống tự động khi hết thời gian.
+Kết thúc Lượt làm bài, do Người dự thi chủ động hoặc hệ thống tự động khi hết thời gian. Người ra đề cũng có thể kết thúc Lượt bằng Buộc nộp, Đình chỉ hoặc Hủy Phiên thi. Sau khi Nộp bài, Câu trả lời không còn sửa được.
 _Avoid_: hoàn thành, finish
 
 **Vi phạm** (`Violation`):
