@@ -139,6 +139,18 @@ _Avoid_: đề thi, bài kiểm tra, test
 Một nhóm Câu hỏi được hiển thị cùng nhau trong Bộ đề. Bộ đề không chia phần thì có đúng một Phần.
 _Avoid_: mục, part
 
+**Bản chụp** (`Snapshot`):
+Bản sao đầy đủ nội dung một Câu hỏi (Phần dẫn, Phương án, Mệnh đề, Đáp án đúng, Quy tắc chấm, ảnh) được ghi vào Bộ đề lúc Phát hành. Lượt làm bài, Chấm và Phúc khảo chỉ đọc Bản chụp, nên sửa hay Lưu trữ Câu hỏi sau đó không đổi Bộ đề đã Phát hành.
+_Avoid_: bản sao, backup
+
+**Đặt điểm nhanh** (`Bulk points`):
+Thao tác của Người ra đề đặt điểm cho nhiều câu của Bộ đề cùng lúc (theo Bộ đề, Phần hoặc Loại câu hỏi; mỗi câu một mức điểm hoặc chia đều một tổng điểm), xem trước rồi mới áp dụng.
+_Avoid_: chia điểm tự động
+
+**Lưu trữ Bộ đề** (`Archive exam`):
+Ẩn Bộ đề đã Phát hành khỏi lựa chọn cho Phiên thi mới nhưng vẫn xem và Nhân bản được; Khôi phục đưa Bộ đề trở lại. Bộ đề nháp không Lưu trữ mà xóa.
+_Avoid_: xóa bộ đề
+
 **Phát hành** (`Publish`):
 Hành động đóng băng nội dung Bộ đề để dùng cho Phiên thi. Sửa Câu hỏi về sau không làm thay đổi Bộ đề đã phát hành.
 _Avoid_: duyệt, kích hoạt
