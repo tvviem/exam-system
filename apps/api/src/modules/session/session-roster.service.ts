@@ -5,6 +5,7 @@ import type { Actor } from '../../common/actor';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
 import { type Page, paginate } from '../../common/pagination';
+import { escapeLike } from '../../common/sql-like';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { RequesterCredentialsService } from '../identity/account-requests/requester-credentials.service';
 import { users } from '../identity/identity.schema';
@@ -14,7 +15,6 @@ import { findOwnedSession, lockOwnedSession, requireNotOver } from './session-ac
 
 const SEARCH_USERS = 20;
 const SEARCH_CLASSES = 10;
-const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export type RosterSelector = { userIds: string[] } | { classLabel: string } | { codes: string[] };
 

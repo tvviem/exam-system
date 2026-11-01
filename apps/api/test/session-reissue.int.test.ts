@@ -92,10 +92,13 @@ describe('Người ra đề cấp lại mật khẩu tạm cho Người dự thi
     await addToRoster(id);
     const { temporaryPassword } = (await reissue(id)).json();
 
-    const logs = await sql<{ actor_id: string; entity_id: string }>(
-      `select actor_id, entity_id from audit_logs where action = 'user.temporary-password.reissue'`,
+    const logs = await sql<{ actor_id: string; entity_id: string; after: object }>(
+      `select actor_id, entity_id, after from audit_logs where action = 'user.temporary-password.reissue'`,
     );
-    expect(logs).toEqual([{ actor_id: gv1, entity_id: id }]);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ actor_id: gv1, entity_id: id });
+    // vết đủ để truy: Người ra đề nào cấp, qua Phiên thi nào
+    expect(logs[0]?.after).toMatchObject({ via: 'session-roster', sessionId });
     const everything = JSON.stringify([
       await sql('select * from audit_logs'),
       await sql('select * from notifications'),

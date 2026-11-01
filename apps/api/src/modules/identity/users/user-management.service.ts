@@ -87,6 +87,8 @@ const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /** Móc để bên khác (Người ra đề cấp lại cho Người dự thi trong Danh sách) đặt điều kiện và việc đi kèm trong cùng giao dịch. */
 export interface ReissueHooks {
+  /** Ghi thêm vào nhật ký thao tác (ví dụ Phiên thi nào, do Người ra đề cấp). */
+  auditContext?: Record<string, unknown>;
   guard?(tx: Tx, target: UserRow): Promise<void>;
   onApplied?(tx: Tx): Promise<void>;
 }
@@ -528,7 +530,7 @@ export class UserManagementService {
           action: 'user.temporary-password.reissue',
           entityType: 'user',
           entityId: id,
-          after: { passwordExpiresAt },
+          after: { passwordExpiresAt, ...hooks.auditContext },
         },
         tx,
       );

@@ -14,14 +14,14 @@ import { ApiError, validationFailed } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
 import { type Page, paginate } from '../../common/pagination';
 import { exclusionViolationOf } from '../../common/pg-error';
+import { escapeLike } from '../../common/sql-like';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { exams } from '../exam/exam.schema';
 import { NotificationsService } from '../notifications/notifications.service';
-import { sessionRoster, sessions } from './session.schema';
-import { lockOwnedSession } from './session-access';
+import { sessions } from './session.schema';
+import { lockOwnedSession, notifyRoster } from './session-access';
 
 const SUGGEST_ATTEMPTS = 10;
-const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 type Db = Pick<Database, 'select'>;
 
@@ -105,23 +105,12 @@ export class SessionsService {
         next.opensAt.getTime() !== current.opensAt.getTime() ||
         next.closesAt.getTime() !== current.closesAt.getTime()
       ) {
-        const members = await tx
-          .select({ userId: sessionRoster.userId })
-          .from(sessionRoster)
-          .where(eq(sessionRoster.sessionId, id));
-        await this.notifications.notify(
-          {
-            userIds: members.map((m) => m.userId),
-            type: 'session.rescheduled',
-            data: {
-              sessionId: id,
-              title: next.title,
-              opensAt: next.opensAt,
-              closesAt: next.closesAt,
-            },
-          },
-          tx,
-        );
+        await notifyRoster(this.notifications, tx, id, 'session.rescheduled', {
+          sessionId: id,
+          title: next.title,
+          opensAt: next.opensAt,
+          closesAt: next.closesAt,
+        });
       }
     });
     return this.detail(this.db, ownerId, id);

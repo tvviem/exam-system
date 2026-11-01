@@ -362,7 +362,8 @@ Chủ dự án đã đồng ý sáu điểm sau (không đánh số Q mới vì 
 - **Nhân bản** dời giờ sang tuần sau (hoặc đủ số tuần để còn ở tương lai), mã mới, tên thêm " (bản sao)", mang theo người còn đủ điều kiện kèm phút cộng sẵn và báo họ.
 - **Sắp xếp Danh sách dự thi** theo tên gọi (từ cuối của họ tên) rồi họ và tên lót, như cách xếp danh sách lớp.
 - **Cổng `SESSION_USAGE`** (thay cho "ExamUsage mở rộng" của bảng cổng): `exam` hỏi số Phiên thi chưa hủy của Bộ đề (`sessionCount` ở danh sách và chi tiết Bộ đề); nối ở `SessionUsageWiringModule`, có mặt cả ở CLI và worker.
-- **Trigger "cấm bớt người đã có Lượt" (Q217)** chuyển sang migration 0013 vì bảng `attempts` chưa tồn tại.
+- **Trigger Q217 chuyển sang migration 0013** vì bảng `attempts` chưa tồn tại: cấm bớt người đã có Lượt khỏi Danh sách, và cấm đổi `exam_id`, `shuffle_items`, `shuffle_options` của Phiên thi đã có Lượt. Trigger `sessions_guard` của 0012 thêm quy tắc không hoàn tác Hủy (sau Hủy chỉ đổi chủ).
+- **Cấp lại mật khẩu** bị chặn khi Phiên thi Đã đóng hoặc Đã hủy (không còn lý do cấp); nhật ký ghi `via: session-roster` và `sessionId`.
 - **Giới hạn đã biết:** ô chọn Bộ đề liệt kê tối đa 100 Bộ đề đã Phát hành gần nhất; Người dự thi chưa có giao diện nào để thấy thông báo "được thêm vào" ngoài chuông thông báo (khu `/take` làm ở 4c).
 
 ## Prototype màn Theo dõi (Q207)

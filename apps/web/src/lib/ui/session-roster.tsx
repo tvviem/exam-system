@@ -134,7 +134,10 @@ function AddPanel({ sessionId }: { sessionId: string }) {
       )}
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => setPasting(true)}>{t('session.roster.paste')}</Button>
-        <Link to="/examiner/account-requests" className="text-sm text-primary underline">
+        <Link
+          to="/examiner/account-requests"
+          className="inline-flex min-h-12 items-center text-sm text-primary underline pointer-fine:min-h-9"
+        >
           {t('session.roster.noAccount')}
         </Link>
       </div>
@@ -330,13 +333,15 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
             {items.map((user) => (
               <li key={user.userId} className="flex flex-wrap items-center gap-3 p-3">
                 {!readOnly && (
-                  <input
-                    type="checkbox"
-                    className="size-5"
-                    aria-label={t('session.roster.select', { name: user.fullName })}
-                    checked={selected.has(user.userId)}
-                    onChange={() => toggle(user.userId)}
-                  />
+                  <label className="-m-2 inline-flex size-12 shrink-0 cursor-pointer items-center justify-center pointer-fine:size-9">
+                    <input
+                      type="checkbox"
+                      className="size-5"
+                      aria-label={t('session.roster.select', { name: user.fullName })}
+                      checked={selected.has(user.userId)}
+                      onChange={() => toggle(user.userId)}
+                    />
+                  </label>
                 )}
                 <span className="min-w-0 flex-1 basis-48">
                   <span className="block break-words font-medium">{user.fullName}</span>

@@ -2,7 +2,8 @@ import { phaseOf, type SessionPhase } from '@exam/shared';
 import { and, eq } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import type { Database, Transaction } from '../../db/db.module';
-import { sessions } from './session.schema';
+import type { NotificationsService } from '../notifications/notifications.service';
+import { sessionRoster, sessions } from './session.schema';
 
 export type SessionRow = typeof sessions.$inferSelect;
 
@@ -46,4 +47,19 @@ export function requireNotOver(session: SessionRow, now: Date): SessionPhase {
   const reason = OVER[phase];
   if (reason) throw new ApiError('INVALID_STATE', { reason });
   return phase;
+}
+
+/** Báo mọi người đang có trong Danh sách dự thi (cùng giao dịch với thay đổi gây ra thông báo). */
+export async function notifyRoster(
+  notifications: NotificationsService,
+  tx: Transaction,
+  sessionId: string,
+  type: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const members = await tx
+    .select({ userId: sessionRoster.userId })
+    .from(sessionRoster)
+    .where(eq(sessionRoster.sessionId, sessionId));
+  await notifications.notify({ userIds: members.map((m) => m.userId), type, data }, tx);
 }

@@ -353,3 +353,25 @@ describe('sửa Phiên thi theo trạng thái (Q202)', () => {
     expect((await update(session.id, {}, 1, otherCookie)).statusCode).toBe(404);
   });
 });
+
+describe('gợi ý Mã vào thi', () => {
+  const suggest = (opens: string, closes: string) =>
+    api(
+      'GET',
+      `/sessions/access-code-suggestion?opensAt=${encodeURIComponent(opens)}&closesAt=${encodeURIComponent(closes)}`,
+    );
+
+  it('trả một mã chưa dùng trong Khung giờ', async () => {
+    await create({ accessCode: 'AAAA22' });
+    const res = await suggest('2026-11-10T08:00:00+07:00', '2026-11-10T10:00:00+07:00');
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json().accessCode).toMatch(/^[A-Z2-9]{6}$/);
+    expect(res.json().accessCode).not.toBe('AAAA22');
+  });
+
+  it('Khung giờ ngược là 400, không phải lỗi máy chủ', async () => {
+    const res = await suggest('2026-11-10T10:00:00+07:00', '2026-11-10T08:00:00+07:00');
+    expect(res.statusCode).toBe(400);
+    expect(res.json().code).toBe('VALIDATION_FAILED');
+  });
+});

@@ -21,6 +21,7 @@ export class RequesterCredentialsService {
 
   reissueTemporaryPassword(actor: Actor, candidateId: string, context: { sessionId: string }) {
     return this.users.reissueTemporaryPassword(actor, candidateId, {
+      auditContext: { via: 'session-roster', sessionId: context.sessionId },
       guard: async (tx, target) => {
         const [issued] = await tx
           .select({ id: accountRequestItems.id })

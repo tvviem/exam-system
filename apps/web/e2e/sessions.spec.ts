@@ -109,7 +109,7 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   const first = await code.inputValue();
   await page.getByRole('button', { name: 'Gợi ý mã khác' }).click();
   await expect(code).not.toHaveValue(first);
-  await page.getByLabel('Số lượt làm bài tối đa').selectOption('2');
+  await page.getByLabel('Số Lượt làm bài tối đa').selectOption('2');
   await expect(page.getByLabel('Điểm khi làm nhiều lượt')).toBeVisible();
   await page.getByRole('button', { name: 'Tạo Phiên thi' }).click();
 
@@ -167,19 +167,22 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   await expect(page.getByRole('heading', { name: `Ca 1 sửa ${p}` })).toBeVisible();
 
   // Nhân bản: bản sao Sắp mở, mang theo Danh sách
-  await page.getByRole('button', { name: 'Nhân bản' }).click();
+  await openRowMenu(page, 'Thao tác khác với Phiên thi');
+  await page.getByRole('menuitem', { name: 'Nhân bản' }).click();
   await expect(page.getByRole('heading', { name: `Ca 1 sửa ${p} (bản sao)` })).toBeVisible();
   await page.getByRole('tab', { name: 'Danh sách dự thi' }).click();
   await expect(rows).toHaveCount(2);
 
   // Hủy bản sao: không hoàn tác, không sửa được nữa
-  await page.getByRole('button', { name: 'Hủy Phiên thi' }).click();
+  await openRowMenu(page, 'Thao tác khác với Phiên thi');
+  await page.getByRole('menuitem', { name: 'Hủy Phiên thi' }).click();
   const cancel = page.getByRole('dialog', { name: 'Hủy Phiên thi này?' });
   await cancel.getByLabel('Lý do (không bắt buộc)').fill('Trùng lịch');
   await cancel.getByRole('button', { name: 'Hủy Phiên thi' }).click();
   await expect(page.getByText('Đã hủy', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sửa' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Hủy Phiên thi' })).toBeDisabled();
+  await openRowMenu(page, 'Thao tác khác với Phiên thi');
+  await expect(page.getByRole('menuitem', { name: 'Hủy Phiên thi' })).toBeDisabled();
 
   // Danh sách: lọc theo trạng thái
   await page.goto('/examiner/sessions');

@@ -3,10 +3,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { eq, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
-import { type Database, DB, type Transaction } from '../../db/db.module';
+import { type Database, DB } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
-import { sessionRoster, sessions } from './session.schema';
-import { lockOwnedSession } from './session-access';
+import { sessions } from './session.schema';
+import { lockOwnedSession, notifyRoster } from './session-access';
 import { SessionsService } from './sessions.service';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -36,7 +36,7 @@ export class SessionLifecycleService {
           version: sql`${sessions.version} + 1`,
         })
         .where(eq(sessions.id, id));
-      await this.notifyRoster(tx, id, 'session.cancelled', {
+      await notifyRoster(this.notifications, tx, id, 'session.cancelled', {
         sessionId: id,
         title: session.title,
         reason: reason || null,
@@ -50,7 +50,7 @@ export class SessionLifecycleService {
     await this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, id);
       if (!session.cancelledAt) {
-        await this.notifyRoster(tx, id, 'session.cancelled', {
+        await notifyRoster(this.notifications, tx, id, 'session.cancelled', {
           sessionId: id,
           title: session.title,
           reason: null,
@@ -112,18 +112,5 @@ export class SessionLifecycleService {
       return created;
     });
     return this.sessions.get(ownerId, newId);
-  }
-
-  private async notifyRoster(
-    tx: Transaction,
-    sessionId: string,
-    type: string,
-    data: Record<string, unknown>,
-  ) {
-    const members = await tx
-      .select({ userId: sessionRoster.userId })
-      .from(sessionRoster)
-      .where(eq(sessionRoster.sessionId, sessionId));
-    await this.notifications.notify({ userIds: members.map((m) => m.userId), type, data }, tx);
   }
 }

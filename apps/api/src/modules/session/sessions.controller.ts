@@ -23,10 +23,12 @@ const listSchema = pageSchema.extend({
   q: z.string().trim().max(200).optional(),
 });
 const cancelSchema = z.strictObject({ reason: z.string().trim().max(500).optional() });
-const suggestSchema = z.object({
-  opensAt: z.iso.datetime({ offset: true }).transform((v) => new Date(v)),
-  closesAt: z.iso.datetime({ offset: true }).transform((v) => new Date(v)),
-});
+const suggestSchema = z
+  .object({
+    opensAt: z.iso.datetime({ offset: true }).transform((v) => new Date(v)),
+    closesAt: z.iso.datetime({ offset: true }).transform((v) => new Date(v)),
+  })
+  .refine((v) => v.closesAt > v.opensAt, { path: ['closesAt'], message: 'closes_not_after_opens' });
 
 @RequireTag('examiner')
 @Controller('sessions')

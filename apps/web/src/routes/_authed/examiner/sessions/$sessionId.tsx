@@ -27,6 +27,7 @@ import {
 import { ListSkeleton } from '../../../../lib/ui/admin';
 import { Breadcrumb } from '../../../../lib/ui/breadcrumb';
 import { PageHeader } from '../../../../lib/ui/page-header';
+import { RowMenu } from '../../../../lib/ui/row-menu';
 import {
   draftOf,
   inputOf,
@@ -124,21 +125,29 @@ function SessionDetail({ session }: { session: SessionSummary }) {
               <Pencil aria-hidden className="size-5" />
               {t('session.action.edit')}
             </Button>
-            <Button disabled={duplicate.isPending} onClick={() => duplicate.mutate()}>
-              <Copy aria-hidden className="size-5" />
-              {t('session.action.duplicate')}
-            </Button>
-            <Button
-              disabled={cancelled}
-              title={cancelled ? t('session.hint.cancelDisabled') : undefined}
-              onClick={() => setConfirm('cancel')}
-            >
-              {t('session.action.cancel')}
-            </Button>
-            <Button variant="danger-ghost" onClick={() => setConfirm('delete')}>
-              <Trash2 aria-hidden className="size-5" />
-              {t('session.action.delete')}
-            </Button>
+            <RowMenu
+              label={t('session.action.more')}
+              items={[
+                {
+                  label: t('session.action.duplicate'),
+                  icon: <Copy aria-hidden className="size-4" />,
+                  disabled: duplicate.isPending,
+                  onSelect: () => duplicate.mutate(),
+                },
+                {
+                  label: t('session.action.cancel'),
+                  disabled: cancelled,
+                  hint: cancelled ? t('session.hint.cancelDisabled') : undefined,
+                  onSelect: () => setConfirm('cancel'),
+                },
+                {
+                  label: t('session.action.delete'),
+                  icon: <Trash2 aria-hidden className="size-4" />,
+                  danger: true,
+                  onSelect: () => setConfirm('delete'),
+                },
+              ]}
+            />
           </div>
         }
       />

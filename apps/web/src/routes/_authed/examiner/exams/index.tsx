@@ -108,6 +108,8 @@ function ExamsPage() {
                   <span className="text-sm text-fg-muted">
                     {t('exam.meta', { items: exam.itemCount, points: exam.totalPoints })} ·{' '}
                     {t('exam.updatedAt', { time: formatDateTime(exam.updatedAt) })}
+                    {exam.sessionCount > 0 &&
+                      ` · ${t('exam.sessionCount', { count: exam.sessionCount })}`}
                   </span>
                 </Link>
               </li>
