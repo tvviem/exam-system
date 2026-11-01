@@ -180,9 +180,9 @@ export class IllustrationsService {
     if (found.ownerId !== userId && !(await this.examUsage.canViewIllustration(userId, id))) {
       throw new ApiError('NOT_FOUND');
     }
-    const row = found;
-    if (row.status !== 'ready') throw new ApiError('NOT_FOUND');
-    const fit = row.variants.filter((v) => v <= side).sort((a, b) => b - a)[0] ?? row.variants[0];
+    if (found.status !== 'ready') throw new ApiError('NOT_FOUND');
+    const fit =
+      found.variants.filter((v) => v <= side).sort((a, b) => b - a)[0] ?? found.variants[0];
     if (fit === undefined) throw new ApiError('NOT_FOUND');
     return variantKeyOf(id, fit);
   }

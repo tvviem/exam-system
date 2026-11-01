@@ -233,6 +233,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const skipBlock = useRef(false);
   const readOnly = exam.status !== 'draft';
+  const isArchived = exam.status === 'archived';
 
   const dirty = serialize(draft) !== baseline;
   const totals = totalsOf(draft);
@@ -295,10 +296,10 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
     },
   });
   const toggleArchive = useMutation({
-    mutationFn: () => (exam.status === 'archived' ? restoreExam(exam.id) : archiveExam(exam.id)),
+    mutationFn: () => (isArchived ? restoreExam(exam.id) : archiveExam(exam.id)),
     onSuccess: async () => {
       await refreshExams();
-      toast(t(exam.status === 'archived' ? 'exam.restoredDone' : 'exam.archivedDone'));
+      toast(t(isArchived ? 'exam.restoredDone' : 'exam.archivedDone'));
       await navigate({ to: '/examiner/exams' });
     },
   });
@@ -316,15 +317,15 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
         actions={
           readOnly ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={exam.status === 'archived' ? 'warning' : 'success'}>
-                {t(exam.status === 'archived' ? 'exam.archivedBadge2' : 'exam.publishedBadge')}
+              <Badge tone={isArchived ? 'warning' : 'success'}>
+                {t(`exam.status.${exam.status}`)}
               </Badge>
               <Button disabled={duplicate.isPending} onClick={() => duplicate.mutate()}>
                 <Copy aria-hidden className="size-5" />
                 {t('exam.duplicate')}
               </Button>
               <Button disabled={toggleArchive.isPending} onClick={() => toggleArchive.mutate()}>
-                {t(exam.status === 'archived' ? 'exam.restoreExam' : 'exam.archiveExam')}
+                {t(isArchived ? 'exam.restoreExam' : 'exam.archiveExam')}
               </Button>
             </div>
           ) : (

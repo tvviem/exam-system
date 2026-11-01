@@ -130,6 +130,18 @@ describe('kiểm tra trước khi Phát hành (Q171)', () => {
     ]);
   });
 
+  it('câu không còn của chủ Bộ đề (đã đổi chủ khi là nháp): chặn Phát hành', async () => {
+    const q = await question('A');
+    const exam = await draftExam([q]);
+    await sql(
+      `update questions set owner_id = (select id from users where username = 'gv2') where id = $1`,
+      [q],
+    );
+    expect((await check(exam.id)).json().problems).toMatchObject([
+      { code: 'question_invalid', questionId: q },
+    ]);
+  });
+
   it('chỉ chủ và chỉ Bộ đề nháp', async () => {
     const exam = await draftExam([await question('A')]);
     expect(
@@ -268,6 +280,36 @@ describe('trigger chặn ghi trực tiếp vào Bộ đề đã Phát hành (Q17
     await expect(
       sql(`update exams set status = 'archived', archived_at = now() where id = '${exam.id}'`),
     ).resolves.toEqual([]);
+  });
+
+  it('không chuyển dòng ra khỏi Bộ đề đã Phát hành, không sửa bảng ảnh, không nhảy trạng thái khi thiếu bản chụp', async () => {
+    const image = await upload(
+      t.app,
+      '/api/illustrations',
+      { filename: 'h.jpg', content: await jpeg(400, 300) },
+      { cookie },
+    );
+    const imageId = image.json().id as string;
+    await t.queue.drain();
+    const published = await draftExam([await question('A', imageQuestion(imageId))]);
+    await publish(published);
+    const target = await draftExam([await question('B')], 'Nháp khác');
+    const failing = [
+      `update exam_items set exam_id = '${target.id}' where exam_id = '${published.id}'`,
+      `update exam_sections set exam_id = '${target.id}' where exam_id = '${published.id}'`,
+      'delete from exam_item_illustrations',
+      `insert into exam_item_illustrations (exam_item_id, illustration_id)
+         select id, '${imageId}'::uuid from exam_items where exam_id = '${published.id}'`,
+    ];
+    for (const statement of failing) {
+      await expect(sql(statement), statement).rejects.toThrow(/khong sua duoc/);
+    }
+    // Nháp chưa có bản chụp không nhảy thẳng sang Phát hành hay Lưu trữ bằng SQL.
+    for (const status of ['published', 'archived']) {
+      await expect(
+        sql(`update exams set status = '${status}' where id = '${target.id}'`),
+      ).rejects.toThrow(/ban chup|phat hanh/);
+    }
   });
 
   it('Bộ đề nháp vẫn xóa được (cascade qua trigger)', async () => {

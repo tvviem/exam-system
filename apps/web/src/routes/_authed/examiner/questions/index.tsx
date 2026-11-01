@@ -8,6 +8,7 @@ import { errorMessage } from '../../../../lib/errors';
 import {
   archiveQuestions,
   deleteQuestions,
+  examCountOf,
   moveQuestions,
   QUESTION_TYPES,
   type QuestionListItem,
@@ -337,7 +338,7 @@ function TopicLink({
 /** Câu đã Lưu trữ hoặc đang nằm trong Bộ đề (Q174). */
 function UsageBadges({ item }: { item: QuestionListItem }) {
   const { t } = useTranslation();
-  const exams = item.usage.draftCount + item.usage.publishedCount;
+  const exams = examCountOf(item);
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       {item.archivedAt && <Badge tone="warning">{t('questionBank.archivedBadge')}</Badge>}
@@ -487,7 +488,7 @@ function BulkBar({
 }) {
   const ids = items.map((item) => item.id);
   // Câu đã nằm trong Bộ đề thì không xóa được, chỉ Lưu trữ (Q174).
-  const anyUsed = items.some((item) => item.usage.draftCount + item.usage.publishedCount > 0);
+  const anyUsed = items.some((item) => examCountOf(item) > 0);
   const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();

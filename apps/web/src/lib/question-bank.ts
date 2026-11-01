@@ -98,3 +98,7 @@ export const archiveQuestions = (ids: string[]) =>
   apiFetch<{ updated: number }>('/questions/archive', { method: 'POST', body: { ids } });
 export const restoreQuestions = (ids: string[]) =>
   apiFetch<{ updated: number }>('/questions/restore', { method: 'POST', body: { ids } });
+
+/** Số Bộ đề (nháp, đã Phát hành, Lưu trữ) đang chứa Câu hỏi này. */
+export const examCountOf = (item: Pick<QuestionListItem, 'usage'>) =>
+  item.usage.draftCount + item.usage.publishedCount;

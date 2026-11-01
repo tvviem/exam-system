@@ -220,6 +220,17 @@ exam_items (
   UNIQUE (exam_id, question_id)           -- một Câu hỏi không xuất hiện 2 lần trong cùng Bộ đề
 )
 -- Ràng buộc sở hữu (kiểm tra ở service + trigger): questions.owner_id = exams.owner_id
+
+exam_item_illustrations (                 -- ảnh nằm trong bản chụp của Bộ đề đã Phát hành (Q176)
+  exam_item_id → exam_items ON DELETE CASCADE,
+  illustration_id → illustrations ON DELETE RESTRICT,  -- ảnh có dòng ở đây không xóa được
+  PRIMARY KEY (exam_item_id, illustration_id)
+)
+
+-- Trigger (migration 0011, Q172): exams.status khác 'draft' thì
+--   exam_items, exam_sections: chặn INSERT/UPDATE/DELETE;
+--   exams: chỉ cho đổi status published <-> archived, archived_at, owner_id, updated_at; chặn DELETE và quay về 'draft'.
+-- Bộ đề nháp xóa theo cascade vẫn qua được. Chấm điểm chỉ tin exam_items.snapshot nên đây là lớp bảo vệ thứ hai sau service.
 ```
 
 ## 4. Phiên thi (module `session`)

@@ -1,4 +1,4 @@
-import type { CandidateView, ExamContent, RichText } from '@exam/shared';
+import type { CandidateView, ExamContent, PublishProblem, RichText } from '@exam/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
@@ -89,21 +89,6 @@ export const examPreviewQuery = (id: string, showScoringRules: boolean) =>
         `/exams/${id}/preview${queryString({ showScoringRules: String(showScoringRules) })}`,
       ),
   });
-
-export type PublishProblemCode =
-  | 'title_missing'
-  | 'empty_exam'
-  | 'empty_section'
-  | 'question_archived'
-  | 'question_invalid'
-  | 'illustration_not_ready'
-  | 'points_invalid';
-
-export interface PublishProblem {
-  code: PublishProblemCode;
-  questionId?: string;
-  sectionId?: string;
-}
 
 /** Chỉ để hiện cho người dùng; `publishExam` chạy lại cùng phép kiểm trên server (Q171). */
 export const publishCheckQuery = (id: string) =>

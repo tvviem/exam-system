@@ -4,6 +4,7 @@ import {
   POINTS_MAX,
   POINTS_MIN,
   POINTS_STEP,
+  type PublishProblem,
   questionInputSchema,
   richTextFieldsOf,
 } from '@exam/shared';
@@ -15,22 +16,6 @@ import { illustrations, questions } from '../question-bank/question-bank.schema'
 import { examItemIllustrations, examItems, examSections, exams } from './exam.schema';
 
 type Db = Pick<Database, 'select'>;
-
-export type PublishProblemCode =
-  | 'title_missing'
-  | 'empty_exam'
-  | 'empty_section'
-  | 'question_archived'
-  | 'question_invalid'
-  | 'illustration_not_ready'
-  | 'points_invalid';
-
-/** Một vấn đề chặn Phát hành (Q171); `questionId`/`sectionId` để giao diện dẫn tới đúng chỗ. */
-export interface PublishProblem {
-  code: PublishProblemCode;
-  questionId?: string;
-  sectionId?: string;
-}
 
 /** Bản chụp một câu lúc Phát hành (Q172, ADR-0005). Điểm nằm ở `exam_items.points`, không lặp ở đây. */
 export type ItemSnapshot = {
@@ -236,6 +221,8 @@ export class ExamLifecycleService {
     for (const { itemId, sectionId, points, question: q } of items) {
       const at = { questionId: q.id, sectionId };
       if (q.archivedAt !== null) problems.push({ code: 'question_archived', ...at });
+      // Câu phải của chính chủ Bộ đề (Q181); Chuyển giao Chủ đề có thể đã đổi chủ câu trong lúc là nháp.
+      if (q.ownerId !== exam.ownerId) problems.push({ code: 'question_invalid', ...at });
       if (!pointsValid(Number(points))) problems.push({ code: 'points_invalid', ...at });
       const parsed = questionInputSchema.safeParse({
         type: q.type,

@@ -18,8 +18,6 @@ export interface QuestionUsage {
 }
 
 export interface ExamUsage {
-  /** Các Bộ đề nháp của `ownerId` đang chứa từng Câu hỏi; câu không có trong Bộ đề nháp nào thì không có khóa. */
-  draftExamsOf(ownerId: string, questionIds: string[]): Promise<Map<string, ExamRef[]>>;
   /** Dùng của từng Câu hỏi (mọi câu được hỏi đều có khóa). */
   usageOf(ownerId: string, questionIds: string[]): Promise<Map<string, QuestionUsage>>;
   /** Trong các ảnh được hỏi, những ảnh nằm trong bản chụp của một Bộ đề đã Phát hành. */

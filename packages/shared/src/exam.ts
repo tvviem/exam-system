@@ -123,3 +123,19 @@ export function distributePoints(count: number, plan: PointsPlan): PointsDistrib
     points: Array.from({ length: count }, (_, i) => toPoints(base + (i < extra ? 1 : 0))),
   };
 }
+
+export type PublishProblemCode =
+  | 'title_missing'
+  | 'empty_exam'
+  | 'empty_section'
+  | 'question_archived'
+  | 'question_invalid'
+  | 'illustration_not_ready'
+  | 'points_invalid';
+
+/** Một vấn đề chặn Phát hành (Q171); `questionId`/`sectionId` để giao diện dẫn tới đúng chỗ. */
+export interface PublishProblem {
+  code: PublishProblemCode;
+  questionId?: string;
+  sectionId?: string;
+}

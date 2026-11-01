@@ -257,3 +257,4 @@ Không đổi điều đã duyệt:
 - **Ảnh:** `exam_item_illustrations` ghi lúc Phát hành; ảnh có dòng ở đó tính là `inUse` và không xóa được; chủ Bộ đề đã Phát hành xem được ảnh (`/api/media`) dù ảnh đã đổi chủ.
 - **Chưa làm:** sao chép ảnh khi Chuyển giao Chủ đề có Bộ đề đã Phát hành dùng ảnh (Q176) thuộc 3d cùng Chuyển giao Bộ đề.
 - Hộp "Bộ lọc" của danh sách Câu hỏi dùng chung `id` giữa ô lọc trên thanh và trong hộp thoại điện thoại (có sẵn từ trước PR này); nhãn trong hộp thoại có thể trỏ nhầm ô. Ghi lại để sửa riêng.
+- **Ranh giới module:** `exam` đọc (không ghi) bảng `questions` và `illustrations` để dựng bản chụp và kiểm tra Phát hành, như `exams.service` đã đọc `questions` từ PR 3a; chiều ngược lại (`question-bank` biết Bộ đề) luôn qua cổng `ExamUsage`. Không thêm cổng đọc cho `exam` vì bản chụp phải nhất quán với Câu hỏi trong cùng giao dịch có khóa `FOR SHARE`.
