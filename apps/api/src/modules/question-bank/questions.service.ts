@@ -2,6 +2,7 @@ import { normalizeForSearch, plainTextOf, type QuestionInput } from '@exam/share
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
+import { EXAM_USAGE, type ExamRef, type ExamUsage } from '../../common/exam-usage';
 import { type Page, paginate } from '../../common/pagination';
 import { type Database, DB } from '../../db/db.module';
 import { IllustrationsService } from './illustrations/illustrations.service';
@@ -18,6 +19,14 @@ export interface QuestionFilter {
 }
 
 const PREVIEW_CHARS = 160;
+
+/** `INVALID_STATE` nêu các Bộ đề nháp đang giữ Câu hỏi (Q166). */
+const questionInExam = (exams: ExamRef[]) =>
+  new ApiError('INVALID_STATE', {
+    reason: 'QUESTION_IN_EXAM',
+    exams: [...new Map(exams.map((exam) => [exam.id, exam])).values()],
+  });
+
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 const fullColumns = {
@@ -51,6 +60,7 @@ export class QuestionsService {
     @Inject(DB) private readonly db: Database,
     private readonly topics: TopicsService,
     private readonly illustrations: IllustrationsService,
+    @Inject(EXAM_USAGE) private readonly examUsage: ExamUsage,
   ) {}
 
   async create(ownerId: string, input: QuestionInput) {
@@ -137,8 +147,11 @@ export class QuestionsService {
   }
 
   async remove(ownerId: string, ids: string[]) {
+    const unique = [...new Set(ids)];
+    // Câu còn nằm trong Bộ đề nháp thì không xóa (Q166): nêu tên các Bộ đề để người dùng biết gỡ ở đâu.
+    const used = await this.examUsage.draftExamsOf(ownerId, unique);
+    if (used.size > 0) throw questionInExam([...used.values()].flat());
     return this.db.transaction(async (tx) => {
-      const unique = [...new Set(ids)];
       const deleted = await tx
         .delete(questions)
         .where(and(inArray(questions.id, unique), eq(questions.ownerId, ownerId)))

@@ -3,6 +3,7 @@ import {
   Building2,
   ClipboardList,
   Ellipsis,
+  FileText,
   History,
   Library,
   type LucideIcon,
@@ -66,6 +67,12 @@ export function navFor(me: Me): NavItem[] {
         label: 'nav.questionBank',
         short: 'nav.short.questionBank',
         icon: Library,
+      },
+      {
+        to: '/examiner/exams',
+        label: 'nav.exams',
+        short: 'nav.short.exams',
+        icon: FileText,
       },
       {
         to: '/examiner/account-requests',

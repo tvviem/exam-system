@@ -2,6 +2,7 @@ import { type DynamicModule, Module } from '@nestjs/common';
 import { type Clock, ClockModule } from '../common/clock';
 import { ConfigModule } from '../config/config.module';
 import { DbModule } from '../db/db.module';
+import { ExamUsageWiringModule } from '../exam-usage-wiring.module';
 import { MediaModule } from '../media/media-store';
 import { IdentityModule } from '../modules/identity/identity.module';
 import { OwnedContentWiringModule } from '../owned-content-wiring.module';
@@ -23,6 +24,7 @@ export class CliModule {
         QueueModule,
         IdentityModule,
         OwnedContentWiringModule,
+        ExamUsageWiringModule,
       ],
     };
   }
