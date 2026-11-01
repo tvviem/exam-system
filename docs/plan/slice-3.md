@@ -195,6 +195,16 @@ Các điểm tôi đã chọn một hướng nhưng có phương án hợp lý k
 | Q178 Xóa Bộ đề đã Phát hành | **Đã chốt:** không xóa, chỉ Lưu trữ | Cho xóa khi chưa có Phiên thi |
 | Q182 Nháp trộn khi Chuyển giao | **Đã chốt:** chuyển nháp, gỡ các câu không chuyển, nói trước | Chặn Chuyển giao |
 
+## Bổ sung khi làm PR 3a
+
+Không đổi điều đã duyệt:
+- Migration `0010_exams` tạo `exams`, `exam_sections`, `exam_items` (cột `snapshot` có sẵn, chưa ai ghi). `exam_item_illustrations` và trigger chờ PR 3c (Q190).
+- Chặn xóa Câu hỏi đang ở Bộ đề nháp (Q166) làm ngay ở 3a (nếu không thì khóa ngoại `RESTRICT` trả lỗi 500): cổng `EXAM_USAGE` (`src/common/exam-usage.ts`, `draftExamsOf`) do `exam` cài đặt, nối ở `ExamUsageWiringModule` cho api, worker và CLI; `QuestionsService.remove` trả `INVALID_STATE` với `reason: QUESTION_IN_EXAM` kèm `exams: [{ id, title }]`, cả lô không xóa gì. PR 3c mở rộng cổng (Bộ đề đã Phát hành, ảnh).
+- `GET /api/exams?status=&q=&page=`: không nêu `status` thì Nháp và Đã phát hành (Q180). Chi tiết trả `totals` và, mỗi câu, `question: { type, preview, topicName, tags, defaultPoints, archived }`.
+- Lưu cả tài liệu: Phần nêu `id` phải thuộc Bộ đề, không thì `unknown_section`; câu không thuộc người này `unknown_question`; câu đã Lưu trữ chỉ được giữ nếu đã có trong Bộ đề, thêm mới thì `question_archived`; mọi lỗi báo một lần (`issues` nhiều phần tử). Phần mới nhận `id` do server cấp; giao diện gán id theo thứ tự sau khi lưu.
+- Giao diện: khối Phần chỉ hiện sau "Chia Phần" (hoặc khi Phần đã có tiêu đề); hướng dẫn gập lại cho tới khi bấm; ô điểm nhận dấu phẩy; "Chuyển câu sang Phần" là ô chọn; mục "Bộ đề" nằm giữa Ngân hàng câu hỏi và Yêu cầu cấp tài khoản.
+- **Khoảng trống tạm thời giữa 3a và 3d:** Chuyển giao Chủ đề (PR 2f) chưa biết Bộ đề; Chủ đề có câu đang ở Bộ đề nháp mà bị chuyển thì Bộ đề đó tạm chứa câu của người khác cho tới khi 3d xử lý (Q182). Chỉ ảnh hưởng dữ liệu thử.
+
 ## Quyết định (Q159–Q191, đã duyệt)
 
 | Q | Nội dung |
@@ -232,3 +242,8 @@ Các điểm tôi đã chọn một hướng nhưng có phương án hợp lý k
 | Q189 | Thuật ngữ mới: Bản chụp, Đặt điểm nhanh, Lưu trữ Bộ đề |
 | Q190 | Thay đổi data-model mục 3 và kế hoạch migration |
 | Q191 | Ngoài phạm vi lát cắt 3 |
+
+## Điều chỉnh sau khi chủ dự án dùng thử 3a
+
+- **Đặt điểm nhanh (Q168) làm sớm, nằm trong PR 3a** (không chờ 3b): 40 câu cùng điểm mà sửa tay từng ô là không thực tế. Phạm vi: cả Bộ đề, một Phần, một Loại câu hỏi (phạm vi "câu đang tick" để sau vì trình soạn chưa có ô tick). Cách đặt: mỗi câu cùng điểm, hoặc chia đều một tổng. 3b chỉ còn Xem thử.
+- **Nhãn cho ô nhập:** ô điểm của từng câu có nhãn "Điểm" nhìn thấy và chú thích (`title`) nêu khoảng, bước và dấu phẩy; ô "Chuyển sang…" có chú thích. Quy ước: ô nhập nào cũng phải có nhãn nhìn thấy hoặc `title`.

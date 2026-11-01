@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ClockModule } from './common/clock';
 import { ConfigModule } from './config/config.module';
 import { DbModule } from './db/db.module';
+import { ExamUsageWiringModule } from './exam-usage-wiring.module';
 import { HealthModule } from './health/health.module';
 import { PinoLoggerModule } from './logger';
 import { MediaModule } from './media/media-store';
@@ -27,6 +28,7 @@ import { RedisModule } from './redis/redis.module';
     IdentityModule,
     QuestionBankModule,
     OwnedContentWiringModule,
+    ExamUsageWiringModule,
     HealthModule,
   ],
 })

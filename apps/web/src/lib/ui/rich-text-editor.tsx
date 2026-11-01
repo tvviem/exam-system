@@ -114,6 +114,7 @@ export default function RichTextEditor({
   onChange,
   invalid = false,
   minHeight = 'min-h-24',
+  allowImages = true,
 }: {
   id: string;
   label: string;
@@ -121,6 +122,8 @@ export default function RichTextEditor({
   onChange: (doc: RichText) => void;
   invalid?: boolean;
   minHeight?: string;
+  /** Hướng dẫn Bộ đề không có ảnh (Q165): tắt nút chèn hình. */
+  allowImages?: boolean;
 }) {
   const { t } = useTranslation();
   // `pos` rỗng là chèn công thức mới tại con trỏ; có số là sửa công thức đang có ở vị trí đó.
@@ -217,12 +220,14 @@ export default function RichTextEditor({
           active={false}
           onClick={() => setMath({ pos: null, attrs: { latex: '', display: false } })}
         />
-        <ToolButton
-          label={t('editor.image')}
-          icon={ImageIcon}
-          active={false}
-          onClick={() => setImage({ pos: null, attrs: null })}
-        />
+        {allowImages && (
+          <ToolButton
+            label={t('editor.image')}
+            icon={ImageIcon}
+            active={false}
+            onClick={() => setImage({ pos: null, attrs: null })}
+          />
+        )}
       </div>
       <EditorContent editor={editor} />
       {math && (

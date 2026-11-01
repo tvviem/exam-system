@@ -31,6 +31,7 @@ export function Rich({
   onChange,
   invalid,
   minHeight,
+  allowImages,
 }: {
   id: string;
   label: string;
@@ -38,6 +39,7 @@ export function Rich({
   onChange: (doc: RichText) => void;
   invalid?: boolean;
   minHeight?: string;
+  allowImages?: boolean;
 }) {
   return (
     <Suspense fallback={<div className="h-24 animate-pulse rounded-lg border border-border" />}>
@@ -48,6 +50,7 @@ export function Rich({
         onChange={onChange}
         invalid={invalid}
         minHeight={minHeight}
+        allowImages={allowImages}
       />
     </Suspense>
   );

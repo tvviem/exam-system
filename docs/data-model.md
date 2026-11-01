@@ -201,18 +201,20 @@ Ví dụ `payload` theo từng loại:
 
 ```sql
 exams (
-  id, owner_id → users, title, instructions jsonb,
-  status enum('draft','published','archived'), published_at
+  id, owner_id → users, title, instructions jsonb,        -- instructions: nội dung có định dạng, không ảnh (Q165)
+  status enum('draft','published','archived'),
+  version int DEFAULT 1,                                   -- khóa lạc quan của lần lưu cả tài liệu (Q163)
+  published_at, archived_at
 )
 
-exam_sections (                           -- Phần; Bộ đề không chia phần có 1 Phần mặc định
-  id, exam_id → exams, title NULL, instructions jsonb, sort int,
-  shuffle_items bool DEFAULT true
+exam_sections (                           -- Phần; Bộ đề không chia phần có 1 Phần mặc định (title NULL)
+  id, exam_id → exams ON DELETE CASCADE, title NULL, instructions jsonb, sort int
+  -- Xáo trộn là thiết lập của Phiên thi (Q161), không có cờ ở Phần
 )
 
 exam_items (
-  id, exam_id → exams, section_id → exam_sections,
-  question_id → questions,                -- một Câu hỏi dùng lại được ở nhiều Bộ đề
+  id, exam_id → exams ON DELETE CASCADE, section_id → exam_sections ON DELETE CASCADE,
+  question_id → questions ON DELETE RESTRICT,  -- một Câu hỏi dùng lại được ở nhiều Bộ đề
   points numeric(6,2), sort int,
   snapshot jsonb NULL,                    -- điền khi Phát hành (ADR-0005)
   UNIQUE (exam_id, question_id)           -- một Câu hỏi không xuất hiện 2 lần trong cùng Bộ đề
