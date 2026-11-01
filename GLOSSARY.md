@@ -201,7 +201,11 @@ _Avoid_: thu bài, ép nộp
 
 **Hủy Phiên thi** (`Cancel`):
 Hành động của Người ra đề dừng hẳn một Phiên thi, thường vì đề sai hoặc lộ đề: mọi Lượt đang làm được nộp ngay, không ai vào thi được nữa, không tính Kết quả nhưng vẫn xem lại được, và Người dự thi được thông báo. Không hoàn tác. Muốn thi lại thì tạo Phiên thi mới (cần sửa đề thì Nhân bản Bộ đề, Phát hành bản mới trước). Phiên thi đã có Lượt làm bài thì chỉ Hủy, không Xóa.
-_Avoid_: xóa Phiên thi, hủy kỳ thi
+_Avoid_: hủy kỳ thi
+
+**Xóa Phiên thi** (`Delete`):
+Hành động của Người ra đề gỡ hẳn một Phiên thi chưa từng có Lượt làm bài, kèm Danh sách dự thi của nó; không còn xem lại được. Người dự thi đã được thêm vào Danh sách của một Phiên thi chưa Hủy được thông báo. Không hoàn tác. Phiên thi đã có Lượt làm bài thì Hủy chứ không Xóa, để còn xem lại.
+_Avoid_: hủy (đứng một mình, dễ nhầm với Hủy Phiên thi), gỡ Phiên thi
 
 **Xem thử** (`Preview`):
 Chế độ Người ra đề đi qua Phiên thi của mình đúng như Người dự thi sẽ thấy, không tạo Lượt làm bài và không lưu gì. Người ra đề không được có tên trong Danh sách dự thi của Phiên thi do chính mình tạo.

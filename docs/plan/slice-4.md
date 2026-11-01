@@ -356,7 +356,7 @@ Chủ dự án đã đồng ý sáu điểm sau (không đánh số Q mới vì 
 ### Chi tiết thực hiện cần biết
 
 - **Hàm thuần** ở `packages/shared/src/session.ts`: `phaseOf`, `sessionEditableFields`, `sessionChangeProblems`, `sessionSettingsSchema`, `sessionUpdateSchema`, `normalizeAccessCode`, `generateAccessCode`, `parseCodeList`.
-- **Sửa theo trạng thái (Q202)** hiểu chặt: khi đã mở chỉ còn Giờ đóng (chỉ kéo dài), Thời lượng (chỉ kéo dài) và Mã vào thi; đổi tên cũng bị khóa. Vi phạm trả `VALIDATION_FAILED` với `locked` hoặc `cannot_shorten`.
+- **Sửa theo trạng thái (Q202)** hiểu chặt: khi đã mở chỉ còn Giờ đóng (chỉ kéo dài), Thời lượng (chỉ kéo dài) và Mã vào thi; đổi tên cũng bị khóa (chủ dự án chốt 2/11/2026: tên chỉ khóa khi đã có Người dự thi tham gia; chưa ai vào thì vẫn đổi được trước giờ mở, nên với 4a "Sắp mở" đổi được và "đã mở" bị khóa là đủ; xét lại ở 4b nếu muốn cho đổi cả khi đang mở mà chưa ai vào). Vi phạm trả `VALIDATION_FAILED` với `locked` hoặc `cannot_shorten`.
 - **Thông báo** (Q211): `session.added`, `session.rescheduled` (chỉ khi đổi giờ mở hoặc giờ đóng), `session.cancelled` (cả khi Xóa Phiên thi chưa hủy mà đã có người trong Danh sách), cùng `account.password_reissued`.
 - **Hủy** gọi được ở mọi trạng thái trừ Đã hủy; từ 4b sẽ nộp các Lượt đang làm với lý do `session_cancelled`. **Xóa** chỉ khi chưa có Lượt (ở 4a luôn đúng; 4b thêm kiểm).
 - **Nhân bản** dời giờ sang tuần sau (hoặc đủ số tuần để còn ở tương lai), mã mới, tên thêm " (bản sao)", mang theo người còn đủ điều kiện kèm phút cộng sẵn và báo họ.
