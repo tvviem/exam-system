@@ -15,14 +15,23 @@ export interface OwnedTopicSummary {
   illustrationCount: number;
 }
 
-export interface OwnedCounts {
+/** Phần của ngân hàng câu hỏi trong một lần đếm hay Chuyển giao. */
+export interface ContentCounts {
   topics: number;
   questions: number;
   illustrations: number;
 }
 
+/** Cộng thêm Bộ đề (Q182, Q183): Bộ đề nháp đổi chủ theo Chủ đề, hoặc mọi Bộ đề khi Xóa người dùng. */
+export interface OwnedCounts extends ContentCounts {
+  exams: number;
+  /** Câu bị gỡ khỏi các Bộ đề nháp đi cùng vì không thuộc Chủ đề được chuyển. */
+  detachedItems: number;
+}
+
 export interface OwnedContentSummary {
   topics: OwnedTopicSummary[];
+  /** Mọi thứ người này sở hữu (Xóa người dùng chuyển hết). */
   totals: OwnedCounts;
   /** Chỉ có khi hỏi theo `topicIds`: số liệu đúng của các Chủ đề được chọn (ảnh dùng chung chỉ đếm một lần). */
   selected?: OwnedCounts;

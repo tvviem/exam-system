@@ -16,6 +16,8 @@ const rich = (text: string) => ({
   content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
 });
 
+const emptyDoc = { type: 'doc', content: [{ type: 'paragraph' }] };
+
 /** Người ra đề (đang đăng nhập trên `page`) tạo một Chủ đề có một Câu hỏi, qua API cho nhanh. */
 async function seedTopic(page: Page, name: string) {
   const headers = { origin: ORIGIN };
@@ -41,6 +43,7 @@ async function seedTopic(page: Page, name: string) {
     },
   });
   expect(question.ok(), await question.text()).toBe(true);
+  return (await question.json()).id as string;
 }
 
 async function openUser(page: Page, search: string, name: RegExp) {
@@ -175,4 +178,64 @@ test('chuyển hết Chủ đề: hộp thoại vẫn báo kết quả dù thẻ
   );
   await dialog.getByRole('button', { name: 'Đóng', exact: true }).first().click();
   await expect(page.getByText('Người này không còn Chủ đề nào.')).toBeVisible();
+});
+
+test('Chuyển giao Chủ đề mang theo Bộ đề nháp; người nhận thấy Bộ đề và thông báo', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  const topic = `Bộ đề CG ${p}`;
+  const donor = await browser.newContext({ baseURL: ORIGIN });
+  const donorPage = await donor.newPage();
+  await signIn(donorPage, `e2e-cg-cu4-${p}`);
+  const questionId = await seedTopic(donorPage, topic);
+  const headers = { origin: ORIGIN };
+  const created = await (
+    await donorPage.request.post('/api/exams', { headers, data: { title: `Đề CG ${p}` } })
+  ).json();
+  const saved = await donorPage.request.put(`/api/exams/${created.id}`, {
+    headers,
+    data: {
+      title: `Đề CG ${p}`,
+      instructions: emptyDoc,
+      version: created.version,
+      sections: [
+        {
+          id: created.sections[0].id,
+          title: null,
+          instructions: emptyDoc,
+          items: [{ questionId, points: 1 }],
+        },
+      ],
+    },
+  });
+  expect(saved.ok(), await saved.text()).toBe(true);
+  await donor.close();
+
+  await signIn(page, `e2e-cg-qt-${p}`);
+  await openUser(page, `cu bon ${p}`, new RegExp(`Cũ Bốn ${p}`));
+  await page.getByRole('checkbox', { name: `Chọn Chủ đề ${topic}` }).check();
+  await page.getByRole('button', { name: 'Chuyển giao…' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(
+    dialog.getByText('1 Bộ đề nháp có câu của các Chủ đề này sẽ chuyển theo'),
+  ).toBeVisible();
+  await dialog.getByLabel('Tìm Người ra đề theo tên hoặc tên đăng nhập').fill(`Nhận Bộ đề ${p}`);
+  await dialog.getByRole('radio', { name: new RegExp(`Nhận Bộ đề ${p}`) }).check();
+  expect(await noHorizontalScroll(page), 'hộp thoại chuyển giao').toBe(0);
+  await dialog.getByRole('button', { name: 'Chuyển giao', exact: true }).click();
+  await expect(dialog.getByText('1 Bộ đề đã chuyển theo.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Đóng', exact: true }).first().click();
+
+  const recipient = await browser.newContext({ baseURL: ORIGIN });
+  const recipientPage = await recipient.newPage();
+  await signIn(recipientPage, `e2e-cg-nbd-${p}`);
+  await recipientPage.goto('/examiner/exams');
+  await expect(recipientPage.getByRole('link', { name: new RegExp(`Đề CG ${p}`) })).toBeVisible();
+  await recipientPage.getByRole('button', { name: /^Thông báo \(1 chưa đọc\)/ }).click();
+  await expect(
+    recipientPage.getByText('Quản trị viên đã chuyển giao 1 Chủ đề và 1 Bộ đề cho bạn.'),
+  ).toBeVisible();
+  await recipient.close();
 });

@@ -258,3 +258,12 @@ Không đổi điều đã duyệt:
 - **Chưa làm:** sao chép ảnh khi Chuyển giao Chủ đề có Bộ đề đã Phát hành dùng ảnh (Q176) thuộc 3d cùng Chuyển giao Bộ đề.
 - Hộp "Bộ lọc" của danh sách Câu hỏi dùng chung `id` giữa ô lọc trên thanh và trong hộp thoại điện thoại (có sẵn từ trước PR này); nhãn trong hộp thoại có thể trỏ nhầm ô. Ghi lại để sửa riêng.
 - **Ranh giới module:** `exam` đọc (không ghi) bảng `questions` và `illustrations` để dựng bản chụp và kiểm tra Phát hành, như `exams.service` đã đọc `questions` từ PR 3a; chiều ngược lại (`question-bank` biết Bộ đề) luôn qua cổng `ExamUsage`. Không thêm cổng đọc cho `exam` vì bản chụp phải nhất quán với Câu hỏi trong cùng giao dịch có khóa `FOR SHARE`.
+
+## Điều chỉnh khi làm PR 3d
+
+- **Cổng `OwnedContent` thành danh sách nhà cung cấp** (Q183): `OwnedContentWiringModule` ghép `QuestionBankOwnedContent` (chạy trước) và `ExamOwnedContent` (đọc quyền sở hữu Câu hỏi vừa đổi chủ trong cùng giao dịch). Giao diện cổng không đổi; `OwnedCounts` có thêm `exams` và `detachedItems`.
+- **Chọn Chủ đề (Q182):** Bộ đề nháp của người cho có ít nhất một câu thuộc Chủ đề được chuyển thì đổi chủ cả Bộ đề (`version` + 1 để trình soạn đang mở của người cho báo xung đột); các câu còn thuộc người cho bị gỡ khỏi Bộ đề đó, Phần rỗng giữ nguyên. Bộ đề đã Phát hành hoặc Lưu trữ ở lại người cho.
+- **Xóa người dùng (Q183):** mọi Bộ đề (nháp, đã Phát hành, Lưu trữ) sang người nhận cùng lúc; người chỉ có Bộ đề rỗng (chưa có Chủ đề) vẫn phải chọn người nhận (`HAS_CONTENT` kèm `exams`).
+- **Ảnh (Q176):** khi chọn Chủ đề, ảnh còn nằm trong bản chụp của Bộ đề đã Phát hành ở lại người cho được SAO CHÉP cho người nhận thay vì đổi chủ. Khi Xóa người dùng thì Bộ đề đi cùng nên ảnh đổi chủ như thường; chủ Bộ đề luôn xem được ảnh của bản chụp qua `exam_item_illustrations`.
+- **Thông báo:** `topics.transferred` có thêm `exams`; lời nhắn "…N Chủ đề và P Bộ đề…" khi P > 0.
+- Khoảng trống tạm thời đã nêu ở PR 3a (nháp giữ câu của người khác sau Chuyển giao) được đóng lại.

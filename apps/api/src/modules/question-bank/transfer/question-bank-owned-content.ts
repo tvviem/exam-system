@@ -3,12 +3,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { ApiError, validationFailed } from '../../../common/api-error';
-import type {
-  OwnedContent,
-  OwnedContentSummary,
-  OwnedCounts,
-  PreparedTransfer,
-} from '../../../common/owned-content';
+import { EXAM_USAGE, type ExamUsage } from '../../../common/exam-usage';
+import type { ContentCounts, OwnedTopicSummary } from '../../../common/owned-content';
 import { type Database, DB, type Transaction } from '../../../db/db.module';
 import { MEDIA_STORE, type MediaStore } from '../../../media/media-store';
 import { variantKeyOf } from '../illustrations/illustration-keys';
@@ -38,20 +34,34 @@ interface Copy {
   keys: string[];
 }
 
+/** Tóm tắt phần ngân hàng câu hỏi; `OwnedContentWiringModule` ghép thêm phần Bộ đề. */
+export interface QuestionBankSummary {
+  topics: OwnedTopicSummary[];
+  totals: ContentCounts;
+  selected?: ContentCounts;
+}
+
+/** Một lần Chuyển giao đã chuẩn bị file (Q149); xem `OwnedContent.prepareTransfer`. */
+export interface QuestionBankTransfer {
+  apply(tx: Transaction, donorName: string): Promise<ContentCounts>;
+  finish(committed: boolean): Promise<void>;
+}
+
 /** Nội dung của Người ra đề trong Ngân hàng câu hỏi: Chủ đề, Câu hỏi, Hình minh họa. */
 @Injectable()
-export class QuestionBankOwnedContent implements OwnedContent {
+export class QuestionBankOwnedContent {
   private readonly logger = new Logger(QuestionBankOwnedContent.name);
 
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(MEDIA_STORE) private readonly media: MediaStore,
+    @Inject(EXAM_USAGE) private readonly examUsage: ExamUsage,
   ) {}
 
   async summaryOf(
     userId: string,
     { topicIds }: { topicIds?: string[] } = {},
-  ): Promise<OwnedContentSummary> {
+  ): Promise<QuestionBankSummary> {
     const rows = await this.db
       .select({
         id: topics.id,
@@ -68,7 +78,7 @@ export class QuestionBankOwnedContent implements OwnedContent {
       .orderBy(asc(topics.nameKey), asc(topics.id));
     const list = rows.map(({ archivedAt, ...row }) => ({ ...row, archived: archivedAt !== null }));
 
-    const summary: OwnedContentSummary = {
+    const summary: QuestionBankSummary = {
       topics: list,
       totals: {
         topics: list.length,
@@ -101,7 +111,7 @@ export class QuestionBankOwnedContent implements OwnedContent {
     fromId: string;
     toId: string;
     topicIds: string[] | 'all';
-  }): Promise<PreparedTransfer> {
+  }): Promise<QuestionBankTransfer> {
     const owned = await this.db
       .select({ id: topics.id })
       .from(topics)
@@ -111,7 +121,7 @@ export class QuestionBankOwnedContent implements OwnedContent {
     if (ids.some((id) => !ownedIds.has(id))) throw validationFailed('topicIds', 'unknown_topic');
 
     // Sao chép file làm trước giao dịch (không giữ khóa dòng trong lúc ghi file); lỗi thì dọn phần đã chép.
-    const plans = await this.planOf(this.db, fromId, toId, ids);
+    const plans = await this.planOf(this.db, fromId, toId, ids, topicIds !== 'all');
     const copies = new Map<string, Copy>();
     const written: string[] = [];
     try {
@@ -153,6 +163,7 @@ export class QuestionBankOwnedContent implements OwnedContent {
     fromId: string,
     toId: string,
     topicIds: string[],
+    keepForExams: boolean,
   ): Promise<Map<string, Plan>> {
     const plans = new Map<string, Plan>();
     if (topicIds.length === 0) return plans;
@@ -186,6 +197,10 @@ export class QuestionBankOwnedContent implements OwnedContent {
         ),
       );
     const bySha = new Map(theirs.map((i) => [i.sha256, i]));
+    // Ảnh nằm trong bản chụp của Bộ đề đã Phát hành ở lại người cho thì giữ ở đó, người nhận dùng bản sao (Q176).
+    const inExams = keepForExams
+      ? await this.examUsage.usedIllustrations([...movingImages.keys()])
+      : new Set<string>();
 
     for (const [id, image] of movingImages) {
       const existing = bySha.get(image.sha256);
@@ -195,7 +210,7 @@ export class QuestionBankOwnedContent implements OwnedContent {
           throw new ApiError('CONFLICT', { reason: 'RECIPIENT_ILLUSTRATION_NOT_READY' });
         }
         plans.set(id, { kind: 'reuse', targetId: existing.id });
-      } else if (!shared.has(id)) {
+      } else if (!shared.has(id) && !inExams.has(id)) {
         plans.set(id, { kind: 'move' });
       } else {
         if (image.status !== 'ready') {
@@ -219,7 +234,7 @@ export class QuestionBankOwnedContent implements OwnedContent {
 const sum = (values: number[]) => values.reduce((total, n) => total + n, 0);
 
 /** Phần trong giao dịch của một lần Chuyển giao; xem `OwnedContent.prepareTransfer`. */
-class Prepared implements PreparedTransfer {
+class Prepared implements QuestionBankTransfer {
   private used = new Set<string>();
   private uploadKeys: string[] = [];
 
@@ -229,7 +244,7 @@ class Prepared implements PreparedTransfer {
     private readonly copies: Map<string, Copy>,
   ) {}
 
-  async apply(tx: Transaction, donorName: string): Promise<OwnedCounts> {
+  async apply(tx: Transaction, donorName: string): Promise<ContentCounts> {
     const { fromId, toId, all } = this.request;
     // Khóa các Chủ đề đang chuyển. Xóa người dùng chuyển "toàn bộ": lấy lại danh sách trong giao dịch để không sót
     // Chủ đề vừa tạo sau lúc chuẩn bị.
@@ -249,7 +264,7 @@ class Prepared implements PreparedTransfer {
     const ids = rows.map((r) => r.id);
     if (ids.length === 0) return { topics: 0, questions: 0, illustrations: 0 };
 
-    const plans = await this.owner.planOf(tx, fromId, toId, ids);
+    const plans = await this.owner.planOf(tx, fromId, toId, ids, !all);
     for (const [oldId, plan] of plans) {
       // Ảnh mới phải chép từ trước giao dịch; nếu nội dung người cho vừa đổi thì bảo thử lại thay vì chép trong giao dịch.
       if (plan.kind === 'copy' && !this.copies.has(oldId)) {
