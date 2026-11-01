@@ -310,6 +310,7 @@ export class ExamsService {
           sectionId: examItems.sectionId,
           questionId: examItems.questionId,
           points: examItems.points,
+          snapshot: examItems.snapshot,
           type: questions.type,
           stem: questions.stem,
           topicName: topics.name,
@@ -338,18 +339,23 @@ export class ExamsService {
         instructions: section.instructions,
         items: items
           .filter((item) => item.sectionId === section.id)
-          .map((item) => ({
-            questionId: item.questionId,
-            points: Number(item.points),
-            question: {
-              type: item.type,
-              preview: plainTextOf(item.stem).slice(0, PREVIEW_CHARS),
-              topicName: item.topicName,
-              tags: item.tags,
-              defaultPoints: Number(item.defaultPoints),
-              archived: item.archivedAt !== null,
-            },
-          })),
+          .map((item) => {
+            const frozen =
+              exam.status === 'draft' ? null : (item.snapshot as CandidateSource | null);
+            return {
+              questionId: item.questionId,
+              points: Number(item.points),
+              // Đã Phát hành thì loại và nội dung đề đọc từ bản chụp (ADR-0005), nhất quán với Xem thử.
+              question: {
+                type: frozen ? frozen.type : item.type,
+                preview: plainTextOf(frozen ? frozen.stem : item.stem).slice(0, PREVIEW_CHARS),
+                topicName: item.topicName,
+                tags: item.tags,
+                defaultPoints: Number(item.defaultPoints),
+                archived: !frozen && item.archivedAt !== null,
+              },
+            };
+          }),
       })),
       totals: { items: items.length, points: totalUnits / 100 },
     };
