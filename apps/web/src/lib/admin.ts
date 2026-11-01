@@ -187,6 +187,10 @@ export interface OwnedCounts {
   topics: number;
   questions: number;
   illustrations: number;
+  /** Bộ đề đi cùng: nháp liên quan khi chọn Chủ đề, mọi Bộ đề khi Xóa người dùng (Q182, Q183). */
+  exams: number;
+  /** Câu bị gỡ khỏi các Bộ đề nháp đi cùng vì không thuộc Chủ đề được chuyển. */
+  detachedItems: number;
 }
 
 export interface UserContent {

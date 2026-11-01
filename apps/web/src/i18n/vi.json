@@ -352,9 +352,13 @@
       "action": "Chuyển giao…",
       "title": "Chuyển giao Chủ đề của {{name}}",
       "titleRemove": "Xóa {{name}} và chuyển giao nội dung",
-      "removeIntro": "Người này còn Chủ đề, nên phải chuyển toàn bộ cho một Người ra đề trước khi xóa. Việc chuyển giao và xóa diễn ra cùng lúc.",
+      "removeIntro": "Người này còn Chủ đề hoặc Bộ đề, nên phải chuyển toàn bộ cho một Người ra đề trước khi xóa. Việc chuyển giao và xóa diễn ra cùng lúc.",
       "summary": "{{topics}} Chủ đề, {{questions}} câu hỏi, {{images}} ảnh",
       "summaryLoading": "Đang tính…",
+      "examsDrafts": "{{exams}} Bộ đề nháp có câu của các Chủ đề này sẽ chuyển theo. Bộ đề đã Phát hành ở lại người cũ.",
+      "examsAll": "{{exams}} Bộ đề (nháp, đã Phát hành, đã Lưu trữ) sẽ chuyển theo.",
+      "detached": "{{items}} câu không thuộc các Chủ đề được chọn sẽ bị gỡ khỏi các Bộ đề nháp đó.",
+      "doneExams": "{{exams}} Bộ đề đã chuyển theo.",
       "recipient": "Người nhận",
       "searchRecipient": "Tìm Người ra đề theo tên hoặc tên đăng nhập",
       "noCandidates": "Không có Người ra đề nào phù hợp.",
@@ -524,7 +528,8 @@
     "credential_slip.ready_ready": "Phiếu tài khoản đã sẵn sàng để tải.",
     "credential_slip.ready_failed": "Không dựng được Phiếu tài khoản. Hãy cấp lại mật khẩu tạm.",
     "account_request.approve_interrupted": "Việc duyệt yêu cầu bị gián đoạn. Hãy mở yêu cầu và duyệt lại các dòng còn chờ.",
-    "topics.transferred": "Quản trị viên đã chuyển giao {{topics}} Chủ đề cho bạn."
+    "topics.transferred": "Quản trị viên đã chuyển giao {{topics}} Chủ đề cho bạn.",
+    "topics.transferred_exams": "Quản trị viên đã chuyển giao {{topics}} Chủ đề và {{exams}} Bộ đề cho bạn."
   },
   "credentialSlips": {
     "heading": "Phiếu tài khoản",

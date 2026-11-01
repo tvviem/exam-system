@@ -24,7 +24,9 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
     // Một số loại có nhiều nội dung theo `status` kèm theo (đã duyệt, bị từ chối...).
     const key = ['account_request.reviewed', 'credential_slip.ready'].includes(n.type)
       ? `notification.${n.type}_${String(n.data.status)}`
-      : `notification.${n.type}`;
+      : n.type === 'topics.transferred' && Number(n.data.exams) > 0
+        ? 'notification.topics.transferred_exams'
+        : `notification.${n.type}`;
     return t(key, { ...n.data, defaultValue: t('notification.unknown') });
   };
   const openNotification = async (n: AppNotification) => {

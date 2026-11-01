@@ -37,10 +37,15 @@ export function TransferDialog({
   const run = useMutation({
     mutationFn: async (recipientId: string): Promise<OwnedCounts> => {
       if (mode === 'transfer') return transferTopics(user.id, topicIds ?? [], recipientId);
-      const topics = content.data?.totals.topics ?? 0;
-      const questions = content.data?.totals.questions ?? 0;
+      const totals = content.data?.totals ?? {
+        topics: 0,
+        questions: 0,
+        illustrations: 0,
+        exams: 0,
+        detachedItems: 0,
+      };
       await removeUser(user.id, recipientId);
-      return { topics, questions, illustrations: content.data?.totals.illustrations ?? 0 };
+      return totals;
     },
     onSuccess: async (result) => {
       setDone({ counts: result, name: recipient?.name ?? '' });
@@ -77,6 +82,9 @@ export function TransferDialog({
                   name: done.name,
                 })}
           </p>
+          {done.counts.exams > 0 && (
+            <p className="text-sm">{t('admin.transfer.doneExams', { exams: done.counts.exams })}</p>
+          )}
           <Button onClick={close}>{t('admin.transfer.close')}</Button>
         </div>
       ) : (
@@ -97,6 +105,15 @@ export function TransferDialog({
                 })
               : t('admin.transfer.summaryLoading')}
           </p>
+          {counts && counts.exams > 0 && (
+            <p className="text-sm" aria-live="polite">
+              {t(mode === 'remove' ? 'admin.transfer.examsAll' : 'admin.transfer.examsDrafts', {
+                exams: counts.exams,
+              })}
+              {counts.detachedItems > 0 &&
+                ` ${t('admin.transfer.detached', { items: counts.detachedItems })}`}
+            </p>
+          )}
           <RecipientPicker
             donorId={user.id}
             value={recipient?.id ?? null}

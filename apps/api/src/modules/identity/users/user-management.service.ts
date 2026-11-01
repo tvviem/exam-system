@@ -74,9 +74,10 @@ const UNIQUE_FIELDS: Record<string, string> = {
 };
 
 /** `409 HAS_CONTENT`: người này còn Chủ đề, Quản trị viên phải chọn người nhận (Q150). */
-const hasContent = (topics: { id: string; name: string; questionCount: number }[]) =>
+const hasContent = (topics: { id: string; name: string; questionCount: number }[], exams = 0) =>
   new ApiError('HAS_CONTENT', {
     topics: topics.map(({ id, name, questionCount }) => ({ id, name, questionCount })),
+    exams,
   });
 
 const isUniqueViolation = (error: unknown) =>
@@ -323,8 +324,9 @@ export class UserManagementService {
     if (actor.id === id) throw new ApiError('CANNOT_TARGET_SELF');
     this.assertTarget(actor, await this.findOrThrow(id));
     const { topics, totals } = await this.ownedContent.summaryOf(id);
-    if (totals.topics === 0) return this.removeWithoutContent(actor, id);
-    if (!recipientId) throw hasContent(topics);
+    // Bộ đề cũng là nội dung (Q183): người chỉ có Bộ đề rỗng, chưa có Chủ đề nào, vẫn phải chọn người nhận.
+    if (totals.topics === 0 && totals.exams === 0) return this.removeWithoutContent(actor, id);
+    if (!recipientId) throw hasContent(topics, totals.exams);
 
     await this.assertRecipient(this.db, id, recipientId);
     const prepared = await this.ownedContent.prepareTransfer({
@@ -348,7 +350,7 @@ export class UserManagementService {
       await this.lockTargetOrThrow(tx, actor, id);
       // Chủ đề có thể vừa được tạo giữa lúc kiểm tra và lúc khóa dòng.
       const { topics, totals } = await this.ownedContent.summaryOf(id);
-      if (totals.topics > 0) throw hasContent(topics);
+      if (totals.topics > 0 || totals.exams > 0) throw hasContent(topics, totals.exams);
       await this.softDelete(tx, actor, id);
     });
   }
@@ -379,7 +381,7 @@ export class UserManagementService {
     prepared: PreparedTransfer,
   ): Promise<OwnedCounts> {
     const counts = await prepared.apply(tx, donor.fullName);
-    if (counts.topics === 0) return counts;
+    if (counts.topics === 0 && counts.exams === 0) return counts;
     await this.audit.record(
       {
         actor,
@@ -391,7 +393,11 @@ export class UserManagementService {
       tx,
     );
     await this.notifications.notify(
-      { userIds: [recipientId], type: 'topics.transferred', data: { topics: counts.topics } },
+      {
+        userIds: [recipientId],
+        type: 'topics.transferred',
+        data: { topics: counts.topics, exams: counts.exams },
+      },
       tx,
     );
     return counts;

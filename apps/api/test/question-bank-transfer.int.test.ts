@@ -119,7 +119,7 @@ describe('xem nội dung của người dùng (Q148)', () => {
         { id: b, name: 'Đại số', archived: true, questionCount: 1, illustrationCount: 1 },
         { id: a, name: 'Giải tích', archived: false, questionCount: 2, illustrationCount: 0 },
       ],
-      totals: { topics: 2, questions: 3, illustrations: 1 },
+      totals: { topics: 2, questions: 3, illustrations: 1, exams: 0, detachedItems: 0 },
     });
     expect(res.body).not.toContain('Đạo hàm');
   });
@@ -131,11 +131,19 @@ describe('xem nội dung của người dùng (Q148)', () => {
     await question(withImage(a, x));
     await question(withImage(b, x));
     const res = await content(donor.id, `?topicIds=${a},${b}`);
-    expect(res.json().selected).toEqual({ topics: 2, questions: 2, illustrations: 1 });
+    expect(res.json().selected).toEqual({
+      topics: 2,
+      questions: 2,
+      illustrations: 1,
+      exams: 0,
+      detachedItems: 0,
+    });
     expect((await content(donor.id, `?topicIds=${a}`)).json().selected).toEqual({
       topics: 1,
       questions: 1,
       illustrations: 1,
+      exams: 0,
+      detachedItems: 0,
     });
   });
 
@@ -153,7 +161,13 @@ describe('Chuyển giao Chủ đề (Q148)', () => {
     const q = await question(singleChoice(a));
     const res = await transfer(donor.id, { topicIds: [a], recipientId: recipient.id });
     expect(res.statusCode, res.body).toBe(200);
-    expect(res.json()).toEqual({ topics: 1, questions: 1, illustrations: 0 });
+    expect(res.json()).toEqual({
+      topics: 1,
+      questions: 1,
+      illustrations: 0,
+      exams: 0,
+      detachedItems: 0,
+    });
 
     expect(await ownerOfTopic(a)).toBe(recipient.id);
     expect((await topicsOf(donorCookie)).map((x) => x.id)).toEqual([]);
@@ -328,7 +342,13 @@ describe('Hình minh họa khi Chuyển giao (Q149)', () => {
     const x = await uploadImage(await jpeg(600, 400, 1));
     const q = await question(withImage(a, x));
     const res = await transfer(donor.id, { topicIds: [a], recipientId: recipient.id });
-    expect(res.json()).toEqual({ topics: 1, questions: 1, illustrations: 1 });
+    expect(res.json()).toEqual({
+      topics: 1,
+      questions: 1,
+      illustrations: 1,
+      exams: 0,
+      detachedItems: 0,
+    });
 
     expect((await illustrationsOf(donorCookie)).map((i) => i.id)).toEqual([]);
     expect((await illustrationsOf(recipientCookie)).map((i) => i.id)).toEqual([x]);
@@ -351,7 +371,13 @@ describe('Hình minh họa khi Chuyển giao (Q149)', () => {
     const r = await uploadImage(bytes, recipientCookie); // cùng SHA-256
     const q = await question(withImage(a, x));
     const res = await transfer(donor.id, { topicIds: [a], recipientId: recipient.id });
-    expect(res.json()).toEqual({ topics: 1, questions: 1, illustrations: 1 });
+    expect(res.json()).toEqual({
+      topics: 1,
+      questions: 1,
+      illustrations: 1,
+      exams: 0,
+      detachedItems: 0,
+    });
 
     const moved = await getQuestion(q, recipientCookie);
     expect(imageIdOf(moved)).toBe(r);
@@ -370,7 +396,13 @@ describe('Hình minh họa khi Chuyển giao (Q149)', () => {
     const staying = await question(withImage(t2, x));
     const [original] = await illustrationsOf(donorCookie);
     const res = await transfer(donor.id, { topicIds: [t1], recipientId: recipient.id });
-    expect(res.json()).toEqual({ topics: 1, questions: 1, illustrations: 1 });
+    expect(res.json()).toEqual({
+      topics: 1,
+      questions: 1,
+      illustrations: 1,
+      exams: 0,
+      detachedItems: 0,
+    });
 
     const [copy] = await illustrationsOf(recipientCookie);
     expect(copy).toMatchObject({ status: 'ready', variants: original?.variants });
@@ -402,7 +434,13 @@ describe('Hình minh họa khi Chuyển giao (Q149)', () => {
     await question(withImage(a, x));
     await question(withImage(a, x));
     const res = await transfer(donor.id, { topicIds: [a], recipientId: recipient.id });
-    expect(res.json()).toEqual({ topics: 1, questions: 2, illustrations: 1 });
+    expect(res.json()).toEqual({
+      topics: 1,
+      questions: 2,
+      illustrations: 1,
+      exams: 0,
+      detachedItems: 0,
+    });
   });
 
   it('chép file lỗi giữa chừng (MediaStore ném lỗi): không đổi gì, file đã chép được xóa, không có thông báo', async () => {

@@ -263,3 +263,16 @@ Không đổi điều đã duyệt:
 
 - **Tab Soạn của Bộ đề đã Phát hành đọc bản chụp:** `GET /exams/:id` khi Bộ đề không còn `draft` lấy loại câu và phần dẫn từ `exam_items.snapshot`, nhất quán với tab Xem thử. Trước đó chỉ Xem thử đọc bản chụp nên hai tab có thể hiện hai nội dung khác nhau sau khi sửa Câu hỏi gốc. Chủ đề, nhãn và điểm mặc định vẫn là thông tin sống. Nhãn "Đã lưu trữ" của câu chỉ hiện ở Bộ đề nháp (câu của Bộ đề đã Phát hành bị Lưu trữ là bình thường).
 - **Giải thích Lưu trữ Câu hỏi:** lời báo lỗi khi Xóa câu nằm trong Bộ đề đã Phát hành nêu lý do (Bộ đề cần giữ câu gốc) và nói rõ Lưu trữ làm gì; nút Lưu trữ và Khôi phục có chú thích; dòng gợi ý khi chọn câu đã dùng viết lại tương ứng.
+
+- **Ranh giới module:** `exam` đọc (không ghi) bảng `questions` và `illustrations` để dựng bản chụp và kiểm tra Phát hành, như `exams.service` đã đọc `questions` từ PR 3a; chiều ngược lại (`question-bank` biết Bộ đề) luôn qua cổng `ExamUsage`. `ExamOwnedContent` cũng đọc `questions` (quyền sở hữu sau khi Chuyển giao) cùng cách. Không thêm cổng đọc cho `exam` vì bản chụp phải nhất quán với Câu hỏi trong cùng giao dịch có khóa `FOR SHARE`.
+
+## Điều chỉnh khi làm PR 3d
+
+- **Cổng `OwnedContent` thành danh sách nhà cung cấp** (Q183): `OwnedContentWiringModule` ghép `QuestionBankOwnedContent` (chạy trước) và `ExamOwnedContent` (đọc quyền sở hữu Câu hỏi vừa đổi chủ trong cùng giao dịch). Giao diện cổng không đổi; `OwnedCounts` có thêm `exams` và `detachedItems`.
+- **Chọn Chủ đề (Q182):** Bộ đề nháp của người cho có ít nhất một câu thuộc Chủ đề được chuyển thì đổi chủ cả Bộ đề (`version` + 1 để trình soạn đang mở của người cho báo xung đột); các câu còn thuộc người cho bị gỡ khỏi Bộ đề đó, Phần rỗng giữ nguyên. Bộ đề đã Phát hành hoặc Lưu trữ ở lại người cho.
+- **Xóa người dùng (Q183):** mọi Bộ đề (nháp, đã Phát hành, Lưu trữ) sang người nhận cùng lúc; người chỉ có Bộ đề rỗng (chưa có Chủ đề) vẫn phải chọn người nhận (`HAS_CONTENT` kèm `exams`).
+- **Ảnh (Q176):** khi chọn Chủ đề, ảnh còn nằm trong bản chụp của Bộ đề đã Phát hành ở lại người cho được SAO CHÉP cho người nhận thay vì đổi chủ. Khi Xóa người dùng thì Bộ đề đi cùng nên ảnh đổi chủ như thường; chủ Bộ đề luôn xem được ảnh của bản chụp qua `exam_item_illustrations`.
+- **Thông báo:** `topics.transferred` có thêm `exams`; lời nhắn "…N Chủ đề và P Bộ đề…" khi P > 0.
+- Khoảng trống tạm thời đã nêu ở PR 3a (nháp giữ câu của người khác sau Chuyển giao) được đóng lại.
+- **Thứ tự khóa:** Chuyển giao khóa mọi Bộ đề của người cho (theo `id`) trước khi đụng Câu hỏi, cùng thứ tự với Phát hành (Bộ đề rồi Câu hỏi) nên không bế tắc; một lần lưu nháp đang chạy phải xong trước khi quyết định Bộ đề nào đi theo.
+- **Giới hạn đã biết:** khi Xóa người dùng, ảnh chỉ còn nằm trong bản chụp (câu đã sửa sang ảnh khác) hoặc ở nhánh dùng ảnh sẵn có của người nhận (`reuse`) vẫn thuộc người cho đã bị Xóa; chủ Bộ đề vẫn xem được qua `exam_item_illustrations`.
