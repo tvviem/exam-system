@@ -6,6 +6,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -13,13 +14,13 @@ import {
 } from 'drizzle-orm/pg-core';
 import { idColumn, timestamps } from '../../db/columns';
 import { users } from '../identity/identity.schema';
-import { questions } from '../question-bank/question-bank.schema';
+import { illustrations, questions } from '../question-bank/question-bank.schema';
 
 export const examStatusEnum = pgEnum('exam_status', ['draft', 'published', 'archived']);
 
 /**
- * Bộ đề (Q160). Chỉ `draft` sửa được; `version` là khóa lạc quan của lần lưu cả tài liệu (Q163). Phát hành và Lưu trữ
- * làm ở các PR sau nên `published_at`, `archived_at` và `snapshot` chưa có ai ghi.
+ * Bộ đề (Q160). Chỉ `draft` sửa được; `version` là khóa lạc quan của lần lưu cả tài liệu (Q163). Khi không còn `draft`,
+ * trigger cơ sở dữ liệu từ chối mọi thay đổi nội dung (Q172, migration 0011).
  */
 export const exams = pgTable(
   'exams',
@@ -77,4 +78,21 @@ export const examItems = pgTable(
     unique('exam_items_exam_question_unique').on(t.examId, t.questionId),
     index('exam_items_section_idx').on(t.sectionId, t.sort),
   ],
+);
+
+/**
+ * Ảnh nào nằm trong bản chụp của Bộ đề đã Phát hành (Q176): ghi lúc Phát hành. Có dòng ở đây thì ảnh không xóa được
+ * (khóa ngoại RESTRICT) và chủ Bộ đề xem được ảnh dù Câu hỏi đã đổi chủ.
+ */
+export const examItemIllustrations = pgTable(
+  'exam_item_illustrations',
+  {
+    examItemId: uuid('exam_item_id')
+      .notNull()
+      .references(() => examItems.id, { onDelete: 'cascade' }),
+    illustrationId: uuid('illustration_id')
+      .notNull()
+      .references(() => illustrations.id, { onDelete: 'restrict' }),
+  },
+  (t) => [primaryKey({ columns: [t.examItemId, t.illustrationId] })],
 );

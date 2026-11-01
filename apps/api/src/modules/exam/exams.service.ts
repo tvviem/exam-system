@@ -251,6 +251,7 @@ export class ExamsService {
           sectionId: examItems.sectionId,
           questionId: examItems.questionId,
           points: examItems.points,
+          snapshot: examItems.snapshot,
           type: questions.type,
           stem: questions.stem,
           payload: questions.payload,
@@ -271,8 +272,11 @@ export class ExamsService {
           number: ++number,
           questionId: item.questionId,
           points: Number(item.points),
+          // Đã Phát hành thì chỉ đọc bản chụp (ADR-0005); nháp đọc nội dung hiện tại của Câu hỏi.
           question: candidateViewOf(
-            { type: item.type, stem: item.stem, payload: item.payload } as CandidateSource,
+            (exam.status === 'draft'
+              ? { type: item.type, stem: item.stem, payload: item.payload }
+              : item.snapshot) as CandidateSource,
             options,
           ),
         })),

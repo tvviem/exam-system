@@ -1,6 +1,6 @@
 import { normalizeForSearch, plainTextOf, type QuestionInput } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { EXAM_USAGE, type ExamRef, type ExamUsage } from '../../common/exam-usage';
 import { type Page, paginate } from '../../common/pagination';
@@ -16,6 +16,8 @@ export interface QuestionFilter {
   type?: QuestionInput['type'];
   tag?: string;
   q?: string;
+  /** Mặc định ẩn câu đã Lưu trữ; `true` chỉ hiện câu đã Lưu trữ (Q174). */
+  archived?: boolean;
 }
 
 const PREVIEW_CHARS = 160;
@@ -26,6 +28,10 @@ const questionInExam = (exams: ExamRef[]) =>
     reason: 'QUESTION_IN_EXAM',
     exams: [...new Map(exams.map((exam) => [exam.id, exam])).values()],
   });
+
+/** Câu có trong Bộ đề đã Phát hành hoặc Lưu trữ: chỉ Lưu trữ được (Q174). */
+const questionInPublishedExam = (publishedCount: number) =>
+  new ApiError('INVALID_STATE', { reason: 'QUESTION_IN_PUBLISHED_EXAM', publishedCount });
 
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
@@ -41,11 +47,12 @@ const fullColumns = {
   version: questions.version,
   createdAt: questions.createdAt,
   updatedAt: questions.updatedAt,
+  archivedAt: questions.archivedAt,
 };
 
-type FullRow = {
-  [K in keyof typeof fullColumns]: (typeof fullColumns)[K]['_']['data'];
-};
+type FullRow = Pick<typeof questions.$inferSelect, keyof typeof fullColumns>;
+
+const NO_USAGE = { draftExams: [], publishedCount: 0 };
 
 /** Trả cho client: điểm là số, `searchText` chỉ dùng nội bộ. */
 const present = ({ searchText: _searchText, ...row }: FullRow) => ({
@@ -73,12 +80,37 @@ export class QuestionsService {
         .returning(fullColumns);
       if (!row) throw new Error('Không tạo được Câu hỏi');
       await this.illustrations.syncUsage(tx, ownerId, row.id, input);
-      return present(row);
+      return { ...present(row), usage: NO_USAGE };
     });
   }
 
+  /** Kèm `usage` để trình soạn báo "đang dùng ở đâu" (Q175); chỉ báo, không chặn sửa. */
   async get(ownerId: string, id: string) {
-    return present(await this.load(ownerId, id));
+    const row = await this.load(ownerId, id);
+    const usage = (await this.examUsage.usageOf(ownerId, [id])).get(id);
+    return { ...present(row), usage: usage ?? NO_USAGE };
+  }
+
+  /** Lưu trữ: ẩn khỏi danh sách và bảng chọn câu của Bộ đề, không xóa (Q174). Làm lại không sao. */
+  async archive(ownerId: string, ids: string[]) {
+    return this.setArchived(ownerId, ids, sql`now()`);
+  }
+
+  async restore(ownerId: string, ids: string[]) {
+    return this.setArchived(ownerId, ids, null);
+  }
+
+  private async setArchived(ownerId: string, ids: string[], value: ReturnType<typeof sql> | null) {
+    const unique = [...new Set(ids)];
+    return this.db.transaction(async (tx) => {
+      const changed = await tx
+        .update(questions)
+        .set({ archivedAt: value })
+        .where(and(inArray(questions.id, unique), eq(questions.ownerId, ownerId)))
+        .returning({ id: questions.id });
+      if (changed.length !== unique.length) throw new ApiError('NOT_FOUND');
+      return { updated: changed.length };
+    });
   }
 
   private async load(ownerId: string, id: string) {
@@ -105,7 +137,10 @@ export class QuestionsService {
         .returning(fullColumns);
       if (!row) throw new ApiError('CONFLICT', { field: 'version' });
       await this.illustrations.syncUsage(tx, ownerId, id, input);
-      return present(row);
+      return {
+        ...present(row),
+        usage: (await this.examUsage.usageOf(ownerId, [id])).get(id) ?? NO_USAGE,
+      };
     });
   }
 
@@ -127,7 +162,7 @@ export class QuestionsService {
         .returning(fullColumns);
       if (!row) throw new Error('Không nhân bản được Câu hỏi');
       await this.illustrations.copyUsage(tx, id, row.id);
-      return present(row);
+      return { ...present(row), usage: NO_USAGE };
     });
   }
 
@@ -149,8 +184,12 @@ export class QuestionsService {
   async remove(ownerId: string, ids: string[]) {
     const unique = [...new Set(ids)];
     // Câu còn nằm trong Bộ đề nháp thì không xóa (Q166): nêu tên các Bộ đề để người dùng biết gỡ ở đâu.
-    const used = await this.examUsage.draftExamsOf(ownerId, unique);
-    if (used.size > 0) throw questionInExam([...used.values()].flat());
+    const usage = await this.examUsage.usageOf(ownerId, unique);
+    const drafts = [...usage.values()].flatMap((entry) => entry.draftExams);
+    if (drafts.length > 0) throw questionInExam(drafts);
+    // Đã nằm trong Bộ đề Phát hành hoặc Lưu trữ: bản chụp cần câu gốc còn đó, nên chỉ Lưu trữ (Q174).
+    const published = [...usage.values()].reduce((sum, entry) => sum + entry.publishedCount, 0);
+    if (published > 0) throw questionInPublishedExam(published);
     try {
       return await this.db.transaction(async (tx) => {
         const deleted = await tx
@@ -177,6 +216,7 @@ export class QuestionsService {
       filter.type ? eq(questions.type, filter.type) : undefined,
       filter.tag ? sql`${questions.tags} @> ARRAY[${filter.tag}]::text[]` : undefined,
       q ? sql`${questions.searchText} LIKE ${`%${escapeLike(q)}%`}` : undefined,
+      filter.archived ? isNotNull(questions.archivedAt) : isNull(questions.archivedAt),
     );
     const result = await paginate(
       page,
@@ -193,6 +233,7 @@ export class QuestionsService {
             tags: questions.tags,
             version: questions.version,
             updatedAt: questions.updatedAt,
+            archivedAt: questions.archivedAt,
           })
           .from(questions)
           .innerJoin(topics, eq(topics.id, questions.topicId))
@@ -201,12 +242,20 @@ export class QuestionsService {
           .limit(limit)
           .offset(offset),
     );
+    const usage = await this.examUsage.usageOf(
+      ownerId,
+      result.items.map((item) => item.id),
+    );
     return {
       ...result,
       items: result.items.map(({ stem, defaultPoints, ...item }) => ({
         ...item,
         defaultPoints: Number(defaultPoints),
         preview: plainTextOf(stem).slice(0, PREVIEW_CHARS),
+        usage: {
+          draftCount: usage.get(item.id)?.draftExams.length ?? 0,
+          publishedCount: usage.get(item.id)?.publishedCount ?? 0,
+        },
       })),
     };
   }

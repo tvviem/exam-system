@@ -121,7 +121,7 @@ describe('Xem thử Bộ đề (Q169, Q170)', () => {
     const id = await examWithAllTypes();
     const first = (await preview(id)).json().sections[0].items[0];
     const q = (await call(t.app, 'GET', `/api/questions/${first.questionId}`, { cookie })).json();
-    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = q;
+    const { id: _id, createdAt: _c, updatedAt: _u, usage: _usage, archivedAt: _a, ...rest } = q;
     const updated = await call(t.app, 'PUT', `/api/questions/${q.id}`, {
       cookie,
       body: { ...rest, stem: textDoc('Phần dẫn đã sửa') },

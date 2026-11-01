@@ -1,7 +1,7 @@
 import { POINTS_MAX, POINTS_MIN, POINTS_STEP, plainTextOf } from '@exam/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
-import { ChevronDown, ChevronUp, ListChecks, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, ListChecks, Plus, Save, Send, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api';
@@ -25,10 +25,19 @@ import {
   totalsOf,
   updateSection,
 } from '../exam-draft';
-import { deleteExam, type ExamDetail, examQuery, saveExam } from '../exams';
+import {
+  archiveExam,
+  deleteExam,
+  duplicateExam,
+  type ExamDetail,
+  examQuery,
+  restoreExam,
+  saveExam,
+} from '../exams';
 import { Badge, Button, Card, Dialog, ErrorMessage, PrimaryButton, TextField } from '.';
 import { Breadcrumb } from './breadcrumb';
 import { ExamPreview } from './exam-preview';
+import { ExamPublishDialog } from './exam-publish-dialog';
 import { PageHeader } from './page-header';
 import { Rich } from './question-editor-fields';
 import { QuestionPicker } from './question-picker';
@@ -57,11 +66,13 @@ function PointsInput({
   points,
   label,
   hint,
+  disabled,
   onChange,
 }: {
   points: number;
   label: string;
   hint: string;
+  disabled: boolean;
   onChange: (points: number) => void;
 }) {
   const [text, setText] = useState(String(points));
@@ -74,6 +85,7 @@ function PointsInput({
       inputMode="decimal"
       aria-label={label}
       title={hint}
+      disabled={disabled}
       aria-invalid={!pointsValid(points)}
       value={text}
       onChange={(e) => {
@@ -91,9 +103,11 @@ function ItemRow({
   number,
   sections,
   currentKey,
+  readOnly,
   onChange,
 }: {
   item: DraftItem;
+  readOnly: boolean;
   number: number;
   sections: { key: string; name: string }[];
   currentKey: string;
@@ -122,51 +136,56 @@ function ItemRow({
             points={item.points}
             label={t('exam.pointsOf', { n: number })}
             hint={t('exam.pointsHint')}
+            disabled={readOnly}
             onChange={(points) => onChange((d) => setPoints(d, id, points))}
           />
         </div>
-        <Button
-          aria-label={t('exam.moveUp', { n: number })}
-          title={t('exam.up')}
-          onClick={() => onChange((d) => moveItem(d, id, -1))}
-        >
-          <ChevronUp aria-hidden className="size-5" />
-        </Button>
-        <Button
-          aria-label={t('exam.moveDown', { n: number })}
-          title={t('exam.down')}
-          onClick={() => onChange((d) => moveItem(d, id, 1))}
-        >
-          <ChevronDown aria-hidden className="size-5" />
-        </Button>
-        {sections.length > 1 && (
-          <select
-            aria-label={t('exam.moveToSection', { n: number })}
-            title={t('exam.moveHint')}
-            value=""
-            onChange={(e) =>
-              e.target.value && onChange((d) => moveItemToSection(d, id, e.target.value))
-            }
-            className="h-12 rounded-lg border border-border-strong bg-surface px-2 text-sm pointer-fine:h-10"
-          >
-            <option value="">{t('exam.moveHere')}</option>
-            {sections
-              .filter((s) => s.key !== currentKey)
-              .map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.name}
-                </option>
-              ))}
-          </select>
+        {!readOnly && (
+          <>
+            <Button
+              aria-label={t('exam.moveUp', { n: number })}
+              title={t('exam.up')}
+              onClick={() => onChange((d) => moveItem(d, id, -1))}
+            >
+              <ChevronUp aria-hidden className="size-5" />
+            </Button>
+            <Button
+              aria-label={t('exam.moveDown', { n: number })}
+              title={t('exam.down')}
+              onClick={() => onChange((d) => moveItem(d, id, 1))}
+            >
+              <ChevronDown aria-hidden className="size-5" />
+            </Button>
+            {sections.length > 1 && (
+              <select
+                aria-label={t('exam.moveToSection', { n: number })}
+                title={t('exam.moveHint')}
+                value=""
+                onChange={(e) =>
+                  e.target.value && onChange((d) => moveItemToSection(d, id, e.target.value))
+                }
+                className="h-12 rounded-lg border border-border-strong bg-surface px-2 text-sm pointer-fine:h-10"
+              >
+                <option value="">{t('exam.moveHere')}</option>
+                {sections
+                  .filter((s) => s.key !== currentKey)
+                  .map((s) => (
+                    <option key={s.key} value={s.key}>
+                      {s.name}
+                    </option>
+                  ))}
+              </select>
+            )}
+            <Button
+              variant="danger-ghost"
+              aria-label={t('exam.removeItem', { n: number })}
+              title={t('exam.removeItem', { n: number })}
+              onClick={() => onChange((d) => removeItem(d, id))}
+            >
+              <Trash2 aria-hidden className="size-5" />
+            </Button>
+          </>
         )}
-        <Button
-          variant="danger-ghost"
-          aria-label={t('exam.removeItem', { n: number })}
-          title={t('exam.removeItem', { n: number })}
-          onClick={() => onChange((d) => removeItem(d, id))}
-        >
-          <Trash2 aria-hidden className="size-5" />
-        </Button>
       </div>
     </li>
   );
@@ -208,6 +227,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [tab, setTab] = useState('edit');
   const [removingSection, setRemovingSection] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -262,6 +282,27 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
     },
   });
 
+  const refreshExams = async () => {
+    queryClient.removeQueries({ queryKey: examQuery(exam.id).queryKey });
+    await queryClient.invalidateQueries({ queryKey: ['exams'] });
+  };
+  const duplicate = useMutation({
+    mutationFn: () => duplicateExam(exam.id),
+    onSuccess: async (copy) => {
+      await queryClient.invalidateQueries({ queryKey: ['exams'] });
+      toast(t('exam.duplicated'));
+      await navigate({ to: '/examiner/exams/$examId', params: { examId: copy.id } });
+    },
+  });
+  const toggleArchive = useMutation({
+    mutationFn: () => (exam.status === 'archived' ? restoreExam(exam.id) : archiveExam(exam.id)),
+    onSuccess: async () => {
+      await refreshExams();
+      toast(t(exam.status === 'archived' ? 'exam.restoredDone' : 'exam.archivedDone'));
+      await navigate({ to: '/examiner/exams' });
+    },
+  });
+
   const conflict = save.error instanceof ApiError && save.error.code === 'CONFLICT';
   const picking = draft.sections.findIndex((s) => s.key === pickerFor);
 
@@ -273,7 +314,20 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
       <PageHeader
         title={draft.title || t('exam.title')}
         actions={
-          !readOnly && (
+          readOnly ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={exam.status === 'archived' ? 'warning' : 'success'}>
+                {t(exam.status === 'archived' ? 'exam.archivedBadge2' : 'exam.publishedBadge')}
+              </Badge>
+              <Button disabled={duplicate.isPending} onClick={() => duplicate.mutate()}>
+                <Copy aria-hidden className="size-5" />
+                {t('exam.duplicate')}
+              </Button>
+              <Button disabled={toggleArchive.isPending} onClick={() => toggleArchive.mutate()}>
+                {t(exam.status === 'archived' ? 'exam.restoreExam' : 'exam.archiveExam')}
+              </Button>
+            </div>
+          ) : (
             <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)}>
               <Trash2 aria-hidden className="size-5" />
               {t('exam.delete')}
@@ -281,7 +335,15 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
           )
         }
       />
-      {readOnly && <ErrorMessage>{t('exam.notDraft')}</ErrorMessage>}
+      {readOnly && (
+        <p role="status" className="rounded-lg border border-border bg-surface p-3 text-sm">
+          {t('exam.readOnlyNote')}
+        </p>
+      )}
+      <ErrorMessage>
+        {(duplicate.isError && errorMessage(t, duplicate.error)) ||
+          (toggleArchive.isError && errorMessage(t, toggleArchive.error))}
+      </ErrorMessage>
 
       <Tabs
         label={t('exam.tabs')}
@@ -411,6 +473,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                             number={numberOf(draft, item.questionId) ?? 0}
                             sections={sectionList}
                             currentKey={section.key}
+                            readOnly={readOnly}
                             onChange={change}
                           />
                         ))}
@@ -451,6 +514,14 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                       {conflict && (
                         <Button onClick={() => window.location.reload()}>{t('exam.reload')}</Button>
                       )}
+                      <Button
+                        disabled={dirty || allItems.length === 0 || save.isPending}
+                        title={dirty ? t('exam.publishNeedsSave') : undefined}
+                        onClick={() => setPublishOpen(true)}
+                      >
+                        <Send aria-hidden className="size-5" />
+                        {t('exam.publishAction')}
+                      </Button>
                       <PrimaryButton
                         disabled={!dirty || !valid || save.isPending}
                         onClick={() => save.mutate(draft)}
@@ -484,6 +555,16 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
           setPickerFor(null);
         }}
       />
+
+      {publishOpen && (
+        <ExamPublishDialog
+          open
+          exam={exam}
+          draft={draft}
+          sectionName={(index) => sectionName(draft.sections[index] as DraftSection, index)}
+          onClose={() => setPublishOpen(false)}
+        />
+      )}
 
       {quickOpen && (
         <QuickPointsDialog

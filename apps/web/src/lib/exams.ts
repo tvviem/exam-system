@@ -89,3 +89,34 @@ export const examPreviewQuery = (id: string, showScoringRules: boolean) =>
         `/exams/${id}/preview${queryString({ showScoringRules: String(showScoringRules) })}`,
       ),
   });
+
+export type PublishProblemCode =
+  | 'title_missing'
+  | 'empty_exam'
+  | 'empty_section'
+  | 'question_archived'
+  | 'question_invalid'
+  | 'illustration_not_ready'
+  | 'points_invalid';
+
+export interface PublishProblem {
+  code: PublishProblemCode;
+  questionId?: string;
+  sectionId?: string;
+}
+
+/** Chỉ để hiện cho người dùng; `publishExam` chạy lại cùng phép kiểm trên server (Q171). */
+export const publishCheckQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['exams', 'publish-check', id],
+    queryFn: () => apiFetch<{ problems: PublishProblem[] }>(`/exams/${id}/publish-check`),
+  });
+
+export const publishExam = (id: string, version: number) =>
+  apiFetch<{ id: string }>(`/exams/${id}/publish`, { method: 'POST', body: { version } });
+export const duplicateExam = (id: string) =>
+  apiFetch<{ id: string }>(`/exams/${id}/duplicate`, { method: 'POST' });
+export const archiveExam = (id: string) =>
+  apiFetch<{ id: string }>(`/exams/${id}/archive`, { method: 'POST' });
+export const restoreExam = (id: string) =>
+  apiFetch<{ id: string }>(`/exams/${id}/restore`, { method: 'POST' });

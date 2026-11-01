@@ -247,3 +247,13 @@ Không đổi điều đã duyệt:
 
 - **Đặt điểm nhanh (Q168) làm sớm, nằm trong PR 3a** (không chờ 3b): 40 câu cùng điểm mà sửa tay từng ô là không thực tế. Phạm vi: cả Bộ đề, một Phần, một Loại câu hỏi (phạm vi "câu đang tick" để sau vì trình soạn chưa có ô tick). Cách đặt: mỗi câu cùng điểm, hoặc chia đều một tổng. 3b chỉ còn Xem thử.
 - **Nhãn cho ô nhập:** ô điểm của từng câu có nhãn "Điểm" nhìn thấy và chú thích (`title`) nêu khoảng, bước và dấu phẩy; ô "Chuyển sang…" có chú thích. Quy ước: ô nhập nào cũng phải có nhãn nhìn thấy hoặc `title`.
+
+## Điều chỉnh khi làm PR 3c
+
+- **Mã vấn đề Phát hành:** 7 mã, bỏ `question_missing` vì khóa ngoại `exam_items.question_id → questions` là RESTRICT nên không thể xảy ra. Vấn đề trỏ tới `questionId` (không phải `itemId`) vì giao diện định danh câu theo `questionId`.
+- **Trigger (migration 0011):** `exam_items`, `exam_sections` chặn INSERT/UPDATE/DELETE khi Bộ đề không còn `draft`; `exams` chặn sửa nội dung, quay về `draft` và DELETE khi không còn `draft` (chỉ cho `status` published↔archived, `archived_at`, `owner_id`, `updated_at`). Xóa Bộ đề nháp theo cascade vẫn qua được.
+- **Cổng `ExamUsage`** mở rộng: `usageOf` (nháp + số Bộ đề đã Phát hành), `usedIllustrations`, `canViewIllustration`. `question-bank` vẫn không import `exam`.
+- **Lưu trữ Câu hỏi:** `POST /questions/archive` và `/restore`; danh sách mặc định ẩn câu đã Lưu trữ, `?archived=true` chỉ hiện chúng; mỗi dòng có `usage {draftCount, publishedCount}`; `GET /questions/:id` trả `usage {draftExams, publishedCount}` (Q175). Xóa câu nằm trong Bộ đề đã Phát hành trả `QUESTION_IN_PUBLISHED_EXAM`. Giao diện ẩn nút Xóa khi có câu đã dùng được chọn.
+- **Ảnh:** `exam_item_illustrations` ghi lúc Phát hành; ảnh có dòng ở đó tính là `inUse` và không xóa được; chủ Bộ đề đã Phát hành xem được ảnh (`/api/media`) dù ảnh đã đổi chủ.
+- **Chưa làm:** sao chép ảnh khi Chuyển giao Chủ đề có Bộ đề đã Phát hành dùng ảnh (Q176) thuộc 3d cùng Chuyển giao Bộ đề.
+- Hộp "Bộ lọc" của danh sách Câu hỏi dùng chung `id` giữa ô lọc trên thanh và trong hộp thoại điện thoại (có sẵn từ trước PR này); nhãn trong hộp thoại có thể trỏ nhầm ô. Ghi lại để sửa riêng.

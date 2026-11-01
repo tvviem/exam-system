@@ -25,6 +25,9 @@ export interface QuestionListItem {
   tags: string[];
   version: number;
   updatedAt: string;
+  archivedAt: string | null;
+  /** Dùng ở Bộ đề nào (Q174): số Bộ đề nháp và số Bộ đề đã Phát hành hoặc Lưu trữ. */
+  usage: { draftCount: number; publishedCount: number };
 }
 
 export type Question = QuestionInput & {
@@ -32,6 +35,8 @@ export type Question = QuestionInput & {
   version: number;
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
+  usage: { draftExams: { id: string; title: string }[]; publishedCount: number };
 };
 
 export interface QuestionListParams {
@@ -39,6 +44,8 @@ export interface QuestionListParams {
   topicId?: string;
   type?: QuestionType;
   tag?: string;
+  /** Chỉ hiện câu đã Lưu trữ (Q174). */
+  archived?: boolean;
   page?: number;
 }
 
@@ -52,7 +59,9 @@ export const questionsQuery = (params: QuestionListParams) =>
   queryOptions({
     queryKey: ['questions', 'list', params],
     queryFn: () =>
-      apiFetch<PageResult<QuestionListItem>>(`/questions${queryString({ ...params })}`),
+      apiFetch<PageResult<QuestionListItem>>(
+        `/questions${queryString({ ...params, archived: params.archived ? 'true' : undefined })}`,
+      ),
     placeholderData: keepPreviousData,
   });
 
@@ -84,3 +93,8 @@ export const deleteQuestions = (ids: string[]) =>
   apiFetch<{ deleted: number }>('/questions/delete', { method: 'POST', body: { ids } });
 
 export type { RichText };
+
+export const archiveQuestions = (ids: string[]) =>
+  apiFetch<{ updated: number }>('/questions/archive', { method: 'POST', body: { ids } });
+export const restoreQuestions = (ids: string[]) =>
+  apiFetch<{ updated: number }>('/questions/restore', { method: 'POST', body: { ids } });

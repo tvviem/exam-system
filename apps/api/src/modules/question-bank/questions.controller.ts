@@ -22,6 +22,10 @@ const listSchema = pageSchema.extend({
   type: questionTypeSchema.optional(),
   tag: z.string().max(100).transform(normalizeTag).optional(),
   q: z.string().trim().max(200).optional(),
+  archived: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 const versionSchema = z.object({ version: z.number().int().min(1) });
 const idsSchema = z.array(z.uuid()).min(1).max(200);
@@ -56,6 +60,18 @@ export class QuestionsController {
   @HttpCode(200)
   removeMany(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
     return this.questions.remove(user.id, deleteSchema.parse(body ?? {}).ids);
+  }
+
+  @Post('archive')
+  @HttpCode(200)
+  archiveMany(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
+    return this.questions.archive(user.id, deleteSchema.parse(body ?? {}).ids);
+  }
+
+  @Post('restore')
+  @HttpCode(200)
+  restoreMany(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
+    return this.questions.restore(user.id, deleteSchema.parse(body ?? {}).ids);
   }
 
   @Get(':id')

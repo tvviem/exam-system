@@ -337,6 +337,15 @@ export function QuestionEditor({
         }
       />
 
+      {question && (question.usage.draftExams.length > 0 || question.usage.publishedCount > 0) && (
+        <p role="status" className="rounded-lg border border-border bg-surface p-3 text-sm">
+          {t('questionBank.usageNote', {
+            drafts: question.usage.draftExams.length,
+            published: question.usage.publishedCount,
+          })}
+        </p>
+      )}
+
       {stored && (
         <div
           role="alert"

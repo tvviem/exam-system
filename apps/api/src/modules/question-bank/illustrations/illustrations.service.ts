@@ -4,6 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { ApiError, validationFailed } from '../../../common/api-error';
+import { EXAM_USAGE, type ExamUsage } from '../../../common/exam-usage';
 import { type Page, paginate } from '../../../common/pagination';
 import { ENV } from '../../../config/config.module';
 import type { Env } from '../../../config/env';
@@ -40,6 +41,7 @@ export class IllustrationsService {
     @Inject(MEDIA_STORE) private readonly media: MediaStore,
     @Inject(JOB_QUEUE) private readonly queue: JobQueue,
     @Inject(ENV) private readonly env: Env,
+    @Inject(EXAM_USAGE) private readonly examUsage: ExamUsage,
   ) {}
 
   /** Nhận ảnh, đẩy vào hàng đợi xử lý. Tải trùng nội dung thì trả lại ảnh có sẵn (Q139). */
@@ -129,9 +131,14 @@ export class IllustrationsService {
           .limit(limit)
           .offset(offset),
     );
+    const inExams = await this.examUsage.usedIllustrations(
+      result.items.map(({ illustration }) => illustration.id),
+    );
     return {
       ...result,
-      items: result.items.map(({ illustration, inUse }) => present(illustration, inUse)),
+      items: result.items.map(({ illustration, inUse }) =>
+        present(illustration, inUse || inExams.has(illustration.id)),
+      ),
     };
   }
 
@@ -163,9 +170,17 @@ export class IllustrationsService {
     return { id };
   }
 
-  /** Khóa file của biến thể lớn nhất không vượt quá `side` (ảnh nhỏ hơn thì được chính nó). */
-  async variantKey(ownerId: string, id: string, side: number): Promise<string> {
-    const row = await this.load(ownerId, id);
+  /**
+   * Khóa file của biến thể lớn nhất không vượt quá `side` (ảnh nhỏ hơn thì được chính nó).
+   * Xem được ảnh: chủ ảnh, hoặc chủ một Bộ đề đã Phát hành dùng ảnh đó (Q176).
+   */
+  async variantKey(userId: string, id: string, side: number): Promise<string> {
+    const [found] = await this.db.select().from(illustrations).where(eq(illustrations.id, id));
+    if (!found) throw new ApiError('NOT_FOUND');
+    if (found.ownerId !== userId && !(await this.examUsage.canViewIllustration(userId, id))) {
+      throw new ApiError('NOT_FOUND');
+    }
+    const row = found;
     if (row.status !== 'ready') throw new ApiError('NOT_FOUND');
     const fit = row.variants.filter((v) => v <= side).sort((a, b) => b - a)[0] ?? row.variants[0];
     if (fit === undefined) throw new ApiError('NOT_FOUND');
@@ -249,7 +264,8 @@ export class IllustrationsService {
       .from(questionIllustrations)
       .where(eq(questionIllustrations.illustrationId, id))
       .limit(1);
-    return row !== undefined;
+    if (row !== undefined) return true;
+    return (await this.examUsage.usedIllustrations([id])).has(id);
   }
 
   /** Đã chiếm đủ hạn mức thì không nhận thêm; một ảnh có thể vượt nhẹ (Q139). */
