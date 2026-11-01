@@ -1,4 +1,4 @@
-import { plainTextOf } from '@exam/shared';
+import { type CandidateView, plainTextOf } from '@exam/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,7 +37,7 @@ export function ExamPreview({
           {t('exam.preview.unsaved')}
         </p>
       )}
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-h-12 items-center gap-2 text-sm pointer-fine:min-h-9">
         <input
           type="checkbox"
           className="size-5"
@@ -106,14 +106,15 @@ export function ExamPreview({
 }
 
 /** Quy tắc chấm chỉ có khi công tắc bật (server mới gửi). */
-function Rules({ view }: { view: { payload: object } }) {
+function Rules({ view }: { view: CandidateView }) {
   const { t } = useTranslation();
-  const payload = view.payload as { scoringRule?: string; ladder?: number[] };
-  if (!payload.scoringRule) return null;
+  if (view.type === 'essay' || !view.payload.scoringRule) return null;
+  const { scoringRule } = view.payload;
+  const ladder = view.type === 'true_false_cluster' ? view.payload.ladder : undefined;
   return (
     <p className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
-      <Badge tone="primary">{t(`questionBank.rule.${payload.scoringRule}`)}</Badge>
-      {payload.ladder && payload.ladder.map((v) => `${v * 100}%`).join(' · ')}
+      <Badge tone="primary">{t(`questionBank.rule.${scoringRule}`)}</Badge>
+      {ladder?.map((v) => `${Math.round(v * 100)}%`).join(' · ')}
     </p>
   );
 }

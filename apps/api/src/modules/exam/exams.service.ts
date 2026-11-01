@@ -277,7 +277,7 @@ export class ExamsService {
           ),
         })),
     }));
-    const units = items.reduce((sum, item) => sum + Math.round(Number(item.points) * 100), 0);
+    const centiPoints = items.reduce((sum, item) => sum + Math.round(Number(item.points) * 100), 0);
     return {
       id: exam.id,
       title: exam.title,
@@ -285,7 +285,7 @@ export class ExamsService {
       status: exam.status,
       showScoringRules: options.showScoringRules,
       sections: ordered,
-      totals: { items: items.length, points: units / 100 },
+      totals: { items: items.length, points: centiPoints / 100 },
     };
   }
 
