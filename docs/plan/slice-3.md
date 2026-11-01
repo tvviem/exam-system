@@ -245,7 +245,7 @@ Không đổi điều đã duyệt:
 
 ## Điều chỉnh sau khi chủ dự án dùng thử 3a
 
-- **Đặt điểm nhanh (Q168) làm sớm, nằm trong PR 3a** (không chờ 3b): 40 câu cùng điểm mà sửa tay từng ô là không thực tế. Phạm vi: cả Bộ đề, một Phần, một Loại câu hỏi (phạm vi "câu đang tick" để sau vì trình soạn chưa có ô tick). Cách đặt: mỗi câu cùng điểm, hoặc chia đều một tổng. 3b chỉ còn Xem thử.
+- **Đặt điểm nhanh (Q168) làm sớm, nằm trong PR 3a** (không chờ 3b): 40 câu cùng điểm mà sửa tay từng ô là không thực tế. Phạm vi: cả Bộ đề, một Phần, một Loại câu hỏi (phạm vi "câu đang tick" **không làm**: chủ dự án xác nhận ngày 2026-11-01 rằng ba phạm vi hiện có là đủ). Cách đặt: mỗi câu cùng điểm, hoặc chia đều một tổng. 3b chỉ còn Xem thử.
 - **Nhãn cho ô nhập:** ô điểm của từng câu có nhãn "Điểm" nhìn thấy và chú thích (`title`) nêu khoảng, bước và dấu phẩy; ô "Chuyển sang…" có chú thích. Quy ước: ô nhập nào cũng phải có nhãn nhìn thấy hoặc `title`.
 
 ## Điều chỉnh khi làm PR 3c

@@ -57,7 +57,7 @@ Phiếu in cho từng Người dự thi, ghi tên đăng nhập và mật khẩu
 _Avoid_: phiếu mật khẩu, thẻ dự thi
 
 **Xóa người dùng** (`Remove`):
-Đưa Người dùng ra khỏi sử dụng vĩnh viễn nhưng vẫn giữ toàn bộ lịch sử và kết quả liên quan. Người ra đề còn Chủ đề thì phải Chuyển giao cho người nhận ngay trong lúc Xóa.
+Đưa Người dùng ra khỏi sử dụng vĩnh viễn nhưng vẫn giữ toàn bộ lịch sử và kết quả liên quan. Người ra đề còn Chủ đề hoặc Bộ đề thì phải Chuyển giao cho người nhận ngay trong lúc Xóa; mọi Bộ đề của họ (nháp, đã Phát hành, đã Lưu trữ) sang người nhận cùng Chủ đề.
 _Avoid_: hủy tài khoản
 
 ## Ngân hàng câu hỏi
@@ -70,11 +70,11 @@ _Avoid_: học phần, môn học, Course, Subject
 Một đơn vị nội dung kiểm tra thuộc một Chủ đề, có một Loại câu hỏi. Câu hỏi thuộc sở hữu của Người ra đề tạo ra nó; chỉ người đó được dùng nó, và có thể dùng lại trong nhiều Bộ đề của mình.
 
 **Lưu trữ câu hỏi** (`Archive`):
-Ẩn Câu hỏi khỏi việc chọn vào Bộ đề mới nhưng giữ lại vì nó đã từng được dùng trong một Bộ đề đã Phát hành. Câu hỏi chưa từng được dùng thì được xóa hẳn.
+Ẩn Câu hỏi khỏi danh sách mặc định và khỏi việc chọn vào Bộ đề mới nhưng giữ lại; Khôi phục đưa Câu hỏi trở lại. Câu hỏi nằm trong một Bộ đề (nháp hoặc đã Phát hành) không xóa được: Bộ đề nháp thì gỡ câu ra trước, Bộ đề đã Phát hành thì chỉ Lưu trữ vì Bản chụp cần câu gốc. Câu hỏi chưa nằm trong Bộ đề nào thì xóa hẳn được.
 _Avoid_: xóa mềm câu hỏi
 
 **Chuyển giao** (`Transfer`):
-Hành động của Quản trị viên chuyển quyền sở hữu một Chủ đề, cùng mọi Câu hỏi trong đó, từ Người ra đề này sang Người ra đề khác. Tại mọi thời điểm, mỗi Chủ đề chỉ có một chủ. Chủ đề trùng tên với Chủ đề của người nhận được thêm "(từ <tên người cho>)"; Hình minh họa đi theo Câu hỏi (đổi chủ, dùng ảnh sẵn có của người nhận, hoặc sao chép khi còn dùng chung với Câu hỏi ở lại); Lô nhập gắn với Chủ đề đó bị xóa.
+Hành động của Quản trị viên chuyển quyền sở hữu một Chủ đề, cùng mọi Câu hỏi trong đó, từ Người ra đề này sang Người ra đề khác. Tại mọi thời điểm, mỗi Chủ đề chỉ có một chủ. Chủ đề trùng tên với Chủ đề của người nhận được thêm "(từ <tên người cho>)"; Hình minh họa đi theo Câu hỏi (đổi chủ, dùng ảnh sẵn có của người nhận, hoặc sao chép khi còn dùng chung với Câu hỏi ở lại); Lô nhập gắn với Chủ đề đó bị xóa. Bộ đề nháp có câu thuộc Chủ đề được chuyển cũng sang người nhận, còn các câu của Chủ đề không chuyển bị gỡ khỏi Bộ đề đó (hộp thoại báo trước số Bộ đề và số câu bị gỡ); Bộ đề đã Phát hành ở lại người cho.
 _Avoid_: chia sẻ, bàn giao
 
 **Phần dẫn** (`Stem`):
