@@ -1,6 +1,6 @@
 # Lát cắt 3: Bộ đề
 
-> Trạng thái: **proposed** (1/11/2026), chờ chủ dự án duyệt Q159–Q191 và các seam test. Làm theo [GLOSSARY.md](../../GLOSSARY.md) mục Bộ đề và Phiên thi, [data-model.md](../data-model.md) mục 3, [architecture.md](../architecture.md) mục 3, 6 và 12, [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md) và [ui-design.md](../ui-design.md). Quyết định đánh số tiếp từ Q159 ([lát cắt 2](slice-2.md) dừng ở Q158). Mỗi quyết định nêu lý do ngắn, phương án đã loại và điều cần kiểm.
+> Trạng thái: **accepted** (1/11/2026): chủ dự án đã duyệt Q159–Q191 và các seam test (Q188), kèm các chốt ở bảng "Quyết định cần chủ dự án cân nhắc kỹ". Làm theo [GLOSSARY.md](../../GLOSSARY.md) mục Bộ đề và Phiên thi, [data-model.md](../data-model.md) mục 3, [architecture.md](../architecture.md) mục 3, 6 và 12, [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md) và [ui-design.md](../ui-design.md). Quyết định đánh số tiếp từ Q159 ([lát cắt 2](slice-2.md) dừng ở Q158). Mỗi quyết định nêu lý do ngắn, phương án đã loại và điều cần kiểm.
 
 ## Mục tiêu
 
@@ -191,11 +191,11 @@ Các điểm tôi đã chọn một hướng nhưng có phương án hợp lý k
 | Q161 Cột `shuffle_items` của Phần | **Đã chốt:** bỏ, xáo trộn là của Phiên thi | Giữ cột, mặc định tắt |
 | Q166 Xóa câu đang ở nháp | **Đã chốt:** chặn, nêu tên Bộ đề | Tự gỡ khỏi nháp sau xác nhận |
 | Q170 Người dự thi thấy `scoringRule` và `ladder` | **Đã chốt:** Người ra đề cấu hình ở Phiên thi, mặc định ẩn | Luôn thấy |
-| Q172 Trigger chặn ghi | Có, lớp thứ hai ngoài service | Chỉ service |
+| Q172 Trigger chặn ghi | **Đã chốt:** có, lớp thứ hai ngoài service | Chỉ service |
 | Q178 Xóa Bộ đề đã Phát hành | **Đã chốt:** không xóa, chỉ Lưu trữ | Cho xóa khi chưa có Phiên thi |
 | Q182 Nháp trộn khi Chuyển giao | **Đã chốt:** chuyển nháp, gỡ các câu không chuyển, nói trước | Chặn Chuyển giao |
 
-## Quyết định (Q159–Q191, đề xuất)
+## Quyết định (Q159–Q191, đã duyệt)
 
 | Q | Nội dung |
 |---|---|
