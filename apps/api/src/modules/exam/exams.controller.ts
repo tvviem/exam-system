@@ -19,6 +19,9 @@ import { ExamsService } from './exams.service';
 
 const titleSchema = examContentSchema.shape.title;
 const createSchema = z.strictObject({ title: titleSchema });
+const previewSchema = z.strictObject({
+  showScoringRules: z.enum(['true', 'false']).optional(),
+});
 const listSchema = pageSchema.extend({
   status: z.enum(examStatusEnum.enumValues).optional(),
   q: z.string().trim().max(200).optional(),
@@ -43,6 +46,16 @@ export class ExamsController {
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.exams.get(user.id, id);
+  }
+
+  @Get(':id/preview')
+  preview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: unknown,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const { showScoringRules } = previewSchema.parse(query);
+    return this.exams.preview(user.id, id, { showScoringRules: showScoringRules === 'true' });
   }
 
   @Put(':id')

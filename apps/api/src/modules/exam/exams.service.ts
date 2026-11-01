@@ -1,4 +1,6 @@
 import {
+  type CandidateSource,
+  candidateViewOf,
   type ExamContent,
   examLayoutProblems,
   normalizeForSearch,
@@ -226,6 +228,65 @@ export class ExamsService {
       });
     });
     return issues;
+  }
+
+  /**
+   * Xem thử (Q169, Q170): nội dung như Người dự thi thấy, do server làm sạch bằng `candidateViewOf`.
+   * Bộ đề nháp lấy nội dung hiện tại của Câu hỏi.
+   */
+  async preview(ownerId: string, id: string, options: { showScoringRules: boolean }) {
+    const [exam] = await this.db
+      .select()
+      .from(exams)
+      .where(and(eq(exams.id, id), eq(exams.ownerId, ownerId)));
+    if (!exam) throw new ApiError('NOT_FOUND');
+    const [sections, items] = await Promise.all([
+      this.db
+        .select()
+        .from(examSections)
+        .where(eq(examSections.examId, id))
+        .orderBy(asc(examSections.sort)),
+      this.db
+        .select({
+          sectionId: examItems.sectionId,
+          questionId: examItems.questionId,
+          points: examItems.points,
+          type: questions.type,
+          stem: questions.stem,
+          payload: questions.payload,
+        })
+        .from(examItems)
+        .innerJoin(questions, eq(questions.id, examItems.questionId))
+        .where(eq(examItems.examId, id))
+        .orderBy(asc(examItems.sort)),
+    ]);
+    let number = 0;
+    const ordered = sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      instructions: section.instructions,
+      items: items
+        .filter((item) => item.sectionId === section.id)
+        .map((item) => ({
+          number: ++number,
+          questionId: item.questionId,
+          points: Number(item.points),
+          question: candidateViewOf(
+            { type: item.type, stem: item.stem, payload: item.payload } as CandidateSource,
+            options,
+          ),
+        })),
+    }));
+    const units = items.reduce((sum, item) => sum + Math.round(Number(item.points) * 100), 0);
+    return {
+      id: exam.id,
+      title: exam.title,
+      instructions: exam.instructions,
+      status: exam.status,
+      showScoringRules: options.showScoringRules,
+      sections: ordered,
+      totals: { items: items.length, points: units / 100 },
+    };
   }
 
   private async detail(db: Db, ownerId: string, id: string) {

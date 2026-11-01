@@ -1,4 +1,4 @@
-import type { ExamContent, RichText } from '@exam/shared';
+import type { CandidateView, ExamContent, RichText } from '@exam/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
@@ -64,3 +64,28 @@ export const saveExam = (id: string, content: ExamContent) =>
   apiFetch<ExamDetail>(`/exams/${id}`, { method: 'PUT', body: content });
 
 export const deleteExam = (id: string) => apiFetch<null>(`/exams/${id}`, { method: 'DELETE' });
+
+export interface ExamPreview {
+  id: string;
+  title: string;
+  instructions: RichText;
+  status: ExamStatus;
+  showScoringRules: boolean;
+  sections: {
+    id: string;
+    title: string | null;
+    instructions: RichText;
+    items: { number: number; questionId: string; points: number; question: CandidateView }[];
+  }[];
+  totals: { items: number; points: number };
+}
+
+/** Xem thử do server làm sạch (không có Đáp án); công tắc quy tắc chấm không được lưu (Q170). */
+export const examPreviewQuery = (id: string, showScoringRules: boolean) =>
+  queryOptions({
+    queryKey: ['exams', 'preview', id, showScoringRules],
+    queryFn: () =>
+      apiFetch<ExamPreview>(
+        `/exams/${id}/preview${queryString({ showScoringRules: String(showScoringRules) })}`,
+      ),
+  });

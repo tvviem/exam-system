@@ -938,6 +938,14 @@
     "deleteBody": "Bộ đề nháp bị xóa hẳn cùng cách chia Phần và điểm. Câu hỏi trong ngân hàng không bị ảnh hưởng.",
     "notDraft": "Bộ đề này không còn là bản nháp nên không sửa được.",
     "tabEdit": "Soạn",
+    "tabPreview": "Xem thử",
+    "tabs": "Soạn hoặc xem thử Bộ đề",
+    "preview": {
+      "unsaved": "Xem thử hiện bản đã lưu. Bạn có thay đổi chưa lưu; hãy Lưu rồi xem lại.",
+      "showRules": "Hiện cách tính điểm",
+      "rulesHint": "Mặc định Người dự thi không thấy cách tính điểm; hiện hay không do cấu hình ở Phiên thi. Công tắc này chỉ để bạn xem hai kiểu, không được lưu.",
+      "content": "Nội dung xem thử"
+    },
     "picker": {
       "title": "Thêm câu hỏi vào Bộ đề",
       "search": "Tìm câu hỏi",
