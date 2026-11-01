@@ -384,5 +384,81 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-pt-desktop",
+    "fullName": "Giảng viên Phiên thi desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-pt-sv1-desktop",
+    "fullName": "Nguyễn Văn An (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PT-D-001",
+    "classLabel": "LOP-D-A"
+  },
+  {
+    "username": "e2e-pt-sv2-desktop",
+    "fullName": "Trần Thị Bình (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PT-D-002",
+    "classLabel": "LOP-D-A"
+  },
+  {
+    "username": "e2e-pt-sv3-desktop",
+    "fullName": "Lê Văn Cường (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PT-D-003",
+    "classLabel": "LOP-D-B"
+  },
+  {
+    "username": "e2e-pt-mobile",
+    "fullName": "Giảng viên Phiên thi mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-pt-sv1-mobile",
+    "fullName": "Nguyễn Văn An (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PT-M-001",
+    "classLabel": "LOP-M-A"
+  },
+  {
+    "username": "e2e-pt-sv2-mobile",
+    "fullName": "Trần Thị Bình (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PT-M-002",
+    "classLabel": "LOP-M-A"
+  },
+  {
+    "username": "e2e-pt-sv3-mobile",
+    "fullName": "Lê Văn Cường (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PT-M-003",
+    "classLabel": "LOP-M-B"
   }
 ]

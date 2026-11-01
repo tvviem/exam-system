@@ -11,6 +11,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { type Page, paginate } from '../../common/pagination';
+import { SESSION_USAGE, type SessionUsage } from '../../common/session-usage';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { questions, topics } from '../question-bank/question-bank.schema';
 import { examItems, examSections, exams } from './exam.schema';
@@ -30,7 +31,10 @@ const invalid = (issues: Issue[]) => new ApiError('VALIDATION_FAILED', { issues 
 /** Bộ đề của Người ra đề (Q160–Q163). Mọi truy cập lọc theo `owner_id`; của người khác coi như không tồn tại. */
 @Injectable()
 export class ExamsService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    @Inject(SESSION_USAGE) private readonly sessionUsage: SessionUsage,
+  ) {}
 
   /** Tạo Bộ đề nháp với đúng một Phần mặc định không tiêu đề (Q161). */
   async create(ownerId: string, title: string) {
@@ -79,9 +83,14 @@ export class ExamsService {
           .limit(limit)
           .offset(offset),
     );
+    const sessionCounts = await this.sessionUsage.countByExam(result.items.map((row) => row.id));
     return {
       ...result,
-      items: result.items.map((row) => ({ ...row, totalPoints: Number(row.totalPoints) })),
+      items: result.items.map((row) => ({
+        ...row,
+        totalPoints: Number(row.totalPoints),
+        sessionCount: sessionCounts.get(row.id) ?? 0,
+      })),
     };
   }
 
@@ -325,12 +334,14 @@ export class ExamsService {
         .orderBy(asc(examItems.sort)),
     ]);
     const totalUnits = items.reduce((sum, item) => sum + Math.round(Number(item.points) * 100), 0);
+    const sessionCount = (await this.sessionUsage.countByExam([id])).get(id) ?? 0;
     return {
       id: exam.id,
       title: exam.title,
       instructions: exam.instructions,
       status: exam.status,
       version: exam.version,
+      sessionCount,
       publishedAt: exam.publishedAt,
       updatedAt: exam.updatedAt,
       sections: sections.map((section) => ({

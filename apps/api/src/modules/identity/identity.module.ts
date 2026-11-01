@@ -8,6 +8,7 @@ import { AccountRequestApproveJob } from './account-requests/account-request-app
 import { AccountRequestParseJob } from './account-requests/account-request-parse.job';
 import { AccountRequestsController } from './account-requests/account-requests.controller';
 import { AccountRequestsService } from './account-requests/account-requests.service';
+import { RequesterCredentialsService } from './account-requests/requester-credentials.service';
 import { AdminAccountsService } from './admin-accounts.service';
 import { AuditLogsController } from './audit-logs/audit-logs.controller';
 import { AuthController } from './auth/auth.controller';
@@ -64,6 +65,7 @@ import { UsersRepository } from './users.repository';
     InvitationAcceptanceService,
     InvitationRateLimiter,
     AccountRequestsService,
+    RequesterCredentialsService,
     AccountRequestParseJob,
     AccountRequestApproveJob,
     CredentialSlipsService,
@@ -73,6 +75,6 @@ import { UsersRepository } from './users.repository';
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
   // CLI và các module khác chỉ dùng những gì được xuất ở đây.
-  exports: [AuthSessionStore, AdminAccountsService],
+  exports: [AuthSessionStore, AdminAccountsService, RequesterCredentialsService],
 })
 export class IdentityModule {}

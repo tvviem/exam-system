@@ -39,3 +39,11 @@ export async function mapUniqueToConflict<T>(
     throw error;
   }
 }
+
+const EXCLUSION_VIOLATION = '23P01';
+
+/** Tên ràng buộc loại trừ (EXCLUDE) bị vi phạm, hoặc undefined nếu không phải. */
+export function exclusionViolationOf(error: unknown): string | undefined {
+  const pg = pgErrorOf(error);
+  return pg?.code === EXCLUSION_VIOLATION ? pg.constraint : undefined;
+}

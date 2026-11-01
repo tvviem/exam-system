@@ -338,7 +338,11 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
       />
       {readOnly && (
         <p role="status" className="rounded-lg border border-border bg-surface p-3 text-sm">
-          {t('exam.readOnlyNote')}
+          {t('exam.readOnlyNote')}{' '}
+          {exam.sessionCount > 0
+            ? t('exam.sessionCount', { count: exam.sessionCount })
+            : t('exam.sessionCountNone')}
+          .
         </p>
       )}
       <ErrorMessage>

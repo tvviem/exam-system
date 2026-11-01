@@ -8,6 +8,7 @@ import { IdentityModule } from '../modules/identity/identity.module';
 import { OwnedContentWiringModule } from '../owned-content-wiring.module';
 import { QueueModule } from '../queue/job-queue';
 import { RedisModule } from '../redis/redis.module';
+import { SessionUsageWiringModule } from '../session-usage-wiring.module';
 
 @Module({})
 export class CliModule {
@@ -25,6 +26,7 @@ export class CliModule {
         IdentityModule,
         OwnedContentWiringModule,
         ExamUsageWiringModule,
+        SessionUsageWiringModule,
       ],
     };
   }

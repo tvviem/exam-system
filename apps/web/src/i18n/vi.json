@@ -22,10 +22,12 @@
       "loginEvents": "Đăng nhập",
       "auditLogs": "Nhật ký",
       "questionBank": "Câu hỏi",
-      "exams": "Bộ đề"
+      "exams": "Bộ đề",
+      "sessions": "Phiên thi"
     },
     "questionBank": "Ngân hàng câu hỏi",
-    "exams": "Bộ đề"
+    "exams": "Bộ đề",
+    "sessions": "Phiên thi"
   },
   "health": {
     "heading": "Trạng thái hệ thống",
@@ -116,7 +118,7 @@
     "VALIDATION_item_not_rejectable": "Có dòng không từ chối được (đã xử lý hoặc không thuộc yêu cầu). Hãy tải lại trang.",
     "VALIDATION_nothing_selected": "Chưa có dòng nào để duyệt.",
     "CONFLICT_name": "Đã có Chủ đề trùng tên (không phân biệt hoa thường và dấu).",
-    "CONFLICT_version": "Câu hỏi đã được sửa ở nơi khác. Hãy tải lại bản mới.",
+    "CONFLICT_version": "Nội dung đã được sửa ở nơi khác. Hãy tải lại bản mới.",
     "INVALID_STATE_TOPIC_NOT_EMPTY": "Chủ đề còn Câu hỏi nên không xóa được. Hãy chuyển hoặc xóa các Câu hỏi trước, hoặc Lưu trữ Chủ đề.",
     "INVALID_STATE_TOPIC_ARCHIVED": "Chủ đề đã Lưu trữ. Hãy khôi phục Chủ đề hoặc chọn Chủ đề khác.",
     "VALIDATION_unsupported_type": "Chỉ nhận ảnh JPEG, PNG hoặc WebP.",
@@ -145,7 +147,18 @@
     "INVALID_STATE_QUESTION_IN_PUBLISHED_EXAM": "Câu hỏi này nằm trong Bộ đề đã Phát hành nên không xóa được, vì Bộ đề cần giữ câu gốc. Hãy chọn Lưu trữ: câu sẽ ẩn khỏi danh sách và bảng chọn câu, các Bộ đề đã Phát hành không đổi, và có thể Khôi phục sau.",
     "INVALID_STATE_EXAM_WRONG_STATUS": "Trạng thái Bộ đề đã thay đổi. Hãy tải lại trang.",
     "INVALID_STATE_PUBLISH_BLOCKED": "Bộ đề còn vấn đề chưa thể Phát hành. Hãy xem danh sách trong hộp thoại Phát hành.",
-    "INVALID_STATE_QUESTION_IN_EXAM": "Câu hỏi đang nằm trong Bộ đề nháp nên chưa xóa được. Hãy gỡ câu khỏi Bộ đề trước."
+    "INVALID_STATE_QUESTION_IN_EXAM": "Câu hỏi đang nằm trong Bộ đề nháp nên chưa xóa được. Hãy gỡ câu khỏi Bộ đề trước.",
+    "CONFLICT_accessCode": "Mã vào thi này đang được Phiên thi khác dùng trong Khung giờ trùng. Hãy chọn mã khác.",
+    "VALIDATION_exam_not_published": "Bộ đề này chưa Phát hành. Hãy Phát hành Bộ đề trước khi tạo Phiên thi.",
+    "VALIDATION_exam_archived": "Bộ đề này đã Lưu trữ. Hãy khôi phục Bộ đề hoặc chọn Bộ đề khác.",
+    "VALIDATION_unknown_exam": "Không tìm thấy Bộ đề. Hãy chọn lại.",
+    "VALIDATION_locked": "Phiên thi đã mở nên mục này không sửa được nữa. Hãy tải lại trang để thấy mục nào còn sửa được.",
+    "VALIDATION_cannot_shorten": "Phiên thi đã mở: chỉ được kéo dài giờ đóng và Thời lượng, không rút ngắn.",
+    "VALIDATION_closes_not_after_opens": "Giờ đóng phải sau giờ mở.",
+    "INVALID_STATE_WINDOW_CLOSED": "Phiên thi đã đóng nên không thao tác được nữa.",
+    "INVALID_STATE_SESSION_CANCELLED": "Phiên thi đã bị Hủy.",
+    "INVALID_STATE_ROSTER_FULL": "Danh sách dự thi tối đa 500 người. Hãy bớt người hoặc chia thành nhiều Phiên thi.",
+    "INVALID_STATE_ASK_ADMIN": "Chỉ cấp lại được cho tài khoản do chính bạn xin cấp và chủ tài khoản chưa đổi mật khẩu tạm. Trường hợp khác, hãy nhờ Quản trị viên."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -529,7 +542,11 @@
     "credential_slip.ready_failed": "Không dựng được Phiếu tài khoản. Hãy cấp lại mật khẩu tạm.",
     "account_request.approve_interrupted": "Việc duyệt yêu cầu bị gián đoạn. Hãy mở yêu cầu và duyệt lại các dòng còn chờ.",
     "topics.transferred": "Quản trị viên đã chuyển giao {{topics}} Chủ đề cho bạn.",
-    "topics.transferred_exams": "Quản trị viên đã chuyển giao {{topics}} Chủ đề và {{exams}} Bộ đề cho bạn."
+    "topics.transferred_exams": "Quản trị viên đã chuyển giao {{topics}} Chủ đề và {{exams}} Bộ đề cho bạn.",
+    "session.added": "Bạn được thêm vào Phiên thi “{{title}}”.",
+    "session.rescheduled": "Phiên thi “{{title}}” đã đổi giờ mở hoặc giờ đóng.",
+    "session.cancelled": "Phiên thi “{{title}}” đã bị Hủy.",
+    "account.password_reissued": "Mật khẩu tạm của bạn vừa được Người ra đề cấp lại. Đăng nhập bằng mật khẩu mới và đổi ngay."
   },
   "credentialSlips": {
     "heading": "Phiếu tài khoản",
@@ -1012,6 +1029,187 @@
     },
     "collapse": "Thu gọn Phần",
     "expand": "Mở rộng Phần",
-    "collapsedHint": "{{count}} câu (đang thu gọn)"
+    "collapsedHint": "{{count}} câu (đang thu gọn)",
+    "sessionCount": "Đang dùng cho {{count}} Phiên thi",
+    "sessionCountNone": "Chưa có Phiên thi nào dùng"
+  },
+  "session": {
+    "title": "Phiên thi",
+    "create": "Tạo Phiên thi",
+    "search": "Tìm Phiên thi",
+    "filterPhase": "Lọc theo trạng thái",
+    "phaseAll": "Tất cả",
+    "phase": {
+      "upcoming": "Sắp mở",
+      "open": "Đang mở",
+      "entry_closed": "Đóng cửa vào thi",
+      "closed": "Đã đóng",
+      "cancelled": "Đã hủy"
+    },
+    "listEmpty": "Chưa có Phiên thi nào. Bấm “Tạo Phiên thi” để bắt đầu.",
+    "listNoMatch": "Không có Phiên thi nào khớp.",
+    "meta": "{{exam}} · {{count}} người",
+    "window": "Mở {{opens}} · Đóng {{closes}}",
+    "wizard": {
+      "label": "Các bước tạo Phiên thi",
+      "step": "Bước {{current}}/{{total}}: {{name}}",
+      "steps": {
+        "exam": "Bộ đề và tên",
+        "times": "Thời gian",
+        "rules": "Thiết lập làm bài"
+      },
+      "next": "Tiếp",
+      "back": "Quay lại",
+      "submit": "Tạo Phiên thi",
+      "creating": "Đang tạo…"
+    },
+    "field": {
+      "exam": "Bộ đề",
+      "examHint": "Chỉ chọn được Bộ đề đã Phát hành và chưa Lưu trữ. Sau khi Phiên thi mở không đổi Bộ đề được nữa.",
+      "examNone": "Bạn chưa có Bộ đề đã Phát hành. Hãy Phát hành một Bộ đề trước.",
+      "examPlaceholder": "Chọn Bộ đề…",
+      "examOption": "{{title}} ({{items}} câu, {{points}} điểm)",
+      "name": "Tên Phiên thi",
+      "opensAt": "Giờ mở",
+      "closesAt": "Giờ đóng",
+      "closesHint": "Giờ đóng là giờ cuối cùng được bắt đầu làm bài. Giờ Việt Nam (GMT+7).",
+      "opensHint": "Giờ Việt Nam (GMT+7).",
+      "duration": "Thời lượng (phút)",
+      "durationHint": "Thời gian của mỗi Lượt làm bài, từ 1 đến 600 phút.",
+      "hardClose": "Cắt cứng khi đóng Khung giờ",
+      "hardCloseHint": "Bật: Lượt làm bài kết thúc đúng giờ đóng dù chưa đủ Thời lượng. Tắt (mặc định): mỗi người được đủ Thời lượng kể từ lúc bắt đầu.",
+      "maxAttempts": "Số Lượt làm bài tối đa",
+      "attemptScoring": "Điểm khi làm nhiều lượt",
+      "attemptScoringHint": "Cách chọn điểm cuối cùng của mỗi người khi họ làm nhiều lượt.",
+      "highest": "Lấy lượt có điểm cao nhất",
+      "latest": "Lấy lượt làm sau cùng",
+      "shuffleItems": "Xáo thứ tự câu hỏi",
+      "shuffleItemsHint": "Xáo trong từng Phần, mỗi Lượt làm bài một thứ tự riêng.",
+      "shuffleOptions": "Xáo thứ tự Phương án",
+      "shuffleOptionsHint": "Chỉ áp dụng cho câu chọn một và chọn nhiều có bật xáo Phương án. Mệnh đề đúng/sai giữ nguyên nhãn a, b, c, d.",
+      "showScoringRules": "Cho Người dự thi xem cách tính điểm",
+      "showScoringRulesHint": "Hiện quy tắc chấm của câu đúng/sai và điền ngắn trên màn hình làm bài.",
+      "accessCode": "Mã vào thi",
+      "accessCodeHint": "4 đến 12 ký tự chữ và số, không phân biệt hoa thường. Người dự thi nhập mã này ở lần vào đầu tiên.",
+      "suggestAnother": "Gợi ý mã khác",
+      "locked": "Không sửa được khi Phiên thi đã mở",
+      "growOnly": "Chỉ kéo dài được"
+    },
+    "tabs": {
+      "label": "Phiên thi",
+      "overview": "Tổng quan",
+      "roster": "Danh sách dự thi"
+    },
+    "crumb": {
+      "list": "Phiên thi",
+      "new": "Tạo mới"
+    },
+    "action": {
+      "edit": "Sửa",
+      "duplicate": "Nhân bản",
+      "cancel": "Hủy Phiên thi",
+      "delete": "Xóa",
+      "save": "Lưu thay đổi",
+      "saved": "Đã lưu Phiên thi.",
+      "duplicated": "Đã nhân bản. Hãy kiểm tra giờ và mã của bản sao.",
+      "cancelled": "Đã hủy Phiên thi.",
+      "deleted": "Đã xóa Phiên thi.",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép mã.",
+      "editCancel": "Bỏ thay đổi",
+      "created": "Đã tạo Phiên thi. Hãy thêm người vào Danh sách dự thi.",
+      "more": "Thao tác khác với Phiên thi"
+    },
+    "hint": {
+      "cancelDisabled": "Phiên thi đã bị Hủy.",
+      "editDisabled": "Phiên thi đã đóng hoặc đã hủy nên không sửa được."
+    },
+    "cancelDialog": {
+      "title": "Hủy Phiên thi này?",
+      "body": "Không hoàn tác được. Không ai vào thi được nữa, Người dự thi trong Danh sách nhận thông báo, Mã vào thi được nhả cho Phiên thi khác. Muốn thi lại, hãy Nhân bản Bộ đề rồi tạo Phiên thi mới.",
+      "reason": "Lý do (không bắt buộc)",
+      "confirm": "Hủy Phiên thi",
+      "keep": "Giữ Phiên thi"
+    },
+    "deleteDialog": {
+      "title": "Xóa Phiên thi này?",
+      "body": "Phiên thi và Danh sách dự thi bị xóa hẳn. Chỉ xóa được khi chưa có ai làm bài. Người đã được thêm vào Danh sách sẽ nhận thông báo Phiên thi bị Hủy.",
+      "confirm": "Xóa Phiên thi"
+    },
+    "overview": {
+      "exam": "Bộ đề",
+      "window": "Khung giờ",
+      "duration": "Thời lượng",
+      "durationValue": "{{minutes}} phút",
+      "hardClose": "Cắt cứng khi đóng Khung giờ",
+      "attempts": "Số Lượt làm bài",
+      "attemptScoring": "Điểm khi làm nhiều lượt",
+      "shuffle": "Xáo trộn",
+      "shuffleValue": "Thứ tự câu: {{items}} · Phương án: {{options}}",
+      "showScoringRules": "Hiện cách tính điểm",
+      "accessCode": "Mã vào thi",
+      "roster": "Người trong Danh sách",
+      "cancelledAt": "Hủy lúc",
+      "cancelReason": "Lý do hủy",
+      "yes": "Có",
+      "no": "Không",
+      "on": "Bật",
+      "off": "Tắt"
+    },
+    "roster": {
+      "title": "Danh sách dự thi",
+      "count": "{{count}} người",
+      "search": "Tìm trong Danh sách",
+      "empty": "Danh sách còn trống. Hãy thêm Người dự thi ở phía trên.",
+      "noMatch": "Không có ai khớp.",
+      "addTitle": "Thêm người vào Danh sách",
+      "addSearch": "Tìm theo tên, Mã định danh hoặc Lớp",
+      "addSearchHint": "Gõ vài chữ rồi chọn người hoặc cả lớp. Chỉ tìm thấy người có Nhãn Người dự thi, chưa Khóa đăng nhập.",
+      "add": "Thêm",
+      "addAria": "Thêm {{name}}",
+      "inRoster": "Đã có",
+      "addClass": "Thêm cả lớp {{label}} ({{count}} người)",
+      "noAccount": "Chưa có tài khoản? Gửi Yêu cầu cấp tài khoản.",
+      "noAccountLink": "Yêu cầu cấp tài khoản",
+      "paste": "Dán danh sách Mã định danh",
+      "pasteLabel": "Danh sách Mã định danh",
+      "pasteHint": "Mỗi dòng một mã (cũng nhận mã cách nhau bằng dấu phẩy hoặc khoảng trắng).",
+      "pasteCheck": "Kiểm tra",
+      "pasteChecking": "Đang kiểm tra…",
+      "pasteResult": "Khớp {{added}} người mới; {{alreadyIn}} người đã có trong Danh sách.",
+      "pasteNotFound": "{{count}} mã không tìm thấy: {{codes}}",
+      "pasteIneligible": "{{count}} người không thêm được: {{reasons}}",
+      "pasteConfirm": "Thêm {{count}} người",
+      "ineligible": {
+        "owner_cannot_sit": "bạn không tự thêm mình",
+        "locked": "đã Khóa đăng nhập",
+        "not_candidate": "không phải Người dự thi"
+      },
+      "addedToast": "Đã thêm {{count}} người.",
+      "nothingAdded": "Không có ai mới để thêm.",
+      "code": "Mã định danh",
+      "name": "Họ và tên",
+      "class": "Lớp",
+      "extra": "Phút cộng sẵn",
+      "extraAria": "Phút cộng sẵn của {{name}}",
+      "extraHint": "Phút cộng thêm riêng cho từng người (ví dụ hỗ trợ đặc biệt), từ 0 đến 600.",
+      "remove": "Bớt",
+      "removeAria": "Bớt {{name}}",
+      "removeSelected": "Bớt {{count}} người",
+      "removedToast": "Đã bớt {{count}} người.",
+      "selectAll": "Chọn tất cả trên trang này",
+      "select": "Chọn {{name}}",
+      "reissue": "Cấp lại mật khẩu tạm",
+      "reissueTitle": "Mật khẩu tạm mới của {{name}}",
+      "reissueConfirmTitle": "Cấp lại mật khẩu tạm cho {{name}}?",
+      "reissueConfirmBody": "Dùng khi người này làm mất Phiếu tài khoản và chưa đăng nhập lần nào. Mật khẩu mới chỉ hiện một lần, hết hạn sau 7 ngày, mọi phiên đăng nhập hiện có của người này bị thu hồi và họ nhận thông báo. Thao tác được ghi vào nhật ký.",
+      "reissueConfirm": "Cấp mật khẩu mới",
+      "rowActions": "Thao tác với {{name}}",
+      "closedNote": "Phiên thi đã đóng nên không thay đổi Danh sách được nữa."
+    },
+    "invalid": {
+      "closesAt": "Giờ đóng phải sau giờ mở.",
+      "accessCode": "Mã gồm 4 đến 12 ký tự chữ và số."
+    }
   }
 }

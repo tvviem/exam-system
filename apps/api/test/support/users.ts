@@ -6,6 +6,7 @@ export interface SeedUser {
   username?: string | null;
   email?: string | null;
   code?: string | null;
+  classLabel?: string | null;
   fullName?: string;
   password?: string;
   isAdmin?: boolean;
@@ -29,8 +30,8 @@ export async function seedUser(
   try {
     await pg.query(
       `INSERT INTO users (id, username, email, code, full_name, password_hash, is_admin,
-         must_change_password, password_expires_at, status, removed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+         must_change_password, password_expires_at, status, removed_at, class_label)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         id,
         username,
@@ -43,6 +44,7 @@ export async function seedUser(
         input.passwordExpiresAt ?? null,
         input.status ?? 'active',
         input.removed ? new Date() : null,
+        input.classLabel ?? null,
       ],
     );
     for (const tag of input.roleTags ?? []) {

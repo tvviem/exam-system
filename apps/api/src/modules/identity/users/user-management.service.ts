@@ -85,6 +85,14 @@ const isUniqueViolation = (error: unknown) =>
 
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
+/** Móc để bên khác (Người ra đề cấp lại cho Người dự thi trong Danh sách) đặt điều kiện và việc đi kèm trong cùng giao dịch. */
+export interface ReissueHooks {
+  /** Ghi thêm vào nhật ký thao tác (ví dụ Phiên thi nào, do Người ra đề cấp). */
+  auditContext?: Record<string, unknown>;
+  guard?(tx: Tx, target: UserRow): Promise<void>;
+  onApplied?(tx: Tx): Promise<void>;
+}
+
 /** Quản lý Người dùng của Quản trị viên (PR 1b). */
 @Injectable()
 export class UserManagementService {
@@ -504,12 +512,14 @@ export class UserManagementService {
    * Cấp lại mật khẩu tạm (Q61): hạn 7 ngày, buộc đổi khi đăng nhập, thu hồi mọi phiên và gỡ khóa tạm.
    * Không mở Khóa đăng nhập. Mật khẩu chỉ trả về một lần, không ghi vào DB hay nhật ký.
    */
-  async reissueTemporaryPassword(actor: Actor, id: string) {
+  async reissueTemporaryPassword(actor: Actor, id: string, hooks: ReissueHooks = {}) {
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
     const passwordExpiresAt = new Date(this.clock.now().getTime() + TEMPORARY_PASSWORD_TTL_MS);
     await this.db.transaction(async (tx) => {
-      await this.lockTargetOrThrow(tx, actor, id);
+      const target = await this.lockTargetOrThrow(tx, actor, id);
+      // Kiểm điều kiện sau khi đã khóa dòng: người dùng vừa đổi mật khẩu thì không bị đè (cấp lại cho người khác).
+      await hooks.guard?.(tx, target);
       await tx
         .update(users)
         .set({ passwordHash, mustChangePassword: true, passwordExpiresAt })
@@ -520,10 +530,11 @@ export class UserManagementService {
           action: 'user.temporary-password.reissue',
           entityType: 'user',
           entityId: id,
-          after: { passwordExpiresAt },
+          after: { passwordExpiresAt, ...hooks.auditContext },
         },
         tx,
       );
+      await hooks.onApplied?.(tx);
       await this.revokeBeforeCommit(id, 'password_reissued');
     });
     await this.loginBlock.clear(id);

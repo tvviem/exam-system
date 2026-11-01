@@ -235,28 +235,36 @@ exam_item_illustrations (                 -- ảnh nằm trong bản chụp củ
 
 ## 4. Phiên thi (module `session`)
 
+Thực hiện ở migration 0012 (PR 4a); thiết kế và lý do ở [plan/slice-4.md](plan/slice-4.md). Cột `released_at`, `finalized_at`, `appeal_period_hours` thêm ở lát cắt 5.
+
 ```sql
 sessions (
-  id, exam_id → exams (status = published), owner_id → users, title,
-  opens_at, closes_at, duration_minutes,
-  max_attempts int DEFAULT 1,
+  id, exam_id → exams ON DELETE RESTRICT (trigger: không nháp, không Lưu trữ khi tạo), owner_id → users, title,
+  opens_at, closes_at CHECK (closes_at > opens_at),     -- Khung giờ chỉ giới hạn việc bắt đầu (Q208)
+  duration_minutes CHECK (1..600),
+  hard_close bool DEFAULT false,                        -- Cắt cứng khi đóng Khung giờ
+  max_attempts int DEFAULT 1 CHECK (1..5),
   attempt_scoring enum('highest','latest') DEFAULT 'highest',
-  shuffle_items bool, shuffle_options bool,
-  access_code text NOT NULL,              -- Mã vào thi do Người ra đề đặt trước
-  appeal_period_hours int DEFAULT 72,     -- Kết quả luôn chờ Người ra đề Công bố
-  released_at, finalized_at
+  shuffle_items bool, shuffle_options bool, show_scoring_rules bool,
+  access_code text NOT NULL CHECK (access_code ~ '^[A-Z0-9]{4,12}$'),   -- Mã vào thi do Người ra đề đặt trước
+  entry_closed_at,                                      -- Đóng cửa vào thi
+  cancelled_at, cancelled_by → users, cancel_reason,    -- Hủy Phiên thi; trigger: không hoàn tác, sau hủy chỉ đổi chủ
+  version int DEFAULT 1                                 -- khóa lạc quan khi sửa
 )
 
--- Mã vào thi không trùng giữa các Phiên thi chưa đóng:
-UNIQUE (access_code) WHERE finalized_at IS NULL
+-- Q222: Mã vào thi không trùng giữa hai Phiên thi chưa hủy có Khung giờ chồng nhau (đóng cả hai đầu).
+EXCLUDE USING gist (access_code WITH =, tstzrange(opens_at, closes_at, '[]') WITH &&) WHERE (cancelled_at IS NULL)
 
-session_roster (                          -- Danh sách dự thi: chỉ người mang nhãn candidate,
-                                          -- không bao gồm sessions.owner_id (dùng Xem thử thay thế)
-  session_id → sessions, user_id → users, added_by → users, added_at,
-  extra_minutes int DEFAULT 0,            -- cộng giờ riêng cho từng người
+session_roster (                          -- Danh sách dự thi: người mang Nhãn candidate, tối đa 500 (kiểm ở service)
+  session_id → sessions ON DELETE CASCADE, user_id → users, added_by → users, added_at,
+  class_label text,                       -- Lớp chụp tại lúc thêm, không đổi theo hồ sơ sau đó
+  extra_minutes int DEFAULT 0 CHECK (0..600),   -- phút cộng sẵn cho riêng từng người
   PK (session_id, user_id)
 )
+-- Trigger: INSERT thì user_id <> sessions.owner_id (Q144, owner_cannot_sit). Cấm bớt người đã có Lượt: thêm ở migration 0013.
 ```
+
+Trạng thái hiện cho Người ra đề (Sắp mở, Đang mở, Đóng cửa vào thi, Đã đóng, Đã hủy) **không lưu**: suy ra từ giờ và hai cột `entry_closed_at`, `cancelled_at` bằng hàm `phaseOf` ở `@exam/shared`.
 
 ## 5. Lượt làm bài và Chấm (module `attempt`, `grading`)
 

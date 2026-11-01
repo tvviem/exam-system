@@ -1,6 +1,7 @@
 import { Link, useMatches, useRouterState } from '@tanstack/react-router';
 import {
   Building2,
+  CalendarClock,
   ClipboardList,
   Ellipsis,
   FileText,
@@ -73,6 +74,12 @@ export function navFor(me: Me): NavItem[] {
         label: 'nav.exams',
         short: 'nav.short.exams',
         icon: FileText,
+      },
+      {
+        to: '/examiner/sessions',
+        label: 'nav.sessions',
+        short: 'nav.short.sessions',
+        icon: CalendarClock,
       },
       {
         to: '/examiner/account-requests',

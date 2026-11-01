@@ -35,14 +35,16 @@ async function main() {
   await db.connect();
   for (const user of users) {
     const { rows } = await db.query(
-      `INSERT INTO users (id, username, full_name, password_hash, is_admin, must_change_password)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING id`,
+      `INSERT INTO users (id, username, full_name, password_hash, is_admin, must_change_password, code, class_label)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [
         user.username,
         user.fullName,
         await hashPassword(user.password),
         user.isAdmin,
         user.mustChangePassword ?? true,
+        user.code ?? null,
+        user.classLabel ?? null,
       ],
     );
     for (const tag of user.roleTags ?? []) {
