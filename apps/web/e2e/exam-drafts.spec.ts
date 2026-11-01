@@ -164,6 +164,18 @@ test('soạn Bộ đề nháp: thêm câu, đặt điểm, chia Phần, sắp x�
   await expect(
     page.getByText('4 câu · 1,5 điểm').or(page.getByText('4 câu · 1.5 điểm')),
   ).toBeVisible();
+
+  // Xem thử: chỉ hiện bản đã lưu (báo còn thay đổi chưa lưu), không có Đáp án.
+  await page.getByRole('tab', { name: 'Xem thử' }).click();
+  await expect(page.getByText('Xem thử hiện bản đã lưu')).toBeVisible();
+  const view = page.getByRole('region', { name: 'Nội dung xem thử' });
+  await expect(view.getByRole('heading', { name: 'Phần II: Nâng cao' })).toBeVisible();
+  await expect(view.getByText('Giới hạn').first()).toBeVisible();
+  await expect(view.getByText('Đáp án đúng')).toHaveCount(0);
+  await expect(view.getByText('Tỷ lệ')).toHaveCount(0);
+  await page.getByLabel('Hiện cách tính điểm').check();
+  await expect(view).toBeVisible();
+  expect(await overflow(page), 'xem thử').toBe(0);
 });
 
 test('rời trang khi chưa lưu bị hỏi; lưu xong rồi rời thì không; danh sách tìm và lọc; xóa Bộ đề nháp', async ({

@@ -28,11 +28,13 @@ import {
 import { deleteExam, type ExamDetail, examQuery, saveExam } from '../exams';
 import { Badge, Button, Card, Dialog, ErrorMessage, PrimaryButton, TextField } from '.';
 import { Breadcrumb } from './breadcrumb';
+import { ExamPreview } from './exam-preview';
 import { PageHeader } from './page-header';
 import { Rich } from './question-editor-fields';
 import { QuestionPicker } from './question-picker';
 import { QuickPointsDialog } from './quick-points-dialog';
 import { StickyActionBar } from './sticky-action-bar';
+import { Tabs } from './tabs';
 import { useToast } from './toast';
 
 /** Mốc "đã lưu": bỏ id Phần vì server cấp id cho Phần mới sau khi lưu, không phải là người dùng sửa. */
@@ -206,6 +208,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [tab, setTab] = useState('edit');
   const [removingSection, setRemovingSection] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const skipBlock = useRef(false);
@@ -280,171 +283,194 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
       />
       {readOnly && <ErrorMessage>{t('exam.notDraft')}</ErrorMessage>}
 
-      <Card className="flex flex-col gap-4">
-        <TextField
-          id="exam-title"
-          label={t('exam.name')}
-          value={draft.title}
-          maxLength={200}
-          disabled={readOnly}
-          onChange={(e) => change((d) => ({ ...d, title: e.target.value }))}
-        />
-        {!readOnly && (
-          <InstructionsField
-            id="exam-instructions"
-            label={t('exam.instructions')}
-            value={draft.instructions}
-            onChange={(instructions) => change((d) => ({ ...d, instructions }))}
-          />
-        )}
-      </Card>
-
-      {draft.sections.map((section, index) => (
-        <Card key={section.key} className="flex flex-col gap-3">
-          {split && (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <div className="min-w-0 sm:flex-1">
+      <Tabs
+        label={t('exam.tabs')}
+        value={tab}
+        onChange={setTab}
+        items={[
+          {
+            id: 'edit',
+            label: t('exam.tabEdit'),
+            content: (
+              <div className="flex flex-col gap-4">
+                <Card className="flex flex-col gap-4">
                   <TextField
-                    id={`section-title-${section.key}`}
-                    label={t('exam.sectionTitle')}
-                    value={section.title}
+                    id="exam-title"
+                    label={t('exam.name')}
+                    value={draft.title}
                     maxLength={200}
-                    placeholder={t('exam.untitled', { n: index + 1 })}
                     disabled={readOnly}
-                    onChange={(e) =>
-                      change((d) => updateSection(d, section.key, { title: e.target.value }))
-                    }
+                    onChange={(e) => change((d) => ({ ...d, title: e.target.value }))}
                   />
-                </div>
-                {!readOnly && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      aria-label={`${t('exam.sectionUp')}: ${sectionName(section, index)}`}
-                      onClick={() => change((d) => moveSection(d, section.key, -1))}
-                    >
-                      <ChevronUp aria-hidden className="size-5" />
-                    </Button>
-                    <Button
-                      aria-label={`${t('exam.sectionDown')}: ${sectionName(section, index)}`}
-                      onClick={() => change((d) => moveSection(d, section.key, 1))}
-                    >
-                      <ChevronDown aria-hidden className="size-5" />
-                    </Button>
-                    {draft.sections.length > 1 && (
+                  {!readOnly && (
+                    <InstructionsField
+                      id="exam-instructions"
+                      label={t('exam.instructions')}
+                      value={draft.instructions}
+                      onChange={(instructions) => change((d) => ({ ...d, instructions }))}
+                    />
+                  )}
+                </Card>
+
+                {draft.sections.map((section, index) => (
+                  <Card key={section.key} className="flex flex-col gap-3">
+                    {split && (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                          <div className="min-w-0 sm:flex-1">
+                            <TextField
+                              id={`section-title-${section.key}`}
+                              label={t('exam.sectionTitle')}
+                              value={section.title}
+                              maxLength={200}
+                              placeholder={t('exam.untitled', { n: index + 1 })}
+                              disabled={readOnly}
+                              onChange={(e) =>
+                                change((d) =>
+                                  updateSection(d, section.key, { title: e.target.value }),
+                                )
+                              }
+                            />
+                          </div>
+                          {!readOnly && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button
+                                aria-label={`${t('exam.sectionUp')}: ${sectionName(section, index)}`}
+                                onClick={() => change((d) => moveSection(d, section.key, -1))}
+                              >
+                                <ChevronUp aria-hidden className="size-5" />
+                              </Button>
+                              <Button
+                                aria-label={`${t('exam.sectionDown')}: ${sectionName(section, index)}`}
+                                onClick={() => change((d) => moveSection(d, section.key, 1))}
+                              >
+                                <ChevronDown aria-hidden className="size-5" />
+                              </Button>
+                              {draft.sections.length > 1 && (
+                                <Button
+                                  variant="danger-ghost"
+                                  onClick={() =>
+                                    section.items.length === 0
+                                      ? change((d) => removeSection(d, section.key))
+                                      : setRemovingSection(section.key)
+                                  }
+                                >
+                                  <Trash2 aria-hidden className="size-5" />
+                                  {t('exam.removeSection')}
+                                  <span className="sr-only"> {sectionName(section, index)}</span>
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {!readOnly && (
+                          <InstructionsField
+                            id={`section-instructions-${section.key}`}
+                            label={t('exam.sectionInstructions')}
+                            value={section.instructions}
+                            onChange={(instructions) =>
+                              change((d) => updateSection(d, section.key, { instructions }))
+                            }
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {split && (
                       <Button
-                        variant="danger-ghost"
+                        className="w-fit"
+                        aria-expanded={!collapsed.has(section.key)}
+                        aria-label={`${collapsed.has(section.key) ? t('exam.expand') : t('exam.collapse')}: ${sectionName(section, index)}`}
                         onClick={() =>
-                          section.items.length === 0
-                            ? change((d) => removeSection(d, section.key))
-                            : setRemovingSection(section.key)
+                          setCollapsed((prev) => {
+                            const next = new Set(prev);
+                            if (!next.delete(section.key)) next.add(section.key);
+                            return next;
+                          })
                         }
                       >
-                        <Trash2 aria-hidden className="size-5" />
-                        {t('exam.removeSection')}
-                        <span className="sr-only"> {sectionName(section, index)}</span>
+                        {collapsed.has(section.key) ? (
+                          <ChevronDown aria-hidden className="size-5" />
+                        ) : (
+                          <ChevronUp aria-hidden className="size-5" />
+                        )}
+                        {collapsed.has(section.key)
+                          ? t('exam.collapsedHint', { count: section.items.length })
+                          : t('exam.collapse')}
                       </Button>
                     )}
-                  </div>
+
+                    {collapsed.has(section.key) ? null : section.items.length === 0 ? (
+                      <p className="text-fg-muted">{t('exam.emptySection')}</p>
+                    ) : (
+                      <ol className="flex flex-col gap-2">
+                        {section.items.map((item) => (
+                          <ItemRow
+                            key={item.questionId}
+                            item={item}
+                            number={numberOf(draft, item.questionId) ?? 0}
+                            sections={sectionList}
+                            currentKey={section.key}
+                            onChange={change}
+                          />
+                        ))}
+                      </ol>
+                    )}
+                    {!readOnly && !collapsed.has(section.key) && (
+                      <Button className="w-fit" onClick={() => setPickerFor(section.key)}>
+                        <Plus aria-hidden className="size-5" />
+                        {t('exam.addQuestions')}
+                      </Button>
+                    )}
+                  </Card>
+                ))}
+
+                {!readOnly && (
+                  <Button className="w-fit" onClick={() => change((d) => addSection(d))}>
+                    <Plus aria-hidden className="size-5" />
+                    {split ? t('exam.addSection') : t('exam.splitSections')}
+                  </Button>
+                )}
+
+                {!readOnly && (
+                  <StickyActionBar align="end">
+                    <ErrorMessage>
+                      {save.isError &&
+                        (conflict ? t('exam.conflict') : errorMessage(t, save.error))}
+                    </ErrorMessage>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-sm text-fg-muted" aria-live="polite">
+                        {t('exam.totals', { items: totals.items, points: totals.points })}
+                      </span>
+                      {allItems.length > 0 && (
+                        <Button onClick={() => setQuickOpen(true)}>
+                          <ListChecks aria-hidden className="size-5" />
+                          {t('exam.quick.open')}
+                        </Button>
+                      )}
+                      {conflict && (
+                        <Button onClick={() => window.location.reload()}>{t('exam.reload')}</Button>
+                      )}
+                      <PrimaryButton
+                        disabled={!dirty || !valid || save.isPending}
+                        onClick={() => save.mutate(draft)}
+                      >
+                        <Save aria-hidden className="size-5" />
+                        {save.isPending ? t('exam.saving') : t('exam.save')}
+                      </PrimaryButton>
+                    </div>
+                  </StickyActionBar>
                 )}
               </div>
-              {!readOnly && (
-                <InstructionsField
-                  id={`section-instructions-${section.key}`}
-                  label={t('exam.sectionInstructions')}
-                  value={section.instructions}
-                  onChange={(instructions) =>
-                    change((d) => updateSection(d, section.key, { instructions }))
-                  }
-                />
-              )}
-            </div>
-          )}
-
-          {split && (
-            <Button
-              className="w-fit"
-              aria-expanded={!collapsed.has(section.key)}
-              aria-label={`${collapsed.has(section.key) ? t('exam.expand') : t('exam.collapse')}: ${sectionName(section, index)}`}
-              onClick={() =>
-                setCollapsed((prev) => {
-                  const next = new Set(prev);
-                  if (!next.delete(section.key)) next.add(section.key);
-                  return next;
-                })
-              }
-            >
-              {collapsed.has(section.key) ? (
-                <ChevronDown aria-hidden className="size-5" />
-              ) : (
-                <ChevronUp aria-hidden className="size-5" />
-              )}
-              {collapsed.has(section.key)
-                ? t('exam.collapsedHint', { count: section.items.length })
-                : t('exam.collapse')}
-            </Button>
-          )}
-
-          {collapsed.has(section.key) ? null : section.items.length === 0 ? (
-            <p className="text-fg-muted">{t('exam.emptySection')}</p>
-          ) : (
-            <ol className="flex flex-col gap-2">
-              {section.items.map((item) => (
-                <ItemRow
-                  key={item.questionId}
-                  item={item}
-                  number={numberOf(draft, item.questionId) ?? 0}
-                  sections={sectionList}
-                  currentKey={section.key}
-                  onChange={change}
-                />
-              ))}
-            </ol>
-          )}
-          {!readOnly && !collapsed.has(section.key) && (
-            <Button className="w-fit" onClick={() => setPickerFor(section.key)}>
-              <Plus aria-hidden className="size-5" />
-              {t('exam.addQuestions')}
-            </Button>
-          )}
-        </Card>
-      ))}
-
-      {!readOnly && (
-        <Button className="w-fit" onClick={() => change((d) => addSection(d))}>
-          <Plus aria-hidden className="size-5" />
-          {split ? t('exam.addSection') : t('exam.splitSections')}
-        </Button>
-      )}
-
-      {!readOnly && (
-        <StickyActionBar align="end">
-          <ErrorMessage>
-            {save.isError && (conflict ? t('exam.conflict') : errorMessage(t, save.error))}
-          </ErrorMessage>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm text-fg-muted" aria-live="polite">
-              {t('exam.totals', { items: totals.items, points: totals.points })}
-            </span>
-            {allItems.length > 0 && (
-              <Button onClick={() => setQuickOpen(true)}>
-                <ListChecks aria-hidden className="size-5" />
-                {t('exam.quick.open')}
-              </Button>
-            )}
-            {conflict && (
-              <Button onClick={() => window.location.reload()}>{t('exam.reload')}</Button>
-            )}
-            <PrimaryButton
-              disabled={!dirty || !valid || save.isPending}
-              onClick={() => save.mutate(draft)}
-            >
-              <Save aria-hidden className="size-5" />
-              {save.isPending ? t('exam.saving') : t('exam.save')}
-            </PrimaryButton>
-          </div>
-        </StickyActionBar>
-      )}
+            ),
+          },
+          {
+            id: 'preview',
+            label: t('exam.tabPreview'),
+            content: <ExamPreview examId={exam.id} active={tab === 'preview'} dirty={dirty} />,
+          },
+        ]}
+      />
 
       <QuestionPicker
         open={pickerFor !== null}
