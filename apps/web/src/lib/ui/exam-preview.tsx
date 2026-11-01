@@ -53,7 +53,7 @@ export function ExamPreview({
       ) : preview.isError ? (
         <ErrorMessage>{errorMessage(t, preview.error)}</ErrorMessage>
       ) : (
-        <div className="flex flex-col gap-4" aria-label={t('exam.preview.content')} role="region">
+        <section className="flex flex-col gap-4" aria-label={t('exam.preview.content')}>
           <Card className="flex flex-col gap-2">
             <h2 className="text-xl font-semibold">{preview.data.title}</h2>
             {plainTextOf(preview.data.instructions) !== '' && (
@@ -99,7 +99,7 @@ export function ExamPreview({
               ))}
             </Card>
           ))}
-        </div>
+        </section>
       )}
     </div>
   );
