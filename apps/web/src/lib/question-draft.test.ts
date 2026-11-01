@@ -56,13 +56,24 @@ describe('bản nháp Câu hỏi', () => {
     expect(back.payload.key).toEqual(['o1']);
   });
 
+  const stored = { archivedAt: null, usage: { draftExams: [], publishedCount: 0 } };
+
   it('nạp Câu hỏi có sẵn rồi chuyển lại cho ra đúng dữ liệu ban đầu', () => {
     const original = toInput(filled('true_false_cluster'));
-    const saved = { ...original, id: 'q1', version: 3, createdAt: '', updatedAt: '' };
+    const saved = { ...original, id: 'q1', version: 3, createdAt: '', updatedAt: '', ...stored };
     expect(toInput(draftFromQuestion(saved))).toEqual(original);
     const essay = toInput({ ...filled('essay'), rubric: textDoc('Ý chính') });
     expect(
-      toInput(draftFromQuestion({ ...essay, id: 'q2', version: 1, createdAt: '', updatedAt: '' })),
+      toInput(
+        draftFromQuestion({
+          ...essay,
+          id: 'q2',
+          version: 1,
+          createdAt: '',
+          updatedAt: '',
+          ...stored,
+        }),
+      ),
     ).toEqual(essay);
   });
 

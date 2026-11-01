@@ -6,13 +6,16 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
 import {
+  archiveQuestions,
   deleteQuestions,
+  examCountOf,
   moveQuestions,
   QUESTION_TYPES,
   type QuestionListItem,
   type QuestionListParams,
   type QuestionType,
   questionsQuery,
+  restoreQuestions,
   topicsQuery,
 } from '../../../../lib/question-bank';
 import {
@@ -44,6 +47,7 @@ export const Route = createFileRoute('/_authed/examiner/questions/')({
       ? (search.type as QuestionType)
       : undefined,
     tag: typeof search.tag === 'string' && search.tag ? search.tag : undefined,
+    archived: search.archived === true || search.archived === 'true' ? true : undefined,
     page: Number(search.page) > 1 ? Number(search.page) : undefined,
   }),
   component: QuestionBankPage,
@@ -90,12 +94,12 @@ function QuestionBankPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ cần theo dõi tham số tìm
   useEffect(
     () => setSelected(new Set()),
-    [search.q, search.topicId, search.type, search.tag, search.page],
+    [search.q, search.topicId, search.type, search.tag, search.archived, search.page],
   );
 
   const setFilter = (patch: Partial<QuestionListParams>) =>
     navigate({ search: (s) => ({ ...s, ...patch, page: undefined }) });
-  const activeFilters = [search.type, search.tag].filter(Boolean).length;
+  const activeFilters = [search.type, search.tag, search.archived].filter(Boolean).length;
   const total = topics.data?.reduce((sum, topic) => sum + (topic.questionCount ?? 0), 0) ?? 0;
   const noTopics = topics.isSuccess && topics.data.length === 0;
 
@@ -113,6 +117,15 @@ function QuestionBankPage() {
             {t(`questionType.${type}`)}
           </option>
         ))}
+      </SelectField>
+      <SelectField
+        id="filter-archived"
+        label={t('questionBank.statusFilter')}
+        value={search.archived ? 'archived' : 'active'}
+        onChange={(e) => setFilter({ archived: e.target.value === 'archived' ? true : undefined })}
+      >
+        <option value="active">{t('questionBank.statusActive')}</option>
+        <option value="archived">{t('questionBank.statusArchived')}</option>
       </SelectField>
       <TextField
         id="filter-tag"
@@ -236,6 +249,7 @@ function QuestionBankPage() {
 
           <FilterBar
             activeCount={activeFilters}
+            wide
             filters={filters}
             search={
               <SearchField
@@ -273,7 +287,11 @@ function QuestionBankPage() {
                 onPage={(page) => navigate({ search: (s) => ({ ...s, page }) })}
               />
               {selected.size > 0 && (
-                <BulkBar ids={[...selected]} onDone={() => setSelected(new Set())} />
+                <BulkBar
+                  items={questions.data.items.filter((item) => selected.has(item.id))}
+                  archivedView={Boolean(search.archived)}
+                  onDone={() => setSelected(new Set())}
+                />
               )}
             </>
           )}
@@ -314,6 +332,18 @@ function TopicLink({
       <span className="truncate">{children}</span>
       <span className="tabular-nums text-fg-muted">{count}</span>
     </button>
+  );
+}
+
+/** Câu đã Lưu trữ hoặc đang nằm trong Bộ đề (Q174). */
+function UsageBadges({ item }: { item: QuestionListItem }) {
+  const { t } = useTranslation();
+  const exams = examCountOf(item);
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {item.archivedAt && <Badge tone="warning">{t('questionBank.archivedBadge')}</Badge>}
+      {exams > 0 && <Badge>{t('questionBank.inExams', { count: exams })}</Badge>}
+    </span>
   );
 }
 
@@ -391,6 +421,12 @@ function QuestionList({
             cell: (item) => <Badge tone="primary">{t(`questionType.${item.type}`)}</Badge>,
           },
           {
+            key: 'usage',
+            header: t('questionBank.usage'),
+            from: 'lg',
+            cell: (item) => <UsageBadges item={item} />,
+          },
+          {
             key: 'topic',
             header: t('questionBank.topic'),
             from: 'lg',
@@ -429,6 +465,7 @@ function QuestionList({
                   <span className="tabular-nums">
                     {t('questionBank.points', { points: item.defaultPoints })}
                   </span>
+                  <UsageBadges item={item} />
                 </div>
               </div>
               <ChevronRight aria-hidden className="size-5 shrink-0 text-fg-muted" />
@@ -440,7 +477,18 @@ function QuestionList({
   );
 }
 
-function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
+function BulkBar({
+  items,
+  archivedView,
+  onDone,
+}: {
+  items: QuestionListItem[];
+  archivedView: boolean;
+  onDone: () => void;
+}) {
+  const ids = items.map((item) => item.id);
+  // Câu đã nằm trong Bộ đề thì không xóa được, chỉ Lưu trữ (Q174).
+  const anyUsed = items.some((item) => examCountOf(item) > 0);
   const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -462,6 +510,18 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
       onDone();
     },
   });
+  const archive = useMutation({
+    mutationFn: () => (archivedView ? restoreQuestions(ids) : archiveQuestions(ids)),
+    onSuccess: async () => {
+      await refresh();
+      toast(
+        t(archivedView ? 'questionBank.restoredMany' : 'questionBank.archivedMany', {
+          count: ids.length,
+        }),
+      );
+      onDone();
+    },
+  });
   const remove = useMutation({
     mutationFn: () => deleteQuestions(ids),
     onSuccess: async () => {
@@ -478,12 +538,23 @@ function BulkBar({ ids, onDone }: { ids: string[]; onDone: () => void }) {
         <p className="text-sm font-medium">
           {t('questionBank.selectedCount', { count: ids.length })}
         </p>
+        {anyUsed && <p className="text-sm text-fg-muted">{t('questionBank.usedHint')}</p>}
+        {archive.isError && <ErrorMessage>{errorMessage(t, archive.error)}</ErrorMessage>}
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setMoving(true)}>{t('questionBank.moveTopic')}</Button>
-          <Button variant="danger-ghost" onClick={() => setDeleting(true)}>
-            <Trash2 aria-hidden className="size-5" />
-            {t('questionBank.delete')}
+          <Button
+            disabled={archive.isPending}
+            title={t(archivedView ? 'questionBank.restoreHint' : 'questionBank.archiveHint')}
+            onClick={() => archive.mutate()}
+          >
+            {archivedView ? t('questionBank.restore') : t('questionBank.archive')}
           </Button>
+          {anyUsed ? null : (
+            <Button variant="danger-ghost" onClick={() => setDeleting(true)}>
+              <Trash2 aria-hidden className="size-5" />
+              {t('questionBank.delete')}
+            </Button>
+          )}
           <Button onClick={onDone}>{t('questionBank.clearSelection')}</Button>
         </div>
       </StickyActionBar>

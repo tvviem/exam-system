@@ -136,15 +136,18 @@ export function QuestionEditor({
         : createQuestion(toInput(sent)),
     onSuccess: async (saved, sent) => {
       writeStored(storageKey, null);
+      // Đặt mốc "đã lưu" trước mọi `await`: rời trang ngay sau khi lưu không bị hỏi "chưa lưu" dù nạp lại danh sách còn chậm.
+      if (question) {
+        setBaseline(serialize(sent));
+        setVersion(saved.version);
+        queryClient.setQueryData(['questions', 'detail', saved.id], saved);
+      } else {
+        skipBlock.current = true;
+      }
       await queryClient.invalidateQueries({ queryKey: ['questions'] });
       await queryClient.invalidateQueries({ queryKey: ['topics'] });
       toast(t('questionBank.saved'));
-      if (question) {
-        queryClient.setQueryData(['questions', 'detail', saved.id], saved);
-        setBaseline(serialize(sent));
-        setVersion(saved.version);
-      } else {
-        skipBlock.current = true;
+      if (!question) {
         await navigate({ to: '/examiner/questions/$questionId', params: { questionId: saved.id } });
       }
     },
@@ -336,6 +339,15 @@ export function QuestionEditor({
           )
         }
       />
+
+      {question && (question.usage.draftExams.length > 0 || question.usage.publishedCount > 0) && (
+        <p role="status" className="rounded-lg border border-border bg-surface p-3 text-sm">
+          {t('questionBank.usageNote', {
+            drafts: question.usage.draftExams.length,
+            published: question.usage.publishedCount,
+          })}
+        </p>
+      )}
 
       {stored && (
         <div

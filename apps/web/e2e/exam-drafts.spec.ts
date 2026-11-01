@@ -241,3 +241,84 @@ test('rời trang khi chưa lưu bị hỏi; lưu xong rồi rời thì không; 
   });
   expect(freed.ok()).toBe(true);
 });
+
+test('Phát hành Bộ đề: kiểm tra, xác nhận, chỉ đọc, Nhân bản, Lưu trữ; Câu hỏi đã dùng chỉ Lưu trữ', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-ph-${p}`);
+  const [q1] = await seedQuestions(page, `Xác suất ${p}`, ['Biến cố', 'Kỳ vọng']);
+
+  await page.goto('/examiner/exams');
+  await page.getByRole('button', { name: 'Tạo Bộ đề' }).click();
+  await page.getByRole('dialog').getByLabel('Tên Bộ đề').fill('Cuối kỳ Xác suất');
+  await page.getByRole('dialog').getByRole('button', { name: 'Tạo Bộ đề' }).click();
+  await expect(page.getByRole('heading', { name: 'Cuối kỳ Xác suất', level: 1 })).toBeVisible();
+
+  // Chưa có câu: không Phát hành được. Có câu nhưng chưa lưu: cũng chưa được.
+  const publishButton = page.getByRole('button', { name: 'Phát hành…' });
+  await expect(publishButton).toBeDisabled();
+  await pick(page, 'Phần 1', ['Biến cố', 'Kỳ vọng']);
+  await expect(publishButton).toBeDisabled();
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  await expect(page.getByText('Đã lưu Bộ đề')).toBeVisible();
+
+  // Hộp thoại nêu tóm tắt và cảnh báo; Hủy thì vẫn là nháp.
+  await publishButton.click();
+  const dialog = page.getByRole('dialog', { name: 'Phát hành Bộ đề' });
+  await expect(dialog.getByText('Phát hành “Cuối kỳ Xác suất” (2 câu, 2 điểm)?')).toBeVisible();
+  await expect(dialog.getByText('Sau khi Phát hành không sửa được Bộ đề này')).toBeVisible();
+  expect(await overflow(page), 'hộp Phát hành').toBe(0);
+  await dialog.getByRole('button', { name: 'Hủy' }).click();
+  await expect(page.getByRole('button', { name: 'Lưu', exact: true })).toBeVisible();
+
+  await publishButton.click();
+  await dialog.getByRole('button', { name: 'Phát hành', exact: true }).click();
+  await expect(page.getByText('Đã Phát hành Bộ đề')).toBeVisible();
+  await expect(page.getByText('Đã phát hành', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Lưu', exact: true })).toHaveCount(0);
+  await expect(page.getByText('Bộ đề này đã Phát hành nên không sửa được')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Điểm câu 1' })).toBeDisabled();
+
+  // Xem thử đọc bản chụp.
+  await page.getByRole('tab', { name: 'Xem thử' }).click();
+  await expect(
+    page.getByRole('region', { name: 'Nội dung xem thử' }).getByText('Biến cố').first(),
+  ).toBeVisible();
+
+  // Câu hỏi đã dùng: ghi "Trong 1 Bộ đề"; chỉ Lưu trữ, không có nút Xóa.
+  await page.goto('/examiner/questions');
+  await expect(page.getByText('Trong 1 Bộ đề').filter({ visible: true }).first()).toBeVisible();
+  await page.getByRole('checkbox', { name: /Chọn câu: Biến cố/ }).check();
+  await expect(page.getByRole('button', { name: 'Xóa', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Lưu trữ', exact: true }).click();
+  await expect(page.getByText('Đã lưu trữ 1 Câu hỏi')).toBeVisible();
+  await expect(page.getByText('Biến cố')).toHaveCount(0);
+  const filterButton = page.getByRole('button', { name: /^Lọc/ });
+  if (await filterButton.isVisible()) await filterButton.click(); // điện thoại: bộ lọc nằm trong hộp thoại
+  const statusSelect = (await filterButton.isVisible())
+    ? page.getByRole('dialog').locator('select').nth(1)
+    : page.locator('#filter-archived');
+  await statusSelect.selectOption('archived');
+  if (await filterButton.isVisible()) await page.getByRole('button', { name: 'Xong' }).click();
+  await expect(page.getByRole('checkbox', { name: /Chọn câu: Biến cố/ })).toBeVisible();
+  await page.getByRole('checkbox', { name: /Chọn câu: Biến cố/ }).check();
+  await page.getByRole('button', { name: 'Khôi phục', exact: true }).click();
+  await expect(page.getByText('Đã khôi phục 1 Câu hỏi')).toBeVisible();
+  expect(await overflow(page), 'danh sách Câu hỏi').toBe(0);
+
+  // Nhân bản thành nháp mới; Lưu trữ Bộ đề gốc rồi Khôi phục.
+  await page.goto('/examiner/exams');
+  await page.getByRole('link', { name: /Cuối kỳ Xác suất/ }).click();
+  await page.getByRole('button', { name: 'Nhân bản' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Cuối kỳ Xác suất (bản sao)', level: 1 }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Phát hành…' })).toBeVisible();
+  await page.goto('/examiner/exams');
+  await page.getByRole('link', { name: /^Cuối kỳ Xác suất.*Đã phát hành/ }).click();
+  await page.getByRole('button', { name: 'Lưu trữ', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Tạo Bộ đề' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^Cuối kỳ Xác suất.*Đã phát hành/ })).toHaveCount(0);
+  expect(q1).toBeTruthy();
+});

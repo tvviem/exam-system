@@ -1,4 +1,4 @@
-import type { CandidateView, ExamContent, RichText } from '@exam/shared';
+import type { CandidateView, ExamContent, PublishProblem, RichText } from '@exam/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
@@ -89,3 +89,19 @@ export const examPreviewQuery = (id: string, showScoringRules: boolean) =>
         `/exams/${id}/preview${queryString({ showScoringRules: String(showScoringRules) })}`,
       ),
   });
+
+/** Chỉ để hiện cho người dùng; `publishExam` chạy lại cùng phép kiểm trên server (Q171). */
+export const publishCheckQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['exams', 'publish-check', id],
+    queryFn: () => apiFetch<{ problems: PublishProblem[] }>(`/exams/${id}/publish-check`),
+  });
+
+export const publishExam = (id: string, version: number) =>
+  apiFetch<{ id: string }>(`/exams/${id}/publish`, { method: 'POST', body: { version } });
+export const duplicateExam = (id: string) =>
+  apiFetch<{ id: string }>(`/exams/${id}/duplicate`, { method: 'POST' });
+export const archiveExam = (id: string) =>
+  apiFetch<{ id: string }>(`/exams/${id}/archive`, { method: 'POST' });
+export const restoreExam = (id: string) =>
+  apiFetch<{ id: string }>(`/exams/${id}/restore`, { method: 'POST' });

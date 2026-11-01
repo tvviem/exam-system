@@ -83,7 +83,7 @@ draft ──Phát hành──► published ◄──Khôi phục──┐
 ## Xem thử
 
 - **Q169 Xem thử Bộ đề (chỉ đọc).**
-  - Trang tab "Xem thử" cạnh "Soạn": hiện tiêu đề, hướng dẫn, từng Phần, đánh số câu, Phương án hoặc Mệnh đề, điểm từng câu, tổng điểm, **không có Đáp án**, đúng như Người dự thi sẽ thấy. Bộ đề nháp lấy nội dung hiện tại của Câu hỏi, Bộ đề đã Phát hành lấy `snapshot`.
+  - Trang tab "Xem thử" cạnh "Soạn": hiện tiêu đề, hướng dẫn, từng Phần, đánh số câu, Phương án hoặc Mệnh đề, điểm từng câu, tổng điểm, **không có Đáp án**, đúng như Người dự thi sẽ thấy. Bộ đề nháp lấy nội dung hiện tại của Câu hỏi, Bộ đề đã Phát hành lấy `snapshot` (cả tab Soạn của Bộ đề đó, xem mục điều chỉnh sau 3c).
   - Dữ liệu qua `GET /api/exams/:id/preview`, **server làm sạch** (Q170); không dùng lại API chi tiết Câu hỏi (có Đáp án).
   - Xem thử tương tác (làm thử như Người dự thi, đồng hồ, không lưu) là "Xem thử qua Phiên thi" của GLOSSARY, thuộc lát cắt 4. Hai thứ cùng tên "Xem thử" nên GLOSSARY giữ một định nghĩa; tài liệu ghi rõ lát cắt 3 chỉ làm phần dựng nội dung.
 - **Q170 `candidateViewOf`: làm sạch bằng danh sách cho phép, có tùy chọn hiển thị quy tắc chấm.**
@@ -247,3 +247,19 @@ Không đổi điều đã duyệt:
 
 - **Đặt điểm nhanh (Q168) làm sớm, nằm trong PR 3a** (không chờ 3b): 40 câu cùng điểm mà sửa tay từng ô là không thực tế. Phạm vi: cả Bộ đề, một Phần, một Loại câu hỏi (phạm vi "câu đang tick" để sau vì trình soạn chưa có ô tick). Cách đặt: mỗi câu cùng điểm, hoặc chia đều một tổng. 3b chỉ còn Xem thử.
 - **Nhãn cho ô nhập:** ô điểm của từng câu có nhãn "Điểm" nhìn thấy và chú thích (`title`) nêu khoảng, bước và dấu phẩy; ô "Chuyển sang…" có chú thích. Quy ước: ô nhập nào cũng phải có nhãn nhìn thấy hoặc `title`.
+
+## Điều chỉnh khi làm PR 3c
+
+- **Mã vấn đề Phát hành:** 7 mã, bỏ `question_missing` vì khóa ngoại `exam_items.question_id → questions` là RESTRICT nên không thể xảy ra. Vấn đề trỏ tới `questionId` (không phải `itemId`) vì giao diện định danh câu theo `questionId`.
+- **Trigger (migration 0011):** `exam_items`, `exam_sections` chặn INSERT/UPDATE/DELETE khi Bộ đề không còn `draft`; `exams` chặn sửa nội dung, quay về `draft` và DELETE khi không còn `draft` (chỉ cho `status` published↔archived, `archived_at`, `owner_id`, `updated_at`). Xóa Bộ đề nháp theo cascade vẫn qua được.
+- **Cổng `ExamUsage`** mở rộng: `usageOf` (nháp + số Bộ đề đã Phát hành), `usedIllustrations`, `canViewIllustration`. `question-bank` vẫn không import `exam`.
+- **Lưu trữ Câu hỏi:** `POST /questions/archive` và `/restore`; danh sách mặc định ẩn câu đã Lưu trữ, `?archived=true` chỉ hiện chúng; mỗi dòng có `usage {draftCount, publishedCount}`; `GET /questions/:id` trả `usage {draftExams, publishedCount}` (Q175). Xóa câu nằm trong Bộ đề đã Phát hành trả `QUESTION_IN_PUBLISHED_EXAM`. Giao diện ẩn nút Xóa khi có câu đã dùng được chọn.
+- **Ảnh:** `exam_item_illustrations` ghi lúc Phát hành; ảnh có dòng ở đó tính là `inUse` và không xóa được; chủ Bộ đề đã Phát hành xem được ảnh (`/api/media`) dù ảnh đã đổi chủ.
+- **Chưa làm:** sao chép ảnh khi Chuyển giao Chủ đề có Bộ đề đã Phát hành dùng ảnh (Q176) thuộc 3d cùng Chuyển giao Bộ đề.
+- Hộp "Bộ lọc" của danh sách Câu hỏi dùng chung `id` giữa ô lọc trên thanh và trong hộp thoại điện thoại (có sẵn từ trước PR này); nhãn trong hộp thoại có thể trỏ nhầm ô. Ghi lại để sửa riêng.
+- **Ranh giới module:** `exam` đọc (không ghi) bảng `questions` và `illustrations` để dựng bản chụp và kiểm tra Phát hành, như `exams.service` đã đọc `questions` từ PR 3a; chiều ngược lại (`question-bank` biết Bộ đề) luôn qua cổng `ExamUsage`. Không thêm cổng đọc cho `exam` vì bản chụp phải nhất quán với Câu hỏi trong cùng giao dịch có khóa `FOR SHARE`.
+
+## Điều chỉnh sau khi chủ dự án dùng thử 3c
+
+- **Tab Soạn của Bộ đề đã Phát hành đọc bản chụp:** `GET /exams/:id` khi Bộ đề không còn `draft` lấy loại câu và phần dẫn từ `exam_items.snapshot`, nhất quán với tab Xem thử. Trước đó chỉ Xem thử đọc bản chụp nên hai tab có thể hiện hai nội dung khác nhau sau khi sửa Câu hỏi gốc. Chủ đề, nhãn và điểm mặc định vẫn là thông tin sống. Nhãn "Đã lưu trữ" của câu chỉ hiện ở Bộ đề nháp (câu của Bộ đề đã Phát hành bị Lưu trữ là bình thường).
+- **Giải thích Lưu trữ Câu hỏi:** lời báo lỗi khi Xóa câu nằm trong Bộ đề đã Phát hành nêu lý do (Bộ đề cần giữ câu gốc) và nói rõ Lưu trữ làm gì; nút Lưu trữ và Khôi phục có chú thích; dòng gợi ý khi chọn câu đã dùng viết lại tương ứng.

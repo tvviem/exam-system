@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
@@ -15,10 +16,12 @@ import { pageSchema } from '../../common/pagination';
 import { CurrentUser, RequireTag } from '../identity/auth/auth.decorators';
 import type { AuthenticatedUser } from '../identity/auth/auth.types';
 import { examStatusEnum } from './exam.schema';
+import { ExamLifecycleService } from './exam-lifecycle.service';
 import { ExamsService } from './exams.service';
 
 const titleSchema = examContentSchema.shape.title;
 const createSchema = z.strictObject({ title: titleSchema });
+const publishSchema = z.strictObject({ version: z.number().int().min(1) });
 const previewSchema = z.strictObject({
   showScoringRules: z.enum(['true', 'false']).optional(),
 });
@@ -30,7 +33,10 @@ const listSchema = pageSchema.extend({
 @RequireTag('examiner')
 @Controller('exams')
 export class ExamsController {
-  constructor(private readonly exams: ExamsService) {}
+  constructor(
+    private readonly exams: ExamsService,
+    private readonly lifecycle: ExamLifecycleService,
+  ) {}
 
   @Post()
   create(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
@@ -46,6 +52,38 @@ export class ExamsController {
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.exams.get(user.id, id);
+  }
+
+  @Get(':id/publish-check')
+  publishCheck(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.lifecycle.publishCheck(user.id, id);
+  }
+
+  @Post(':id/publish')
+  @HttpCode(200)
+  publish(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.lifecycle.publish(user.id, id, publishSchema.parse(body ?? {}).version);
+  }
+
+  @Post(':id/duplicate')
+  duplicate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.lifecycle.duplicate(user.id, id);
+  }
+
+  @Post(':id/archive')
+  @HttpCode(200)
+  archive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.lifecycle.archive(user.id, id);
+  }
+
+  @Post(':id/restore')
+  @HttpCode(200)
+  restore(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.lifecycle.restore(user.id, id);
   }
 
   @Get(':id/preview')

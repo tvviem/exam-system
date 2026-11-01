@@ -362,7 +362,9 @@ describe('va chạm đồng thời và id Phần trùng', () => {
     const { id } = (await create()).json();
     const used = await question('Đang dùng');
     await put(id, doc({ version: 1, sections: [{ items: [item(used)] }] }));
-    vi.spyOn(t.app.get(ExamUsageService), 'draftExamsOf').mockResolvedValue(new Map());
+    vi.spyOn(t.app.get(ExamUsageService), 'usageOf').mockResolvedValue(
+      new Map([[used, { draftExams: [], publishedCount: 0 }]]),
+    );
     const res = await call(t.app, 'POST', '/api/questions/delete', {
       cookie,
       body: { ids: [used] },
@@ -379,6 +381,7 @@ describe('danh sách (Q180)', () => {
     const archived = (await create('Cũ')).json().id;
     await create('Của người khác', otherCookie);
     await sql("UPDATE exams SET status = 'published' WHERE id = $1", [published]);
+    await sql("UPDATE exams SET status = 'published' WHERE id = $1", [archived]);
     await sql("UPDATE exams SET status = 'archived' WHERE id = $1", [archived]);
     const q = await question();
     await put(draft, doc({ title: 'Nháp một', version: 1, sections: [{ items: [item(q, 2.5)] }] }));
