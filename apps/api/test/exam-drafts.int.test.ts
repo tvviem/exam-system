@@ -1,5 +1,7 @@
 import { textDoc } from '@exam/shared';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ExamUsageService } from '../src/modules/exam/exam-usage.service';
+import { ExamsService } from '../src/modules/exam/exams.service';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
 import { call, login } from './support/http';
@@ -317,6 +319,56 @@ describe('lưu cả tài liệu (Q162, Q163)', () => {
       expect(res.json()).toMatchObject({ code: 'INVALID_STATE', reason: 'EXAM_NOT_DRAFT' });
     }
     expect((await detail(id)).statusCode).toBe(200);
+  });
+});
+
+describe('va chạm đồng thời và id Phần trùng', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('hai Phần cùng một id trong một lần lưu: VALIDATION_FAILED, không đổi gì', async () => {
+    const { id } = (await create()).json();
+    const saved = (await put(id, doc({ version: 1, sections: [{ items: [] }] }))).json();
+    const sectionId = saved.sections[0].id;
+    const res = await put(
+      id,
+      doc({
+        version: 2,
+        sections: [
+          { id: sectionId, items: [] },
+          { id: sectionId, items: [] },
+        ],
+      }),
+    );
+    expect(res.statusCode).toBe(400);
+    expect(res.json().issues).toEqual([{ path: 'sections.1.id', code: 'duplicate_section' }]);
+    expect((await detail(id)).json().version).toBe(2);
+  });
+
+  it('câu bị xóa đúng giữa lúc kiểm tra và lúc lưu: báo câu không còn, không phải lỗi 500', async () => {
+    const { id } = (await create()).json();
+    const gone = await question('Sắp xóa');
+    // Bỏ qua phép kiểm tham chiếu để mô phỏng câu bị xóa sau lúc kiểm tra.
+    const service = t.app.get(ExamsService) as unknown as {
+      referenceProblems: () => Promise<unknown[]>;
+    };
+    vi.spyOn(service, 'referenceProblems').mockResolvedValue([]);
+    await call(t.app, 'POST', '/api/questions/delete', { cookie, body: { ids: [gone] } });
+    const res = await put(id, doc({ version: 1, sections: [{ items: [item(gone)] }] }));
+    expect(res.statusCode, res.body).toBe(400);
+    expect(res.json().issues).toEqual([{ path: 'sections', code: 'unknown_question' }]);
+  });
+
+  it('câu được thêm vào Bộ đề nháp đúng giữa lúc kiểm tra và lúc xóa: vẫn QUESTION_IN_EXAM', async () => {
+    const { id } = (await create()).json();
+    const used = await question('Đang dùng');
+    await put(id, doc({ version: 1, sections: [{ items: [item(used)] }] }));
+    vi.spyOn(t.app.get(ExamUsageService), 'draftExamsOf').mockResolvedValue(new Map());
+    const res = await call(t.app, 'POST', '/api/questions/delete', {
+      cookie,
+      body: { ids: [used] },
+    });
+    expect(res.statusCode, res.body).toBe(409);
+    expect(res.json()).toMatchObject({ code: 'INVALID_STATE', reason: 'QUESTION_IN_EXAM' });
   });
 });
 

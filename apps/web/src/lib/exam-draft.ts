@@ -117,6 +117,11 @@ export function numberOf(draft: ExamDraft, questionId: string): number | null {
   return null;
 }
 
+const mapItems = (draft: ExamDraft, change: (items: DraftItem[]) => DraftItem[]): ExamDraft => ({
+  ...draft,
+  sections: draft.sections.map((s) => ({ ...s, items: change(s.items) })),
+});
+
 const mapSection = (draft: ExamDraft, key: string, change: (s: DraftSection) => DraftSection) => ({
   ...draft,
   sections: draft.sections.map((s) => (s.key === key ? change(s) : s)),
@@ -143,21 +148,13 @@ export function addItems(
   };
 }
 
-export const removeItem = (draft: ExamDraft, questionId: string): ExamDraft => ({
-  ...draft,
-  sections: draft.sections.map((s) => ({
-    ...s,
-    items: s.items.filter((i) => i.questionId !== questionId),
-  })),
-});
+export const removeItem = (draft: ExamDraft, questionId: string): ExamDraft =>
+  mapItems(draft, (items) => items.filter((i) => i.questionId !== questionId));
 
-export const setPoints = (draft: ExamDraft, questionId: string, points: number): ExamDraft => ({
-  ...draft,
-  sections: draft.sections.map((s) => ({
-    ...s,
-    items: s.items.map((i) => (i.questionId === questionId ? { ...i, points } : i)),
-  })),
-});
+export const setPoints = (draft: ExamDraft, questionId: string, points: number): ExamDraft =>
+  mapItems(draft, (items) =>
+    items.map((i) => (i.questionId === questionId ? { ...i, points } : i)),
+  );
 
 /** Đổi chỗ với câu liền trước (-1) hoặc liền sau (1) trong cùng Phần; ở biên thì giữ nguyên. */
 export function moveItem(draft: ExamDraft, questionId: string, delta: -1 | 1): ExamDraft {

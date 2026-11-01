@@ -922,7 +922,11 @@
       "add": "Thêm {{count}} câu vào {{section}}",
       "addNone": "Chọn câu để thêm",
       "full": "Bộ đề đã đủ 200 câu.",
-      "tooMany": "Chỉ thêm được {{count}} câu nữa (tối đa 200 câu)."
-    }
+      "tooMany": "Chỉ thêm được {{count}} câu nữa (tối đa 200 câu).",
+      "tag": "Tag"
+    },
+    "collapse": "Thu gọn Phần",
+    "expand": "Mở rộng Phần",
+    "collapsedHint": "{{count}} câu (đang thu gọn)"
   }
 }

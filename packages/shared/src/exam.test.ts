@@ -102,6 +102,14 @@ describe('kiểm bố cục Bộ đề (Q161, Q162)', () => {
     ]);
   });
 
+  it('hai Phần cùng một id là lỗi, nêu vị trí lần xuất hiện sau', () => {
+    const dup = content([
+      { id: Q(500), title: null, instructions: textDoc(''), items: [item(1)] },
+      { id: Q(500), title: null, instructions: textDoc(''), items: [item(2)] },
+    ] as ExamContent['sections']);
+    expect(examLayoutProblems(dup)).toEqual([{ code: 'duplicate_section', path: 'sections.1.id' }]);
+  });
+
   it(`quá ${EXAM_MAX_ITEMS} câu là lỗi`, () => {
     const ids = Array.from({ length: EXAM_MAX_ITEMS + 1 }, (_, i) => i + 1);
     expect(examLayoutProblems(withItems(ids))).toEqual([

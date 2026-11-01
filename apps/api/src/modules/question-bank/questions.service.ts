@@ -151,14 +151,22 @@ export class QuestionsService {
     // Câu còn nằm trong Bộ đề nháp thì không xóa (Q166): nêu tên các Bộ đề để người dùng biết gỡ ở đâu.
     const used = await this.examUsage.draftExamsOf(ownerId, unique);
     if (used.size > 0) throw questionInExam([...used.values()].flat());
-    return this.db.transaction(async (tx) => {
-      const deleted = await tx
-        .delete(questions)
-        .where(and(inArray(questions.id, unique), eq(questions.ownerId, ownerId)))
-        .returning({ id: questions.id });
-      if (deleted.length !== unique.length) throw new ApiError('NOT_FOUND');
-      return { deleted: deleted.length };
-    });
+    try {
+      return await this.db.transaction(async (tx) => {
+        const deleted = await tx
+          .delete(questions)
+          .where(and(inArray(questions.id, unique), eq(questions.ownerId, ownerId)))
+          .returning({ id: questions.id });
+        if (deleted.length !== unique.length) throw new ApiError('NOT_FOUND');
+        return { deleted: deleted.length };
+      });
+    } catch (error) {
+      // Câu vừa được thêm vào một Bộ đề nháp giữa lúc kiểm tra và lúc xóa: khóa ngoại RESTRICT từ chối.
+      if ((error as { cause?: { code?: string } }).cause?.code === '23503') {
+        throw questionInExam([]);
+      }
+      throw error;
+    }
   }
 
   async list(ownerId: string, filter: QuestionFilter, page: Page) {

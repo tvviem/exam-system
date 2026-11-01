@@ -14,6 +14,8 @@ import { questions, topics } from '../question-bank/question-bank.schema';
 import { examItems, examSections, exams } from './exam.schema';
 
 const PREVIEW_CHARS = 160;
+const isForeignKeyViolation = (error: unknown) =>
+  (error as { cause?: { code?: string } }).cause?.code === '23503';
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 type Db = Pick<Database, 'select'>;
@@ -98,55 +100,67 @@ export class ExamsService {
       issues.push(...(await this.referenceProblems(tx, ownerId, id, content)));
       if (issues.length > 0) throw invalid(issues);
 
-      await tx.delete(examItems).where(eq(examItems.examId, id));
-      const keep = content.sections.flatMap((s) => (s.id ? [s.id] : []));
-      await tx.delete(examSections).where(
-        and(
-          eq(examSections.examId, id),
-          keep.length > 0
-            ? sql`${examSections.id} NOT IN (${sql.join(
-                keep.map((k) => sql`${k}`),
-                sql`, `,
-              )})`
-            : undefined,
-        ),
-      );
-
-      for (const [sort, section] of content.sections.entries()) {
-        const values = { title: section.title || null, instructions: section.instructions, sort };
-        let sectionId = section.id;
-        if (sectionId) {
-          await tx.update(examSections).set(values).where(eq(examSections.id, sectionId));
-        } else {
-          const [row] = await tx
-            .insert(examSections)
-            .values({ examId: id, ...values })
-            .returning({ id: examSections.id });
-          sectionId = row?.id;
-        }
-        if (!sectionId) throw new Error('Không lưu được Phần');
-        if (section.items.length > 0) {
-          await tx.insert(examItems).values(
-            section.items.map((item, position) => ({
-              examId: id,
-              sectionId: sectionId as string,
-              questionId: item.questionId,
-              points: String(item.points),
-              sort: position,
-            })),
-          );
-        }
+      try {
+        await this.replaceLayout(tx, id, content);
+      } catch (error) {
+        // Câu bị xóa đúng giữa lúc kiểm tra và lúc ghi: khóa ngoại từ chối, báo như câu không còn thay vì lỗi 500.
+        if (isForeignKeyViolation(error))
+          throw invalid([{ path: 'sections', code: 'unknown_question' }]);
+        throw error;
       }
-      await tx
-        .update(exams)
-        .set({
-          title: content.title,
-          instructions: content.instructions,
-          version: sql`${exams.version} + 1`,
-        })
-        .where(eq(exams.id, id));
     });
     return this.detail(this.db, ownerId, id);
+  }
+
+  /** Thay Phần và câu của Bộ đề nháp bằng nội dung mới, giữ id của Phần đã có. */
+  private async replaceLayout(tx: Transaction, id: string, content: ExamContent) {
+    await tx.delete(examItems).where(eq(examItems.examId, id));
+    const keep = content.sections.flatMap((s) => (s.id ? [s.id] : []));
+    await tx.delete(examSections).where(
+      and(
+        eq(examSections.examId, id),
+        keep.length > 0
+          ? sql`${examSections.id} NOT IN (${sql.join(
+              keep.map((k) => sql`${k}`),
+              sql`, `,
+            )})`
+          : undefined,
+      ),
+    );
+
+    for (const [sort, section] of content.sections.entries()) {
+      const values = { title: section.title || null, instructions: section.instructions, sort };
+      let sectionId = section.id;
+      if (sectionId) {
+        await tx.update(examSections).set(values).where(eq(examSections.id, sectionId));
+      } else {
+        const [row] = await tx
+          .insert(examSections)
+          .values({ examId: id, ...values })
+          .returning({ id: examSections.id });
+        sectionId = row?.id;
+      }
+      if (!sectionId) throw new Error('Không lưu được Phần');
+      if (section.items.length > 0) {
+        await tx.insert(examItems).values(
+          section.items.map((item, position) => ({
+            examId: id,
+            sectionId: sectionId as string,
+            questionId: item.questionId,
+            points: String(item.points),
+            sort: position,
+          })),
+        );
+      }
+    }
+    await tx
+      .update(exams)
+      .set({
+        title: content.title,
+        instructions: content.instructions,
+        version: sql`${exams.version} + 1`,
+      })
+      .where(eq(exams.id, id));
   }
 
   /** Xóa hẳn Bộ đề nháp; Phần và các dòng đi theo (CASCADE). */

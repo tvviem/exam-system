@@ -1,4 +1,4 @@
-import type { ExamContent, QuestionType, RichText } from '@exam/shared';
+import type { ExamContent, RichText } from '@exam/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
@@ -43,8 +43,6 @@ export interface ExamListParams {
   q?: string;
   page?: number;
 }
-
-export type { QuestionType };
 
 export const examsQuery = (params: ExamListParams) =>
   queryOptions({

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
 import type { PickedQuestion } from '../exam-draft';
 import { questionsQuery, topicsQuery } from '../question-bank';
-import { Button, Dialog, ErrorMessage, SearchField, SelectField } from '.';
+import { Button, Dialog, ErrorMessage, SearchField, SelectField, TextField } from '.';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
 
 /**
@@ -31,6 +31,7 @@ export function QuestionPicker({
   const [q, setQ] = useState('');
   const [topicId, setTopicId] = useState('');
   const [type, setType] = useState('');
+  const [tag, setTag] = useState('');
   const [page, setPage] = useState(1);
   const [chosen, setChosen] = useState<Map<string, PickedQuestion>>(new Map());
 
@@ -48,6 +49,7 @@ export function QuestionPicker({
     ...questionsQuery({
       q: q || undefined,
       topicId: topicId || undefined,
+      tag: tag.trim() || undefined,
       type: (type || undefined) as (typeof QUESTION_TYPES)[number] | undefined,
       page,
     }),
@@ -85,7 +87,7 @@ export function QuestionPicker({
   return (
     <Dialog open={open} onClose={close} title={t('exam.picker.title')} size="xl">
       <div className="flex flex-col gap-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SearchField
             id="picker-search"
             label={t('exam.picker.search')}
@@ -125,6 +127,16 @@ export function QuestionPicker({
               </option>
             ))}
           </SelectField>
+          <TextField
+            id="picker-tag"
+            label={t('exam.picker.tag')}
+            value={tag}
+            maxLength={100}
+            onChange={(e) => {
+              setTag(e.target.value);
+              setPage(1);
+            }}
+          />
         </div>
 
         {room <= 0 && <p className="text-sm text-warning">{t('exam.picker.full')}</p>}

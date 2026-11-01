@@ -1,4 +1,4 @@
-import { POINTS_MAX, POINTS_MIN, POINTS_STEP, plainTextOf, type QuestionType } from '@exam/shared';
+import { POINTS_MAX, POINTS_MIN, POINTS_STEP, plainTextOf } from '@exam/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { ChevronDown, ChevronUp, Plus, Save, Trash2 } from 'lucide-react';
@@ -25,7 +25,7 @@ import {
   totalsOf,
   updateSection,
 } from '../exam-draft';
-import { deleteExam, type ExamDetail, saveExam } from '../exams';
+import { deleteExam, type ExamDetail, examQuery, saveExam } from '../exams';
 import { Badge, Button, Card, Dialog, ErrorMessage, PrimaryButton, TextField } from '.';
 import { Breadcrumb } from './breadcrumb';
 import { PageHeader } from './page-header';
@@ -104,7 +104,7 @@ function ItemRow({
         <div className="flex min-w-0 flex-col gap-1">
           <span className="line-clamp-2 break-words">{item.question.preview}</span>
           <span className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
-            {t(`questionType.${item.question.type as QuestionType}`)} · {item.question.topicName}
+            {t(`questionType.${item.question.type}`)} · {item.question.topicName}
             {item.question.archived && <Badge tone="warning">{t('exam.archivedBadge')}</Badge>}
           </span>
         </div>
@@ -197,6 +197,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [removingSection, setRemovingSection] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const skipBlock = useRef(false);
   const readOnly = exam.status !== 'draft';
 
@@ -205,7 +206,10 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const allItems = draft.sections.flatMap((s) => s.items);
   const valid =
     draft.title.trim() !== '' && allItems.every((item) => pointsValid(item.points)) && !readOnly;
-  const split = draft.sections.length > 1 || draft.sections.some((s) => s.title.trim() !== '');
+  // Khối Phần chỉ hiện khi đã chia Phần; Phần duy nhất mà đã có tiêu đề hay hướng dẫn thì vẫn hiện để không giấu nội dung.
+  const split =
+    draft.sections.length > 1 ||
+    draft.sections.some((s) => s.title.trim() !== '' || plainTextOf(s.instructions) !== '');
   const sectionName = (section: DraftSection, index: number) =>
     section.title.trim() || t('exam.untitled', { n: index + 1 });
   const sectionList = draft.sections.map((s, i) => ({ key: s.key, name: sectionName(s, i) }));
@@ -223,15 +227,13 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
       // Mốc "đã lưu" là đúng bản đã gửi (xem PR #21); Phần mới nhận id server cấp, theo thứ tự.
       setBaseline(serialize(sent));
       setVersion(saved.version);
-      setDraft((current) =>
-        current.sections.length === saved.sections.length
-          ? {
-              ...current,
-              sections: current.sections.map((s, i) => ({ ...s, id: saved.sections[i]?.id })),
-            }
-          : current,
-      );
-      queryClient.setQueryData(['exams', 'detail', exam.id], saved);
+      // Gán id theo khóa của Phần lúc gửi (không theo vị trí hiện tại): người dùng có thể đã sắp lại trong lúc lưu.
+      const idByKey = new Map(sent.sections.map((s, i) => [s.key, saved.sections[i]?.id]));
+      setDraft((current) => ({
+        ...current,
+        sections: current.sections.map((s) => ({ ...s, id: s.id ?? idByKey.get(s.key) })),
+      }));
+      queryClient.setQueryData(examQuery(exam.id).queryKey, saved);
       await queryClient.invalidateQueries({ queryKey: ['exams', 'list'] });
       toast(t('exam.saved'));
     },
@@ -241,7 +243,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
     mutationFn: () => deleteExam(exam.id),
     onSuccess: async () => {
       skipBlock.current = true;
-      queryClient.removeQueries({ queryKey: ['exams', 'detail', exam.id] });
+      queryClient.removeQueries({ queryKey: examQuery(exam.id).queryKey });
       await queryClient.invalidateQueries({ queryKey: ['exams', 'list'] });
       await navigate({ to: '/examiner/exams' });
     },
@@ -330,6 +332,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                       >
                         <Trash2 aria-hidden className="size-5" />
                         {t('exam.removeSection')}
+                        <span className="sr-only"> {sectionName(section, index)}</span>
                       </Button>
                     )}
                   </div>
@@ -348,7 +351,31 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
             </div>
           )}
 
-          {section.items.length === 0 ? (
+          {split && (
+            <Button
+              className="w-fit"
+              aria-expanded={!collapsed.has(section.key)}
+              aria-label={`${collapsed.has(section.key) ? t('exam.expand') : t('exam.collapse')}: ${sectionName(section, index)}`}
+              onClick={() =>
+                setCollapsed((prev) => {
+                  const next = new Set(prev);
+                  if (!next.delete(section.key)) next.add(section.key);
+                  return next;
+                })
+              }
+            >
+              {collapsed.has(section.key) ? (
+                <ChevronDown aria-hidden className="size-5" />
+              ) : (
+                <ChevronUp aria-hidden className="size-5" />
+              )}
+              {collapsed.has(section.key)
+                ? t('exam.collapsedHint', { count: section.items.length })
+                : t('exam.collapse')}
+            </Button>
+          )}
+
+          {collapsed.has(section.key) ? null : section.items.length === 0 ? (
             <p className="text-fg-muted">{t('exam.emptySection')}</p>
           ) : (
             <ol className="flex flex-col gap-2">
@@ -364,7 +391,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
               ))}
             </ol>
           )}
-          {!readOnly && (
+          {!readOnly && !collapsed.has(section.key) && (
             <Button className="w-fit" onClick={() => setPickerFor(section.key)}>
               <Plus aria-hidden className="size-5" />
               {t('exam.addQuestions')}

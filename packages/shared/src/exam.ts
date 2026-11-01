@@ -52,19 +52,25 @@ export const examContentSchema = z.strictObject({
 export type ExamContent = z.infer<typeof examContentSchema>;
 
 export interface ExamLayoutProblem {
-  code: 'duplicate_question' | 'too_many_items';
+  code: 'duplicate_question' | 'duplicate_section' | 'too_many_items';
   path: string;
 }
 
 /**
- * Các vấn đề về bố cục mà schema từng trường không thấy: một Câu hỏi xuất hiện hai lần trong Bộ đề (Q162) và quá số
- * câu tối đa (Q161). Vị trí báo là lần xuất hiện sau của câu trùng.
+ * Các vấn đề về bố cục mà schema từng trường không thấy: một Câu hỏi xuất hiện hai lần trong Bộ đề (Q162), hai Phần
+ * cùng một id (Q163) và quá số câu tối đa (Q161). Vị trí báo là lần xuất hiện sau của mục trùng.
  */
 export function examLayoutProblems(content: Pick<ExamContent, 'sections'>): ExamLayoutProblem[] {
   const problems: ExamLayoutProblem[] = [];
   const seen = new Set<string>();
+  const sectionIds = new Set<string>();
   let total = 0;
   content.sections.forEach((section, s) => {
+    if (section.id) {
+      if (sectionIds.has(section.id))
+        problems.push({ code: 'duplicate_section', path: `sections.${s}.id` });
+      sectionIds.add(section.id);
+    }
     section.items.forEach((item, i) => {
       total++;
       if (seen.has(item.questionId)) {
