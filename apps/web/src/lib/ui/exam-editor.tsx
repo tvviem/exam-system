@@ -114,15 +114,15 @@ function ItemRow({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-2 text-sm font-medium text-fg-muted">
-          {t('exam.points')}
+        <div className="flex items-center gap-2 text-sm font-medium text-fg-muted">
+          <span aria-hidden>{t('exam.points')}</span>
           <PointsInput
             points={item.points}
             label={t('exam.pointsOf', { n: number })}
             hint={t('exam.pointsHint')}
             onChange={(points) => onChange((d) => setPoints(d, id, points))}
           />
-        </label>
+        </div>
         <Button
           aria-label={t('exam.moveUp', { n: number })}
           title={t('exam.up')}

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  distributePoints,
   EXAM_MAX_ITEMS,
   EXAM_MAX_SECTIONS,
   type ExamContent,
   examContentSchema,
-  distributePoints,
   examLayoutProblems,
 } from './exam.js';
 import { textDoc } from './rich-text.js';
@@ -150,7 +150,10 @@ describe('distributePoints (Q168)', () => {
   });
 
   it('từ chối: không có câu, điểm sai bước, tổng sai bước, tổng quá nhỏ, quá lớn', () => {
-    expect(distributePoints(0, { kind: 'each', points: 1 })).toEqual({ ok: false, reason: 'empty' });
+    expect(distributePoints(0, { kind: 'each', points: 1 })).toEqual({
+      ok: false,
+      reason: 'empty',
+    });
     expect(distributePoints(2, { kind: 'each', points: 0.07 })).toEqual({
       ok: false,
       reason: 'invalid_points',
