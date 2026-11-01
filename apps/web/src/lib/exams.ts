@@ -18,6 +18,7 @@ export interface ExamListItem {
   updatedAt: string;
   itemCount: number;
   totalPoints: number;
+  sessionCount: number;
 }
 
 export interface ExamDetail {
@@ -26,6 +27,7 @@ export interface ExamDetail {
   instructions: RichText;
   status: ExamStatus;
   version: number;
+  sessionCount: number;
   publishedAt: string | null;
   updatedAt: string;
   sections: {
@@ -42,6 +44,7 @@ export interface ExamListParams {
   status?: ExamStatus;
   q?: string;
   page?: number;
+  pageSize?: number;
 }
 
 export const examsQuery = (params: ExamListParams) =>

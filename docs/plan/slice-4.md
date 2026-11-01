@@ -274,7 +274,7 @@ interface Sessions {
 | `SessionSettings` | `attempt` | `session` | đọc Phiên thi, Danh sách dự thi, giờ, thiết lập |
 | `CandidateMedia` (Q219) | `question-bank` (phục vụ ảnh) | `attempt` | Người dự thi có Lượt đang làm trên đúng thiết bị thì xem được ảnh của Bộ đề |
 | `UserDeactivationHooks` (Q218) | `identity` | `attempt` | Khóa đăng nhập hoặc Xóa người dùng thì nộp Lượt `account_locked` |
-| `ExamUsage` mở rộng | `exam` | `session` | số Phiên thi dùng một Bộ đề (hiện ở chi tiết Bộ đề) |
+| `SessionUsage` (`SESSION_USAGE`) | `exam` | `session` | số Phiên thi chưa hủy dùng một Bộ đề (hiện ở Bộ đề) |
 | `OWNED_CONTENT` thêm nhà cung cấp | `identity` | `session` | Xóa người dùng chuyển cả Phiên thi (Q205) |
 
 ### Seam test (đề nghị duyệt theo quy trình tdd)
@@ -341,6 +341,29 @@ Mã lỗi mới: `INVALID_ACCESS_CODE` (một mã chung, Q201), `INVALID_STATE` 
 | **4e** Hoàn thiện | Phiên thi trong Chuyển giao và Xóa người dùng (Q205), k6 500 người (Q214), hướng dẫn dùng thử trong README | không | S2, S6, S9 |
 
 Quy trình mỗi PR: thiết kế chi tiết và seam test cho riêng PR đó chốt với chủ dự án trước; làm theo từng lát dọc đỏ-xanh; chạy `code-review` (Standards và Spec); mở PR bằng skill `pr`; chờ CI xanh; chỉ merge khi chủ dự án ra lệnh.
+
+## PR 4a: thiết kế chi tiết (đã duyệt 2/11/2026)
+
+Chủ dự án đã đồng ý sáu điểm sau (không đánh số Q mới vì chỉ chi tiết hóa Q200–Q203, Q211):
+
+1. **Tạo Phiên thi 3 bước** (Bộ đề và tên; Thời gian; Thiết lập làm bài và Mã vào thi), tạo xong chuyển sang tab Danh sách dự thi. Mã được gợi ý sẵn (`GET /sessions/access-code-suggestion`), có nút "Gợi ý mã khác".
+2. **Cấp lại mật khẩu tạm bởi Người ra đề**, ba lớp chặn: chỉ cho tài khoản do chính Người ra đề xin cấp qua Yêu cầu cấp tài khoản (`account_request_items.outcome = 'created'`, `account_requests.requested_by`; không dùng `users.created_by` vì cột đó là người duyệt) và chủ tài khoản còn `must_change_password`, chưa Khóa; mật khẩu hiện một lần, hạn 7 ngày, thu hồi mọi phiên đăng nhập, ghi nhật ký và báo cho chủ tài khoản; điều kiện kiểm trong cùng giao dịch với việc đặt mật khẩu. Trường hợp khác trả `INVALID_STATE` với `reason: ASK_ADMIN`.
+3. **Thêm người** theo tên, Mã định danh, Lớp, hoặc dán nhiều Mã định danh; mọi cách đều qua một đường duy nhất `POST /sessions/:id/roster` với `dryRun` để xem trước kết quả khớp.
+4. **Giờ cố định GMT+7** khi nhập và hiển thị; năm hiển thị đủ bốn chữ số.
+5. **Danh sách Phiên thi** lọc trạng thái, tìm tên không dấu, sắp theo giờ mở mới nhất; **Chi tiết** hai tab Tổng quan và Danh sách dự thi; **Danh sách dự thi** có tìm, phân trang 50, phút cộng sẵn sửa tại chỗ, Bớt từng người hoặc hàng loạt.
+6. **Seam test** S1, S2, S3, S6 (không dùng S4, S5, S7 ở 4a vì chưa có Lượt làm bài); thêm một test cho tranh chấp trùng mã.
+
+### Chi tiết thực hiện cần biết
+
+- **Hàm thuần** ở `packages/shared/src/session.ts`: `phaseOf`, `sessionEditableFields`, `sessionChangeProblems`, `sessionSettingsSchema`, `sessionUpdateSchema`, `normalizeAccessCode`, `generateAccessCode`, `parseCodeList`.
+- **Sửa theo trạng thái (Q202)** hiểu chặt: khi đã mở chỉ còn Giờ đóng (chỉ kéo dài), Thời lượng (chỉ kéo dài) và Mã vào thi; đổi tên cũng bị khóa. Vi phạm trả `VALIDATION_FAILED` với `locked` hoặc `cannot_shorten`.
+- **Thông báo** (Q211): `session.added`, `session.rescheduled` (chỉ khi đổi giờ mở hoặc giờ đóng), `session.cancelled` (cả khi Xóa Phiên thi chưa hủy mà đã có người trong Danh sách), cùng `account.password_reissued`.
+- **Hủy** gọi được ở mọi trạng thái trừ Đã hủy; từ 4b sẽ nộp các Lượt đang làm với lý do `session_cancelled`. **Xóa** chỉ khi chưa có Lượt (ở 4a luôn đúng; 4b thêm kiểm).
+- **Nhân bản** dời giờ sang tuần sau (hoặc đủ số tuần để còn ở tương lai), mã mới, tên thêm " (bản sao)", mang theo người còn đủ điều kiện kèm phút cộng sẵn và báo họ.
+- **Sắp xếp Danh sách dự thi** theo tên gọi (từ cuối của họ tên) rồi họ và tên lót, như cách xếp danh sách lớp.
+- **Cổng `SESSION_USAGE`** (thay cho "ExamUsage mở rộng" của bảng cổng): `exam` hỏi số Phiên thi chưa hủy của Bộ đề (`sessionCount` ở danh sách và chi tiết Bộ đề); nối ở `SessionUsageWiringModule`, có mặt cả ở CLI và worker.
+- **Trigger "cấm bớt người đã có Lượt" (Q217)** chuyển sang migration 0013 vì bảng `attempts` chưa tồn tại.
+- **Giới hạn đã biết:** ô chọn Bộ đề liệt kê tối đa 100 Bộ đề đã Phát hành gần nhất; Người dự thi chưa có giao diện nào để thấy thông báo "được thêm vào" ngoài chuông thông báo (khu `/take` làm ở 4c).
 
 ## Prototype màn Theo dõi (Q207)
 

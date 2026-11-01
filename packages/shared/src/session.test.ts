@@ -6,6 +6,7 @@ import {
   parseCodeList,
   phaseOf,
   sessionChangeProblems,
+  sessionEditableFields,
   sessionSettingsSchema,
   sessionUpdateSchema,
 } from './session.js';
@@ -253,5 +254,28 @@ describe('sessionUpdateSchema: sửa kèm version', () => {
       settings({ version: 1, closesAt: '2026-12-01T01:00:00Z' }),
     );
     expect(result.error?.issues[0]?.path).toEqual(['closesAt']);
+  });
+});
+
+describe('sessionEditableFields: giao diện khóa ô nào (Q202)', () => {
+  it('Sắp mở: mọi ô sửa tự do', () => {
+    const fields = sessionEditableFields('upcoming');
+    expect(Object.keys(fields)).toHaveLength(12);
+    expect(Object.values(fields).every((rule) => rule === 'free')).toBe(true);
+  });
+
+  it('Đang mở và Đóng cửa vào thi: kéo dài giờ đóng, Thời lượng; đổi mã', () => {
+    for (const phase of ['open', 'entry_closed'] as const) {
+      expect(sessionEditableFields(phase)).toEqual({
+        closesAt: 'grow',
+        durationMinutes: 'grow',
+        accessCode: 'free',
+      });
+    }
+  });
+
+  it('Đã đóng và Đã hủy: không ô nào', () => {
+    expect(sessionEditableFields('closed')).toEqual({});
+    expect(sessionEditableFields('cancelled')).toEqual({});
   });
 });

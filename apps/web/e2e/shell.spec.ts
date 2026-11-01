@@ -74,9 +74,10 @@ test.describe('khung ứng dụng thích ứng', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await signIn(page, `e2e-yc-gv-${testInfo.project.name}`);
     const nav = main(page);
-    await expect(nav.getByRole('link')).toHaveCount(3);
+    await expect(nav.getByRole('link')).toHaveCount(4);
     await expect(nav.getByRole('link', { name: 'Ngân hàng câu hỏi' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Bộ đề' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: 'Phiên thi' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Yêu cầu cấp tài khoản' })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Người dùng' })).toHaveCount(0);
   });

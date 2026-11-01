@@ -137,6 +137,9 @@ const EDITABLE: Record<SessionPhase, Partial<Record<keyof SessionSettings, 'free
   cancelled: {},
 };
 
+/** Ô nào sửa được ở trạng thái `phase`: `free` tự do, `grow` chỉ được tăng. Giao diện dùng để khóa ô. */
+export const sessionEditableFields = (phase: SessionPhase) => EDITABLE[phase];
+
 const comparable = (value: unknown) => (value instanceof Date ? value.getTime() : value);
 
 /** Những thay đổi không được phép khi sửa Phiên thi đang ở trạng thái `phase` (Q202). Rỗng nghĩa là hợp lệ. */
