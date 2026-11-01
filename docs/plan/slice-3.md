@@ -257,7 +257,7 @@ Không đổi điều đã duyệt:
 - **Ảnh:** `exam_item_illustrations` ghi lúc Phát hành; ảnh có dòng ở đó tính là `inUse` và không xóa được; chủ Bộ đề đã Phát hành xem được ảnh (`/api/media`) dù ảnh đã đổi chủ.
 - **Chưa làm:** sao chép ảnh khi Chuyển giao Chủ đề có Bộ đề đã Phát hành dùng ảnh (Q176) thuộc 3d cùng Chuyển giao Bộ đề.
 - Hộp "Bộ lọc" của danh sách Câu hỏi dùng chung `id` giữa ô lọc trên thanh và trong hộp thoại điện thoại (có sẵn từ trước PR này); nhãn trong hộp thoại có thể trỏ nhầm ô. Ghi lại để sửa riêng.
-- **Ranh giới module:** `exam` đọc (không ghi) bảng `questions` và `illustrations` để dựng bản chụp và kiểm tra Phát hành, như `exams.service` đã đọc `questions` từ PR 3a; chiều ngược lại (`question-bank` biết Bộ đề) luôn qua cổng `ExamUsage`. Không thêm cổng đọc cho `exam` vì bản chụp phải nhất quán với Câu hỏi trong cùng giao dịch có khóa `FOR SHARE`.
+- **Ranh giới module:** `exam` đọc (không ghi) bảng `questions` và `illustrations` để dựng bản chụp và kiểm tra Phát hành, như `exams.service` đã đọc `questions` từ PR 3a; chiều ngược lại (`question-bank` biết Bộ đề) luôn qua cổng `ExamUsage`. `ExamOwnedContent` cũng đọc `questions` (quyền sở hữu sau khi Chuyển giao) cùng cách. Không thêm cổng đọc cho `exam` vì bản chụp phải nhất quán với Câu hỏi trong cùng giao dịch có khóa `FOR SHARE`.
 
 ## Điều chỉnh khi làm PR 3d
 
@@ -267,3 +267,5 @@ Không đổi điều đã duyệt:
 - **Ảnh (Q176):** khi chọn Chủ đề, ảnh còn nằm trong bản chụp của Bộ đề đã Phát hành ở lại người cho được SAO CHÉP cho người nhận thay vì đổi chủ. Khi Xóa người dùng thì Bộ đề đi cùng nên ảnh đổi chủ như thường; chủ Bộ đề luôn xem được ảnh của bản chụp qua `exam_item_illustrations`.
 - **Thông báo:** `topics.transferred` có thêm `exams`; lời nhắn "…N Chủ đề và P Bộ đề…" khi P > 0.
 - Khoảng trống tạm thời đã nêu ở PR 3a (nháp giữ câu của người khác sau Chuyển giao) được đóng lại.
+- **Thứ tự khóa:** Chuyển giao khóa mọi Bộ đề của người cho (theo `id`) trước khi đụng Câu hỏi, cùng thứ tự với Phát hành (Bộ đề rồi Câu hỏi) nên không bế tắc; một lần lưu nháp đang chạy phải xong trước khi quyết định Bộ đề nào đi theo.
+- **Giới hạn đã biết:** khi Xóa người dùng, ảnh chỉ còn nằm trong bản chụp (câu đã sửa sang ảnh khác) hoặc ở nhánh dùng ảnh sẵn có của người nhận (`reuse`) vẫn thuộc người cho đã bị Xóa; chủ Bộ đề vẫn xem được qua `exam_item_illustrations`.

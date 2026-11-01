@@ -352,7 +352,7 @@
       "action": "Chuyển giao…",
       "title": "Chuyển giao Chủ đề của {{name}}",
       "titleRemove": "Xóa {{name}} và chuyển giao nội dung",
-      "removeIntro": "Người này còn Chủ đề, nên phải chuyển toàn bộ cho một Người ra đề trước khi xóa. Việc chuyển giao và xóa diễn ra cùng lúc.",
+      "removeIntro": "Người này còn Chủ đề hoặc Bộ đề, nên phải chuyển toàn bộ cho một Người ra đề trước khi xóa. Việc chuyển giao và xóa diễn ra cùng lúc.",
       "summary": "{{topics}} Chủ đề, {{questions}} câu hỏi, {{images}} ảnh",
       "summaryLoading": "Đang tính…",
       "examsDrafts": "{{exams}} Bộ đề nháp có câu của các Chủ đề này sẽ chuyển theo. Bộ đề đã Phát hành ở lại người cũ.",

@@ -45,6 +45,8 @@ export class CompositeOwnedContent implements OwnedContent {
     const prepared = await this.questionBank.prepareTransfer(input);
     return {
       apply: async (tx: Transaction, donorName: string) => {
+        // Bộ đề khóa trước, Câu hỏi sau: cùng thứ tự với Phát hành nên không bế tắc nhau.
+        await this.exams.lock(tx, input.fromId);
         const content = await prepared.apply(tx, donorName);
         const exams = await this.exams.apply(tx, {
           fromId: input.fromId,

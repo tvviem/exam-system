@@ -19,6 +19,20 @@ export interface OwnedExamCounts {
 export class ExamOwnedContent {
   constructor(@Inject(DB) private readonly db: Database) {}
 
+  /**
+   * Khóa mọi Bộ đề của người cho, theo thứ tự `id`. Gọi TRƯỚC phần của ngân hàng câu hỏi: Phát hành khóa Bộ đề rồi mới khóa
+   * Câu hỏi, nên cùng thứ tự (Bộ đề trước, Câu hỏi sau) tránh bế tắc; và một lần lưu nháp đang chạy phải xong hẳn
+   * (hoặc chờ) trước khi ta quyết định Bộ đề nào đi theo.
+   */
+  async lock(tx: Transaction, fromId: string): Promise<void> {
+    await tx
+      .select({ id: exams.id })
+      .from(exams)
+      .where(eq(exams.ownerId, fromId))
+      .orderBy(exams.id)
+      .for('update');
+  }
+
   /** `topicIds` có nghĩa là chỉ các Chủ đề đó chuyển; không có là chuyển toàn bộ (Xóa người dùng). */
   async summaryOf(userId: string, topicIds?: string[]): Promise<OwnedExamCounts> {
     if (!topicIds) {
@@ -77,8 +91,6 @@ export class ExamOwnedContent {
       );
     const ids = candidates.map((c) => c.id);
     if (ids.length === 0) return { exams: 0, detachedItems: 0 };
-    await tx.select({ id: exams.id }).from(exams).where(inArray(exams.id, ids)).for('update');
-
     const staying = tx
       .select({ id: questions.id })
       .from(questions)

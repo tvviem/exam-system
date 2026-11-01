@@ -1,5 +1,6 @@
 import { type QuestionInput, type RichText, textDoc } from '@exam/shared';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ExamOwnedContent } from '../src/modules/exam/exam-owned-content';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
 import { call, login, upload } from './support/http';
@@ -20,6 +21,9 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await t.app.close();
+});
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 beforeEach(async () => {
   await resetState();
@@ -188,6 +192,25 @@ describe('Chuyển giao Chủ đề mang theo Bộ đề nháp (Q182)', () => {
     expect(res.statusCode).toBe(400);
     expect(await ownerOf(e.id)).toBe(donor.id);
     expect(await itemCount(e.id)).toBe(1);
+  });
+
+  it('phần Bộ đề lỗi sau khi phần ngân hàng câu hỏi đã chạy: hoàn tác hết', async () => {
+    const moving = await topic('Chuyển');
+    const q = await question(moving, 'A');
+    const e = await exam([q], 'Nháp');
+    vi.spyOn(t.app.get(ExamOwnedContent), 'apply').mockRejectedValue(new Error('lỗi giữa chừng'));
+    const res = await transfer([moving]);
+    expect(res.statusCode).toBe(500);
+    const [row] = await sql<{ owner_id: string }>('select owner_id from questions where id = $1', [
+      q,
+    ]);
+    expect(row?.owner_id).toBe(donor.id);
+    expect(await ownerOf(e.id)).toBe(donor.id);
+    const [topicRow] = await sql<{ owner_id: string }>(
+      'select owner_id from topics where id = $1',
+      [moving],
+    );
+    expect(topicRow?.owner_id).toBe(donor.id);
   });
 
   it('thông báo cho người nhận nêu cả số Bộ đề', async () => {
