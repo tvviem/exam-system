@@ -58,11 +58,17 @@ async function seedPublishedExam(page: Page, title: string) {
   await post(`/api/exams/${exam.id}/publish`, { version: (await saved.json()).version });
 }
 
-/** Mở menu "…" của một dòng. Menu đóng khi trang cuộn, nên cuộn tới nút trước rồi mới bấm. */
-async function openRowMenu(page: Page, name: string) {
-  const button = page.getByRole('button', { name });
-  await button.scrollIntoViewIfNeeded();
-  await button.click();
+/**
+ * Mở menu "…" rồi chọn một mục. Menu đóng khi trang cuộn hoặc dựng lại, nên cả hai bước được thử lại cùng nhau
+ * cho đến khi mục được bấm (không phụ thuộc may rủi về thời điểm dựng lại trang trên máy chậm).
+ */
+async function chooseFromRowMenu(page: Page, button: string, item: string | RegExp) {
+  await expect(async () => {
+    const trigger = page.getByRole('button', { name: button });
+    await trigger.scrollIntoViewIfNeeded();
+    await trigger.click();
+    await page.getByRole('menuitem', { name: item }).click({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
 }
 
 const overflow = (page: Page) =>
@@ -143,13 +149,11 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   await expect(page.getByLabel(`Phút cộng sẵn của Nguyễn Văn An (${p})`)).toHaveValue('15');
 
   // Bớt một người bằng menu
-  await openRowMenu(page, `Thao tác với Lê Văn Cường (${p})`);
-  await page.getByRole('menuitem', { name: 'Bớt' }).click();
+  await chooseFromRowMenu(page, `Thao tác với Lê Văn Cường (${p})`, 'Bớt');
   await expect(rows).toHaveCount(2);
 
   // Cấp lại mật khẩu tạm: tài khoản này không do Yêu cầu cấp tài khoản của mình tạo nên bị từ chối
-  await openRowMenu(page, `Thao tác với Nguyễn Văn An (${p})`);
-  await page.getByRole('menuitem', { name: 'Cấp lại mật khẩu tạm' }).click();
+  await chooseFromRowMenu(page, `Thao tác với Nguyễn Văn An (${p})`, 'Cấp lại mật khẩu tạm');
   await page.getByRole('button', { name: 'Cấp mật khẩu mới' }).click();
   const refused = page.getByRole('alert').filter({
     hasText: 'Chỉ cấp lại được cho tài khoản do chính bạn xin cấp',
@@ -167,21 +171,19 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   await expect(page.getByRole('heading', { name: `Ca 1 sửa ${p}` })).toBeVisible();
 
   // Nhân bản: bản sao Sắp mở, mang theo Danh sách
-  await openRowMenu(page, 'Thao tác khác với Phiên thi');
-  await page.getByRole('menuitem', { name: 'Nhân bản' }).click();
+  await chooseFromRowMenu(page, 'Thao tác khác với Phiên thi', 'Nhân bản');
   await expect(page.getByRole('heading', { name: `Ca 1 sửa ${p} (bản sao)` })).toBeVisible();
   await page.getByRole('tab', { name: 'Danh sách dự thi' }).click();
   await expect(rows).toHaveCount(2);
 
   // Hủy bản sao: không hoàn tác, không sửa được nữa
-  await openRowMenu(page, 'Thao tác khác với Phiên thi');
-  await page.getByRole('menuitem', { name: 'Hủy Phiên thi' }).click();
+  await chooseFromRowMenu(page, 'Thao tác khác với Phiên thi', 'Hủy Phiên thi');
   const cancel = page.getByRole('dialog', { name: 'Hủy Phiên thi này?' });
   await cancel.getByLabel('Lý do (không bắt buộc)').fill('Trùng lịch');
   await cancel.getByRole('button', { name: 'Hủy Phiên thi' }).click();
   await expect(page.getByText('Đã hủy', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sửa' })).toBeDisabled();
-  await openRowMenu(page, 'Thao tác khác với Phiên thi');
+  await page.getByRole('button', { name: 'Thao tác khác với Phiên thi' }).click();
   await expect(page.getByRole('menuitem', { name: 'Hủy Phiên thi' })).toBeDisabled();
 
   // Danh sách: lọc theo trạng thái
