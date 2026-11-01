@@ -10,14 +10,16 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
 - Tạo Quản trị viên đầu tiên khi triển khai; chỉ định thêm Quản trị viên khác.
 - Tạo link Lời mời để một người trở thành Người ra đề; duyệt Yêu cầu cấp tài khoản và xuất Phiếu tài khoản có mật khẩu tạm.
 - Gắn Nhãn vai trò (Người ra đề, Người dự thi); Khóa đăng nhập, Xóa người dùng, xem lịch sử đăng nhập và nhật ký thao tác.
-- Chuyển giao Chủ đề khi Người ra đề nghỉ việc.
+- Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Bộ đề nháp có câu của Chủ đề đó và mọi Bộ đề của người bị xóa đi theo.
 
 **Người ra đề**
 - Quản lý Chủ đề và Câu hỏi thuộc sở hữu riêng.
   - 4 loại câu: chọn một, chọn nhiều, chùm đúng/sai, tự luận ngắn.
   - Hình minh họa, soạn công thức toán trực quan.
   - Nhập hàng loạt câu hỏi cả bốn loại từ Excel (mỗi loại một sheet).
-- Soạn Bộ đề: chia Phần, dùng lại Câu hỏi giữa nhiều Bộ đề, đặt điểm nhanh, Xem thử, Phát hành.
+- Soạn Bộ đề: chia Phần, dùng lại Câu hỏi giữa nhiều Bộ đề, Đặt điểm nhanh, Xem thử, Phát hành, Nhân bản, Lưu trữ.
+  - Phát hành chụp lại nội dung từng câu (bản chụp) và khóa Bộ đề; không có thao tác thu hồi.
+  - Câu hỏi đã nằm trong Bộ đề không xóa được, chỉ Lưu trữ rồi Khôi phục.
 - Tổ chức Phiên thi.
   - Thiết lập: Khung giờ, Thời lượng, Mã vào thi, số lượt làm bài, xáo trộn câu và phương án.
   - Lập Danh sách dự thi: tìm theo Lớp hoặc từng người.
@@ -194,6 +196,25 @@ Cần như lát cắt 1: cả hai terminal đang chạy (worker xử lý ảnh v
 3. **Chuyển giao** (Quản trị viên): **Người dùng** → mở một Người ra đề → thẻ **Nội dung** → tick Chủ đề → **Chuyển giao…** → chọn người nhận. Chủ đề trùng tên được thêm "(từ …)"; Hình minh họa đi theo Câu hỏi; người nhận có thông báo.
 4. **Xóa người dùng còn Chủ đề**: **Xóa người dùng** → hộp thoại tự chuyển sang bước chọn người nhận (**Chuyển giao và xóa**).
 
+## Dùng thử lát cắt 3
+
+Cần như lát cắt 2 (không cần worker cho lát cắt này). Sau khi lấy mã mới, chạy `pnpm db:migrate` để áp migration `0011_exam_publish` (thêm bảng `exam_item_illustrations` và các trigger bảo vệ Bộ đề đã Phát hành; không đổi dữ liệu cũ). Cần ít nhất hai Người ra đề và một Quản trị viên.
+
+1. **Soạn Bộ đề** (Người ra đề): menu **Bộ đề** → **Tạo Bộ đề**. Thêm Phần, **Thêm câu hỏi** (từ ngân hàng) (lọc như ở ngân hàng; câu đã có trong Bộ đề hiện "Đã có"), đặt điểm từng câu (nhãn "Điểm", từ 0,05 đến 100, bước 0,05), **Lưu**. Mỗi câu chỉ xuất hiện một lần trong Bộ đề, tối đa 200 câu.
+2. **Đặt điểm nhanh**: nút **Đặt điểm nhanh** → chọn phạm vi (cả Bộ đề, một Phần hoặc một Loại câu hỏi) → "mỗi câu cùng điểm" (ví dụ 0,25) hoặc "chia đều một tổng" (ví dụ 10 điểm cho 40 câu); có bản xem trước trước khi áp dụng. Chỉ đổi điểm trong Bộ đề này, không đổi điểm mặc định của Câu hỏi. Thay đổi chỉ áp vào bản đang soạn, nhớ bấm **Lưu**. Phải **Lưu** trước khi bấm **Phát hành…**.
+3. **Xem thử**: tab **Xem thử** cạnh tab **Soạn** hiện Bộ đề như Người dự thi sẽ thấy: đánh số câu, điểm, tổng điểm, **không có Đáp án**. Công tắc "Hiện cách tính điểm" chỉ để so sánh hai kiểu hiển thị, không được lưu. Bộ đề nháp lấy nội dung hiện tại của Câu hỏi.
+4. **Phát hành**: nút **Phát hành…** kiểm tra trước và liệt kê vấn đề cần sửa (thiếu tiêu đề, Bộ đề rỗng, Phần rỗng, câu đã Lưu trữ hoặc không còn hợp lệ, ảnh chưa xử lý xong, điểm sai). Hết vấn đề thì hiện hộp xác nhận.
+5. **Bộ đề đã Phát hành**: chuyển sang chỉ đọc, cả hai tab Soạn và Xem thử đều hiện nội dung **bản chụp** lúc Phát hành. Sửa hay Lưu trữ Câu hỏi gốc sau đó không đổi Bộ đề này. Còn dùng được **Nhân bản** (tạo Bộ đề nháp mới, tên thêm "(bản sao)") và **Lưu trữ** / **Khôi phục** Bộ đề (Bộ đề đã Lưu trữ ẩn khỏi danh sách mặc định, lọc theo trạng thái để xem).
+6. **Lưu trữ Câu hỏi**: ở danh sách Câu hỏi, tick câu → **Lưu trữ** (hoặc lọc "Đã lưu trữ" → **Khôi phục**). Câu ẩn khỏi danh sách mặc định và khỏi bảng chọn câu khi soạn Bộ đề mới, nhưng không mất. Trình soạn Câu hỏi cho biết câu đang dùng ở bao nhiêu Bộ đề nháp và Bộ đề đã Phát hành.
+7. **Chuyển giao Chủ đề** (Quản trị viên): như lát cắt 2, nay hộp thoại báo thêm số Bộ đề nháp sẽ chuyển và số câu bị gỡ khỏi các Bộ đề đó (câu thuộc Chủ đề không chuyển). Bộ đề đã Phát hành ở lại người cũ. **Xóa người dùng**: mọi Bộ đề (nháp, Phát hành, Lưu trữ) sang người nhận; người chỉ còn Bộ đề cũng phải chọn người nhận. Người nhận có thông báo kèm số Bộ đề.
+
+**Lưu ý khi dùng**
+- **Phát hành không hoàn tác.** Sau đó cơ sở dữ liệu chặn mọi sửa nội dung Bộ đề, kể cả bằng SQL trực tiếp. Muốn đổi thì Nhân bản thành nháp mới. Kiểm tra kỹ bằng tab Xem thử trước khi Phát hành.
+- **Câu hỏi nằm trong Bộ đề không xóa được.** Bộ đề nháp: gỡ câu khỏi Bộ đề trước. Bộ đề đã Phát hành: chỉ Lưu trữ, vì bản chụp cần câu gốc để truy ngược khi chấm và phúc khảo.
+- **Bộ đề chưa có Phiên thi.** Lát cắt này chỉ tạo và Phát hành Bộ đề; chưa tổ chức thi (lát cắt 4).
+- Quản trị viên không đọc được Bộ đề của Người ra đề; chỉ chủ sở hữu thấy.
+- Khi Xóa người dùng, ảnh chỉ còn nằm trong bản chụp (không còn ở Câu hỏi nào) vẫn thuộc người đã xóa; chủ Bộ đề vẫn xem được ảnh đó. Hộp "Bộ lọc" trên điện thoại ở danh sách Câu hỏi dùng chung `id` với thanh lọc (lỗi có từ trước, chưa sửa).
+
 ## Vận hành
 
 **Các tiến trình**
@@ -250,6 +271,7 @@ Pipeline không deploy khi đang có Phiên thi diễn ra. Khi hệ thống ổn
 | [docs/data-model.md](docs/data-model.md) | Thiết kế bảng PostgreSQL, ràng buộc, công thức tính Kết quả |
 | [docs/ui-design.md](docs/ui-design.md) | Thiết kế giao diện: màu, chữ, chế độ sáng/tối, thành phần, danh sách kiểm |
 | [docs/plan/slice-1.md](docs/plan/slice-1.md) | Kế hoạch và các quyết định (Q43–Q99) của lát cắt 1 |
+| [docs/plan/slice-3.md](docs/plan/slice-3.md) | Kế hoạch và các quyết định (Q159–Q191) của lát cắt 3: Bộ đề |
 | [docs/adr](docs/adr) | Các quyết định kiến trúc đã duyệt |
 | [AGENTS.md](AGENTS.md) | Hướng dẫn cho AI agent làm việc trên repo |
 
@@ -259,8 +281,8 @@ Pipeline không deploy khi đang có Phiên thi diễn ra. Khi hệ thống ổn
 |---|---|
 | 0 | **Xong.** Khung monorepo, Podman pod cho dev/CI, pipeline GitHub Actions |
 | 1 | **Xong.** Tạo Quản trị viên đầu tiên, đăng nhập, quản lý Người dùng, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản, giao diện sáng/tối |
-| 2 | Chủ đề, Câu hỏi, Hình minh họa, soạn công thức, nhập Excel |
-| 3 | Bộ đề, Phần, đặt điểm, Xem thử, Phát hành |
+| 2 | **Xong.** Chủ đề, Câu hỏi, Hình minh họa, soạn công thức, nhập Excel |
+| 3 | **Xong.** Bộ đề, Phần, Đặt điểm nhanh, Xem thử, Phát hành, Lưu trữ Câu hỏi và Bộ đề, Nhân bản, Chuyển giao kèm Bộ đề |
 | 4 | Phiên thi, Mã vào thi, làm bài trên điện thoại, theo dõi phòng thi |
 | 5 | Chấm, Công bố kết quả, Phúc khảo, Đính chính đáp án, xuất Excel |
 | 6 | Triển khai production lên pod `prod-exam` |
