@@ -168,8 +168,16 @@ Mã do Người ra đề đặt trước cho một Phiên thi; Người dự thi
 _Avoid_: mã bộ đề, mã phòng, PIN
 
 **Khung giờ** (`Window`):
-Khoảng thời gian từ lúc mở đến lúc đóng Phiên thi; chỉ được bắt đầu Lượt làm bài trong khoảng này.
+Khoảng thời gian từ lúc mở đến lúc đóng Phiên thi; chỉ được bắt đầu Lượt làm bài trong khoảng này. Mặc định mỗi Lượt được đủ Thời lượng kể cả khi vượt giờ đóng; Phiên thi bật "Cắt cứng" thì Lượt kết thúc lúc đóng Khung giờ.
 _Avoid_: lịch thi
+
+**Thiết bị dự thi** (`ExamDevice`):
+Thiết bị duy nhất được gắn cho một Người dự thi trong một Phiên thi, tính từ lần đầu họ nhập đúng Mã vào thi. Mọi thao tác dự thi của người đó trong Phiên thi phải đến từ thiết bị này; thiết bị khác bị từ chối dù cùng tài khoản. Một thiết bị chỉ phục vụ một Người dự thi trong một Phiên thi.
+_Avoid_: máy thi, phiên thi của thiết bị
+
+**Thu hồi thiết bị** (`Revoke`):
+Hành động của Người ra đề gỡ Thiết bị dự thi của một Người dự thi khi thiết bị gặp sự cố hoặc nghi ngờ thi hộ. Thiết bị bị thu hồi bị loại khỏi Phiên thi đó cho người ấy; thiết bị mới đầu tiên nhập đúng Mã vào thi sẽ được gắn và làm tiếp đúng Lượt làm bài cũ. Câu trả lời đã lưu được giữ, Câu trả lời chưa gửi từ thiết bị cũ không được nhận.
+_Avoid_: đổi thiết bị, cho phép đổi thiết bị, đăng xuất
 
 **Thời lượng** (`Duration`):
 Thời gian tối đa của một Lượt làm bài tính từ lúc bắt đầu.
