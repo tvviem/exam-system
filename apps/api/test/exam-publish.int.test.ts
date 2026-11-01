@@ -244,6 +244,31 @@ describe('Phát hành và bản chụp (Q172, Q173)', () => {
     expect(preview.body).not.toContain('"key"');
   });
 
+  it('chi tiết Bộ đề đã Phát hành (tab Soạn) cũng đọc bản chụp, không theo Câu hỏi gốc', async () => {
+    const q = await question('Phần dẫn cũ');
+    const exam = await draftExam([q]);
+    await publish(exam);
+    const current = (await api('GET', `/questions/${q}`)).json();
+    const {
+      id: _id,
+      createdAt: _c,
+      updatedAt: _u,
+      usage: _usage,
+      archivedAt: _a,
+      ...rest
+    } = current;
+    expect(
+      (await api('PUT', `/questions/${q}`, { ...rest, stem: textDoc('Phần dẫn mới') })).statusCode,
+    ).toBe(200);
+    await api('POST', '/questions/archive', { ids: [q] });
+
+    const detail = (await api('GET', `/exams/${exam.id}`)).json();
+    const item = detail.sections[0].items[0];
+    expect(item.question.preview).toBe('Phần dẫn cũ');
+    // Câu gốc bị Lưu trữ sau khi Phát hành không làm Bộ đề đã Phát hành trông như có vấn đề.
+    expect(item.question.archived).toBe(false);
+  });
+
   it('hai lần Phát hành đồng thời: chỉ một lần thành công', async () => {
     const exam = await draftExam([await question('A')]);
     const results = await Promise.all([publish(exam), publish(exam)]);

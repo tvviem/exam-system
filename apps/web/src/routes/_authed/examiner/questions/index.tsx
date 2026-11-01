@@ -542,7 +542,11 @@ function BulkBar({
         {archive.isError && <ErrorMessage>{errorMessage(t, archive.error)}</ErrorMessage>}
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setMoving(true)}>{t('questionBank.moveTopic')}</Button>
-          <Button disabled={archive.isPending} onClick={() => archive.mutate()}>
+          <Button
+            disabled={archive.isPending}
+            title={t(archivedView ? 'questionBank.restoreHint' : 'questionBank.archiveHint')}
+            onClick={() => archive.mutate()}
+          >
             {archivedView ? t('questionBank.restore') : t('questionBank.archive')}
           </Button>
           {anyUsed ? null : (
