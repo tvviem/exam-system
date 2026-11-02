@@ -148,6 +148,12 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   await page.reload();
   await expect(page.getByLabel(`Phút cộng sẵn của Nguyễn Văn An (${p})`)).toHaveValue('15');
 
+  // Sắp theo Mã định danh: vẫn đủ người, mã nhỏ đứng đầu
+  await page.getByLabel('Sắp theo').selectOption('code');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.first()).toContainText(`PT-${tag}-001`);
+  await page.getByLabel('Sắp theo').selectOption('name');
+
   // Bớt một người bằng menu
   await chooseFromRowMenu(page, `Thao tác với Lê Văn Cường (${p})`, 'Bớt');
   await expect(rows).toHaveCount(2);
@@ -192,4 +198,36 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   await page.getByRole('button', { name: 'Đã hủy' }).click();
   await expect(page.getByRole('link', { name: /Ca 1 sửa/ })).toHaveCount(1);
   expect(await overflow(page), 'danh sách').toBe(0);
+});
+
+test('Xóa Phiên thi chưa có ai: về danh sách ngay, không chờ truy vấn chi tiết đã xóa thử lại', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-pt-${p}`);
+  await seedPublishedExam(page, `Xóa ${p}`);
+  const created = await page.request.post('/api/sessions', {
+    headers: { origin: ORIGIN },
+    data: {
+      examId: (
+        await (await page.request.get('/api/exams?q=' + encodeURIComponent(`Xóa ${p}`))).json()
+      ).items[0].id,
+      title: `Ca xóa ${p}`,
+      opensAt: '2030-02-10T01:00:00Z',
+      closesAt: '2030-02-10T03:00:00Z',
+      durationMinutes: 30,
+    },
+  });
+  expect(created.ok(), await created.text()).toBe(true);
+  await page.goto(`/examiner/sessions/${(await created.json()).id}`);
+  await expect(page.getByRole('heading', { name: `Ca xóa ${p}` })).toBeVisible();
+
+  await chooseFromRowMenu(page, 'Thao tác khác với Phiên thi', 'Xóa');
+  const dialog = page.getByRole('dialog');
+  const started = Date.now();
+  await dialog.getByRole('button', { name: 'Xóa Phiên thi' }).click();
+  await page.waitForURL((url) => url.pathname === '/examiner/sessions', { timeout: 15_000 });
+  const took = Date.now() - started;
+  expect(took, `về danh sách sau ${took} ms`).toBeLessThan(2500);
+  await expect(page.getByRole('link', { name: `Ca xóa ${p}` })).toHaveCount(0);
 });
