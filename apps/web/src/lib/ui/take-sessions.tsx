@@ -6,7 +6,13 @@ import { errorMessage } from '../errors';
 import { formatDateTime } from '../format';
 import { PHASE_TONE } from '../session-phase';
 import { joinSession, type TakeSession, takeSessionsQuery } from '../take';
-import { entryActionOf, groupOf, normalizeCode, type SessionGroup } from '../take/entry';
+import {
+  type EntryAction,
+  entryActionOf,
+  groupOf,
+  normalizeCode,
+  type SessionGroup,
+} from '../take/entry';
 import { Badge, Button, buttonClass, Card, PrimaryButton, TextField } from '.';
 
 // "Phiên thi của tôi" và ô nhập Mã vào thi (Q206, Q239).
@@ -109,8 +115,8 @@ function SessionCard({ row }: { row: TakeSession }) {
       </div>
       <p className="text-sm text-fg-muted">
         {formatDateTime(row.opensAt)} – {formatDateTime(row.closesAt)} ·{' '}
-        {t('take.confirm.minutes', { count: row.durationMinutes })} ·{' '}
-        {t('take.confirm.questionCount', { count: row.questionCount })}
+        {t('take.session.minutes', { count: row.durationMinutes })} ·{' '}
+        {t('take.session.questionCount', { count: row.questionCount })}
       </p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <ActionNote action={action} row={row} />
@@ -120,13 +126,7 @@ function SessionCard({ row }: { row: TakeSession }) {
   );
 }
 
-function ActionNote({
-  action,
-  row,
-}: {
-  action: ReturnType<typeof entryActionOf>;
-  row: TakeSession;
-}) {
+function ActionNote({ action, row }: { action: EntryAction; row: TakeSession }) {
   const { t } = useTranslation();
   switch (action) {
     case 'finished':
@@ -160,13 +160,7 @@ function ActionNote({
   }
 }
 
-function ActionButton({
-  action,
-  row,
-}: {
-  action: ReturnType<typeof entryActionOf>;
-  row: TakeSession;
-}) {
+function ActionButton({ action, row }: { action: EntryAction; row: TakeSession }) {
   const { t } = useTranslation();
   if (action === 'start') {
     return (

@@ -1,43 +1,46 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import {
   CheckCheck,
   ChevronLeft,
   ChevronRight,
   CloudOff,
   LayoutGrid,
-  Loader2,
+  type LucideIcon,
   Timer,
   TriangleAlert,
   Type,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiError } from '../api';
+import { apiFetch } from '../api';
 import { errorMessage } from '../errors';
-import { formatDateTime } from '../format';
 import {
+  type AttemptState,
   type AttemptView,
   attemptQuery,
   attemptQueryKey,
   submitAttempt,
   type TakeItem,
+  UnsavedError,
 } from '../take';
 import { type AnswerState, answerStateOf, progressOf } from '../take/answers';
 import { formatClock } from '../take/clock';
 import type { SaveStatus } from '../take/save-queue';
 import { useCountdown } from '../take/use-countdown';
 import { usePrefs } from '../take/use-prefs';
-import { type StopReason, useSaver } from '../take/use-saver';
-import { BusyNotice, Button, buttonClass, Dialog, ErrorMessage, PrimaryButton } from '.';
+import { type StopReason, stopReasonOf, useSaver } from '../take/use-saver';
+import { BusyNotice, Button, buttonClass, Dialog, ErrorMessage, PrimaryButton, Spinner } from '.';
 import { MediaSourceContext } from './illustration-image';
 import { RichTextView } from './rich-text-view';
 import { TakePrefsDialog } from './take-prefs';
 import { TakeQuestion } from './take-question';
+import { StopScreen } from './take-screens';
 import { ThemeSwitcher } from './theme-switcher';
 
 // Màn làm bài (Q240–Q244). Câu trả lời nằm ở trạng thái cục bộ, được lưu lên server qua hàng đợi (use-saver);
 // đồng hồ chỉ hiển thị giờ server tính (use-countdown).
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type Answers = Record<string, { value: unknown; flagged: boolean }>;
 
@@ -47,37 +50,28 @@ const STATE_KEY = {
   blank: 'take.state.blank',
 } as const;
 
+const SAVE_VIEW: Record<SaveStatus, { key: string; Icon: LucideIcon | null; tone: string }> = {
+  saved: { key: 'take.save.saved', Icon: CheckCheck, tone: 'text-success' },
+  saving: { key: 'take.save.saving', Icon: null, tone: 'text-fg-muted' },
+  offline: { key: 'take.save.offline', Icon: CloudOff, tone: 'text-warning' },
+  unsaved: { key: 'take.save.unsaved', Icon: TriangleAlert, tone: 'text-warning' },
+};
+
 function SaveBadge({ status, unsaved }: { status: SaveStatus; unsaved: number }) {
   const { t } = useTranslation();
-  const text =
-    status === 'saved'
-      ? t('take.save.saved')
-      : status === 'saving'
-        ? t('take.save.saving')
-        : status === 'offline'
-          ? t('take.save.offline', { count: unsaved })
-          : t('take.save.unsaved', { count: unsaved });
-  const Icon =
-    status === 'saved'
-      ? CheckCheck
-      : status === 'saving'
-        ? Loader2
-        : status === 'offline'
-          ? CloudOff
-          : TriangleAlert;
-  const tone =
-    status === 'saved' ? 'text-success' : status === 'saving' ? 'text-fg-muted' : 'text-warning';
+  const { key, Icon, tone } = SAVE_VIEW[status];
   return (
     <div
       role="status"
       aria-label={t('take.save.label')}
       className={`inline-flex min-h-12 items-center gap-1.5 px-1 font-sans text-sm font-medium ${tone}`}
     >
-      <Icon
-        aria-hidden
-        className={`size-5 shrink-0 ${status === 'saving' ? 'motion-safe:animate-spin' : ''}`}
-      />
-      <span className="max-sm:sr-only">{text}</span>
+      {Icon ? (
+        <Icon aria-hidden className="size-5 shrink-0" />
+      ) : (
+        <Spinner className="size-5 shrink-0" />
+      )}
+      <span className="max-sm:sr-only">{t(key, { count: unsaved })}</span>
     </div>
   );
 }
@@ -114,68 +108,109 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
     onStop: setStop,
   });
 
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  const { drain, change } = saver;
+
+  /** Lượt đã đóng ở server (hết giờ, bị Hủy): lấy trạng thái "đã nộp" thật; mất mạng thì thử lại cho đến khi được. */
   const closeNow = useCallback(async () => {
-    // Lượt đã đóng ở server (hết giờ, bị Hủy): lấy trạng thái "đã nộp" thật.
-    await queryClient.refetchQueries(attemptQuery(attemptId));
+    while (alive.current) {
+      try {
+        await queryClient.fetchQuery({ ...attemptQuery(attemptId), staleTime: 0 });
+        return;
+      } catch (error) {
+        if (stopReasonOf(error) === 'DEVICE_REVOKED') {
+          setStop('DEVICE_REVOKED');
+          return;
+        }
+        await sleep(3000);
+      }
+    }
   }, [attemptId, queryClient]);
 
   useEffect(() => {
     if (stop === 'ATTEMPT_CLOSED') void closeNow();
   }, [stop, closeNow]);
 
+  // Máy ngủ hoặc tab bị ẩn làm đồng hồ trình duyệt chậm lại: khi hiện lại, hỏi server giờ chính xác (cũng biết nếu Lượt đã đóng).
+  const { resync } = countdown;
+  useEffect(() => {
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const state = await apiFetch<AttemptState>(`/take/attempts/${attemptId}`);
+        if (state.status === 'submitted')
+          queryClient.setQueryData(attemptQueryKey(attemptId), state);
+        else resync(state.attempt);
+      } catch (error) {
+        if (stopReasonOf(error) === 'DEVICE_REVOKED') setStop('DEVICE_REVOKED');
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [attemptId, queryClient, resync]);
+
   const submit = useMutation({
     mutationFn: async () => {
-      const drained = await saver.drain();
-      if (!drained) throw new ApiError(0, 'UNSAVED');
+      if (!(await drain())) throw new UnsavedError();
       return submitAttempt(attemptId);
     },
     onSuccess: (state) => {
       queryClient.setQueryData(attemptQueryKey(attemptId), state);
     },
     onError: (error) => {
-      if (error instanceof ApiError && error.details.reason === 'ATTEMPT_CLOSED') void closeNow();
+      const reason = stopReasonOf(error);
+      if (reason === 'ATTEMPT_CLOSED') void closeNow();
+      else if (reason) setStop(reason);
     },
   });
 
-  // Hết giờ: nộp ngay (cố lưu nốt trước), mất mạng thì thử lại cho đến khi được; server vẫn tự đóng Lượt sau ân hạn.
+  // Hết giờ: nộp ngay, nhưng phải lưu xong các câu còn chờ trước; mất mạng thì thử lại cho đến khi được (server vẫn tự
+  // đóng Lượt sau ân hạn, nên Lượt không bao giờ treo).
   const [timedOut, setTimedOut] = useState(false);
-  const expire = useCallback(() => {
+  const expiring = useRef(false);
+  const expire = useCallback(async () => {
+    if (expiring.current) return;
+    expiring.current = true;
     setTimedOut(true);
-    void (async () => {
-      await saver.drain().catch(() => false);
-      for (;;) {
-        try {
-          queryClient.setQueryData(attemptQueryKey(attemptId), await submitAttempt(attemptId));
-          return;
-        } catch (error) {
-          if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-            await closeNow();
-            return;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-        }
+    while (alive.current) {
+      if (!(await drain())) {
+        await sleep(3000);
+        continue;
       }
-    })();
-  }, [saver, queryClient, attemptId, closeNow]);
-  const expireRef = useRef(expire);
-  expireRef.current = expire;
+      try {
+        queryClient.setQueryData(attemptQueryKey(attemptId), await submitAttempt(attemptId));
+        return;
+      } catch (error) {
+        const reason = stopReasonOf(error);
+        if (reason === 'ATTEMPT_CLOSED') return closeNow();
+        if (reason) return setStop(reason);
+        await sleep(3000);
+      }
+    }
+  }, [drain, queryClient, attemptId, closeNow]);
   useEffect(() => {
-    if (countdown.warning === 'over') expireRef.current();
-  }, [countdown.warning]);
+    if (countdown.warning === 'over') void expire();
+  }, [countdown.warning, expire]);
 
   const setValue = (itemId: string, value: unknown, kind: 'choice' | 'text' = 'choice') => {
     setAnswers((previous) => ({
       ...previous,
       [itemId]: { value, flagged: previous[itemId]?.flagged ?? false },
     }));
-    saver.change({ itemId, value }, kind);
+    change({ itemId, value }, kind);
   };
   const setFlag = (itemId: string, flagged: boolean) => {
     setAnswers((previous) => ({
       ...previous,
       [itemId]: { value: previous[itemId]?.value, flagged },
     }));
-    saver.change({ itemId, flagged });
+    change({ itemId, flagged });
   };
 
   const progress = progressOf(
@@ -209,7 +244,7 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
   const handlers = {
     onValue: setValue,
     onFlag: setFlag,
-    onBlurText: () => void saver.drain(),
+    onBlurText: () => void drain({ retryNow: false }),
   };
   const visible =
     mode === 'one' ? [items[current]].filter((item): item is TakeItem => !!item) : items;
@@ -265,11 +300,21 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
         )}
       </header>
 
-      <div
+      <main
         className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-4 pb-32"
         style={{ fontSize: `${prefs.fontScale / 100}rem` }}
       >
         {timedOut && <BusyNotice title={t('take.timedOut')} hint={t('take.timedOutHint')} />}
+        {saver.rejected.length > 0 && (
+          <ErrorMessage>
+            {t('take.save.rejected', {
+              items: saver.rejected
+                .map(({ itemId }) => items.find((item) => item.itemId === itemId)?.no)
+                .filter((no) => no !== undefined)
+                .join(', '),
+            })}
+          </ErrorMessage>
+        )}
         <div className="flex items-center justify-between gap-3 font-sans">
           <fieldset className="inline-flex rounded-lg border border-border p-0.5">
             <legend className="sr-only">{t('take.mode.label')}</legend>
@@ -327,7 +372,7 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
             );
           })}
         </div>
-      </div>
+      </main>
 
       <nav
         aria-label={t('take.navLabel')}
@@ -372,12 +417,15 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
         <ul className="flex flex-wrap gap-x-4 gap-y-1 font-sans text-sm text-fg-muted">
           {(['done', 'partial', 'blank'] as const).map((state) => (
             <li key={state} className="inline-flex items-center gap-1.5">
-              <span aria-hidden className={`size-3 rounded-sm border ${CELL_TONE[state]}`} />
+              <span
+                aria-hidden
+                className={`size-3 rounded-sm border-2 ${CELL_BORDER[state]} ${CELL_TONE[state]}`}
+              />
               {t(STATE_KEY[state])}
             </li>
           ))}
           <li className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="size-3 rounded-sm border-2 border-warning" />
+            <span aria-hidden className="size-3 rounded-sm border-2 border-dashed border-warning" />
             {t('take.state.flagged')}
           </li>
         </ul>
@@ -389,11 +437,14 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
               <button
                 key={item.itemId}
                 type="button"
-                aria-label={`${t('take.question', { no: item.no })}, ${t(STATE_KEY[state])}${flagged ? `, ${t('take.state.flaggedShort')}` : ''}`}
+                aria-label={t(flagged ? 'take.grid.cellFlagged' : 'take.grid.cell', {
+                  no: item.no,
+                  state: t(STATE_KEY[state]),
+                })}
                 aria-current={index === current ? 'true' : undefined}
                 onClick={() => goTo(index)}
                 className={`inline-flex size-12 cursor-pointer items-center justify-center rounded-lg border-2 font-sans text-sm font-semibold ${CELL_TONE[state]} ${
-                  flagged ? 'border-warning' : ''
+                  flagged ? 'border-dashed border-warning' : CELL_BORDER[state]
                 } ${index === current ? 'ring-2 ring-ring' : ''}`}
               >
                 {item.no}
@@ -438,7 +489,7 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
           <p className="text-sm text-fg-muted">{t('take.confirm.final')}</p>
           {submit.isError && (
             <ErrorMessage>
-              {submit.error instanceof ApiError && submit.error.code === 'UNSAVED'
+              {submit.error instanceof UnsavedError
                 ? t('take.confirm.unsaved')
                 : errorMessage(t, submit.error)}
             </ErrorMessage>
@@ -467,9 +518,15 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
 }
 
 const CELL_TONE: Record<AnswerState, string> = {
-  done: 'border-primary bg-primary-soft text-on-primary-soft',
-  partial: 'border-warning bg-warning-soft text-warning',
-  blank: 'border-border-strong bg-surface text-fg',
+  done: 'bg-primary-soft text-on-primary-soft',
+  partial: 'bg-warning-soft text-warning',
+  blank: 'bg-surface text-fg',
+};
+/** Viền tách riêng khỏi nền: câu đánh dấu thay viền bằng nét đứt màu cảnh báo, không để hai lớp viền tranh nhau. */
+const CELL_BORDER: Record<AnswerState, string> = {
+  done: 'border-primary',
+  partial: 'border-warning',
+  blank: 'border-border-strong',
 };
 
 /** Các câu cần xem lại (chưa làm, làm dở, đánh dấu): chạm để nhảy tới. */
@@ -497,35 +554,5 @@ function JumpList({
         </li>
       ))}
     </ul>
-  );
-}
-
-/** Server báo thiết bị bị thu hồi hoặc Lượt không còn: dừng hẳn, không cho làm tiếp (Q244). */
-export function StopScreen({ reason }: { reason: 'DEVICE_REVOKED' | 'NOT_FOUND' }) {
-  const { t } = useTranslation();
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-4 p-6">
-      <h1 className="text-xl font-semibold">{t(`take.stop.${reason}.title`)}</h1>
-      <p>{t(`take.stop.${reason}.body`)}</p>
-      <Link to="/take" className={buttonClass('primary')}>
-        {t('take.backToList')}
-      </Link>
-    </main>
-  );
-}
-
-/** Lượt đã nộp: chỉ còn giờ nộp, không có nội dung đề và không có điểm (Q206). */
-export function SubmittedScreen({ submittedAt }: { submittedAt: string | null }) {
-  const { t } = useTranslation();
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-4 p-6">
-      <CheckCheck aria-hidden className="size-12 text-success" />
-      <h1 className="text-2xl font-semibold">{t('take.submitted.title')}</h1>
-      {submittedAt && <p>{t('take.submitted.body', { time: formatDateTime(submittedAt) })}</p>}
-      <p className="text-fg-muted">{t('take.submitted.note')}</p>
-      <Link to="/take" className={buttonClass('primary')}>
-        {t('take.backToList')}
-      </Link>
-    </main>
   );
 }

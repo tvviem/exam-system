@@ -468,6 +468,8 @@ export class AttemptsService {
         id: attempt.id,
         attemptNo: attempt.attemptNo,
         submittedAt: attempt.submittedAt,
+        /** Vì sao Lượt kết thúc (Q244): tự nộp, hết giờ, bị Hủy Phiên thi… */
+        submitReason: attempt.submitReason,
         serverNow: now,
       },
     };

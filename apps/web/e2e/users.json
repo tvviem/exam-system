@@ -552,5 +552,25 @@
     "roleTags": ["candidate"],
     "code": "TK3-M-001",
     "classLabel": "LOP-TK3-M"
+  },
+  {
+    "username": "e2e-lb-of-desktop",
+    "fullName": "Bùi Thị Mạng (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK5-D-001",
+    "classLabel": "LOP-TK5-D"
+  },
+  {
+    "username": "e2e-lb-of-mobile",
+    "fullName": "Bùi Thị Mạng (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK5-M-001",
+    "classLabel": "LOP-TK5-M"
   }
 ]

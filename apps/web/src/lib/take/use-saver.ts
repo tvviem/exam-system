@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../api';
 import { saveResponses } from '../take';
 import {
@@ -23,7 +23,7 @@ export type StopReason = 'DEVICE_REVOKED' | 'ATTEMPT_CLOSED' | 'NOT_FOUND';
 const CHOICE_DELAY_MS = 300;
 const TEXT_DELAY_MS = 800;
 
-function stopReasonOf(error: unknown): StopReason | null {
+export function stopReasonOf(error: unknown): StopReason | null {
   if (!(error instanceof ApiError)) return null;
   if (error.status === 404) return 'NOT_FOUND';
   if (error.code !== 'INVALID_STATE') return null;
@@ -32,9 +32,12 @@ function stopReasonOf(error: unknown): StopReason | null {
   return null;
 }
 
-/** Lỗi do chính lô gửi đi (400): thử lại cũng vô ích, nên bỏ lô thay vì kẹt vòng lặp. */
+/**
+ * Lỗi do chính lô gửi đi (dữ liệu sai hình dạng): thử lại cũng vô ích, nên bỏ lô thay vì kẹt vòng lặp. Các lỗi 4xx khác
+ * (401 hết phiên đăng nhập, 408, 429) có thể tự hết nên vẫn thử lại, không bao giờ âm thầm bỏ câu trả lời.
+ */
 const isBadRequest = (error: unknown) =>
-  error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 429;
+  error instanceof ApiError && [400, 413, 422].includes(error.status);
 
 export function useSaver(options: {
   attemptId: string;
@@ -44,8 +47,10 @@ export function useSaver(options: {
   onStop: (reason: StopReason) => void;
 }) {
   const { attemptId } = options;
-  const queue = useRef<QueueState>(seedSeqs(emptyQueue(), options.seqs));
-  const [view, setView] = useState<QueueState>(queue.current);
+  const [initial] = useState(() => seedSeqs(emptyQueue(), options.seqs));
+  const queue = useRef<QueueState>(initial);
+  const [view, setView] = useState<QueueState>(initial);
+  const mounted = useRef(true);
   const [online, setOnline] = useState(() => navigator.onLine);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const sending = useRef(false);
@@ -59,7 +64,7 @@ export function useSaver(options: {
   }, []);
 
   const flush = useCallback(async (): Promise<void> => {
-    if (sending.current || stopped.current) return;
+    if (sending.current || stopped.current || !mounted.current) return;
     const { batch, queue: inflight } = nextBatch(queue.current);
     if (batch.length === 0) return;
     commit(inflight);
@@ -84,7 +89,7 @@ export function useSaver(options: {
             })),
           ),
         );
-      } else {
+      } else if (mounted.current) {
         commit(fail(queue.current));
         clearTimeout(timer.current);
         timer.current = setTimeout(() => void flush(), retryDelayMs(queue.current.failures));
@@ -108,27 +113,35 @@ export function useSaver(options: {
     (item: Change, kind: 'choice' | 'text' = 'choice') => {
       if (stopped.current) return;
       commit(enqueue(queue.current, item));
-      schedule(kind === 'text' ? TEXT_DELAY_MS : CHOICE_DELAY_MS);
+      // Đang chờ thử lại sau lỗi thì giữ nhịp lùi 1, 2, 4… giây, không đặt lại về 300 ms.
+      if (queue.current.failures === 0) {
+        schedule(kind === 'text' ? TEXT_DELAY_MS : CHOICE_DELAY_MS);
+      }
     },
     [schedule, commit],
   );
 
   /** Gửi ngay những gì còn chờ (rời ô tự luận, trước khi Nộp bài). `true` nếu hàng đợi đã trống. */
-  const drain = useCallback(async (): Promise<boolean> => {
-    clearTimeout(timer.current);
-    while (
-      !stopped.current &&
-      (queue.current.pending.length > 0 || queue.current.inflight.length > 0)
-    ) {
-      if (sending.current) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        continue;
+  const drain = useCallback(
+    async (options: { retryNow?: boolean } = {}): Promise<boolean> => {
+      // Rời ô tự luận (`retryNow: false`) không được phá nhịp thử lại khi đang mất mạng.
+      if (options.retryNow === false && queue.current.failures > 0) return false;
+      clearTimeout(timer.current);
+      while (
+        !stopped.current &&
+        (queue.current.pending.length > 0 || queue.current.inflight.length > 0)
+      ) {
+        if (sending.current) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          continue;
+        }
+        await flush();
+        if (queue.current.failures > 0) return false;
       }
-      await flush();
-      if (queue.current.failures > 0) return false;
-    }
-    return queue.current.pending.length === 0 && queue.current.inflight.length === 0;
-  }, [flush]);
+      return queue.current.pending.length === 0 && queue.current.inflight.length === 0;
+    },
+    [flush],
+  );
 
   useEffect(() => {
     const goOnline = () => {
@@ -136,9 +149,13 @@ export function useSaver(options: {
       void flush();
     };
     const goOffline = () => setOnline(false);
+    mounted.current = true;
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
     return () => {
+      // Rời màn (chuyển trang trong ứng dụng): gửi nốt phần đang chờ rồi mới ngừng, kẻo mất thay đổi cuối.
+      void flush();
+      mounted.current = false;
       window.removeEventListener('online', goOnline);
       window.removeEventListener('offline', goOffline);
       clearTimeout(timer.current);
@@ -155,11 +172,9 @@ export function useSaver(options: {
     return () => window.removeEventListener('beforeunload', warn);
   }, [status]);
 
-  return {
-    status,
-    unsaved: view.pending.length + view.inflight.length,
-    rejected: view.rejected,
-    change,
-    drain,
-  };
+  const unsaved = view.pending.length + view.inflight.length;
+  return useMemo(
+    () => ({ status, unsaved, rejected: view.rejected, change, drain }),
+    [status, unsaved, view.rejected, change, drain],
+  );
 }

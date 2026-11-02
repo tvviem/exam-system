@@ -59,7 +59,7 @@ export function TakeQuestion({
           }`}
         >
           <Flag aria-hidden className="size-5" fill={flagged ? 'currentColor' : 'none'} />
-          {flagged ? t('take.unflag') : t('take.flag')}
+          {t('take.flag')}
         </button>
       </header>
       <RichTextView doc={item.stem} />
@@ -116,8 +116,8 @@ function Controls({
     const chosen = Array.isArray(current.optionIds) ? (current.optionIds as string[]) : [];
     const options = item.payload.options ?? [];
     return (
-      <div className="flex flex-col gap-2">
-        <p className="font-sans text-sm text-fg-muted">{t('take.chooseMany')}</p>
+      <fieldset className="flex min-w-0 flex-col gap-2">
+        <legend className="mb-2 font-sans text-sm text-fg-muted">{t('take.chooseMany')}</legend>
         {options.map((option, index) => (
           <label key={option.id} className={rowClass}>
             <input
@@ -138,7 +138,7 @@ function Controls({
             <RichTextView doc={option.content} className="flex-1" />
           </label>
         ))}
-      </div>
+      </fieldset>
     );
   }
 
@@ -192,6 +192,7 @@ function Controls({
     <div className="flex flex-col gap-1">
       <textarea
         aria-label={t('take.essayLabel')}
+        aria-describedby={max > 0 ? `${item.itemId}-count` : undefined}
         value={text}
         maxLength={max || undefined}
         rows={8}
@@ -200,7 +201,7 @@ function Controls({
         className="min-h-48 w-full resize-y rounded-lg border border-border-strong bg-surface p-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-ring/40"
       />
       {max > 0 && (
-        <p className="self-end font-sans text-sm text-fg-muted">
+        <p id={`${item.itemId}-count`} className="self-end font-sans text-sm text-fg-muted">
           {t('take.essayCount', { count: text.length, max })}
         </p>
       )}

@@ -38,4 +38,5 @@ export function parsePrefs(raw: string | null): Prefs {
 }
 
 /** Điện thoại làm từng câu một; từ 900 px hiện cả đề (Q240). */
-export const defaultViewMode = (width: number): 'one' | 'all' => (width >= 900 ? 'all' : 'one');
+export const WIDE_PX = 900;
+export const defaultViewMode = (width: number): 'one' | 'all' => (width >= WIDE_PX ? 'all' : 'one');

@@ -74,12 +74,29 @@ export interface AttemptView {
   sections: TakeSection[];
 }
 
+export type SubmitReason =
+  | 'candidate'
+  | 'timeout'
+  | 'examiner'
+  | 'disqualified'
+  | 'account_locked'
+  | 'session_cancelled';
+
 export interface SubmittedState {
   status: 'submitted';
-  attempt: { id: string; attemptNo: number; submittedAt: string; serverNow: string };
+  attempt: {
+    id: string;
+    attemptNo: number;
+    submittedAt: string;
+    submitReason: SubmitReason | null;
+    serverNow: string;
+  };
 }
 
 export type AttemptState = AttemptView | SubmittedState;
+
+/** Nộp bài khi còn câu trả lời chưa lưu được lên hệ thống (mất kết nối): không nộp, để Người dự thi kết nối lại. */
+export class UnsavedError extends Error {}
 
 export const attemptQueryKey = (id: string) => ['take', 'attempt', id] as const;
 

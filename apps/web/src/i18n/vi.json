@@ -209,18 +209,17 @@
   },
   "take": {
     "title": "Vào thi",
-    "loading": "Đang tải bài làm…",
+    "loading": "Đang tải Lượt làm bài…",
     "backToList": "Về danh sách Phiên thi",
     "question": "Câu {{no}}",
     "points": "({{count}} điểm)",
     "flag": "Đánh dấu xem lại",
-    "unflag": "Bỏ đánh dấu",
     "options": "Phương án",
     "clearChoice": "Bỏ chọn",
     "chooseMany": "Chọn một hoặc nhiều phương án.",
     "true": "Đúng",
     "false": "Sai",
-    "essayLabel": "Bài làm",
+    "essayLabel": "Câu trả lời",
     "essayCount": "{{count}}/{{max}} ký tự",
     "timeLeft": "Thời gian còn lại",
     "submit": "Nộp bài",
@@ -238,7 +237,8 @@
       "saved": "Đã lưu",
       "saving": "Đang lưu…",
       "offline": "Mất kết nối ({{count}} câu chưa lưu)",
-      "unsaved": "Chưa lưu ({{count}} câu), đang thử lại"
+      "unsaved": "Chưa lưu ({{count}} câu), đang thử lại",
+      "rejected": "Hệ thống không nhận được câu trả lời của câu {{items}}. Hãy chọn hoặc nhập lại."
     },
     "state": {
       "done": "đã làm",
@@ -247,7 +247,13 @@
       "flagged": "đánh dấu xem lại",
       "flaggedShort": "đánh dấu"
     },
-    "grid": { "title": "Danh sách câu", "open": "Danh sách câu · {{done}}/{{total}}" },
+    "grid": {
+      "title": "Danh sách câu",
+      "open": "Danh sách câu · {{done}}/{{total}}",
+      "cell": "Câu {{no}}, {{state}}",
+      "cellFlagged": "Câu {{no}}, {{state}}, đánh dấu"
+    },
+    "session": { "questionCount": "{{count}} câu", "minutes": "{{count}} phút" },
     "confirm": {
       "title": "Nộp bài?",
       "allDone": "Bạn đã làm hết {{count}} câu.",
@@ -263,19 +269,17 @@
       "notFound": "Không tìm thấy Phiên thi này trong danh sách của bạn.",
       "exam": "Bộ đề",
       "questions": "Số câu",
-      "questionCount": "{{count}} câu",
       "duration": "Thời lượng",
-      "minutes": "{{count}} phút",
       "attempts": "Số lượt làm",
       "attemptsUsed": "Đã dùng {{used}}/{{max}} lượt",
       "closesAt": "Phiên thi đóng lúc",
-      "noticeDevice": "Hệ thống ghi nhận thiết bị và địa chỉ IP bạn dùng để vào thi. Phiên thi chỉ làm được trên thiết bị này; muốn đổi máy, hãy nhờ Người ra đề.",
+      "noticeDevice": "Hệ thống ghi nhận Thiết bị dự thi và địa chỉ IP bạn dùng để vào thi. Phiên thi chỉ làm được trên thiết bị này; muốn đổi máy, hãy nhờ Người ra đề.",
       "noticeClock": "Đồng hồ bắt đầu chạy khi bạn bấm “Bắt đầu làm bài” và không dừng khi bạn thoát trang hay mất kết nối.",
       "noticeAutosave": "Mỗi câu trả lời được lưu lên hệ thống ngay khi bạn chọn; chỉ báo “Đã lưu” cho biết đã lưu xong.",
       "needCode": "Thiết bị này chưa vào Phiên thi. Hãy quay lại và nhập Mã vào thi.",
       "start": "Bắt đầu làm bài",
       "starting": "Đang bắt đầu…",
-      "resume": "Làm tiếp bài"
+      "resume": "Làm tiếp Lượt làm bài"
     },
     "join": {
       "label": "Mã vào thi",
@@ -304,7 +308,14 @@
     },
     "submitted": {
       "title": "Đã nộp",
-      "body": "Bài làm của bạn được ghi nhận lúc {{time}}.",
+      "body": "Lượt làm bài của bạn được ghi nhận lúc {{time}}.",
+      "reason": {
+        "timeout": "Lượt làm bài kết thúc vì hết giờ.",
+        "examiner": "Người ra đề đã Buộc nộp Lượt làm bài này.",
+        "disqualified": "Lượt làm bài đã bị Đình chỉ.",
+        "account_locked": "Lượt làm bài kết thúc vì tài khoản bị khóa.",
+        "session_cancelled": "Lượt làm bài kết thúc vì Phiên thi đã bị Hủy."
+      },
       "note": "Kết quả (nếu có) chỉ hiện sau khi Người ra đề công bố."
     },
     "stop": {
@@ -313,8 +324,8 @@
         "body": "Người ra đề đã thu hồi thiết bị này khỏi Phiên thi nên không làm tiếp ở đây được. Hãy báo Người ra đề; các câu đã lưu được giữ nguyên."
       },
       "NOT_FOUND": {
-        "title": "Không tìm thấy bài làm",
-        "body": "Bài làm này không còn hoặc không thuộc về bạn."
+        "title": "Không tìm thấy Lượt làm bài",
+        "body": "Lượt làm bài này không còn hoặc không thuộc về bạn."
       }
     },
     "prefs": {

@@ -53,11 +53,11 @@ function ConfirmPage() {
           <dd className="font-medium">{session.examTitle}</dd>
           <dt className="text-fg-muted">{t('take.confirm.questions')}</dt>
           <dd className="font-medium">
-            {t('take.confirm.questionCount', { count: session.questionCount })}
+            {t('take.session.questionCount', { count: session.questionCount })}
           </dd>
           <dt className="text-fg-muted">{t('take.confirm.duration')}</dt>
           <dd className="font-medium">
-            {t('take.confirm.minutes', { count: session.durationMinutes })}
+            {t('take.session.minutes', { count: session.durationMinutes })}
           </dd>
           <dt className="text-fg-muted">{t('take.confirm.attempts')}</dt>
           <dd className="font-medium">

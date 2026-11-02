@@ -469,6 +469,8 @@ Làm đúng Q237–Q242 và Q244, Q246, Q247 (phần trực tuyến), kèm các 
 - **Ô chọn Phương án** là `<input>` thật phủ kín cả dòng, trong suốt: chạm chỗ nào trên dòng cũng chọn, trình đọc màn hình vẫn đọc đúng.
 - **Khung riêng:** màn làm bài khai báo `staticData: { bare: true }` nên bỏ khung chung; ảnh trong đề lấy qua `/api/take-media/<lượt>/...` nhờ `MediaSourceContext`.
 - **Đo gói (B1):** JS riêng của khu làm bài **10,2 KB gzip** (ngưỡng 40 KB); không tải trình soạn, KaTeX, MathLive khi đề không có công thức.
+- **Sau review hai trục:** `view` và Nộp bài trả thêm `submitReason` (màn "Đã nộp" nêu lý do khi không phải tự nộp); 4xx khác 400/413/422 (401, 408, 429) được thử lại, không bao giờ âm thầm bỏ câu trả lời; nhịp thử lại 1, 2, 4… giây không bị phá bởi thao tác mới hay rời ô tự luận; rời màn (chuyển trang) gửi nốt phần chờ; hết giờ chỉ nộp sau khi lưu xong các câu còn chờ, mất mạng thì thử lại; hiện lại tab thì hỏi server giờ chính xác; câu bị server từ chối (`rejected`) có thông báo; nút đánh dấu giữ một nhãn cố định với `aria-pressed`.
+- **Giới hạn đã biết (4c-1):** tải lại trang thì quay về câu 1 (đáp án vẫn còn); bảng "Hiển thị" chưa có ô xem trước một câu mẫu (ui-design 4.1); chưa có E2E màn thu hồi và kiểm thử `use-saver` bằng kho giả (U2, thuộc 4c-2 cùng IndexedDB). Thử mất mạng ngắn đã có E2E.
 - **Chưa có (đúng phạm vi):** hàng đợi giữ qua IndexedDB, đọc lại đề lúc ngoại tuyến, PWA, màn thu hồi đầy đủ (4c-2); Xem thử (4c-3). Hiện tải lại trang lúc mất mạng thì chưa làm tiếp được, và trình duyệt hỏi lại trước khi đóng tab nếu còn câu chưa lưu.
 
 #### Hướng dẫn thử 4c-1 (cho chủ dự án)

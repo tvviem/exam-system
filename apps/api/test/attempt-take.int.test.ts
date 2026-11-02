@@ -539,6 +539,7 @@ describe('lưu Câu trả lời theo lô (Q216, Q231)', () => {
     const first = await an.call('POST', `/take/attempts/${attemptId}/submit`);
     expect(first.statusCode).toBe(200);
     expect(first.json().status).toBe('submitted');
+    expect(first.json().attempt.submitReason).toBe('candidate');
     expect((await an.call('POST', `/take/attempts/${attemptId}/submit`)).json().status).toBe(
       'submitted',
     );
@@ -546,6 +547,7 @@ describe('lưu Câu trả lời theo lô (Q216, Q231)', () => {
     expect(reasonOf(late)).toBe('ATTEMPT_CLOSED');
     const view = (await an.call('GET', `/take/attempts/${attemptId}`)).json();
     expect(view.status).toBe('submitted');
+    expect(view.attempt.submitReason).toBe('candidate');
     expect(view.sections).toBeUndefined();
     const [row] = await sql<{ submit_reason: string }>(`select submit_reason from attempts`);
     expect(row?.submit_reason).toBe('candidate');

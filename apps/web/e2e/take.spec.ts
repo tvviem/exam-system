@@ -35,7 +35,7 @@ test('Làm bài: nhập mã, xác nhận, làm bốn Loại câu ở hai chế �
   await expect(page.getByText(`Đề làm bài ${p}`)).toBeVisible();
   await expect(page.getByText('30 phút')).toBeVisible();
   await expect(page.getByText('4 câu')).toBeVisible();
-  await expect(page.getByText(/thiết bị.*địa chỉ IP/)).toBeVisible();
+  await expect(page.getByText(/Thiết bị dự thi và địa chỉ IP/)).toBeVisible();
   expect(await overflow(page), 'màn xác nhận').toBe(0);
   await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
 
@@ -55,7 +55,7 @@ test('Làm bài: nhập mã, xác nhận, làm bốn Loại câu ở hai chế �
   await page.getByRole('checkbox', { name: 'hai' }).check();
   await page.getByRole('checkbox', { name: 'bảy' }).check();
   await page.getByRole('button', { name: 'Đánh dấu xem lại' }).click();
-  await expect(page.getByRole('button', { name: 'Bỏ đánh dấu' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Đánh dấu xem lại', pressed: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Câu tiếp' }).click();
   // Chùm đúng/sai: mới trả lời một Mệnh đề là "làm dở"
@@ -73,7 +73,7 @@ test('Làm bài: nhập mã, xác nhận, làm bốn Loại câu ở hai chế �
   await expect(page.getByText(`Trình bày định nghĩa giới hạn ${p}`)).toBeVisible();
 
   // Tự luận lưu sau khi ngừng gõ
-  await page.getByRole('textbox', { name: 'Bài làm' }).fill('Giới hạn là giá trị tiến tới.');
+  await page.getByRole('textbox', { name: 'Câu trả lời' }).fill('Giới hạn là giá trị tiến tới.');
   await expect(page.getByRole('status', { name: 'Trạng thái lưu' })).toContainText('Đã lưu');
 
   // Chế độ "Cả đề": thấy mọi câu
@@ -86,10 +86,12 @@ test('Làm bài: nhập mã, xác nhận, làm bốn Loại câu ở hai chế �
   await page.reload();
   await expect(page.getByRole('radio', { name: 'Hà Nội' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'bảy' })).toBeChecked();
-  await expect(page.getByRole('textbox', { name: 'Bài làm' })).toHaveValue(
+  await expect(page.getByRole('textbox', { name: 'Câu trả lời' })).toHaveValue(
     'Giới hạn là giá trị tiến tới.',
   );
-  await expect(page.getByRole('button', { name: 'Bỏ đánh dấu' })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Đánh dấu xem lại', pressed: true })).toHaveCount(
+    1,
+  );
 
   // Nộp bài: hộp thoại nêu câu làm dở và câu đánh dấu
   await page.getByRole('button', { name: 'Nộp bài' }).click();
@@ -135,4 +137,37 @@ test('Thiết bị thứ hai không vào được Phiên thi đã gắn thiết 
   await second.getByLabel('Mã vào thi').fill(code);
   await second.getByRole('button', { name: 'Vào thi' }).click();
   await expect(second.getByText('Bạn đã vào Phiên thi này trên một thiết bị khác')).toBeVisible();
+});
+
+test('Mất kết nối: câu trả lời chờ trong hàng đợi, có mạng lại thì tự lưu đủ (S6b, phần trực tuyến)', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  const tag = p === 'desktop' ? 'D' : 'M';
+  const code = `TKOF${tag}`;
+  const examiner = await examinerPage(browser, `e2e-lb-gv-${p}`);
+  await seedOpenSession(examiner, `${p}-of`, code, `TK5-${tag}-001`);
+
+  await signIn(page, `e2e-lb-of-${p}`);
+  await page.goto('/take');
+  await page.getByLabel('Mã vào thi').fill(code);
+  await page.getByRole('button', { name: 'Vào thi' }).click();
+  await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
+  await page.waitForURL(/\/take\/attempts\//);
+  await page.getByRole('button', { name: 'Cả đề' }).click();
+
+  const status = page.getByRole('status', { name: 'Trạng thái lưu' });
+  await page.context().setOffline(true);
+  await page.getByRole('radio', { name: 'Hà Nội' }).check();
+  await page.getByRole('checkbox', { name: 'bảy' }).check();
+  await expect(status).toContainText('Mất kết nối (2 câu chưa lưu)');
+
+  await page.context().setOffline(false);
+  await expect(status).toContainText('Đã lưu', { timeout: 20_000 });
+
+  // Server đã nhận: tải lại vẫn thấy
+  await page.reload();
+  await expect(page.getByRole('radio', { name: 'Hà Nội' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'bảy' })).toBeChecked();
 });

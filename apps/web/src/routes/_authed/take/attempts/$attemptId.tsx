@@ -5,7 +5,8 @@ import { ApiError } from '../../../../lib/api';
 import { errorMessage } from '../../../../lib/errors';
 import { attemptQuery } from '../../../../lib/take';
 import { buttonClass, ErrorMessage } from '../../../../lib/ui';
-import { AttemptRunner, StopScreen, SubmittedScreen } from '../../../../lib/ui/take-attempt';
+import { AttemptRunner } from '../../../../lib/ui/take-attempt';
+import { StopScreen, SubmittedScreen } from '../../../../lib/ui/take-screens';
 
 export const Route = createFileRoute('/_authed/take/attempts/$attemptId')({
   staticData: { bare: true },
@@ -38,7 +39,12 @@ function AttemptPage() {
     );
   }
   if (attempt.data.status === 'submitted') {
-    return <SubmittedScreen submittedAt={attempt.data.attempt.submittedAt} />;
+    return (
+      <SubmittedScreen
+        submittedAt={attempt.data.attempt.submittedAt}
+        reason={attempt.data.attempt.submitReason}
+      />
+    );
   }
   return <AttemptRunner view={attempt.data} />;
 }
