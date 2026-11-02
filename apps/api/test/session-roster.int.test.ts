@@ -62,6 +62,88 @@ const add = (body: unknown, who = cookie) =>
   api('POST', `/sessions/${sessionId}/roster`, body, who);
 const names = (items: { fullName: string }[]) => items.map((i) => i.fullName).sort();
 
+describe('sắp Danh sách dự thi theo thứ tự từ điển tiếng Việt', () => {
+  const rosterNames = async (query = '') =>
+    (await api('GET', `/sessions/${sessionId}/roster${query}`))
+      .json()
+      .items.map((i: { fullName: string }) => i.fullName);
+
+  async function addPeople(fullNames: string[]) {
+    const ids: string[] = [];
+    for (const [index, fullName] of fullNames.entries()) {
+      ids.push(
+        (
+          await seedUser({
+            username: `vn${index}`,
+            code: `VN${String(index).padStart(3, '0')}`,
+            fullName,
+            roleTags: ['candidate'],
+          })
+        ).id,
+      );
+    }
+    await add({ userIds: ids });
+  }
+
+  it('xếp theo bảng chữ cái: a ă â b c d đ e ê ... o ô ơ ... u ư; Đ đứng sau D, không lẫn với D', async () => {
+    await addPeople([
+      'Nguyễn Văn Ưu',
+      'Nguyễn Văn Ơn',
+      'Nguyễn Văn Ông',
+      'Nguyễn Văn Ôn',
+      'Nguyễn Văn Em',
+      'Nguyễn Văn Êm',
+      'Nguyễn Văn Đức',
+      'Nguyễn Văn Điệp',
+      'Nguyễn Văn Duy',
+      'Nguyễn Văn Dũng',
+      'Nguyễn Văn Bình',
+      'Nguyễn Văn Ân',
+      'Nguyễn Văn Ăn',
+      'Nguyễn Văn Anh',
+    ]);
+    const given = (await rosterNames())
+      .filter((n: string) => n.startsWith('Nguyễn Văn'))
+      .map((n: string) => n.split(' ').at(-1));
+    expect(given).toEqual([
+      'Anh',
+      'Ăn',
+      'Ân',
+      'Bình',
+      'Dũng',
+      'Duy',
+      'Điệp',
+      'Đức',
+      'Em',
+      'Êm',
+      'Ôn',
+      'Ông',
+      'Ơn',
+      'Ưu',
+    ]);
+  });
+
+  it('cùng chữ cái thì thanh điệu theo thứ tự: không dấu, huyền, hỏi, ngã, sắc, nặng', async () => {
+    await addPeople(['Lê Văn Bạ', 'Lê Văn Bá', 'Lê Văn Bã', 'Lê Văn Bả', 'Lê Văn Bà', 'Lê Văn Ba']);
+    const given = (await rosterNames())
+      .filter((n: string) => n.startsWith('Lê Văn'))
+      .map((n: string) => n.split(' ').at(-1));
+    expect(given).toEqual(['Ba', 'Bà', 'Bả', 'Bã', 'Bá', 'Bạ']);
+  });
+
+  it('trùng tên gọi thì xếp tiếp theo họ rồi tên lót, cũng theo từ điển (Đ sau D)', async () => {
+    await addPeople(['Trần Đức Anh', 'Trần Dũng Anh', 'Phạm Văn Anh', 'Âu Văn Anh', 'Ao Văn Anh']);
+    const all = (await rosterNames()).filter((n: string) => n.endsWith(' Anh'));
+    expect(all).toEqual([
+      'Ao Văn Anh',
+      'Âu Văn Anh',
+      'Phạm Văn Anh',
+      'Trần Dũng Anh',
+      'Trần Đức Anh',
+    ]);
+  });
+});
+
 describe('sắp Danh sách dự thi theo Mã định danh', () => {
   const codes = async (query: string) =>
     (await api('GET', `/sessions/${sessionId}/roster${query}`))

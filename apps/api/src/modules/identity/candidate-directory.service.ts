@@ -15,10 +15,16 @@ import { users } from './identity.schema';
 /** Người mang Nhãn Người dự thi (Q200). */
 const hasCandidateTag = sql`exists (select 1 from user_role_tags where user_role_tags.user_id = users.id and user_role_tags.tag = 'candidate')`;
 
-/** Cách xếp danh sách lớp ở Việt Nam: theo tên gọi (từ cuối), rồi họ và tên lót. */
+/**
+ * Thứ tự từ điển tiếng Việt (a ă â b c d đ e ê ... o ô ơ ... u ư ..., thanh điệu: không dấu, huyền, hỏi, ngã, sắc, nặng):
+ * collation ICU `vi-x-icu` của PostgreSQL (có sẵn trong image postgres chính thức). Bỏ dấu rồi so sánh sẽ xếp "Đ" lẫn với "D".
+ */
+const VIETNAMESE = sql.raw('"vi-x-icu"');
+
+/** Cách xếp danh sách lớp ở Việt Nam: theo tên gọi (từ cuối), rồi họ và tên lót, đều theo từ điển. */
 const byGivenName = [
-  sql`unaccent(lower(regexp_replace(${users.fullName}, '^.*\\s', '')))`,
-  sql`unaccent(lower(${users.fullName}))`,
+  sql`regexp_replace(${users.fullName}, '^.*\\s', '') COLLATE ${VIETNAMESE}`,
+  sql`${users.fullName} COLLATE ${VIETNAMESE}`,
   users.id,
 ];
 
@@ -87,7 +93,7 @@ export class CandidateDirectoryService implements CandidateDirectory {
       })
       .from(users)
       .where(and(eligible, matches(like)))
-      .orderBy(sql`unaccent(lower(${users.fullName}))`, users.id)
+      .orderBy(sql`${users.fullName} COLLATE ${VIETNAMESE}`, users.id)
       .limit(options.userLimit);
     const classes = await this.db
       .select({ label: sql<string>`${users.classLabel}`, count: sql<number>`count(*)::int` })
