@@ -219,7 +219,7 @@ describe('Thu hồi thiết bị và Cho vào lại (ADR-0007, Q194, Q234)', () 
     const saved = resumed.sections[0].items.find(
       (i: { type: string }) => i.type === 'essay',
     ).response;
-    expect(saved).toEqual({ value: { text: 'đã lưu' }, flagged: false });
+    expect(saved).toEqual({ value: { text: 'đã lưu' }, flagged: false, clientSeq: 1 });
     expect(await sql(`select 1 from responses`)).toHaveLength(1); // bản trong hàng đợi máy cũ không được nhận
     expect(await sql(`select 1 from attempts`)).toHaveLength(1);
   });

@@ -407,9 +407,21 @@ describe('lưu Câu trả lời theo lô (Q216, Q231)', () => {
     const byType = Object.fromEntries(
       view.sections[0].items.map((i: { type: string; response: unknown }) => [i.type, i.response]),
     );
-    expect(byType.single_choice).toEqual({ value: { optionId: 'o2' }, flagged: false });
-    expect(byType.multiple_choice).toEqual({ value: { optionIds: ['o1', 'o3'] }, flagged: true });
-    expect(byType.essay).toEqual({ value: { text: 'Giới hạn là...' }, flagged: false });
+    expect(byType.single_choice).toEqual({
+      value: { optionId: 'o2' },
+      flagged: false,
+      clientSeq: expect.any(Number),
+    });
+    expect(byType.multiple_choice).toEqual({
+      value: { optionIds: ['o1', 'o3'] },
+      flagged: true,
+      clientSeq: expect.any(Number),
+    });
+    expect(byType.essay).toEqual({
+      value: { text: 'Giới hạn là...' },
+      flagged: false,
+      clientSeq: expect.any(Number),
+    });
   });
 
   it('idempotent theo clientSeq: lặp hoặc cũ hơn thì stale, mới hơn thì ghi đè', async () => {

@@ -141,6 +141,10 @@ export function AppShell({
   const moreActive = overflow.some((item) => pathname.startsWith(item.to));
   // Trang khai báo `staticData: { wide: true }` thì nội dung được rộng tới 1600 px (Q107).
   const wide = useMatches({ select: (matches) => matches.some((m) => m.staticData?.wide) });
+  // Màn làm bài tự dựng thanh trên và thanh dưới của nó (Q238): bỏ khung chung để dành chỗ cho đồng hồ và nút Nộp bài.
+  const bare = useMatches({ select: (matches) => matches.some((m) => m.staticData?.bare) });
+
+  if (bare) return <>{children}</>;
 
   return (
     <>

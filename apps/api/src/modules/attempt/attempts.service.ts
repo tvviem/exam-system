@@ -326,7 +326,10 @@ export class AttemptsService {
     ]);
     if (!content) throw new ApiError('NOT_FOUND');
     const answered = new Map<string, SavedResponse>(
-      saved.map((row) => [row.itemId, { value: row.value, flagged: row.flagged }]),
+      saved.map((row) => [
+        row.itemId,
+        { value: row.value, flagged: row.flagged, clientSeq: row.clientSeq },
+      ]),
     );
     return {
       status: 'in_progress' as const,

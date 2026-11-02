@@ -8,6 +8,8 @@
   },
   "nav": {
     "take": "Vào thi",
+    "areaExaminer": "Soạn đề và tổ chức thi",
+    "areaTake": "Làm bài",
     "logout": "Đăng xuất",
     "authSessions": "Phiên đăng nhập",
     "myAccount": "Tài khoản của tôi",
@@ -204,6 +206,125 @@
     "system": "Theo hệ thống",
     "light": "Sáng",
     "dark": "Tối"
+  },
+  "take": {
+    "title": "Vào thi",
+    "loading": "Đang tải bài làm…",
+    "backToList": "Về danh sách Phiên thi",
+    "question": "Câu {{no}}",
+    "points": "({{count}} điểm)",
+    "flag": "Đánh dấu xem lại",
+    "unflag": "Bỏ đánh dấu",
+    "options": "Phương án",
+    "clearChoice": "Bỏ chọn",
+    "chooseMany": "Chọn một hoặc nhiều phương án.",
+    "true": "Đúng",
+    "false": "Sai",
+    "essayLabel": "Bài làm",
+    "essayCount": "{{count}}/{{max}} ký tự",
+    "timeLeft": "Thời gian còn lại",
+    "submit": "Nộp bài",
+    "prev": "Câu trước",
+    "next": "Câu tiếp",
+    "navLabel": "Điều hướng câu hỏi",
+    "instructions": "Hướng dẫn làm bài",
+    "position": "Câu {{current}}/{{total}}",
+    "timedOut": "Hết giờ. Đang nộp bài…",
+    "timedOutHint": "Các câu đã lưu được giữ nguyên. Nếu mất kết nối, hệ thống sẽ thử nộp lại.",
+    "mode": { "label": "Chế độ xem", "one": "Từng câu", "all": "Cả đề" },
+    "warn": { "five": "Còn 5 phút.", "one": "Còn 1 phút!" },
+    "save": {
+      "label": "Trạng thái lưu",
+      "saved": "Đã lưu",
+      "saving": "Đang lưu…",
+      "offline": "Mất kết nối ({{count}} câu chưa lưu)",
+      "unsaved": "Chưa lưu ({{count}} câu), đang thử lại"
+    },
+    "state": {
+      "done": "đã làm",
+      "partial": "làm dở",
+      "blank": "chưa làm",
+      "flagged": "đánh dấu xem lại",
+      "flaggedShort": "đánh dấu"
+    },
+    "grid": { "title": "Danh sách câu", "open": "Danh sách câu · {{done}}/{{total}}" },
+    "confirm": {
+      "title": "Nộp bài?",
+      "allDone": "Bạn đã làm hết {{count}} câu.",
+      "blank": "{{count}} câu chưa làm",
+      "partial": "{{count}} câu làm dở",
+      "flagged": "{{count}} câu đánh dấu xem lại.",
+      "review": "Câu cần xem lại",
+      "jump": "Đến câu {{no}}",
+      "continue": "Làm tiếp",
+      "submitting": "Đang nộp…",
+      "final": "Nộp rồi thì không sửa được nữa.",
+      "unsaved": "Chưa lưu hết câu trả lời lên hệ thống. Hãy kiểm tra kết nối rồi nộp lại.",
+      "notFound": "Không tìm thấy Phiên thi này trong danh sách của bạn.",
+      "exam": "Bộ đề",
+      "questions": "Số câu",
+      "questionCount": "{{count}} câu",
+      "duration": "Thời lượng",
+      "minutes": "{{count}} phút",
+      "attempts": "Số lượt làm",
+      "attemptsUsed": "Đã dùng {{used}}/{{max}} lượt",
+      "closesAt": "Phiên thi đóng lúc",
+      "noticeDevice": "Hệ thống ghi nhận thiết bị và địa chỉ IP bạn dùng để vào thi. Phiên thi chỉ làm được trên thiết bị này; muốn đổi máy, hãy nhờ Người ra đề.",
+      "noticeClock": "Đồng hồ bắt đầu chạy khi bạn bấm “Bắt đầu làm bài” và không dừng khi bạn thoát trang hay mất kết nối.",
+      "noticeAutosave": "Mỗi câu trả lời được lưu lên hệ thống ngay khi bạn chọn; chỉ báo “Đã lưu” cho biết đã lưu xong.",
+      "needCode": "Thiết bị này chưa vào Phiên thi. Hãy quay lại và nhập Mã vào thi.",
+      "start": "Bắt đầu làm bài",
+      "starting": "Đang bắt đầu…",
+      "resume": "Làm tiếp bài"
+    },
+    "join": {
+      "label": "Mã vào thi",
+      "hint": "Mã do Người ra đề cung cấp. Không cần gõ khoảng trắng hay gạch nối.",
+      "submit": "Vào thi",
+      "joining": "Đang vào…"
+    },
+    "list": {
+      "empty": "Bạn chưa có trong Danh sách dự thi của Phiên thi nào. Hãy nhập Mã vào thi do Người ra đề cung cấp.",
+      "open": "Đang mở",
+      "upcoming": "Sắp mở",
+      "finished": "Đã xong",
+      "attemptsDone": "Đã nộp {{used}}/{{max}} lượt",
+      "attemptsUsed": "Đã làm {{used}}/{{max}} lượt",
+      "revoked": "Thiết bị này đã bị thu hồi. Hãy báo Người ra đề.",
+      "notOpen": "Mở lúc {{time}}",
+      "needCode": "Nhập Mã vào thi để vào.",
+      "start": "Bắt đầu",
+      "resume": "Làm tiếp",
+      "enterCode": "Nhập mã",
+      "closed": {
+        "cancelled": "Phiên thi đã bị hủy.",
+        "entry_closed": "Phiên thi đã đóng cửa vào thi.",
+        "closed": "Phiên thi đã đóng."
+      }
+    },
+    "submitted": {
+      "title": "Đã nộp",
+      "body": "Bài làm của bạn được ghi nhận lúc {{time}}.",
+      "note": "Kết quả (nếu có) chỉ hiện sau khi Người ra đề công bố."
+    },
+    "stop": {
+      "DEVICE_REVOKED": {
+        "title": "Thiết bị này đã bị thu hồi",
+        "body": "Người ra đề đã thu hồi thiết bị này khỏi Phiên thi nên không làm tiếp ở đây được. Hãy báo Người ra đề; các câu đã lưu được giữ nguyên."
+      },
+      "NOT_FOUND": {
+        "title": "Không tìm thấy bài làm",
+        "body": "Bài làm này không còn hoặc không thuộc về bạn."
+      }
+    },
+    "prefs": {
+      "open": "Hiển thị",
+      "title": "Hiển thị",
+      "fontSize": "Cỡ chữ",
+      "typeface": "Kiểu chữ nội dung đề",
+      "serif": "Có chân",
+      "sans": "Không chân"
+    }
   },
   "pagination": {
     "label": "Phân trang",
