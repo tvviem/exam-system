@@ -12,11 +12,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gt, isNotNull, isNull, lte, or, type SQL, sql } from 'drizzle-orm';
 import { ApiError, validationFailed } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
+import { EXAM_CATALOG, type ExamCatalog } from '../../common/exam-catalog';
 import { type Page, paginate } from '../../common/pagination';
 import { exclusionViolationOf } from '../../common/pg-error';
 import { escapeLike } from '../../common/sql-like';
 import { type Database, DB, type Transaction } from '../../db/db.module';
-import { exams } from '../exam/exam.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { sessions } from './session.schema';
 import { lockOwnedSession, notifyRoster } from './session-access';
@@ -58,6 +58,7 @@ export class SessionsService {
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(EXAM_CATALOG) private readonly exams: ExamCatalog,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -68,7 +69,7 @@ export class SessionsService {
 
   /** Tạo trong giao dịch của bên gọi (Nhân bản); trả id Phiên thi mới. */
   async createWithin(tx: Transaction, ownerId: string, input: SessionSettings): Promise<string> {
-    await this.requireUsableExam(tx, ownerId, input.examId);
+    await this.requireUsableExam(ownerId, input.examId);
     return this.insert(tx, ownerId, input);
   }
 
@@ -88,7 +89,7 @@ export class SessionsService {
         throw new ApiError('VALIDATION_FAILED', {
           issues: problems.map(({ path, code }) => ({ path, code })),
         });
-      if (next.examId !== current.examId) await this.requireUsableExam(tx, ownerId, next.examId);
+      if (next.examId !== current.examId) await this.requireUsableExam(ownerId, next.examId);
 
       try {
         await tx
@@ -142,13 +143,13 @@ export class SessionsService {
             ...this.summaryColumns(),
           })
           .from(sessions)
-          .innerJoin(exams, eq(exams.id, sessions.examId))
           .where(where)
           .orderBy(desc(sessions.opensAt), desc(sessions.id))
           .limit(limit)
           .offset(offset),
     );
-    return { ...result, items: result.items.map((row) => this.present(row, now)) };
+    const titles = await this.exams.titlesOf(result.items.map((row) => row.examId));
+    return { ...result, items: result.items.map((row) => this.present(row, titles, now)) };
   }
 
   get(ownerId: string, id: string) {
@@ -159,7 +160,6 @@ export class SessionsService {
     return {
       id: sessions.id,
       examId: sessions.examId,
-      examTitle: exams.title,
       title: sessions.title,
       opensAt: sessions.opensAt,
       closesAt: sessions.closesAt,
@@ -182,34 +182,31 @@ export class SessionsService {
 
   private present<
     T extends {
+      examId: string;
       opensAt: Date;
       closesAt: Date;
       entryClosedAt: Date | null;
       cancelledAt: Date | null;
     },
-  >(row: T, now: Date) {
-    return { ...row, phase: phaseOf(row, now) };
+  >(row: T, titles: Map<string, string>, now: Date) {
+    return { ...row, examTitle: titles.get(row.examId) ?? '', phase: phaseOf(row, now) };
   }
 
   protected async detail(db: Db, ownerId: string, id: string) {
     const [row] = await db
       .select(this.summaryColumns())
       .from(sessions)
-      .innerJoin(exams, eq(exams.id, sessions.examId))
       .where(and(eq(sessions.id, id), eq(sessions.ownerId, ownerId)));
     if (!row) throw new ApiError('NOT_FOUND');
-    return this.present(row, this.clock.now());
+    return this.present(row, await this.exams.titlesOf([row.examId]), this.clock.now());
   }
 
   /** Bộ đề phải của chính người tạo và đã Phát hành, chưa Lưu trữ (Q203). */
-  private async requireUsableExam(tx: Transaction, ownerId: string, examId: string) {
-    const [exam] = await tx
-      .select({ status: exams.status })
-      .from(exams)
-      .where(and(eq(exams.id, examId), eq(exams.ownerId, ownerId)));
-    if (!exam) throw validationFailed('examId', 'unknown_exam');
-    if (exam.status === 'draft') throw validationFailed('examId', 'exam_not_published');
-    if (exam.status === 'archived') throw validationFailed('examId', 'exam_archived');
+  private async requireUsableExam(ownerId: string, examId: string) {
+    const status = await this.exams.statusOwnedBy(ownerId, examId);
+    if (!status) throw validationFailed('examId', 'unknown_exam');
+    if (status === 'draft') throw validationFailed('examId', 'exam_not_published');
+    if (status === 'archived') throw validationFailed('examId', 'exam_archived');
   }
 
   private async codeTaken(db: Db, code: string, opensAt: Date, closesAt: Date, exceptId?: string) {

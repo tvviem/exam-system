@@ -14,6 +14,7 @@ import { SessionModule } from './modules/session/session.module';
 import { OwnedContentWiringModule } from './owned-content-wiring.module';
 import { QueueModule } from './queue/job-queue';
 import { RedisModule } from './redis/redis.module';
+import { SessionPortsWiringModule } from './session-ports-wiring.module';
 import { SessionUsageWiringModule } from './session-usage-wiring.module';
 
 @Module({
@@ -33,6 +34,7 @@ import { SessionUsageWiringModule } from './session-usage-wiring.module';
     ExamUsageWiringModule,
     SessionModule,
     SessionUsageWiringModule,
+    SessionPortsWiringModule,
     HealthModule,
   ],
 })

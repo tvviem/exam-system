@@ -1,14 +1,17 @@
 import { normalizeForSearch, SESSION_ROSTER_MAX } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Actor } from '../../common/actor';
 import { ApiError } from '../../common/api-error';
+import {
+  CANDIDATE_DIRECTORY,
+  type CandidateDirectory,
+  type CandidateSelector,
+} from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
-import { type Page, paginate } from '../../common/pagination';
-import { escapeLike } from '../../common/sql-like';
-import { type Database, DB, type Transaction } from '../../db/db.module';
+import { type Page } from '../../common/pagination';
+import { type Database, DB } from '../../db/db.module';
 import { RequesterCredentialsService } from '../identity/account-requests/requester-credentials.service';
-import { users } from '../identity/identity.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { sessionRoster } from './session.schema';
 import { findOwnedSession, lockOwnedSession, requireNotOver } from './session-access';
@@ -16,7 +19,7 @@ import { findOwnedSession, lockOwnedSession, requireNotOver } from './session-ac
 const SEARCH_USERS = 20;
 const SEARCH_CLASSES = 10;
 
-export type RosterSelector = { userIds: string[] } | { classLabel: string } | { codes: string[] };
+export type RosterSelector = CandidateSelector;
 
 export type IneligibleReason = 'owner_cannot_sit' | 'locked' | 'not_candidate';
 
@@ -28,97 +31,84 @@ export interface RosterAddResult {
   dryRun: boolean;
 }
 
-/** Người mang Nhãn Người dự thi, chưa Khóa hay Xóa, không phải chủ Phiên thi: được thêm vào Danh sách (Q200). */
-const hasCandidateTag = sql`exists (select 1 from user_role_tags where user_role_tags.user_id = users.id and user_role_tags.tag = 'candidate')`;
-
 /** Danh sách dự thi (Q200): ai được phép dự thi một Phiên thi. */
 @Injectable()
 export class SessionRosterService {
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     private readonly notifications: NotificationsService,
     private readonly credentials: RequesterCredentialsService,
   ) {}
 
   async list(ownerId: string, sessionId: string, filter: { q?: string }, page: Page) {
     await findOwnedSession(this.db, ownerId, sessionId);
-    const q = filter.q ? normalizeForSearch(filter.q) : '';
-    const where = and(
-      eq(sessionRoster.sessionId, sessionId),
-      q
-        ? sql`(unaccent(lower(${users.fullName})) LIKE ${`%${escapeLike(q)}%`} OR lower(${users.code}) LIKE ${`%${escapeLike(q)}%`})`
-        : undefined,
-    );
-    return paginate(
-      page,
-      () =>
-        this.db
-          .select({ total: sql<number>`count(*)::int` })
-          .from(sessionRoster)
-          .innerJoin(users, eq(users.id, sessionRoster.userId))
-          .where(where),
-      (limit, offset) =>
-        this.db
-          .select({
-            userId: sessionRoster.userId,
-            code: users.code,
-            fullName: users.fullName,
-            classLabel: sessionRoster.classLabel,
-            extraMinutes: sessionRoster.extraMinutes,
-            addedAt: sessionRoster.addedAt,
-          })
-          .from(sessionRoster)
-          .innerJoin(users, eq(users.id, sessionRoster.userId))
-          .where(where)
-          // Cách xếp danh sách lớp ở Việt Nam: theo tên gọi (từ cuối), rồi họ và tên lót.
-          .orderBy(
-            sql`unaccent(lower(regexp_replace(${users.fullName}, '^.*\\s', '')))`,
-            sql`unaccent(lower(${users.fullName}))`,
-            users.id,
-          )
-          .limit(limit)
-          .offset(offset),
-    );
+    // Danh sách tối đa 500 người: lấy hết dòng của Phiên thi rồi nhờ danh bạ lọc, xếp và cắt trang theo hồ sơ.
+    const members = await this.db
+      .select({
+        userId: sessionRoster.userId,
+        classLabel: sessionRoster.classLabel,
+        extraMinutes: sessionRoster.extraMinutes,
+        addedAt: sessionRoster.addedAt,
+      })
+      .from(sessionRoster)
+      .where(eq(sessionRoster.sessionId, sessionId));
+    const byUser = new Map(members.map((member) => [member.userId, member]));
+    const { total, items } = await this.directory.page([...byUser.keys()], {
+      q: filter.q,
+      limit: page.pageSize,
+      offset: (page.page - 1) * page.pageSize,
+    });
+    return {
+      total,
+      page: page.page,
+      pageSize: page.pageSize,
+      items: items.map((person) => {
+        const member = byUser.get(person.id) as NonNullable<ReturnType<typeof byUser.get>>;
+        return {
+          userId: person.id,
+          code: person.code,
+          fullName: person.fullName,
+          classLabel: member.classLabel,
+          extraMinutes: member.extraMinutes,
+          addedAt: member.addedAt,
+        };
+      }),
+    };
   }
 
   /** Gợi ý người và Lớp để thêm; mỗi người kèm cờ đã có trong Danh sách. */
   async search(ownerId: string, sessionId: string, rawQuery: string) {
     await findOwnedSession(this.db, ownerId, sessionId);
-    const q = normalizeForSearch(rawQuery);
-    if (!q) return { users: [], classes: [] };
-    const like = `%${escapeLike(q)}%`;
-    const eligible = and(
-      isNull(users.removedAt),
-      eq(users.status, 'active'),
-      hasCandidateTag,
-      sql`${users.id} <> ${ownerId}`,
+    if (!normalizeForSearch(rawQuery)) return { users: [], classes: [] };
+    const { users, classes } = await this.directory.search(rawQuery, {
+      excludeUserId: ownerId,
+      userLimit: SEARCH_USERS,
+      classLimit: SEARCH_CLASSES,
+    });
+    const inRoster = new Set(
+      users.length === 0
+        ? []
+        : (
+            await this.db
+              .select({ userId: sessionRoster.userId })
+              .from(sessionRoster)
+              .where(
+                and(
+                  eq(sessionRoster.sessionId, sessionId),
+                  inArray(
+                    sessionRoster.userId,
+                    users.map((user) => user.id),
+                  ),
+                ),
+              )
+          ).map((row) => row.userId),
     );
-    const found = await this.db
-      .select({
-        userId: users.id,
-        code: users.code,
-        fullName: users.fullName,
-        classLabel: users.classLabel,
-        inRoster: sql<boolean>`exists (select 1 from session_roster where session_roster.session_id = ${sessionId} and session_roster.user_id = users.id)`,
-      })
-      .from(users)
-      .where(
-        and(
-          eligible,
-          sql`(unaccent(lower(${users.fullName})) LIKE ${like} OR lower(${users.code}) LIKE ${like})`,
-        ),
-      )
-      .orderBy(sql`unaccent(lower(${users.fullName}))`, users.id)
-      .limit(SEARCH_USERS);
-    const classes = await this.db
-      .select({ label: sql<string>`${users.classLabel}`, count: sql<number>`count(*)::int` })
-      .from(users)
-      .where(and(eligible, sql`unaccent(lower(${users.classLabel})) LIKE ${like}`))
-      .groupBy(users.classLabel)
-      .orderBy(users.classLabel)
-      .limit(SEARCH_CLASSES);
-    return { users: found, classes };
+    return {
+      users: users.map(({ id, ...rest }) => ({ userId: id, ...rest, inRoster: inRoster.has(id) })),
+      classes,
+    };
   }
 
   /**
@@ -135,14 +125,14 @@ export class SessionRosterService {
       const session = await lockOwnedSession(tx, ownerId, sessionId);
       requireNotOver(session, this.clock.now());
 
-      const { people, notFound } = await this.resolve(tx, selector);
+      const { people, notFound } = await this.directory.resolve(selector);
       const ineligible: RosterAddResult['ineligible'] = [];
       const eligible: typeof people = [];
       for (const person of people) {
         const reason: IneligibleReason | null =
           person.id === ownerId
             ? 'owner_cannot_sit'
-            : person.removedAt || !person.isCandidate
+            : person.removed || !person.isCandidate
               ? 'not_candidate'
               : person.status === 'locked'
                 ? 'locked'
@@ -241,51 +231,4 @@ export class SessionRosterService {
     if (!member) throw new ApiError('NOT_FOUND');
     return this.credentials.reissueTemporaryPassword(actor, userId, { sessionId });
   }
-
-  private async resolve(tx: Transaction, selector: RosterSelector) {
-    const columns = {
-      id: users.id,
-      code: users.code,
-      classLabel: users.classLabel,
-      status: users.status,
-      removedAt: users.removedAt,
-      isCandidate: sql<boolean>`${hasCandidateTag}`,
-    };
-    const find = (where: SQL | undefined) => tx.select(columns).from(users).where(where);
-    if ('userIds' in selector) {
-      const people = await find(inArray(users.id, selector.userIds));
-      const known = new Set(people.map((p) => p.id));
-      // Id không có trong hệ thống: không phải Người dự thi.
-      const unknown = selector.userIds.filter((id) => !known.has(id));
-      return {
-        people: [...people, ...unknown.map((id) => ({ ...BLANK, id }))],
-        notFound: [],
-      };
-    }
-    if ('classLabel' in selector) {
-      const people = await find(
-        and(
-          isNull(users.removedAt),
-          sql`lower(${users.classLabel}) = lower(${selector.classLabel})`,
-        ),
-      );
-      return { people, notFound: [] };
-    }
-    // Mã không phân biệt hoa thường; mã trùng trong danh sách dán chỉ tính một lần.
-    const unique = new Map(selector.codes.map((code) => [code.toLowerCase(), code]));
-    const people = await find(
-      and(isNull(users.removedAt), inArray(sql`lower(${users.code})`, [...unique.keys()])),
-    );
-    const matched = new Set(people.map((p) => p.code?.toLowerCase()));
-    const notFound = [...unique].filter(([key]) => !matched.has(key)).map(([, code]) => code);
-    return { people, notFound };
-  }
 }
-
-const BLANK = {
-  code: null,
-  classLabel: null,
-  status: 'active' as const,
-  removedAt: new Date(0),
-  isCandidate: false,
-};
