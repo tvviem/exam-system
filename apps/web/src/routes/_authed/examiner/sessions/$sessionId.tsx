@@ -95,9 +95,11 @@ function SessionDetail({ session }: { session: SessionSummary }) {
   const remove = useMutation({
     mutationFn: () => deleteSession(session.id),
     onSuccess: async () => {
-      await refresh();
+      // Gỡ truy vấn chi tiết của Phiên thi vừa xóa: làm mới nó sẽ nhận 404 rồi thử lại ~7 giây trước khi chuyển trang.
+      queryClient.removeQueries({ queryKey: sessionQuery(session.id).queryKey });
       toast(t('session.action.deleted'));
       await navigate({ to: '/examiner/sessions' });
+      void refresh();
     },
   });
 
