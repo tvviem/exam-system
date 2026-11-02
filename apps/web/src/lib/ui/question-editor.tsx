@@ -178,10 +178,12 @@ export function QuestionEditor({
     onSuccess: async () => {
       writeStored(storageKey, null);
       skipBlock.current = true;
-      await queryClient.invalidateQueries({ queryKey: ['questions'] });
-      await queryClient.invalidateQueries({ queryKey: ['topics'] });
+      // Gỡ truy vấn chi tiết của câu vừa xóa: làm mới nó sẽ nhận 404 rồi thử lại ~7 giây trước khi chuyển trang.
+      queryClient.removeQueries({ queryKey: questionQuery((question as Question).id).queryKey });
       toast(t('questionBank.deleted'));
       await navigate({ to: '/examiner/questions' });
+      void queryClient.invalidateQueries({ queryKey: ['questions'] });
+      void queryClient.invalidateQueries({ queryKey: ['topics'] });
     },
   });
 

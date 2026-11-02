@@ -460,5 +460,21 @@
     "roleTags": ["candidate"],
     "code": "PT-M-003",
     "classLabel": "LOP-M-B"
+  },
+  {
+    "username": "e2e-xc-desktop",
+    "fullName": "Giảng viên Xóa câu desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-xc-mobile",
+    "fullName": "Giảng viên Xóa câu mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]

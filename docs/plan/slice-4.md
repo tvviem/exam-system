@@ -422,7 +422,7 @@ Thứ tự 4b-1: test kiến trúc đỏ, tách `ExamCatalog`, tách `CandidateD
 
 ### Bổ sung sau 4a: sắp Danh sách dự thi (chủ dự án chốt 2/11/2026)
 
-Danh sách dự thi sắp theo **tên gọi, rồi họ, rồi tên lót** (mặc định, `sort=name`) hoặc theo **Mã định danh** (`sort=code`). Mã định danh ở trường thật dài cố định (ví dụ `237480201001`: 23 là khóa, `7480201` là mã ngành, `001` là số thứ tự), và mã demo viết `SV01`…`SV99`, nên chỉ cần so **từng ký tự** (chữ và số, không phân biệt hoa thường), không cần sắp "tự nhiên"; người chưa có mã đứng cuối. Chữ "Đ" hiện xếp lẫn với "D" (chưa đổi).
+Danh sách dự thi sắp theo **tên gọi, rồi họ, rồi tên lót** (mặc định, `sort=name`) hoặc theo **Mã định danh** (`sort=code`). Mã định danh ở trường thật dài cố định (ví dụ `237480201001`: 23 là khóa, `7480201` là mã ngành, `001` là số thứ tự), và mã demo viết `SV01`…`SV99`, nên chỉ cần so **từng ký tự** (chữ và số, không phân biệt hoa thường), không cần sắp "tự nhiên"; người chưa có mã đứng cuối. Theo tên gọi, họ và tên lót đều xếp **theo thứ tự từ điển tiếng Việt** (a ă â b c d đ e ê ... o ô ơ ... u ư ...; thanh điệu: không dấu, huyền, hỏi, ngã, sắc, nặng), nên "Đ" đứng sau "D" (chủ dự án chốt 2/11/2026). Cài đặt bằng collation ICU `vi-x-icu` của PostgreSQL (image postgres chính thức có sẵn; test `session-roster.int.test.ts` bắt nếu thiếu).
 
 ### PR 4b-2: ghi chú triển khai (2/11/2026)
 
