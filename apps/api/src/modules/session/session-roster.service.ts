@@ -11,7 +11,9 @@ import {
 } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { type Page } from '../../common/pagination';
-import { type Database, DB } from '../../db/db.module';
+import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
+import { type Database, DB, type Transaction } from '../../db/db.module';
+import { AuditService } from '../audit/audit.service';
 import { RequesterCredentialsService } from '../identity/account-requests/requester-credentials.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { sessionRoster } from './session.schema';
@@ -39,6 +41,8 @@ export class SessionRosterService {
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
+    @Inject(SESSION_ATTEMPTS) private readonly attempts: SessionAttempts,
+    private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly credentials: RequesterCredentialsService,
   ) {}
@@ -67,6 +71,11 @@ export class SessionRosterService {
       limit: page.pageSize,
       offset: (page.page - 1) * page.pageSize,
     });
+    // Thiết bị và số Lượt do module `attempt` giữ (Q234): Người ra đề thấy thiết bị lạ để Thu hồi.
+    const [devices, counts] = await Promise.all([
+      this.attempts.devicesOf(sessionId),
+      this.attempts.attemptCounts(sessionId),
+    ]);
     return {
       total,
       page: page.page,
@@ -74,6 +83,16 @@ export class SessionRosterService {
       items: items.map((person) => {
         const member = byUser.get(person.id);
         if (!member) throw new Error(`Danh bạ trả người ngoài Danh sách: ${person.id}`);
+        const own = devices.get(person.id) ?? [];
+        const active = own.find((device) => device.status === 'active');
+        const present = (device: (typeof own)[number]) => ({
+          id: device.deviceId,
+          status: device.status,
+          ip: device.ip,
+          userAgent: device.userAgent,
+          boundAt: device.boundAt,
+          revokedAt: device.revokedAt,
+        });
         return {
           userId: person.id,
           code: person.code,
@@ -81,6 +100,9 @@ export class SessionRosterService {
           classLabel: member.classLabel,
           extraMinutes: member.extraMinutes,
           addedAt: member.addedAt,
+          attemptCount: counts.get(person.id) ?? 0,
+          device: active ? present(active) : null,
+          revokedDevices: own.filter((device) => device.status === 'revoked').map(present),
         };
       }),
     };
@@ -205,6 +227,12 @@ export class SessionRosterService {
     return this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, sessionId);
       requireNotOver(session, this.clock.now());
+      // Q217: người đã có Lượt làm bài không bị bớt (khóa ngoại cũng chặn); từ chối cả yêu cầu, không bớt dở dang.
+      const counts = await this.attempts.attemptCounts(sessionId);
+      const withAttempts = userIds.filter((id) => (counts.get(id) ?? 0) > 0);
+      if (withAttempts.length > 0) {
+        throw new ApiError('INVALID_STATE', { reason: 'HAS_ATTEMPTS', userIds: withAttempts });
+      }
       const removed = await tx
         .delete(sessionRoster)
         .where(and(eq(sessionRoster.sessionId, sessionId), inArray(sessionRoster.userId, userIds)))
@@ -238,5 +266,69 @@ export class SessionRosterService {
       .where(and(eq(sessionRoster.sessionId, sessionId), eq(sessionRoster.userId, userId)));
     if (!member) throw new ApiError('NOT_FOUND');
     return this.credentials.reissueTemporaryPassword(actor, userId, { sessionId });
+  }
+
+  /** Thu hồi thiết bị đang gắn của một người (ADR-0007): máy cũ bị chặn ngay, máy mới nhập mã sẽ làm tiếp Lượt cũ. */
+  async revokeDevice(actor: Actor, sessionId: string, userId: string, reason: string | null) {
+    await this.db.transaction(async (tx) => {
+      const session = await lockOwnedSession(tx, actor.id, sessionId);
+      if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
+      await this.requireMember(tx, sessionId, userId);
+      const revoked = await this.attempts.revokeDevice(tx, {
+        sessionId,
+        userId,
+        by: actor.id,
+        reason,
+        now: this.clock.now(),
+      });
+      if (!revoked) throw new ApiError('INVALID_STATE', { reason: 'NO_ACTIVE_DEVICE' });
+      await this.audit.record(
+        {
+          actor,
+          action: 'session.device_revoked',
+          entityType: 'session',
+          entityId: sessionId,
+          after: { userId, reason },
+        },
+        tx,
+      );
+    });
+    return { ok: true };
+  }
+
+  /** "Cho thiết bị này vào lại" (thu hồi nhầm): thiết bị đang gắn khác, nếu có, bị thu hồi trong cùng thao tác. */
+  async pardonDevice(actor: Actor, sessionId: string, userId: string, deviceId: string) {
+    await this.db.transaction(async (tx) => {
+      const session = await lockOwnedSession(tx, actor.id, sessionId);
+      if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
+      await this.requireMember(tx, sessionId, userId);
+      const done = await this.attempts.pardonDevice(tx, {
+        sessionId,
+        userId,
+        deviceId,
+        by: actor.id,
+        now: this.clock.now(),
+      });
+      if (!done) throw new ApiError('NOT_FOUND');
+      await this.audit.record(
+        {
+          actor,
+          action: 'session.device_pardoned',
+          entityType: 'session',
+          entityId: sessionId,
+          after: { userId, deviceId },
+        },
+        tx,
+      );
+    });
+    return { ok: true };
+  }
+
+  private async requireMember(tx: Transaction, sessionId: string, userId: string) {
+    const [member] = await tx
+      .select({ userId: sessionRoster.userId })
+      .from(sessionRoster)
+      .where(and(eq(sessionRoster.sessionId, sessionId), eq(sessionRoster.userId, userId)));
+    if (!member) throw new ApiError('NOT_FOUND');
   }
 }

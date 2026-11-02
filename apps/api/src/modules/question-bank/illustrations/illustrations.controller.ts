@@ -12,7 +12,8 @@ import {
 } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { validationFailed } from '../../../common/api-error';
+import { ApiError, validationFailed } from '../../../common/api-error';
+import { CANDIDATE_MEDIA, type CandidateMedia } from '../../../common/candidate-media';
 import { pageSchema } from '../../../common/pagination';
 import { ENV } from '../../../config/config.module';
 import type { Env } from '../../../config/env';
@@ -63,6 +64,25 @@ const variantSchema = z.coerce
   .int()
   .refine((side) => (VARIANT_SIDES as readonly number[]).includes(side));
 
+/** Gửi một biến thể ảnh: nginx đọc file qua X-Accel-Redirect ở production, dev thì api đọc từ kho. */
+async function sendVariant(
+  reply: FastifyReply,
+  env: Env,
+  media: MediaStore,
+  key: string,
+): Promise<unknown> {
+  // Nội dung của một id không đổi nên lưu đệm lâu; `private` vì chỉ người được phép xem.
+  reply
+    .header('content-type', 'image/webp')
+    .header('cache-control', 'private, max-age=31536000, immutable')
+    .header('x-content-type-options', 'nosniff');
+  if (env.MEDIA_ACCEL_PREFIX) {
+    reply.header('x-accel-redirect', `${env.MEDIA_ACCEL_PREFIX}/${key}`);
+    return '';
+  }
+  return media.get(key);
+}
+
 /** Phục vụ ảnh có kiểm quyền (Q141). Production để nginx đọc file qua X-Accel-Redirect. */
 @RequireTag('examiner')
 @Controller('media')
@@ -83,15 +103,40 @@ export class MediaController {
     const side = variantSchema.safeParse(variant);
     if (!side.success) throw validationFailed('variant', 'invalid');
     const key = await this.illustrations.variantKey(user.id, id, side.data);
-    // Nội dung của một id không đổi nên lưu đệm lâu; `private` vì chỉ chủ được xem.
-    reply
-      .header('content-type', 'image/webp')
-      .header('cache-control', 'private, max-age=31536000, immutable')
-      .header('x-content-type-options', 'nosniff');
-    if (this.env.MEDIA_ACCEL_PREFIX) {
-      reply.header('x-accel-redirect', `${this.env.MEDIA_ACCEL_PREFIX}/${key}`);
-      return '';
+    return sendVariant(reply, this.env, this.media, key);
+  }
+}
+
+/**
+ * Ảnh trong đề cho Người dự thi (Q219): chỉ khi có Lượt đang làm trên đúng thiết bị đã gắn. Quyền do cổng
+ * `CANDIDATE_MEDIA` quyết định; `question-bank` không biết Lượt làm bài.
+ */
+@RequireTag('candidate')
+@Controller('take-media')
+export class CandidateMediaController {
+  constructor(
+    private readonly illustrations: IllustrationsService,
+    @Inject(CANDIDATE_MEDIA) private readonly candidateMedia: CandidateMedia,
+    @Inject(MEDIA_STORE) private readonly media: MediaStore,
+    @Inject(ENV) private readonly env: Env,
+  ) {}
+
+  @Get(':attemptId/:id/:variant')
+  async serve(
+    @Param('attemptId', ParseUUIDPipe) attemptId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('variant') variant: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const side = variantSchema.safeParse(variant);
+    if (!side.success) throw validationFailed('variant', 'invalid');
+    const deviceKey = req.cookies?.exam_did;
+    if (!(await this.candidateMedia.canView(user.id, deviceKey, attemptId, id))) {
+      throw new ApiError('NOT_FOUND');
     }
-    return this.media.get(key);
+    const key = await this.illustrations.variantKeyUnchecked(id, side.data);
+    return sendVariant(reply, this.env, this.media, key);
   }
 }

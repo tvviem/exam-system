@@ -268,31 +268,49 @@ Trạng thái hiện cho Người ra đề (Sắp mở, Đang mở, Đóng cửa
 
 ## 5. Lượt làm bài và Chấm (module `attempt`, `grading`)
 
+Phần Thiết bị dự thi, Lượt làm bài và Câu trả lời thực hiện ở migration 0013 (PR 4b-2); thiết kế và lý do ở [plan/slice-4.md](plan/slice-4.md) (Q192–Q236, ADR-0007). Cột điểm và chấm thêm ở lát cắt 5, bảng sự kiện và Vi phạm thêm ở PR 4d.
+
 ```sql
+session_devices (                         -- Thiết bị dự thi (ADR-0007, Q234)
+  id, session_id, user_id, device_hash text NOT NULL,   -- SHA-256 của cookie exam_did, không giữ giá trị gốc
+  ip inet, user_agent text,                              -- để Người ra đề nhận ra thiết bị lạ
+  status enum('active','revoked') DEFAULT 'active',
+  bound_at, revoked_at, revoked_by → users, revoke_reason text, pardoned_at,
+  FOREIGN KEY (session_id, user_id) → session_roster ON DELETE CASCADE,  -- bớt người (chưa có Lượt) thì thiết bị đi theo
+  UNIQUE (session_id, user_id, device_hash)
+)
+UNIQUE (session_id, user_id)     WHERE status = 'active'    -- tối đa một thiết bị đang gắn mỗi người
+UNIQUE (session_id, device_hash) WHERE status = 'active'    -- một thiết bị chỉ phục vụ một người (Q209)
+
 attempts (
-  id, session_id → sessions, user_id → users, attempt_no int,
-  seed bigint, layout jsonb,              -- thứ tự câu và phương án đã cố định
-  started_at, deadline, submitted_at,
-  active_auth_session_id → auth_sessions, -- thiết bị đang làm bài; đổi máy cần Người ra đề Cho phép
-  submit_reason enum('candidate','timeout','examiner','disqualified','account_locked'),
-  status enum('in_progress','submitted','graded'),
-  auto_score numeric, manual_score numeric,
-  raw_score numeric, max_score numeric,   -- Điểm thô; Điểm quy đổi = round(raw/max*10, 2)
+  id, session_id → sessions ON DELETE RESTRICT, user_id → users, attempt_no int CHECK (>= 1),
+  seed bigint, layout jsonb,              -- thứ tự câu và phương án cố định (layoutOf ở @exam/shared)
+  started_at, deadline CHECK (> started_at),  -- deadline: nguồn sự thật của hạn nộp, server quyết định
+  submitted_at, submit_reason enum('candidate','timeout','examiner','disqualified','account_locked','session_cancelled'),
+  status enum('in_progress','submitted'),                -- lát cắt 5 thêm 'graded'
+  CHECK ((status = 'submitted') = (submitted_at IS NOT NULL AND submit_reason IS NOT NULL)),
+  FOREIGN KEY (session_id, user_id) → session_roster ON DELETE RESTRICT,  -- người đã có Lượt không bị bớt khỏi Danh sách (Q217)
   UNIQUE (session_id, user_id, attempt_no)
+  -- Cột điểm (auto_score, manual_score, raw_score, max_score) thêm ở lát cắt 5.
 )
 -- Mỗi người chỉ có 1 Lượt làm bài đang mở trong một Phiên thi:
 UNIQUE (session_id, user_id) WHERE status = 'in_progress'
+INDEX (status, deadline) WHERE status = 'in_progress'       -- job quét tự nộp (attempt.sweep, mỗi 10 giây)
+-- Trigger attempts_guard (Q217): nội dung cố định sau khi tạo (session, người, số thứ tự, seed, layout, giờ bắt đầu);
+--   chỉ in_progress → submitted; đã nộp thì không sửa gì; hạn chỉ được kéo dài (Cộng giờ); không xóa.
 
 responses (                               -- Câu trả lời
-  attempt_id → attempts, item_id → exam_items,
-  value jsonb, client_seq int, saved_at,
+  attempt_id → attempts ON DELETE RESTRICT, item_id → exam_items ON DELETE RESTRICT,
+  value jsonb, client_seq int CHECK (>= 0), saved_at,   -- client_seq: lưu idempotent (Q216)
   flagged bool DEFAULT false,             -- đánh dấu xem lại
-  auto_score numeric NULL,
-  manual_score numeric NULL, graded_by → users, graded_at, feedback text,
   PK (attempt_id, item_id)
+  -- Cột điểm và chấm thủ công (auto_score, manual_score, graded_by, graded_at, feedback) thêm ở lát cắt 5.
 )
+-- Trigger responses_guard (Q217): chỉ INSERT/UPDATE khi Lượt đang làm (khóa dòng Lượt FOR SHARE nên Nộp bài xen vào thì
+--   chờ rồi thấy đã nộp); câu phải thuộc Bộ đề của Phiên thi; không chuyển sang Lượt hay câu khác.
+-- Trigger sessions_guard (thay hàm của 0012): Phiên thi đã có Lượt thì không đổi exam_id, shuffle_items, shuffle_options.
 
-attempt_events (                          -- sự kiện bất thường: rời tab, mất kết nối...
+attempt_events (                          -- sự kiện bất thường: rời tab, mất kết nối... (PR 4d, migration 0014)
   id bigserial, attempt_id, type text, data jsonb, at
 )
 

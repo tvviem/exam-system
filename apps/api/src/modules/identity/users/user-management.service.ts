@@ -24,6 +24,10 @@ import {
 } from '../../../common/owned-content';
 import { type Page, paginate } from '../../../common/pagination';
 import { mapUniqueToConflict } from '../../../common/pg-error';
+import {
+  USER_DEACTIVATION_HOOKS,
+  type UserDeactivationHooks,
+} from '../../../common/user-deactivation';
 import { type Database, DB, type Transaction as Tx } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
 import { NotificationsService } from '../../notifications/notifications.service';
@@ -105,6 +109,7 @@ export class UserManagementService {
     private readonly usersRepository: UsersRepository,
     private readonly notifications: NotificationsService,
     @Inject(OWNED_CONTENT) private readonly ownedContent: OwnedContent,
+    @Inject(USER_DEACTIVATION_HOOKS) private readonly deactivation: UserDeactivationHooks,
   ) {}
 
   async list({ page, pageSize, ...filter }: Page & UserFilter) {
@@ -262,6 +267,7 @@ export class UserManagementService {
         },
         tx,
       );
+      await this.deactivation.onDeactivated(tx, id);
       await this.revokeBeforeCommit(id, 'user_locked');
     });
   }
@@ -377,6 +383,7 @@ export class UserManagementService {
       },
       tx,
     );
+    await this.deactivation.onDeactivated(tx, id);
     await this.revokeBeforeCommit(id, 'user_removed');
   }
 

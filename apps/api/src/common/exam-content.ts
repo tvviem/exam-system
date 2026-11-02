@@ -40,6 +40,12 @@ export interface ExamContentProvider {
     itemIds: string[],
     executor?: ContentExecutor,
   ): Promise<Map<string, ContentItem>>;
+  /** Ảnh này có nằm trong bản chụp của một câu thuộc Bộ đề không. */
+  hasIllustration(
+    examId: string,
+    illustrationId: string,
+    executor?: ContentExecutor,
+  ): Promise<boolean>;
   /** Tên và số câu của các Bộ đề. */
   summariesOf(
     examIds: string[],

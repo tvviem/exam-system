@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AttemptSweepJob } from './attempt-sweep.job';
 import { AttemptsController } from './attempts.controller';
 import { AttemptsService } from './attempts.service';
+import { CandidateMediaService } from './candidate-media.service';
 import { JoinRateLimiter } from './join-rate-limiter';
 import { SessionAttemptsService } from './session-attempts.service';
 
@@ -9,7 +10,13 @@ import { SessionAttemptsService } from './session-attempts.service';
 // `AttemptPortsWiringModule` cung cấp.
 @Module({
   controllers: [AttemptsController],
-  providers: [AttemptsService, JoinRateLimiter, SessionAttemptsService, AttemptSweepJob],
-  exports: [SessionAttemptsService],
+  providers: [
+    AttemptsService,
+    JoinRateLimiter,
+    SessionAttemptsService,
+    AttemptSweepJob,
+    CandidateMediaService,
+  ],
+  exports: [SessionAttemptsService, CandidateMediaService],
 })
 export class AttemptModule {}

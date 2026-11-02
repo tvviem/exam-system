@@ -424,6 +424,17 @@ Thứ tự 4b-1: test kiến trúc đỏ, tách `ExamCatalog`, tách `CandidateD
 
 Danh sách dự thi sắp theo **tên gọi, rồi họ, rồi tên lót** (mặc định, `sort=name`) hoặc theo **Mã định danh** (`sort=code`). Mã định danh ở trường thật dài cố định (ví dụ `237480201001`: 23 là khóa, `7480201` là mã ngành, `001` là số thứ tự), và mã demo viết `SV01`…`SV99`, nên chỉ cần so **từng ký tự** (chữ và số, không phân biệt hoa thường), không cần sắp "tự nhiên"; người chưa có mã đứng cuối. Chữ "Đ" hiện xếp lẫn với "D" (chưa đổi).
 
+### PR 4b-2: ghi chú triển khai (2/11/2026)
+
+Làm đúng Q226–Q236, kèm các điều chỉnh nhỏ đã phát sinh khi cài đặt:
+
+- **Trạng thái thiết bị** chỉ còn `active` và `revoked` (bỏ `pardoned`, giữ `pardoned_at`), theo Q234.
+- **Lý do `INVALID_STATE` mới:** `NOT_JOINED`, `HAS_ATTEMPTS` (Xóa Phiên thi hoặc bớt người đã có Lượt; bớt người trả thêm `userIds`), `NO_ACTIVE_DEVICE` (Thu hồi khi chưa có thiết bị đang gắn).
+- **Cổng thêm so với Q228:** `CANDIDATE_MEDIA` và `USER_DEACTIVATION_HOOKS` (đúng Q218, Q219); `ExamContent` có thêm `hasIllustration` và `summariesOf`.
+- **Hàng đợi** chỉ có `schedule(name, cron)`; job quét dùng cron 6 trường `*/10 * * * * *`.
+- **Đo tải 500 người** bằng `pnpm --filter @exam/api load:exam` (Q236): 0 lỗi, p99 lưu 28 ms, `start` 75 ms, xem đề 37 ms; xem [ops/demo-wsl.md](../ops/demo-wsl.md).
+- **Chưa làm (đúng phạm vi):** heartbeat, presence, `session_events`, Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi, màn Theo dõi (4d); Xem thử (4c); Chuyển giao Phiên thi (4e). Giao diện cho Thu hồi và Cho vào lại thiết bị ở 4d.
+
 ## Thuật ngữ mới (đã vào GLOSSARY)
 
 Thiết bị dự thi, Thu hồi thiết bị, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi. "Nhân bản" cố ý không thành thuật ngữ riêng (chủ dự án: người dùng dùng một lần là hiểu). Các định nghĩa trong GLOSSARY là nguồn để viết hướng dẫn sử dụng cho người dùng cuối, nên giữ chúng chính xác khi hành vi thay đổi.

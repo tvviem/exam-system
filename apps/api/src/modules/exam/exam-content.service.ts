@@ -8,7 +8,7 @@ import type {
   ExamContentProvider,
 } from '../../common/exam-content';
 import { type Database, DB } from '../../db/db.module';
-import { examItems, examSections, exams } from './exam.schema';
+import { examItemIllustrations, examItems, examSections, exams } from './exam.schema';
 
 const toItem = (row: {
   itemId: string;
@@ -88,6 +88,22 @@ export class ExamContentService implements ExamContentProvider {
         ),
       );
     return new Map(rows.map((row) => [row.itemId, toItem(row)]));
+  }
+
+  async hasIllustration(
+    examId: string,
+    illustrationId: string,
+    executor: ContentExecutor = this.db,
+  ): Promise<boolean> {
+    const [row] = await executor
+      .select({ id: examItemIllustrations.illustrationId })
+      .from(examItemIllustrations)
+      .innerJoin(examItems, eq(examItems.id, examItemIllustrations.examItemId))
+      .where(
+        and(eq(examItems.examId, examId), eq(examItemIllustrations.illustrationId, illustrationId)),
+      )
+      .limit(1);
+    return row !== undefined;
   }
 
   async summariesOf(examIds: string[], executor: ContentExecutor = this.db) {

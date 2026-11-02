@@ -2,12 +2,13 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, count, eq, inArray, sql } from 'drizzle-orm';
 import { CLOCK, type Clock } from '../../common/clock';
 import type { DeviceSummary, SessionAttempts, SubmitReason } from '../../common/session-attempts';
+import type { UserDeactivationHooks } from '../../common/user-deactivation';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { attempts, sessionDevices } from './attempt.schema';
 
 /** Cài đặt cổng `SESSION_ATTEMPTS` (Q228) cho `session`. */
 @Injectable()
-export class SessionAttemptsService implements SessionAttempts {
+export class SessionAttemptsService implements SessionAttempts, UserDeactivationHooks {
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -46,6 +47,11 @@ export class SessionAttemptsService implements SessionAttempts {
       .where(and(eq(attempts.userId, userId), eq(attempts.status, 'in_progress')))
       .returning({ id: attempts.id });
     return rows.length;
+  }
+
+  /** Khóa đăng nhập hoặc Xóa người dùng (Q218): nộp các Lượt đang làm của người đó. */
+  async onDeactivated(tx: Transaction, userId: string) {
+    await this.closeForUser(tx, userId, 'account_locked');
   }
 
   async devicesOf(sessionId: string) {
