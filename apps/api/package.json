@@ -19,7 +19,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node dist/db/migrate.js",
     "cli": "node dist/cli/main.js",
-    "load:exam": "node scripts/load-exam.cjs"
+    "load:exam": "node scripts/load-exam.cjs",
+    "demo:data": "node scripts/demo-data.cjs"
   },
   "dependencies": {
     "@exam/shared": "workspace:*",
