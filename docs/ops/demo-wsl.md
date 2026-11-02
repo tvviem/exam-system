@@ -242,7 +242,7 @@ Ngoài Postgres còn có hai thứ cần giữ: `~/exam-prod-secrets/` (đặc b
 
 - [ ] `curl -s http://127.0.0.1:8180/api/health` trả `ok` (trong WSL), và `https://exam.<tên-miền>/api/health` cũng `ok` từ điện thoại dùng 4G.
 - [ ] Đăng nhập Quản trị viên qua HTTPS; cookie có thuộc tính `Secure`, `HttpOnly`.
-- [ ] **Địa chỉ IP thật:** đăng nhập từ điện thoại dùng 4G rồi xem danh sách phiên đăng nhập (`/api/auth/auth-sessions` hoặc màn Tài khoản). IP ghi nhận phải là IP của điện thoại, không phải `127.0.0.1` hay địa chỉ của podman. `nginx.conf` (PR 4b-1) đặt `X-Forwarded-For` bằng `CF-Connecting-IP`, bỏ giá trị khách tự gửi, và đã được thử với nginx thật cùng máy chủ giả. Nếu vẫn thấy mọi người cùng một IP nội bộ thì chỉnh `TRUST_PROXY` (danh sách địa chỉ/dải được tin, không nhận số bước) rồi khởi động lại api.
+- [ ] **Địa chỉ IP thật:** đăng nhập từ điện thoại dùng 4G rồi xem danh sách phiên đăng nhập (`/api/auth/auth-sessions` hoặc màn Tài khoản). IP ghi nhận phải là IP của điện thoại, không phải `127.0.0.1` hay địa chỉ của podman. `nginx.conf` (PR 4b-1) đặt `X-Forwarded-For` bằng `CF-Connecting-IP`, bỏ giá trị khách tự gửi, và chỉ nhận `CF-Connecting-IP` có dạng địa chỉ IP. Chạy lại bài thử bất cứ lúc nào bằng `bash infra/containers/test-nginx-xff.sh` (nginx thật trước máy chủ giả). Nếu vẫn thấy mọi người cùng một IP nội bộ thì chỉnh `TRUST_PROXY` (danh sách địa chỉ/dải được tin, không nhận số bước) rồi khởi động lại api.
 - [ ] Tải lên một Hình minh họa rồi mở lại (kiểm tra `X-Accel-Redirect` và uid, xem ghi chú mục 6).
 - [ ] Khởi động lại Windows, đợi WSL, kiểm tra pod tự lên và trang vẫn mở được.
 - [ ] Chạy `backup.sh` một lần, thử khôi phục vào database tạm.

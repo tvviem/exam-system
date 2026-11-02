@@ -3,7 +3,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { CurrentUserOrNull, OptionalAuth, Public } from '../auth/auth.decorators';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { authSessionMetaFrom, setAuthSessionCookie } from '../auth/auth-request';
+import { authSessionMetaFrom, clientIpOf, setAuthSessionCookie } from '../auth/auth-request';
 import { academicDegreeEnum, academicTitleEnum } from '../identity.schema';
 import { InvitationAcceptanceService } from './invitation-acceptance.service';
 
@@ -23,7 +23,7 @@ export class PublicInvitationsController {
 
   @Get(':token')
   preview(@Param('token') token: string, @Req() req: FastifyRequest) {
-    return this.acceptance.preview(token, req.ip ?? null);
+    return this.acceptance.preview(token, clientIpOf(req));
   }
 
   @OptionalAuth()

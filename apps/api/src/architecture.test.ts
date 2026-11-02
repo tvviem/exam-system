@@ -23,13 +23,18 @@ function crossModuleSchemaImports(): { from: string; to: string; file: string }[
     for (const file of sourceFiles(path.join(modulesDir, module))) {
       if (file.endsWith('.schema.ts')) continue;
       const text = readFileSync(file, 'utf8');
-      for (const match of text.matchAll(/from '((?:\.\.\/)+)([a-z-]+)\/[^']*schema'/g)) {
+      // Bắt mọi chuỗi đường dẫn (import tĩnh, `import()`, `require`, nháy đơn hay kép) trỏ vào file `*schema` của module khác.
+      for (const match of text.matchAll(/['"]((?:\.\.\/)+)([a-z0-9-]+)\/[^'"]*schema['"]/g)) {
         // Import qua `../` từ thư mục con vẫn có thể ở trong chính module; chỉ tính khi đích khác module đang xét.
         const target = path.resolve(path.dirname(file), `${match[1]}${match[2]}`);
         const to = path.relative(modulesDir, target).split(path.sep)[0] as string;
         if (to !== module && readdirSync(modulesDir).includes(to)) {
           found.push({ from: module, to, file: path.relative(modulesDir, file) });
         }
+      }
+      // `db/schema` gom bảng của mọi module nên cũng là đường đọc bảng module khác.
+      if (/['"](?:\.\.\/)+db\/schema['"]/.test(text)) {
+        found.push({ from: module, to: 'db/schema', file: path.relative(modulesDir, file) });
       }
     }
   }
@@ -53,6 +58,7 @@ describe('A1: ranh giới module', () => {
     expect(bad).toEqual([]);
   });
 
+  // Nợ cũ kiểm theo cặp module, chưa theo từng file: thêm file mới trong cặp nợ cũ vẫn lọt (chấp nhận, xóa dần).
   it('không có cặp import bảng chéo module nào mới ngoài danh sách nợ cũ', () => {
     const unknown = [...new Set(imports.map((i) => `${i.from}->${i.to}`))].filter(
       (pair) =>

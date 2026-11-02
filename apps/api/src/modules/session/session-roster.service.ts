@@ -65,7 +65,8 @@ export class SessionRosterService {
       page: page.page,
       pageSize: page.pageSize,
       items: items.map((person) => {
-        const member = byUser.get(person.id) as NonNullable<ReturnType<typeof byUser.get>>;
+        const member = byUser.get(person.id);
+        if (!member) throw new Error(`Danh bạ trả người ngoài Danh sách: ${person.id}`);
         return {
           userId: person.id,
           code: person.code,
@@ -125,7 +126,7 @@ export class SessionRosterService {
       const session = await lockOwnedSession(tx, ownerId, sessionId);
       requireNotOver(session, this.clock.now());
 
-      const { people, notFound } = await this.directory.resolve(selector);
+      const { people, notFound } = await this.directory.resolve(selector, tx);
       const ineligible: RosterAddResult['ineligible'] = [];
       const eligible: typeof people = [];
       for (const person of people) {

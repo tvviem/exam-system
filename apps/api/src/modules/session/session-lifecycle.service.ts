@@ -97,6 +97,7 @@ export class SessionLifecycleService {
           await this.directory.eligibleAmong(
             members.map((member) => member.userId),
             ownerId,
+            tx,
           )
         ).map((person) => [person.id, person.classLabel]),
       );

@@ -5,6 +5,7 @@ import type {
   CandidateDirectory,
   CandidateRecord,
   CandidateSelector,
+  Executor,
 } from '../../common/candidate-directory';
 import { escapeLike } from '../../common/sql-like';
 import { type Database, DB } from '../../db/db.module';
@@ -22,6 +23,15 @@ const byGivenName = [
 
 const matches = (like: string) =>
   sql`(unaccent(lower(${users.fullName})) LIKE ${like} OR lower(${users.code}) LIKE ${like})`;
+
+/** Đủ điều kiện dự thi (Q200): chưa Xóa, chưa Khóa, mang Nhãn Người dự thi, không phải chủ Phiên thi. */
+const eligibleFor = (excludeUserId: string) =>
+  and(
+    isNull(users.removedAt),
+    eq(users.status, 'active'),
+    hasCandidateTag,
+    sql`${users.id} <> ${excludeUserId}`,
+  );
 
 /** Id không có trong hệ thống: coi như đã Xóa, không phải Người dự thi. */
 const unknownPerson = (id: string): CandidateRecord => ({
@@ -60,12 +70,7 @@ export class CandidateDirectoryService implements CandidateDirectory {
     options: { excludeUserId: string; userLimit: number; classLimit: number },
   ) {
     const like = `%${escapeLike(normalizeForSearch(q))}%`;
-    const eligible = and(
-      isNull(users.removedAt),
-      eq(users.status, 'active'),
-      hasCandidateTag,
-      sql`${users.id} <> ${options.excludeUserId}`,
-    );
+    const eligible = eligibleFor(options.excludeUserId);
     const found = await this.db
       .select({
         id: users.id,
@@ -87,7 +92,7 @@ export class CandidateDirectoryService implements CandidateDirectory {
     return { users: found, classes };
   }
 
-  async resolve(selector: CandidateSelector) {
+  async resolve(selector: CandidateSelector, executor: Executor = this.db) {
     const columns = {
       id: users.id,
       code: users.code,
@@ -97,7 +102,7 @@ export class CandidateDirectoryService implements CandidateDirectory {
       isCandidate: sql<boolean>`${hasCandidateTag}`,
     };
     const find = async (where: SQL | undefined): Promise<CandidateRecord[]> =>
-      (await this.db.select(columns).from(users).where(where)).map(
+      (await executor.select(columns).from(users).where(where)).map(
         ({ removedAt, status, ...rest }) => ({
           ...rest,
           status: status === 'locked' ? 'locked' : 'active',
@@ -130,19 +135,11 @@ export class CandidateDirectoryService implements CandidateDirectory {
     return { people, notFound };
   }
 
-  async eligibleAmong(ids: string[], excludeUserId: string) {
+  async eligibleAmong(ids: string[], excludeUserId: string, executor: Executor = this.db) {
     if (ids.length === 0) return [];
-    return this.db
+    return executor
       .select({ id: users.id, classLabel: users.classLabel })
       .from(users)
-      .where(
-        and(
-          inArray(users.id, ids),
-          isNull(users.removedAt),
-          eq(users.status, 'active'),
-          sql`${users.id} <> ${excludeUserId}`,
-          hasCandidateTag,
-        ),
-      );
+      .where(and(inArray(users.id, ids), eligibleFor(excludeUserId)));
   }
 }
