@@ -92,6 +92,7 @@
     "LOGIN_TEMPORARILY_BLOCKED": "Tạm thời không đăng nhập được do nhập sai nhiều lần. Thử lại sau 15 phút.",
     "ACCOUNT_LOCKED": "Tài khoản đã bị Khóa đăng nhập. Hãy liên hệ Quản trị viên.",
     "TEMPORARY_PASSWORD_EXPIRED": "Mật khẩu tạm đã hết hạn. Hãy liên hệ người đã cấp tài khoản để được cấp lại.",
+    "INVALID_ACCESS_CODE": "Mã vào thi không đúng, hoặc bạn không có trong Danh sách dự thi của Phiên thi này.",
     "RATE_LIMITED": "Bạn thao tác quá nhiều lần. Hãy đợi vài phút rồi thử lại.",
     "WRONG_CURRENT_PASSWORD": "Mật khẩu hiện tại không đúng.",
     "FORBIDDEN_ORIGIN": "Yêu cầu bị từ chối. Hãy tải lại trang.",

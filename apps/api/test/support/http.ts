@@ -10,6 +10,9 @@ export interface CallOptions {
   body?: unknown;
   origin?: string | null;
   ip?: string;
+  /** Cookie mã thiết bị `exam_did` gửi kèm. */
+  device?: string;
+  headers?: Record<string, string>;
 }
 
 export async function call(
@@ -20,7 +23,12 @@ export async function call(
 ) {
   const headers: Record<string, string> = {};
   if (options.origin !== null) headers.origin = options.origin ?? ORIGIN;
-  if (options.cookie) headers.cookie = `${AUTH_SESSION_COOKIE}=${options.cookie}`;
+  const cookies = [
+    options.cookie ? `${AUTH_SESSION_COOKIE}=${options.cookie}` : '',
+    options.device ? `exam_did=${options.device}` : '',
+  ].filter(Boolean);
+  if (cookies.length > 0) headers.cookie = cookies.join('; ');
+  Object.assign(headers, options.headers);
   const res = await app.inject({
     method,
     url,

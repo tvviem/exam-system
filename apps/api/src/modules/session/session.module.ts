@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../identity/identity.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SessionEntryService } from './session-entry.service';
 import { SessionLifecycleService } from './session-lifecycle.service';
 import { SessionRosterController } from './session-roster.controller';
 import { SessionRosterService } from './session-roster.service';
@@ -12,7 +13,13 @@ import { SessionsService } from './sessions.service';
 @Module({
   imports: [IdentityModule, NotificationsModule],
   controllers: [SessionsController, SessionRosterController],
-  providers: [SessionsService, SessionLifecycleService, SessionRosterService, SessionUsageService],
-  exports: [SessionUsageService],
+  providers: [
+    SessionsService,
+    SessionLifecycleService,
+    SessionRosterService,
+    SessionUsageService,
+    SessionEntryService,
+  ],
+  exports: [SessionUsageService, SessionEntryService],
 })
 export class SessionModule {}
