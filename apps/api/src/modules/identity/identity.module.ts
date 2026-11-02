@@ -17,6 +17,7 @@ import { AuthService } from './auth/auth.service';
 import { AuthSessionStore } from './auth/auth-session-store';
 import { LoginBlock } from './auth/login-block';
 import { LoginRateLimiter } from './auth/login-rate-limiter';
+import { CandidateDirectoryService } from './candidate-directory.service';
 import { CredentialSlipsController } from './credential-slips/credential-slips.controller';
 import { CredentialSlipsService } from './credential-slips/credential-slips.service';
 import { PdfKitSlipRenderer, SLIP_RENDERER } from './credential-slips/slip-renderer';
@@ -66,6 +67,7 @@ import { UsersRepository } from './users.repository';
     InvitationRateLimiter,
     AccountRequestsService,
     RequesterCredentialsService,
+    CandidateDirectoryService,
     AccountRequestParseJob,
     AccountRequestApproveJob,
     CredentialSlipsService,
@@ -75,6 +77,11 @@ import { UsersRepository } from './users.repository';
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
   // CLI và các module khác chỉ dùng những gì được xuất ở đây.
-  exports: [AuthSessionStore, AdminAccountsService, RequesterCredentialsService],
+  exports: [
+    AuthSessionStore,
+    AdminAccountsService,
+    RequesterCredentialsService,
+    CandidateDirectoryService,
+  ],
 })
 export class IdentityModule {}

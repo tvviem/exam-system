@@ -44,7 +44,7 @@ Image do workflow CI đẩy lên GHCR mỗi lần push `main`, thẻ là mã com
 **Hai điều chỉnh bắt buộc cho 500 người cùng nơi** (đã duyệt, Q224):
 
 1. `LOGIN_MAX_PER_IP=1000` (mặc định 20 mỗi 10 phút theo IP: cả lớp dùng chung Wi-Fi sẽ có chung một IP công cộng nên chỉ 20 người đăng nhập được).
-2. Nhóm kết nối Postgres của api mặc định 10; PR 4b thêm biến `DB_POOL_MAX`. Trước 4b giữ nguyên, đủ cho tải đã đo.
+2. `DB_POOL_MAX` (mặc định 10 kết nối mỗi tiến trình, tối đa 100) đã có từ PR 4b-1; đủ cho tải đã đo. api và worker mỗi bên một nhóm, tổng không được vượt `max_connections` của Postgres (đang đặt 200).
 
 ## 3. Chuẩn bị máy
 
@@ -125,6 +125,9 @@ DATABASE_URL=postgres://exam:<mật khẩu mạnh>@127.0.0.1:5432/exam
 REDIS_URL=redis://127.0.0.1:6379/0
 APP_ORIGINS=https://exam.<tên-miền>
 LOGIN_MAX_PER_IP=1000
+DB_POOL_MAX=10
+# Mặc định `loopback` là đúng khi nginx cùng pod (nginx tự đặt X-Forwarded-For từ CF-Connecting-IP).
+TRUST_PROXY=loopback
 # openssl rand -base64 32. Mất khóa này thì các Phiếu tài khoản còn hạn (7 ngày) không mở lại được.
 SLIP_ENCRYPTION_KEY=<32 byte base64>
 MEDIA_DIR=/var/lib/exam/media
@@ -239,7 +242,7 @@ Ngoài Postgres còn có hai thứ cần giữ: `~/exam-prod-secrets/` (đặc b
 
 - [ ] `curl -s http://127.0.0.1:8180/api/health` trả `ok` (trong WSL), và `https://exam.<tên-miền>/api/health` cũng `ok` từ điện thoại dùng 4G.
 - [ ] Đăng nhập Quản trị viên qua HTTPS; cookie có thuộc tính `Secure`, `HttpOnly`.
-- [ ] **Địa chỉ IP thật:** đăng nhập từ điện thoại dùng 4G rồi xem danh sách phiên đăng nhập (`/api/auth/auth-sessions` hoặc màn Tài khoản). IP ghi nhận phải là IP của điện thoại, không phải `127.0.0.1` hay địa chỉ của podman. Nếu mọi người đều cùng một IP nội bộ thì api đang không tin `X-Forwarded-For` đúng bước nhảy (`trustProxy: 'loopback'` trong `apps/api/src/app.ts`) và giới hạn đăng nhập theo IP sẽ chung cho cả hệ thống; ghi lại và sửa ở PR 4b (Q224).
+- [ ] **Địa chỉ IP thật:** đăng nhập từ điện thoại dùng 4G rồi xem danh sách phiên đăng nhập (`/api/auth/auth-sessions` hoặc màn Tài khoản). IP ghi nhận phải là IP của điện thoại, không phải `127.0.0.1` hay địa chỉ của podman. `nginx.conf` (PR 4b-1) đặt `X-Forwarded-For` bằng `CF-Connecting-IP`, bỏ giá trị khách tự gửi, và chỉ nhận `CF-Connecting-IP` có dạng địa chỉ IP. Chạy lại bài thử bất cứ lúc nào bằng `bash infra/containers/test-nginx-xff.sh` (nginx thật trước máy chủ giả). Nếu vẫn thấy mọi người cùng một IP nội bộ thì chỉnh `TRUST_PROXY` (danh sách địa chỉ/dải được tin, không nhận số bước) rồi khởi động lại api.
 - [ ] Tải lên một Hình minh họa rồi mở lại (kiểm tra `X-Accel-Redirect` và uid, xem ghi chú mục 6).
 - [ ] Khởi động lại Windows, đợi WSL, kiểm tra pod tự lên và trang vẫn mở được.
 - [ ] Chạy `backup.sh` một lần, thử khôi phục vào database tạm.

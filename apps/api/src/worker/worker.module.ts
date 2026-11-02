@@ -13,6 +13,7 @@ import { OwnedContentWiringModule } from '../owned-content-wiring.module';
 import { QueueModule } from '../queue/job-queue';
 import { JobWorker } from '../queue/job-worker';
 import { RedisModule } from '../redis/redis.module';
+import { SessionPortsWiringModule } from '../session-ports-wiring.module';
 import { SessionUsageWiringModule } from '../session-usage-wiring.module';
 
 // Các module nghiệp vụ tự đăng ký hàm xử lý job vào JobRegistry khi khởi động; JobWorker lấy job từ BullMQ
@@ -33,6 +34,7 @@ import { SessionUsageWiringModule } from '../session-usage-wiring.module';
     OwnedContentWiringModule,
     ExamUsageWiringModule,
     SessionUsageWiringModule,
+    SessionPortsWiringModule,
   ],
   providers: [JobWorker],
 })

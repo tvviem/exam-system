@@ -18,7 +18,8 @@ export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
     {
       provide: PG_POOL,
       inject: [ENV],
-      useFactory: (env: Env) => new Pool({ connectionString: env.DATABASE_URL }),
+      useFactory: (env: Env) =>
+        new Pool({ connectionString: env.DATABASE_URL, max: env.DB_POOL_MAX }),
     },
     {
       provide: DB,

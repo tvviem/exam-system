@@ -2,10 +2,11 @@ import { SESSION_TITLE_MAX, type SessionSettings } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { eq, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
+import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { type Database, DB } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
-import { sessions } from './session.schema';
+import { sessionRoster, sessions } from './session.schema';
 import { lockOwnedSession, notifyRoster } from './session-access';
 import { SessionsService } from './sessions.service';
 
@@ -18,6 +19,7 @@ export class SessionLifecycleService {
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     private readonly sessions: SessionsService,
     private readonly notifications: NotificationsService,
   ) {}
@@ -85,20 +87,35 @@ export class SessionLifecycleService {
         showScoringRules: source.showScoringRules,
       };
       const created = await this.sessions.createWithin(tx, ownerId, input);
-      const copied = await tx.execute<{ user_id: string }>(sql`
-        insert into session_roster (session_id, user_id, added_by, class_label, extra_minutes)
-        select ${created}, r.user_id, ${ownerId}, u.class_label, r.extra_minutes
-        from session_roster r
-        join users u on u.id = r.user_id
-        where r.session_id = ${id}
-          and u.removed_at is null
-          and u.status = 'active'
-          and u.id <> ${ownerId}
-          and exists (select 1 from user_role_tags t where t.user_id = u.id and t.tag = 'candidate')
-        returning user_id`);
+      // Chỉ chép người còn đủ điều kiện dự thi; Lớp chụp lại theo hồ sơ hiện tại (như lúc thêm).
+      const members = await tx
+        .select({ userId: sessionRoster.userId, extraMinutes: sessionRoster.extraMinutes })
+        .from(sessionRoster)
+        .where(eq(sessionRoster.sessionId, id));
+      const eligible = new Map(
+        (
+          await this.directory.eligibleAmong(
+            members.map((member) => member.userId),
+            ownerId,
+            tx,
+          )
+        ).map((person) => [person.id, person.classLabel]),
+      );
+      const copied = members.filter((member) => eligible.has(member.userId));
+      if (copied.length > 0) {
+        await tx.insert(sessionRoster).values(
+          copied.map((member) => ({
+            sessionId: created,
+            userId: member.userId,
+            addedBy: ownerId,
+            classLabel: eligible.get(member.userId) ?? null,
+            extraMinutes: member.extraMinutes,
+          })),
+        );
+      }
       await this.notifications.notify(
         {
-          userIds: copied.rows.map((row) => row.user_id),
+          userIds: copied.map((member) => member.userId),
           type: 'session.added',
           data: {
             sessionId: created,
