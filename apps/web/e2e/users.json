@@ -476,5 +476,101 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-gv-desktop",
+    "fullName": "Giảng viên làm bài desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-sv-desktop",
+    "fullName": "Lê Văn Thi (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK-D-001",
+    "classLabel": "LOP-TK-D"
+  },
+  {
+    "username": "e2e-lb-gv-mobile",
+    "fullName": "Giảng viên làm bài mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-sv-mobile",
+    "fullName": "Lê Văn Thi (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK-M-001",
+    "classLabel": "LOP-TK-M"
+  },
+  {
+    "username": "e2e-lb-ck-desktop",
+    "fullName": "Phạm Thị Giờ (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK2-D-001",
+    "classLabel": "LOP-TK2-D"
+  },
+  {
+    "username": "e2e-lb-ck-mobile",
+    "fullName": "Phạm Thị Giờ (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK2-M-001",
+    "classLabel": "LOP-TK2-M"
+  },
+  {
+    "username": "e2e-lb-bd-desktop",
+    "fullName": "Võ Thị Gói (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK3-D-001",
+    "classLabel": "LOP-TK3-D"
+  },
+  {
+    "username": "e2e-lb-bd-mobile",
+    "fullName": "Võ Thị Gói (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK3-M-001",
+    "classLabel": "LOP-TK3-M"
+  },
+  {
+    "username": "e2e-lb-of-desktop",
+    "fullName": "Bùi Thị Mạng (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK5-D-001",
+    "classLabel": "LOP-TK5-D"
+  },
+  {
+    "username": "e2e-lb-of-mobile",
+    "fullName": "Bùi Thị Mạng (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK5-M-001",
+    "classLabel": "LOP-TK5-M"
   }
 ]

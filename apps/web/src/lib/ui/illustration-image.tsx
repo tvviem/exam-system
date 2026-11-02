@@ -1,8 +1,16 @@
+import { ILLUSTRATION_VARIANT_SIDES } from '@exam/shared';
 import { ImageOff } from 'lucide-react';
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { mediaSrcSet, mediaUrl } from '../illustrations';
+import { mediaUrl } from '../illustrations';
 import { Dialog } from '.';
+
+/**
+ * Nguồn ảnh. Mặc định là kho ảnh của Người ra đề; khu làm bài thay bằng đường dẫn theo Lượt (`/api/take-media/<lượt>/...`)
+ * để Người dự thi chỉ xem được ảnh của đề mình đang làm (Q219).
+ */
+export type MediaSource = (id: string, side: (typeof ILLUSTRATION_VARIANT_SIDES)[number]) => string;
+export const MediaSourceContext = createContext<MediaSource>(mediaUrl);
 
 // Hình minh họa trong nội dung Câu hỏi (Q141): tải lười, trình duyệt chọn cỡ vừa màn hình, chạm để phóng to.
 
@@ -12,6 +20,7 @@ const SIZES = '(min-width: 768px) 640px, 100vw';
 export function IllustrationPicture({ id, alt }: { id: string; alt: string }) {
   const { t } = useTranslation();
   const [broken, setBroken] = useState(false);
+  const source = useContext(MediaSourceContext);
   if (broken) {
     return (
       <span className="inline-flex min-h-24 items-center gap-2 rounded-lg border border-dashed border-border-strong px-3 text-sm text-fg-muted">
@@ -22,8 +31,8 @@ export function IllustrationPicture({ id, alt }: { id: string; alt: string }) {
   }
   return (
     <img
-      src={mediaUrl(id, 960)}
-      srcSet={mediaSrcSet(id)}
+      src={source(id, 960)}
+      srcSet={ILLUSTRATION_VARIANT_SIDES.map((side) => `${source(id, side)} ${side}w`).join(', ')}
       sizes={SIZES}
       alt={alt}
       loading="lazy"
@@ -38,6 +47,7 @@ export function IllustrationPicture({ id, alt }: { id: string; alt: string }) {
 export function IllustrationFigure({ id, alt }: { id: string; alt: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const source = useContext(MediaSourceContext);
   return (
     <figure className="my-1">
       <button
@@ -50,7 +60,7 @@ export function IllustrationFigure({ id, alt }: { id: string; alt: string }) {
       </button>
       <Dialog open={open} onClose={() => setOpen(false)} title={t('illustration.title')} size="xl">
         <img
-          src={mediaUrl(id, 1600)}
+          src={source(id, 1600)}
           alt={alt}
           className="mx-auto block h-auto max-h-[70dvh] w-auto max-w-full object-contain"
         />

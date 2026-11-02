@@ -8,6 +8,8 @@ import type { StoredLayout } from './attempt.schema';
 export interface SavedResponse {
   value: unknown;
   flagged: boolean;
+  /** Số thứ tự lần lưu của chính câu này; máy khác tiếp tục đếm từ đây (Q241). */
+  clientSeq: number;
 }
 
 export interface ViewItem {

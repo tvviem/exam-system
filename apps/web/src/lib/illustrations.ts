@@ -25,11 +25,9 @@ export interface Illustration {
 export const ACCEPTED_IMAGE_TYPES: readonly string[] = ILLUSTRATION_MIME_TYPES;
 export const IMAGE_ALT_MAX = IMAGE_ALT_MAX_CHARS;
 
-/** Cạnh dài của các biến thể api phục vụ; `mediaSrcSet` để trình duyệt tự chọn cỡ vừa màn hình. */
+/** Cạnh dài của các biến thể api phục vụ; `srcset` để trình duyệt tự chọn cỡ vừa màn hình. */
 const SIDES = ILLUSTRATION_VARIANT_SIDES;
 export const mediaUrl = (id: string, side: (typeof SIDES)[number]) => `/api/media/${id}/${side}`;
-export const mediaSrcSet = (id: string) =>
-  SIDES.map((side) => `${mediaUrl(id, side)} ${side}w`).join(', ');
 
 /** Còn ảnh đang xử lý trong trang thì hỏi lại mỗi giây để thumbnail hiện ra khi xong. */
 export const illustrationsQuery = (page: number) =>

@@ -1,9 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from '@tanstack/react-router';
-import { CircleUserRound, LogOut, MonitorSmartphone, UserRound } from 'lucide-react';
+import {
+  CircleUserRound,
+  ClipboardPenLine,
+  LogOut,
+  MonitorSmartphone,
+  NotebookPen,
+  UserRound,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { logout, meQuery } from '../lib/auth';
+import { logout, type Me, meQuery } from '../lib/auth';
 import { Button, Dialog } from '../lib/ui';
 import { AppShell, navFor } from '../lib/ui/app-shell';
 import { NotificationBell } from '../lib/ui/notification-bell';
@@ -80,6 +87,9 @@ function AuthedLayout() {
               {t('nav.authSessions')}
             </Link>
           )}
+          {!me.mustChangePassword && !me.isAdmin && (
+            <AreaSwitch me={me} onPick={() => setMenuOpen(false)} />
+          )}
           <div className="flex items-center justify-between gap-3 px-2">
             <span className="font-medium">{t('theme.label')}</span>
             <ThemeSwitcher />
@@ -97,6 +107,28 @@ function AuthedLayout() {
           </Button>
         </div>
       </Dialog>
+    </>
+  );
+}
+
+/** Người mang cả hai Nhãn vai trò (Q143) chuyển giữa khu Soạn đề và khu Làm bài. */
+function AreaSwitch({ me, onPick }: { me: Me; onPick: () => void }) {
+  const { t } = useTranslation();
+  const examiner = me.roleTags.includes('examiner');
+  const candidate = me.roleTags.includes('candidate');
+  if (!examiner || !candidate) return null;
+  const cls =
+    'inline-flex min-h-12 items-center gap-3 rounded-lg px-2 font-medium hover:bg-primary-soft';
+  return (
+    <>
+      <Link to="/examiner" onClick={onPick} className={cls}>
+        <NotebookPen aria-hidden className="size-5 text-fg-muted" />
+        {t('nav.areaExaminer')}
+      </Link>
+      <Link to="/take" onClick={onPick} className={cls}>
+        <ClipboardPenLine aria-hidden className="size-5 text-fg-muted" />
+        {t('nav.areaTake')}
+      </Link>
     </>
   );
 }

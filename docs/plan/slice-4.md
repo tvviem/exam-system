@@ -439,6 +439,64 @@ Làm đúng Q226–Q236, kèm các điều chỉnh nhỏ đã phát sinh khi cà
 - **Giới hạn nhập mã** là cửa sổ cố định 10 phút theo ô giờ (như giới hạn đăng nhập), nên quanh ranh giới ô có thể nhiều hơn 5 lần.
 - **Chưa làm (đúng phạm vi):** heartbeat, presence, `session_events`, Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi, màn Theo dõi (4d); Xem thử (4c); Chuyển giao Phiên thi (4e). Giao diện cho Thu hồi và Cho vào lại thiết bị ở 4d.
 
+## PR 4c: thiết kế chi tiết (đã duyệt 2/11/2026)
+
+Chủ dự án đồng ý cả mười một điểm Q237–Q247 và yêu cầu **mỗi nhánh kèm hướng dẫn thử** các điểm của thiết kế để góp ý ngay trên sản phẩm. Không có thuật ngữ mới.
+
+| # | Quyết định |
+|---|---|
+| Q237 | Chia 4c thành **4c-1** (làm bài trực tuyến), **4c-2** (chịu mất mạng: hàng đợi IndexedDB, đọc lại đề khi ngoại tuyến, PWA, màn thiết bị bị thu hồi), **4c-3** (Xem thử qua Phiên thi) |
+| Q238 | `/take` (ô nhập mã và Phiên thi của tôi chia Đang mở / Sắp mở / Đã xong), `/take/sessions/$sessionId` (xác nhận), `/take/attempts/$attemptId` (làm bài, đã nộp). Khung riêng gọn, không thanh bên; người mang cả hai Nhãn có mục chuyển khu ở menu |
+| Q239 | Ô mã: tự viết hoa, bỏ khoảng trắng và gạch nối, lỗi hiện dưới ô; nút mỗi dòng chọn theo `deviceStatus`, `inProgressAttemptId`, `attemptsUsed`; màn xác nhận chỉ nêu thiết bị và địa chỉ IP (câu về rời màn hình thêm ở 4d) |
+| Q240 | Màn làm bài theo prototype: "1 câu" / "Cả đề", lưới số câu, đánh dấu, chỉ báo lưu; nút Aa lưu `exam:prefs`; vùng chạm ≥ 48 px; chữ nội dung đề Noto Serif (`@fontsource/noto-serif`, chỉ nạp ở khu làm bài) |
+| Q241 | Chọn đáp án lưu gộp 300 ms, tự luận sau khi ngừng gõ 800 ms; lô ≤ 50; `clientSeq` theo từng câu, `view` trả thêm `clientSeq` đã lưu; thử lại 1, 2, 4, 8, tối đa 15 giây; chỉ báo "Đã lưu" sau khi server trả `saved` hoặc `stale`; câu `rejected` bị gỡ khỏi hàng đợi và báo nhẹ |
+| Q242 | Đồng hồ chỉ hiển thị: độ lệch `serverNow`, đồng hồ đơn điệu, cập nhật lại mỗi response; cảnh báo 5 và 1 phút (có rung); hết giờ tự nộp, mất mạng thì thử lại liên tục |
+| Q243 | (4c-2) IndexedDB giữ hàng đợi và bản sao `view` theo Lượt, xóa khi nộp hoặc đóng; service worker viết tay chỉ lưu đệm vỏ ứng dụng và `take-media`, không lưu đệm response API; có `manifest` |
+| Q244 | `DEVICE_REVOKED` thì màn chiếm toàn bộ; `ATTEMPT_CLOSED` thì chuyển sang "Đã nộp" kèm lý do; hộp thoại Nộp bài liệt kê câu chưa làm và câu đánh dấu |
+| Q245 | (4c-3) `GET /sessions/:id/try` chỉ chủ Phiên thi, không ghi gì; `SessionEntry.gateForOwner` |
+| Q246 | JS riêng của khu làm bài (không tính lõi dùng chung) ≤ 40 KB gzip; KaTeX nạp lười chỉ khi đề có công thức; không nạp trình soạn; test E2E đo tổng JS ở `/take` |
+| Q247 | Seam: U1 hàm thuần, U2 hàng đợi với kho giả, S6a–e Playwright, B1 đo gói, A11y. Test đỏ trước, kể cả E2E |
+
+Thứ tự 4c-1: U1, khung `/take` và menu chuyển khu, Phiên thi của tôi và nhập mã, màn xác nhận, màn làm bài (1 câu, Cả đề, lưới, đánh dấu), lưu bài (hàng đợi trong bộ nhớ) kèm `clientSeq` ở API, đồng hồ, Nộp bài, tùy chọn hiển thị, B1.
+
+### PR 4c-1: ghi chú triển khai (2/11/2026)
+
+Làm đúng Q237–Q242 và Q244, Q246, Q247 (phần trực tuyến), kèm các điều chỉnh nhỏ:
+
+- **API:** `view` trả thêm `clientSeq` đã lưu của từng Câu trả lời (Q241), để máy khác tiếp tục đếm đúng.
+- **Giao diện sáng/tối** dùng chung công tắc của cả ứng dụng (`exam:theme`); bảng "Hiển thị" (nút Aa) nhúng công tắc đó, chỉ cỡ chữ, kiểu chữ và chế độ xem lưu ở `exam:prefs`. Không có hai nơi lưu cùng một thiết lập.
+- **Chữ có chân:** dùng `font-serif` với danh sách "Noto Serif", Georgia…; **chưa thêm gói `@fontsource/noto-serif`** vì việc đó sửa `pnpm-lock.yaml` ở gốc, đang có thay đổi chưa commit của chủ dự án. Máy có Noto Serif (Android) hiện đúng; máy khác dùng chữ có chân hệ thống. Thêm gói là một commit nhỏ riêng khi chủ dự án cho phép.
+- **Ô chọn Phương án** là `<input>` thật phủ kín cả dòng, trong suốt: chạm chỗ nào trên dòng cũng chọn, trình đọc màn hình vẫn đọc đúng.
+- **Khung riêng:** màn làm bài khai báo `staticData: { bare: true }` nên bỏ khung chung; ảnh trong đề lấy qua `/api/take-media/<lượt>/...` nhờ `MediaSourceContext`.
+- **Đo gói (B1):** JS riêng của khu làm bài **10,2 KB gzip** (ngưỡng 40 KB); không tải trình soạn, KaTeX, MathLive khi đề không có công thức.
+- **Sau review hai trục:** `view` và Nộp bài trả thêm `submitReason` (màn "Đã nộp" nêu lý do khi không phải tự nộp); 4xx khác 400/413/422 (401, 408, 429) được thử lại, không bao giờ âm thầm bỏ câu trả lời; nhịp thử lại 1, 2, 4… giây không bị phá bởi thao tác mới hay rời ô tự luận; rời màn (chuyển trang) gửi nốt phần chờ; hết giờ chỉ nộp sau khi lưu xong các câu còn chờ, mất mạng thì thử lại; hiện lại tab thì hỏi server giờ chính xác; câu bị server từ chối (`rejected`) có thông báo; nút đánh dấu giữ một nhãn cố định với `aria-pressed`.
+- **Giới hạn đã biết (4c-1):** tải lại trang thì quay về câu 1 (đáp án vẫn còn); bảng "Hiển thị" chưa có ô xem trước một câu mẫu (ui-design 4.1); chưa có E2E màn thu hồi và kiểm thử `use-saver` bằng kho giả (U2, thuộc 4c-2 cùng IndexedDB). Thử mất mạng ngắn đã có E2E.
+- **Chưa có (đúng phạm vi):** hàng đợi giữ qua IndexedDB, đọc lại đề lúc ngoại tuyến, PWA, màn thu hồi đầy đủ (4c-2); Xem thử (4c-3). Hiện tải lại trang lúc mất mạng thì chưa làm tiếp được, và trình duyệt hỏi lại trước khi đóng tab nếu còn câu chưa lưu.
+
+#### Hướng dẫn thử 4c-1 (cho chủ dự án)
+
+Chuẩn bị: `podman pod start dev-exam`, `pnpm dev`, mở `http://localhost:5173`. Cookie thiết bị `exam_did` có thuộc tính `Secure` nên chỉ chạy trên `localhost` hoặc HTTPS; thử "như điện thoại" bằng chế độ giả lập thiết bị của Chrome (360 × 780), không dùng địa chỉ mạng LAN dạng `http://192.168…`.
+
+1. Người ra đề: tạo Bộ đề Phát hành (đủ bốn Loại câu), tạo Phiên thi mở từ bây giờ, Thời lượng 5 phút để thử cảnh báo, thêm một Người dự thi vào Danh sách, ghi Mã vào thi.
+2. Người dự thi (cửa sổ ẩn danh hoặc trình duyệt khác):
+
+| Điểm thiết kế | Cách thử | Mong đợi |
+|---|---|---|
+| Q238 khung và danh sách | Đăng nhập, vào `/take` | Ô "Mã vào thi" ở đầu; Phiên thi nằm ở nhóm "Đang mở"; có nút "Nhập mã" |
+| Q239 ô nhập mã | Gõ `  ab-c 12 ` và mã sai | Tự viết hoa, bỏ khoảng trắng và gạch; mã sai báo một lỗi chung ngay dưới ô |
+| Q239 màn xác nhận | Nhập mã đúng | Tên Bộ đề, số câu, Thời lượng, số lượt; câu nêu việc ghi nhận thiết bị và địa chỉ IP; chưa chạy đồng hồ |
+| Q239 thiết bị thứ hai | Mở trình duyệt khác, đăng nhập cùng tài khoản, nhập cùng mã | Bị từ chối "đã vào trên một thiết bị khác" |
+| Q240 hai chế độ | Bấm "Từng câu" / "Cả đề"; thu cửa sổ xuống 360 px | Mặc định "Từng câu" dưới 900 px, "Cả đề" từ 900 px; không cuộn ngang; nút ≥ 48 px |
+| Q240 lưới và đánh dấu | Làm câu 1, làm dở chùm đúng/sai, đánh dấu câu 2, mở "Danh sách câu" | Ô số đổi màu theo đã làm / làm dở / chưa làm, câu đánh dấu có viền riêng; chạm ô để nhảy tới câu |
+| Q240 nút Aa | Mở "Hiển thị", đổi cỡ chữ, kiểu chữ, sáng/tối, tải lại trang | Nội dung đề đổi theo; lựa chọn còn nguyên sau khi tải lại |
+| Q241 lưu bài | Chọn đáp án, gõ tự luận | Chỉ báo "Đang lưu…" rồi "Đã lưu"; tải lại trang thấy đủ đáp án và đánh dấu |
+| Q241 mất mạng | Trong DevTools bật Offline, trả lời vài câu, bật lại mạng | Chỉ báo "Mất kết nối (n câu chưa lưu)"; có mạng lại thì tự lưu và về "Đã lưu" |
+| Q242 đồng hồ | Phiên 5 phút: quan sát; hoặc để đồng hồ chạy tới mốc | Còn 5 phút và 1 phút có dải cảnh báo (rung nếu máy hỗ trợ); hết giờ tự nộp |
+| Q244 Nộp bài | Bấm "Nộp bài" khi còn câu chưa làm | Hộp thoại nêu số câu chưa làm, làm dở, đánh dấu; chạm số để nhảy tới; "Làm tiếp" quay lại; "Nộp bài" xong hiện "Đã nộp", không còn đề, không có điểm |
+| Q244 Thu hồi | Người ra đề Thu hồi thiết bị (API; giao diện ở 4d) khi đang làm | Lần lưu kế tiếp hiện màn "Thiết bị này đã bị thu hồi" |
+
+Chỗ cần anh nhận xét: bố cục thanh trên (đồng hồ, chỉ báo lưu, Aa, Nộp bài) trên 360 px; thứ tự và chữ trên các nút; mức nổi bật của dải cảnh báo; chữ trong màn xác nhận.
+
 ## Thuật ngữ mới (đã vào GLOSSARY)
 
 Thiết bị dự thi, Thu hồi thiết bị, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi. "Nhân bản" cố ý không thành thuật ngữ riêng (chủ dự án: người dùng dùng một lần là hiểu). Các định nghĩa trong GLOSSARY là nguồn để viết hướng dẫn sử dụng cho người dùng cuối, nên giữ chúng chính xác khi hành vi thay đổi.
