@@ -30,7 +30,7 @@ export class CandidateMediaService implements CandidateMedia {
       .select()
       .from(attempts)
       .where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId)));
-    if (!attempt || attempt.status !== 'in_progress') return false;
+    if (attempt?.status !== 'in_progress') return false;
     if (this.clock.now().getTime() > attempt.deadline.getTime() + ATTEMPT_GRACE_SECONDS * 1000) {
       return false;
     }

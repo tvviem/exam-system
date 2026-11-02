@@ -210,7 +210,7 @@ test('Xóa Phiên thi chưa có ai: về danh sách ngay, không chờ truy vấ
     headers: { origin: ORIGIN },
     data: {
       examId: (
-        await (await page.request.get('/api/exams?q=' + encodeURIComponent(`Xóa ${p}`))).json()
+        await (await page.request.get(`/api/exams?q=${encodeURIComponent(`Xóa ${p}`)}`)).json()
       ).items[0].id,
       title: `Ca xóa ${p}`,
       opensAt: '2030-02-10T01:00:00Z',

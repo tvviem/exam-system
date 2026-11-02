@@ -356,7 +356,7 @@ export class AttemptsService {
         .from(attempts)
         .where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId)))
         .for('share');
-      if (!attempt || attempt.status !== 'in_progress') throw invalidState('ATTEMPT_CLOSED');
+      if (attempt?.status !== 'in_progress') throw invalidState('ATTEMPT_CLOSED');
 
       const items = await this.content.itemsOf(gate.examId, [...latest.keys()], tx);
       const results: SaveItemResult[] = [];
