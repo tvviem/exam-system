@@ -62,6 +62,34 @@ const add = (body: unknown, who = cookie) =>
   api('POST', `/sessions/${sessionId}/roster`, body, who);
 const names = (items: { fullName: string }[]) => items.map((i) => i.fullName).sort();
 
+describe('sắp Danh sách dự thi theo Mã định danh', () => {
+  const codes = async (query: string) =>
+    (await api('GET', `/sessions/${sessionId}/roster${query}`))
+      .json()
+      .items.map((i: { code: string | null }) => i.code);
+
+  it('sort=code xếp từng ký tự (chữ và số, không phân biệt hoa thường), người chưa có mã đứng cuối; mặc định vẫn theo tên', async () => {
+    await sql(`update users set code = $2 where id = $1`, [candidates.an, '237480201003']);
+    await sql(`update users set code = $2 where id = $1`, [candidates.binh, '237480201001']);
+    await sql(`update users set code = $2 where id = $1`, [candidates.chi, 'sv02']);
+    await sql(`update users set code = null where id = $1`, [candidates.dung]);
+    await add({ classLabel: 'K65-A' });
+    await add({ classLabel: 'K65-B' });
+
+    expect(await codes('?sort=code')).toEqual(['237480201001', '237480201003', 'sv02', null]);
+    // Mặc định (và sort=name) xếp theo tên gọi: An, Bình, Chi, Dũng.
+    expect(await codes('')).toEqual(['237480201003', '237480201001', 'sv02', null]);
+    expect(await codes('?sort=name')).toEqual(['237480201003', '237480201001', 'sv02', null]);
+  });
+
+  it('sort=code vẫn phân trang đúng và từ chối giá trị lạ', async () => {
+    await add({ classLabel: 'K65-A' });
+    await add({ classLabel: 'K65-B' });
+    expect(await codes('?sort=code&page=2&pageSize=3')).toEqual(['SV004']);
+    expect((await api('GET', `/sessions/${sessionId}/roster?sort=tuoi`)).statusCode).toBe(400);
+  });
+});
+
 describe('tìm người để thêm vào Danh sách dự thi (Q200)', () => {
   const search = (q: string) =>
     api('GET', `/sessions/${sessionId}/roster/search?q=${encodeURIComponent(q)}`);

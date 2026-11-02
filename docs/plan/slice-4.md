@@ -420,6 +420,10 @@ Seam test: S1 (`deadlineOf`, `layoutOf`, `responseSchemaFor`, đỏ trước), S
 
 Thứ tự 4b-1: test kiến trúc đỏ, tách `ExamCatalog`, tách `CandidateDirectory`, xanh; rồi `DB_POOL_MAX`, `TRUST_PROXY` và `nginx.conf`. Thứ tự 4b-2: S1, migration 0013 và S3, `join`, "Phiên thi của tôi", `start`, `view`, lưu lô, nộp và `close`, job quét, Thu hồi, hook Q218, ảnh Q219, L1, tài liệu.
 
+### Bổ sung sau 4a: sắp Danh sách dự thi (chủ dự án chốt 2/11/2026)
+
+Danh sách dự thi sắp theo **tên gọi, rồi họ, rồi tên lót** (mặc định, `sort=name`) hoặc theo **Mã định danh** (`sort=code`). Mã định danh ở trường thật dài cố định (ví dụ `237480201001`: 23 là khóa, `7480201` là mã ngành, `001` là số thứ tự), và mã demo viết `SV01`…`SV99`, nên chỉ cần so **từng ký tự** (chữ và số, không phân biệt hoa thường), không cần sắp "tự nhiên"; người chưa có mã đứng cuối. Chữ "Đ" hiện xếp lẫn với "D" (chưa đổi).
+
 ## Thuật ngữ mới (đã vào GLOSSARY)
 
 Thiết bị dự thi, Thu hồi thiết bị, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi. "Nhân bản" cố ý không thành thuật ngữ riêng (chủ dự án: người dùng dùng một lần là hiểu). Các định nghĩa trong GLOSSARY là nguồn để viết hướng dẫn sử dụng cho người dùng cuối, nên giữ chúng chính xác khi hành vi thay đổi.

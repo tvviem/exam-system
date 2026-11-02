@@ -7,6 +7,7 @@ import {
   CANDIDATE_DIRECTORY,
   type CandidateDirectory,
   type CandidateSelector,
+  type CandidateSort,
 } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { type Page } from '../../common/pagination';
@@ -42,7 +43,12 @@ export class SessionRosterService {
     private readonly credentials: RequesterCredentialsService,
   ) {}
 
-  async list(ownerId: string, sessionId: string, filter: { q?: string }, page: Page) {
+  async list(
+    ownerId: string,
+    sessionId: string,
+    filter: { q?: string; sort?: CandidateSort },
+    page: Page,
+  ) {
     await findOwnedSession(this.db, ownerId, sessionId);
     // Danh sách tối đa 500 người: lấy hết dòng của Phiên thi rồi nhờ danh bạ lọc, xếp và cắt trang theo hồ sơ.
     const members = await this.db
@@ -57,6 +63,7 @@ export class SessionRosterService {
     const byUser = new Map(members.map((member) => [member.userId, member]));
     const { total, items } = await this.directory.page([...byUser.keys()], {
       q: filter.q,
+      sort: filter.sort,
       limit: page.pageSize,
       offset: (page.page - 1) * page.pageSize,
     });

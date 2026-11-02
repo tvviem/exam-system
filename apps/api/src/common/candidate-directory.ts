@@ -15,6 +15,8 @@ export type CandidateSelector =
   | { classLabel: string }
   | { codes: string[] };
 
+export type CandidateSort = 'name' | 'code';
+
 export interface CandidateRecord {
   id: string;
   code: string | null;
@@ -34,11 +36,12 @@ export interface CandidateProfile {
 export interface CandidateDirectory {
   /**
    * Một trang hồ sơ của các `ids`, lọc theo tên hoặc Mã định danh (`q` không phân biệt dấu, hoa thường) và xếp theo
-   * tên gọi (từ cuối của họ tên), rồi họ và tên lót.
+   * tên gọi (từ cuối của họ tên), rồi họ và tên lót (`sort: 'name'`, mặc định), hoặc theo Mã định danh từng ký tự,
+   * không phân biệt hoa thường, người chưa có mã đứng cuối (`sort: 'code'`).
    */
   page(
     ids: string[],
-    options: { q?: string; limit: number; offset: number },
+    options: { q?: string; sort?: CandidateSort; limit: number; offset: number },
   ): Promise<{ total: number; items: CandidateProfile[] }>;
 
   /** Gợi ý người và Lớp đủ điều kiện dự thi (đang hoạt động, mang Nhãn Người dự thi, khác `excludeUserId`). */
