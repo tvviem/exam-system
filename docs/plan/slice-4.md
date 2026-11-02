@@ -338,7 +338,7 @@ Mã lỗi mới: `INVALID_ACCESS_CODE` (một mã chung, Q201), `INVALID_STATE` 
 | PR | Phạm vi | Migration | Kiểm thử chính |
 |---|---|---|---|
 | **4a** Phiên thi và Danh sách dự thi | `session`: tạo theo các bước, danh sách và lọc trạng thái, chi tiết, sửa theo trạng thái (Q202), thiết lập, Mã vào thi, thêm theo người hoặc Lớp, Cấp lại mật khẩu tạm, Nhân bản, Hủy, Xóa, thông báo "được thêm vào" và "bị Hủy" và "đổi giờ"; `ExamUsage` hiện số Phiên thi trên Bộ đề; ràng buộc loại trừ mã | 0012 | S1, S2, S3, S6 |
-| **4b** Vào thi và Lượt làm bài (API) | `attempt`: `join`, Gắn thiết bị, `start`, `view`, `saveResponses`, `submit`, `close`, job quét tự nộp, hook Khóa đăng nhập (Q218), ảnh cho Người dự thi (Q219), cookie `exam_did` | 0013 | S1, S2, S3, S4, S5, S8 |
+| **4b** Vào thi và Lượt làm bài (API), chia 4b-1 và 4b-2 (Q226) | `attempt`: `join`, Gắn thiết bị, `start`, `view`, `saveResponses`, `submit`, `close`, job quét tự nộp, hook Khóa đăng nhập (Q218), ảnh cho Người dự thi (Q219), cookie `exam_did` | 0013 | S1, S2, S3, S4, S5, S8 |
 | **4c** Khu làm bài `/take` | giao diện điện thoại theo prototype đã duyệt: Phiên thi của tôi, nhập mã, màn xác nhận (Q210), hai chế độ, lưới số câu, đồng hồ có cảnh báo 5 và 1 phút, hàng đợi IndexedDB tự xả, hộp thoại xác nhận Nộp bài, báo thiết bị bị thu hồi, menu chuyển khu (Q143), Xem thử qua Phiên thi (Q220), PWA | không | S6 |
 | **4d** Theo dõi phòng thi | prototype trước (Q207), rồi: Socket.IO, presence, `session_events`, Cộng giờ, Thu hồi thiết bị và Cho vào lại, Đóng cửa vào thi, Buộc nộp, Vi phạm và Đình chỉ (Q221) | 0014 | S2, S4, S6, S7 |
 | **4e** Hoàn thiện | Phiên thi trong Chuyển giao và Xóa người dùng (Q205), k6 500 người (Q214), hướng dẫn dùng thử trong README | không | S2, S6, S9 |
@@ -397,6 +397,28 @@ Dùng skill `prototype` và `ui-ux-pro-max`, kiểm bằng Playwright ở hai k�
 - `architecture.md`: 5.1 (hạn theo Q208, job quét Q212, thiết bị), 5.4 (heartbeat REST Q213, "Thu hồi thiết bị" thay "Cho phép đổi thiết bị"), mục 6 ("Mỗi Lượt làm bài chỉ cho một phiên hoạt động" thành quy tắc Thiết bị dự thi), mục 11 (bỏ cache cho đến khi đo, Q214), mục 12.
 - `data-model.md`: mục 4–5 theo phần "Mô hình dữ liệu" ở trên.
 - `ui-design.md`: mẫu màn Theo dõi sau khi chọn prototype.
+
+## PR 4b: thiết kế chi tiết (đã duyệt 2/11/2026)
+
+Chủ dự án đồng ý cả mười một điểm Q226–Q236. Không có thuật ngữ mới (ân hạn 30 giây là dung sai kỹ thuật, không vào GLOSSARY).
+
+| # | Quyết định |
+|---|---|
+| Q226 | Chia 4b thành **4b-1** (ranh giới module và cấu hình, không đổi hành vi, lưới an toàn là test 4a) và **4b-2** (vào thi và Lượt làm bài) |
+| Q227 | 4b-2 làm: `join`, Gắn thiết bị, "Phiên thi của tôi", `start`, `view`, lưu lô, Nộp bài, `close`, job quét, Thu hồi và Cho vào lại (API), Hủy Phiên thi nộp Lượt, chặn Xóa Phiên thi và bớt người khi đã có Lượt, hook Q218, ảnh Q219. Để lại: heartbeat, presence, `session_events`, Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi, màn Theo dõi (4d); Xem thử (4c); Chuyển giao (4e) |
+| Q228 | Bảy cổng: `ExamCatalog` (`exam`→`session`), `CandidateDirectory` (`identity`→`session`), `SessionEntry` (`session`→`attempt`), `ExamContent` (`exam`→`attempt`), `SessionAttempts` (`attempt`→`session`), `CandidateMedia` (`attempt`→`question-bank`), `UserDeactivationHooks` (`attempt`→`identity`). Test kiến trúc cấm import chéo bảng với `session` và `attempt`; 8 chỗ nợ cũ nằm trong danh sách cố định. Cấm bớt người đã có Lượt bằng khóa ngoại ghép `attempts(session_id,user_id)→session_roster ON DELETE RESTRICT` thay cho trigger; dòng thiết bị dùng khóa ngoại ghép `CASCADE` |
+| Q229 | `join`: cookie `exam_did` 128 bit cấp ở lần `join` đầu; một lỗi chung `INVALID_ACCESS_CODE`; sau khi tìm thấy mới báo `NOT_OPEN_YET`, `ENTRY_CLOSED`, `WINDOW_CLOSED`, `SESSION_CANCELLED`; sai quá 5 lần/10 phút/người thì `RATE_LIMITED`; người đang có Lượt vẫn `join` được khi Đóng cửa vào thi hoặc Khung giờ đã đóng; `start` khi chưa `join` là `INVALID_STATE NOT_JOINED` |
+| Q230 | `start`: làm tiếp Lượt đang mở nếu có; tạo mới chỉ khi Đang mở và còn lượt (`ATTEMPTS_EXHAUSTED`); `deadline = bây giờ + Thời lượng + giờ cộng sẵn`, Cắt cứng lấy `min` với giờ đóng; Cắt cứng mà còn dưới 60 giây thì `WINDOW_CLOSED`; `seed` 48 bit, `layout` lưu một lần |
+| Q231 | Lưu lô 1–50 phần tử (kích thước **một lần gửi**, không giới hạn số câu của đề: tối đa 200 câu/Bộ đề, 500 người/Phiên thi); một giao dịch khóa thiết bị và Lượt `FOR SHARE`; ân hạn 30 giây; kết quả từng câu `saved`/`stale`/`rejected`; chỉ trả 200 sau khi đã ghi |
+| Q232 | `view` theo `layout` qua `candidateViewOf`, kèm `points`; ảnh qua `GET /take-media/:attemptId/:illustrationId/:variant`; Lượt đã nộp chỉ trả `{status, submittedAt}`; "Phiên thi của tôi" mang đủ dữ liệu cho màn xác nhận Q210 |
+| Q233 | Nộp bài idempotent; `close(tx, attemptId, reason)` nội bộ idempotent; job `attempt.sweep` cron `*/10 * * * * *`, lô 200, `FOR UPDATE SKIP LOCKED`; Hủy Phiên thi đóng Lượt cùng giao dịch, khóa Phiên thi trước rồi Lượt theo `id` |
+| Q234 | Thu hồi: `active→revoked`; Cho vào lại thu hồi thiết bị mới (nếu có) và kích hoạt lại thiết bị cũ trong một thao tác. Bỏ giá trị `pardoned` khỏi enum, giữ cột `pardoned_at`. Danh sách dự thi mang thông tin thiết bị và số Lượt |
+| Q235 | `DB_POOL_MAX` (1–100, mặc định 10); `TRUST_PROXY` (mặc định `loopback`); nginx đặt `X-Forwarded-For` từ `CF-Connecting-IP` hoặc `$remote_addr`, bỏ `$proxy_add_x_forwarded_for` |
+| Q236 | Script tải 500 người `pnpm load:exam` (không chạy trong CI), ngưỡng: 0 lỗi, lưu p99 < 100 ms, `start` p99 < 1 giây, xem đề p99 < 500 ms; k6 ở 4e vẫn làm |
+
+Seam test: S1 (`deadlineOf`, `layoutOf`, `responseSchemaFor`, đỏ trước), S2, S3, S4, S5, S8, A1 (kiến trúc), L1 (tải). Không có S6, S7 ở 4b.
+
+Thứ tự 4b-1: test kiến trúc đỏ, tách `ExamCatalog`, tách `CandidateDirectory`, xanh; rồi `DB_POOL_MAX`, `TRUST_PROXY` và `nginx.conf`. Thứ tự 4b-2: S1, migration 0013 và S3, `join`, "Phiên thi của tôi", `start`, `view`, lưu lô, nộp và `close`, job quét, Thu hồi, hook Q218, ảnh Q219, L1, tài liệu.
 
 ## Thuật ngữ mới (đã vào GLOSSARY)
 
