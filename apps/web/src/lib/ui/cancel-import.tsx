@@ -41,7 +41,12 @@ export function CancelImportButton({
         <p>{t('questionImport.cancelBody')}</p>
         <ErrorMessage>{cancel.isError && errorMessage(t, cancel.error)}</ErrorMessage>
         <div className="flex flex-col gap-2 sm:flex-row-reverse">
-          <Button variant="danger" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
+          <Button
+            loading={cancel.isPending}
+            variant="danger"
+            disabled={cancel.isPending}
+            onClick={() => cancel.mutate()}
+          >
             {cancel.isPending ? t('questionImport.cancelling') : t('questionImport.cancel')}
           </Button>
           <Button onClick={() => setOpen(false)}>{t('questionImport.keepBatch')}</Button>

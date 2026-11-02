@@ -4,7 +4,7 @@ import { Download, Upload } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../../lib/errors';
-import { formatDateTime } from '../../../../../lib/format';
+import { formatDateTime, formatFileSize } from '../../../../../lib/format';
 import { topicsQuery } from '../../../../../lib/question-bank';
 import {
   IMPORT_EXAMPLE_URL,
@@ -17,6 +17,7 @@ import {
 } from '../../../../../lib/question-imports';
 import {
   Badge,
+  BusyNotice,
   buttonClass,
   Card,
   ErrorMessage,
@@ -195,7 +196,18 @@ function UploadCard() {
           </li>
         </ol>
         <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
-        <PrimaryButton type="submit" disabled={!file || !topicId || mutation.isPending}>
+        {mutation.isPending && file && (
+          <BusyNotice
+            title={t('busy.uploading')}
+            detail={`${file.name} · ${formatFileSize(file.size)}`}
+            hint={t('busy.longWait')}
+          />
+        )}
+        <PrimaryButton
+          loading={mutation.isPending}
+          type="submit"
+          disabled={!file || !topicId || mutation.isPending}
+        >
           <Upload aria-hidden className="size-5" />
           {mutation.isPending ? t('questionImport.uploading') : t('questionImport.upload')}
         </PrimaryButton>

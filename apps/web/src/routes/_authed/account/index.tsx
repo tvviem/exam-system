@@ -187,7 +187,7 @@ function ProfileCard({ account }: { account: Account }) {
         </div>
         <ErrorMessage>{save.isError && errorMessage(t, save.error)}</ErrorMessage>
         <div>
-          <PrimaryButton type="submit" disabled={!dirty || save.isPending}>
+          <PrimaryButton loading={save.isPending} type="submit" disabled={!dirty || save.isPending}>
             {save.isPending ? t('account.saving') : t('account.save')}
           </PrimaryButton>
         </div>

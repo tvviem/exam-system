@@ -9,7 +9,15 @@ import {
   uploadAccountRequest,
 } from '../../../../lib/account-requests';
 import { errorMessage } from '../../../../lib/errors';
-import { buttonClass, Card, ErrorMessage, PrimaryButton, TextField } from '../../../../lib/ui';
+import { formatFileSize } from '../../../../lib/format';
+import {
+  BusyNotice,
+  buttonClass,
+  Card,
+  ErrorMessage,
+  PrimaryButton,
+  TextField,
+} from '../../../../lib/ui';
 import { RequestListItem } from '../../../../lib/ui/account-request-list';
 import { EmptyState, ListSkeleton, Pagination } from '../../../../lib/ui/admin';
 
@@ -103,7 +111,18 @@ function UploadCard() {
           onChange={(e) => setNote(e.target.value)}
         />
         <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
-        <PrimaryButton type="submit" disabled={!file || mutation.isPending}>
+        {mutation.isPending && file && (
+          <BusyNotice
+            title={t('busy.uploading')}
+            detail={`${file.name} · ${formatFileSize(file.size)}`}
+            hint={t('busy.longWait')}
+          />
+        )}
+        <PrimaryButton
+          loading={mutation.isPending}
+          type="submit"
+          disabled={!file || mutation.isPending}
+        >
           <Upload aria-hidden className="size-5" />
           {mutation.isPending ? t('accountRequests.submitting') : t('accountRequests.submit')}
         </PrimaryButton>

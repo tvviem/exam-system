@@ -528,6 +528,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                         {t('exam.publishAction')}
                       </Button>
                       <PrimaryButton
+                        loading={save.isPending}
                         disabled={!dirty || !valid || save.isPending}
                         onClick={() => save.mutate(draft)}
                       >

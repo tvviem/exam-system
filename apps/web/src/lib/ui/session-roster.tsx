@@ -238,11 +238,12 @@ function PasteDialog({
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button onClick={onClose}>{t('common.cancel')}</Button>
           {result && result.added > 0 ? (
-            <PrimaryButton disabled={confirm.isPending} onClick={() => confirm.mutate()}>
+            <PrimaryButton loading={confirm.isPending} onClick={() => confirm.mutate()}>
               {t('session.roster.pasteConfirm', { count: result.added })}
             </PrimaryButton>
           ) : (
             <PrimaryButton
+              loading={check.isPending}
               disabled={codes.length === 0 || check.isPending}
               onClick={() => check.mutate()}
             >

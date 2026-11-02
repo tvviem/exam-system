@@ -162,7 +162,11 @@ function CreateExamDialog({ open, onClose }: { open: boolean; onClose: () => voi
         <ErrorMessage>{create.isError && errorMessage(t, create.error)}</ErrorMessage>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button onClick={onClose}>{t('common.cancel')}</Button>
-          <PrimaryButton type="submit" disabled={!title.trim() || create.isPending}>
+          <PrimaryButton
+            loading={create.isPending}
+            type="submit"
+            disabled={!title.trim() || create.isPending}
+          >
             {create.isPending ? t('exam.creating') : t('exam.create')}
           </PrimaryButton>
         </div>

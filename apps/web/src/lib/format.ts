@@ -11,6 +11,15 @@ const dateTime = new Intl.DateTimeFormat('vi-VN', {
 });
 const date = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short' });
 
+/** Dung lượng file cho người dùng đọc, dấu phẩy thập phân kiểu Việt Nam: 1536 → "1,5 KB". */
+export function formatFileSize(bytes: number): string {
+  const unit = (value: number, suffix: string) =>
+    `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(value)} ${suffix}`;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return unit(bytes / 1024, 'KB');
+  return unit(bytes / (1024 * 1024), 'MB');
+}
+
 export const formatDateTime = (value: string | null) =>
   value ? dateTime.format(new Date(value)) : '';
 

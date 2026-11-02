@@ -128,6 +128,7 @@ function NewSessionPage() {
           )}
           {last ? (
             <PrimaryButton
+              loading={create.isPending}
               disabled={invalid.size > 0 || create.isPending}
               onClick={() => create.mutate()}
             >
