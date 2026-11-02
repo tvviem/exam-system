@@ -5,6 +5,7 @@ import type {
   CandidateDirectory,
   CandidateRecord,
   CandidateSelector,
+  CandidateSort,
   Executor,
 } from '../../common/candidate-directory';
 import { escapeLike } from '../../common/sql-like';
@@ -20,6 +21,9 @@ const byGivenName = [
   sql`unaccent(lower(${users.fullName}))`,
   users.id,
 ];
+
+/** Mã định danh so từng ký tự (collation "C"): mã dài cố định nên 237480201001 < 237480201002, SV01 < SV02; chưa có mã thì cuối. */
+const byCode = [sql`lower(${users.code}) COLLATE "C" ASC NULLS LAST`, users.id];
 
 const matches = (like: string) =>
   sql`(unaccent(lower(${users.fullName})) LIKE ${like} OR lower(${users.code}) LIKE ${like})`;
@@ -48,7 +52,10 @@ const unknownPerson = (id: string): CandidateRecord => ({
 export class CandidateDirectoryService implements CandidateDirectory {
   constructor(@Inject(DB) private readonly db: Database) {}
 
-  async page(ids: string[], options: { q?: string; limit: number; offset: number }) {
+  async page(
+    ids: string[],
+    options: { q?: string; sort?: CandidateSort; limit: number; offset: number },
+  ) {
     if (ids.length === 0) return { total: 0, items: [] };
     const q = options.q ? normalizeForSearch(options.q) : '';
     const where = and(inArray(users.id, ids), q ? matches(`%${escapeLike(q)}%`) : undefined);
@@ -58,7 +65,7 @@ export class CandidateDirectoryService implements CandidateDirectory {
         .select({ id: users.id, code: users.code, fullName: users.fullName })
         .from(users)
         .where(where)
-        .orderBy(...byGivenName)
+        .orderBy(...(options.sort === 'code' ? byCode : byGivenName))
         .limit(options.limit)
         .offset(options.offset),
     ]);

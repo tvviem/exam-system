@@ -17,7 +17,10 @@ import { CurrentActor, CurrentUser, RequireTag } from '../identity/auth/auth.dec
 import type { AuthenticatedUser } from '../identity/auth/auth.types';
 import { SessionRosterService } from './session-roster.service';
 
-const listSchema = pageSchema.extend({ q: z.string().trim().max(200).optional() });
+const listSchema = pageSchema.extend({
+  q: z.string().trim().max(200).optional(),
+  sort: z.enum(['name', 'code']).default('name'),
+});
 const searchSchema = z.object({ q: z.string().max(200).default('') });
 
 const dryRun = { dryRun: z.boolean().default(false) };

@@ -121,7 +121,12 @@ export interface RosterAddResult {
   dryRun: boolean;
 }
 
-export const rosterQuery = (sessionId: string, params: { q?: string; page?: number }) =>
+export type RosterSort = 'name' | 'code';
+
+export const rosterQuery = (
+  sessionId: string,
+  params: { q?: string; page?: number; sort?: RosterSort },
+) =>
   queryOptions({
     queryKey: ['sessions', 'roster', sessionId, params],
     queryFn: () =>

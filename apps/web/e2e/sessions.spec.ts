@@ -148,6 +148,12 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   await page.reload();
   await expect(page.getByLabel(`Phút cộng sẵn của Nguyễn Văn An (${p})`)).toHaveValue('15');
 
+  // Sắp theo Mã định danh: vẫn đủ người, mã nhỏ đứng đầu
+  await page.getByLabel('Sắp theo').selectOption('code');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.first()).toContainText(`PT-${tag}-001`);
+  await page.getByLabel('Sắp theo').selectOption('name');
+
   // Bớt một người bằng menu
   await chooseFromRowMenu(page, `Thao tác với Lê Văn Cường (${p})`, 'Bớt');
   await expect(rows).toHaveCount(2);

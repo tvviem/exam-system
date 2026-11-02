@@ -10,6 +10,7 @@ import {
   type RosterAddResult,
   type RosterItem,
   type RosterSelector,
+  type RosterSort,
   reissueRosterPassword,
   removeFromRoster,
   rosterQuery,
@@ -17,7 +18,7 @@ import {
   type SessionSummary,
   setExtraMinutes,
 } from '../sessions';
-import { Button, Card, Dialog, ErrorMessage, PrimaryButton, SearchField } from '.';
+import { Button, Card, Dialog, ErrorMessage, PrimaryButton, SearchField, SelectField } from '.';
 import { EmptyState, ListSkeleton, Pagination, TemporaryPasswordDialog } from './admin';
 import { RowMenu } from './row-menu';
 import { StickyActionBar } from './sticky-action-bar';
@@ -261,6 +262,7 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
   const refresh = useRosterRefresh(session.id);
   const [text, setText] = useState('');
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<RosterSort>('name');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reissuing, setReissuing] = useState<RosterItem | null>(null);
   const [password, setPassword] = useState<{
@@ -270,8 +272,10 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
   } | null>(null);
   const q = useDebounced(text.trim());
   // biome-ignore lint/correctness/useExhaustiveDependencies: về trang 1 khi đổi từ khóa
-  useEffect(() => setPage(1), [q]);
-  const roster = useQuery(rosterQuery(session.id, { q: q || undefined, page }));
+  useEffect(() => setPage(1), [q, sort]);
+  const roster = useQuery(
+    rosterQuery(session.id, { q: q || undefined, page, sort: sort === 'name' ? undefined : sort }),
+  );
   const items = roster.data?.items ?? [];
   const toggle = (id: string) =>
     setSelected((current) => {
@@ -310,14 +314,27 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
             ({t('session.roster.count', { count: session.rosterCount })})
           </span>
         </h2>
-        <div className="w-full sm:w-72">
-          <SearchField
-            id="roster-search"
-            label={t('session.roster.search')}
-            value={text}
-            maxLength={200}
-            onChange={(e) => setText(e.target.value)}
-          />
+        <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto">
+          <div className="w-full sm:w-56">
+            <SelectField
+              id="roster-sort"
+              label={t('session.roster.sort')}
+              value={sort}
+              onChange={(e) => setSort(e.target.value as RosterSort)}
+            >
+              <option value="name">{t('session.roster.sortName')}</option>
+              <option value="code">{t('session.roster.sortCode')}</option>
+            </SelectField>
+          </div>
+          <div className="w-full sm:w-72">
+            <SearchField
+              id="roster-search"
+              label={t('session.roster.search')}
+              value={text}
+              maxLength={200}
+              onChange={(e) => setText(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
