@@ -10,6 +10,15 @@ const envSchema = z.object({
   // Số lần thử đăng nhập tối đa mỗi IP trong 10 phút (Q47). Cả lớp dùng chung Wi-Fi nên không đặt thấp;
   // E2E nâng cao vì mọi test đăng nhập từ cùng một IP.
   LOGIN_MAX_PER_IP: z.coerce.number().int().positive().default(20),
+  // Số kết nối Postgres tối đa của MỖI tiến trình (api và worker mỗi bên một nhóm); tổng phải nhỏ hơn max_connections.
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
+  // Ai được tin khi báo địa chỉ khách qua X-Forwarded-For: `loopback` (nginx cùng pod) hoặc danh sách địa chỉ/dải cách
+  // nhau bằng dấu phẩy. Sai cấu hình thì mọi người cùng một IP và giới hạn đăng nhập theo IP chung.
+  TRUST_PROXY: z
+    .string()
+    .min(1)
+    .refine((value) => !/^\d+$/.test(value.trim()), { message: 'không nhận số bước trung gian' })
+    .default('loopback'),
   // Khóa AES-256-GCM mã hóa Phiếu tài khoản (32 byte, base64). Tạo bằng: openssl rand -base64 32
   SLIP_ENCRYPTION_KEY: z.string().refine((value) => Buffer.from(value, 'base64').length === 32, {
     message: 'phải là 32 byte mã hóa base64 (openssl rand -base64 32)',
@@ -37,6 +46,17 @@ const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** Đổi `TRUST_PROXY` thành giá trị `trustProxy` của Fastify. */
+export function parseTrustProxy(value: string): string | string[] {
+  const text = value.trim();
+  if (text.includes(','))
+    return text
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+  return text;
+}
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const result = envSchema.safeParse(source);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadDatabaseUrl, loadEnv } from './env';
+import { loadDatabaseUrl, loadEnv, parseTrustProxy } from './env';
 
 const valid = {
   DATABASE_URL: 'postgres://exam:exam@localhost:5434/exam',
@@ -29,5 +29,34 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ DATABASE_URL: valid.DATABASE_URL, REDIS_URL: valid.REDIS_URL })).toThrow(
       /SLIP_ENCRYPTION_KEY/,
     );
+  });
+});
+
+describe('DB_POOL_MAX (Q224, Q235)', () => {
+  it('mặc định 10 kết nối', () => {
+    expect(loadEnv(valid).DB_POOL_MAX).toBe(10);
+  });
+
+  it('đọc từ biến môi trường', () => {
+    expect(loadEnv({ ...valid, DB_POOL_MAX: '40' }).DB_POOL_MAX).toBe(40);
+  });
+
+  it.each(['0', '101', '2.5', 'nhiều'])('từ chối %s', (value) => {
+    expect(() => loadEnv({ ...valid, DB_POOL_MAX: value })).toThrow(/DB_POOL_MAX/);
+  });
+});
+
+describe('TRUST_PROXY (Q224, Q235)', () => {
+  it('mặc định tin địa chỉ loopback', () => {
+    expect(loadEnv(valid).TRUST_PROXY).toBe('loopback');
+    expect(parseTrustProxy('loopback')).toBe('loopback');
+  });
+
+  it('không nhận số bước trung gian', () => {
+    expect(() => loadEnv({ ...valid, TRUST_PROXY: '2' })).toThrow(/TRUST_PROXY/);
+  });
+
+  it('danh sách cách nhau bằng dấu phẩy là địa chỉ hoặc dải được tin', () => {
+    expect(parseTrustProxy(' 10.0.0.0/8 , loopback ')).toEqual(['10.0.0.0/8', 'loopback']);
   });
 });

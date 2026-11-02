@@ -86,6 +86,8 @@ apps/api/src/modules/
 
 Quy tắc: một module chỉ gọi module khác qua service công khai của module đó, không đọc trực tiếp bảng của module khác. Module `attempt` và `grading` chỉ đọc bản chụp trong `exam_items` ([ADR-0005](./adr/0005-chup-noi-dung-khi-phat-hanh.md)).
 
+**Cổng giữa các module** (đặt ở `apps/api/src/common/`, nối ở các module `*-wiring.module.ts`): bên cần dữ liệu khai báo một interface nghiệp vụ nhỏ, bên sở hữu dữ liệu cài đặt, nên hai module không import nhau. Đã có: `EXAM_USAGE`, `OWNED_CONTENT`, `SESSION_USAGE`, `EXAM_CATALOG` (`session` hỏi `exam`), `CANDIDATE_DIRECTORY` (`session` hỏi `identity`). Cổng đặt theo việc cần làm (một lần gọi trả đủ thứ bên dùng cần), không theo từng bảng. Test kiến trúc `src/architecture.test.ts` cấm `session` và `attempt` import bảng của module khác; các cặp nợ cũ nằm trong danh sách cố định ở đầu file đó. Quyết định: [slice-4.md Q223, Q228](./plan/slice-4.md).
+
 ## 5. Các luồng nghiệp vụ quan trọng
 
 ### 5.1 Bắt đầu Lượt làm bài

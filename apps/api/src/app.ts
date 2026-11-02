@@ -8,14 +8,14 @@ import { registerOriginCheck } from './common/origin-check';
 import { MAX_UPLOAD_BYTES } from './common/spreadsheet';
 import { ZodExceptionFilter } from './common/zod-exception.filter';
 import { ENV } from './config/config.module';
-import type { Env } from './config/env';
+import { type Env, loadEnv, parseTrustProxy } from './config/env';
 import { MAX_ILLUSTRATION_UPLOAD_BYTES } from './modules/question-bank/illustrations/image-processing';
 
 export async function createApp(): Promise<NestFastifyApplication> {
-  // trustProxy: chỉ tin X-Forwarded-For do nginx cùng pod gửi tới.
+  // trustProxy: chỉ tin X-Forwarded-For do nguồn được TRUST_PROXY cho phép (mặc định nginx cùng pod).
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ trustProxy: 'loopback' }),
+    new FastifyAdapter({ trustProxy: parseTrustProxy(loadEnv().TRUST_PROXY) }),
     { bufferLogs: true },
   );
   app.useLogger(app.get(Logger));
