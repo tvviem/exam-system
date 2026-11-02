@@ -14,7 +14,7 @@ export type SubmitReason =
   | 'account_locked'
   | 'session_cancelled';
 
-export interface DeviceSummary {
+export interface ExamDeviceSummary {
   userId: string;
   deviceId: string;
   status: 'active' | 'revoked';
@@ -32,7 +32,7 @@ export interface SessionAttempts {
   /** Nộp mọi Lượt đang làm của Phiên thi với `reason`; trả số Lượt đã đóng. */
   closeAll(tx: Transaction, sessionId: string, reason: SubmitReason): Promise<number>;
   /** Thiết bị của từng người trong Phiên thi (người chưa gắn thiết bị vắng). */
-  devicesOf(sessionId: string): Promise<Map<string, DeviceSummary[]>>;
+  devicesOf(sessionId: string): Promise<Map<string, ExamDeviceSummary[]>>;
   /** Thu hồi thiết bị đang gắn của người này. Trả `false` nếu người này chưa có thiết bị đang gắn. */
   revokeDevice(
     tx: Transaction,

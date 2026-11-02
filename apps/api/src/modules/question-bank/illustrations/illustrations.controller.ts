@@ -14,6 +14,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ApiError, validationFailed } from '../../../common/api-error';
 import { CANDIDATE_MEDIA, type CandidateMedia } from '../../../common/candidate-media';
+import { DEVICE_COOKIE } from '../../../common/device-cookie';
 import { pageSchema } from '../../../common/pagination';
 import { ENV } from '../../../config/config.module';
 import type { Env } from '../../../config/env';
@@ -132,11 +133,11 @@ export class CandidateMediaController {
   ) {
     const side = variantSchema.safeParse(variant);
     if (!side.success) throw validationFailed('variant', 'invalid');
-    const deviceKey = req.cookies?.exam_did;
+    const deviceKey = req.cookies?.[DEVICE_COOKIE];
     if (!(await this.candidateMedia.canView(user.id, deviceKey, attemptId, id))) {
       throw new ApiError('NOT_FOUND');
     }
-    const key = await this.illustrations.variantKeyUnchecked(id, side.data);
+    const key = await this.illustrations.variantKeyAfterAccessCheck(id, side.data);
     return sendVariant(reply, this.env, this.media, key);
   }
 }

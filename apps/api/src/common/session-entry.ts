@@ -31,8 +31,16 @@ export interface EntryGate {
 export interface SessionEntry {
   /** Các Phiên thi (mới nhất trước, tối đa 20) có Mã vào thi này mà người này có trong Danh sách. `code` đã chuẩn hóa. */
   findByCode(userId: string, code: string, executor?: EntryExecutor): Promise<EntryGate[]>;
-  /** Phiên thi này nếu người này có trong Danh sách; ngược lại `null`. */
-  gateFor(sessionId: string, userId: string, executor?: EntryExecutor): Promise<EntryGate | null>;
+  /**
+   * Phiên thi này nếu người này có trong Danh sách; ngược lại `null`. `lock: true` khóa dòng Phiên thi `FOR SHARE` đến hết
+   * giao dịch: Hủy, Thu hồi, Cho vào lại, Bớt người đều khóa Phiên thi trước nên các thao tác nối đuôi nhau, không bế tắc.
+   */
+  gateFor(
+    sessionId: string,
+    userId: string,
+    executor?: EntryExecutor,
+    options?: { lock?: boolean },
+  ): Promise<EntryGate | null>;
   /** Phiên thi của người này (mới nhất trước, tối đa 100), bỏ những cái đã đóng quá `since`. */
   listFor(userId: string, since: Date, executor?: EntryExecutor): Promise<EntryGate[]>;
 }

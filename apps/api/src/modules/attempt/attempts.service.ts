@@ -1,8 +1,8 @@
 import { randomInt } from 'node:crypto';
 import {
-  ATTEMPT_GRACE_SECONDS,
   deadlineOf,
   HARD_CLOSE_MIN_SECONDS,
+  isPastGrace,
   type LayoutInput,
   layoutOf,
   normalizeAccessCode,
@@ -20,6 +20,7 @@ import type { SubmitReason } from '../../common/session-attempts';
 import { type EntryGate, SESSION_ENTRY, type SessionEntry } from '../../common/session-entry';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { attempts, responses, sessionDevices } from './attempt.schema';
+import { closeInProgress } from './attempt-close';
 import { buildAttemptSections, type SavedResponse } from './attempt-view';
 import { generateDeviceKey, hashDeviceKey } from './device-key';
 import { JoinRateLimiter } from './join-rate-limiter';
@@ -163,7 +164,7 @@ export class AttemptsService {
 
   // --- Phiên thi của tôi ---------------------------------------------------------------------------------------------
 
-  async listFor(userId: string) {
+  async listFor(userId: string, deviceKey: string | undefined) {
     const now = this.clock.now();
     const gates = await this.entry.listFor(userId, new Date(now.getTime() - 30 * 24 * 3_600_000));
     if (gates.length === 0) return { items: [] };
@@ -176,6 +177,15 @@ export class AttemptsService {
       .from(attempts)
       .where(eq(attempts.userId, userId));
     const summaries = await this.content.summariesOf(gates.map((gate) => gate.examId));
+    const devices = await this.db
+      .select({
+        sessionId: sessionDevices.sessionId,
+        status: sessionDevices.status,
+        deviceHash: sessionDevices.deviceHash,
+      })
+      .from(sessionDevices)
+      .where(eq(sessionDevices.userId, userId));
+    const hash = deviceKey ? hashDeviceKey(deviceKey) : undefined;
     return {
       items: gates.map((gate) => {
         const own = mine.filter((attempt) => attempt.sessionId === gate.sessionId);
@@ -192,6 +202,10 @@ export class AttemptsService {
           maxAttempts: gate.maxAttempts,
           attemptsUsed: own.length,
           inProgressAttemptId: own.find((attempt) => attempt.status === 'in_progress')?.id ?? null,
+          deviceStatus: deviceStatusOf(
+            devices.filter((device) => device.sessionId === gate.sessionId),
+            hash,
+          ),
         };
       }),
     };
@@ -201,17 +215,19 @@ export class AttemptsService {
 
   /** Bắt đầu Lượt mới hoặc làm tiếp Lượt đang mở. */
   async start(userId: string, deviceKey: string | undefined, sessionId: string) {
+    // Lượt đang dở đã quá ân hạn thì đóng (hết giờ) trong giao dịch riêng: nếu để chung, một lỗi ở các bước sau sẽ hủy luôn
+    // việc nộp này và Lượt cứ treo đến khi job quét chạy.
+    await this.closeOverdue(userId, sessionId);
     const attemptId = await this.db.transaction(async (tx) => {
-      const gate = await this.entry.gateFor(sessionId, userId, tx);
+      // Khóa Phiên thi `FOR SHARE` ngay câu đầu (cùng thứ tự khóa với Hủy, Thu hồi, Bớt người): không bế tắc, và nếu vừa bị
+      // Hủy thì thấy đã Hủy chứ không tạo Lượt mồ côi.
+      const gate = await this.entry.gateFor(sessionId, userId, tx, { lock: true });
       if (!gate) throw new ApiError('NOT_FOUND');
       await this.requireDevice(tx, sessionId, userId, deviceKey);
       const now = this.clock.now();
 
       const running = await this.inProgressOf(tx, sessionId, userId);
-      if (running && now.getTime() <= running.deadline.getTime() + ATTEMPT_GRACE_SECONDS * 1000) {
-        return running.id;
-      }
-      if (running) await this.closeOne(tx, running.id, 'timeout', now);
+      if (running && !isPastGrace(running.deadline, now)) return running.id;
 
       const problem = entryProblem(phaseOf(gate, now), false);
       if (problem) throw invalidState(problem);
@@ -278,6 +294,17 @@ export class AttemptsService {
       }
     });
     return this.view(userId, deviceKey, attemptId);
+  }
+
+  /** Đóng (hết giờ) Lượt đang dở của người này nếu đã quá hạn cộng ân hạn; giao dịch riêng, chạy xong là bền. */
+  private async closeOverdue(userId: string, sessionId: string) {
+    await this.db.transaction(async (tx) => {
+      const running = await this.inProgressOf(tx, sessionId, userId);
+      const now = this.clock.now();
+      if (running && isPastGrace(running.deadline, now)) {
+        await this.closeOne(tx, running.id, 'timeout', now);
+      }
+    });
   }
 
   /** Nội dung đề theo bố cục của Lượt, kèm Câu trả lời đã lưu. Lượt đã nộp chỉ trả trạng thái (Q206). */
@@ -357,6 +384,8 @@ export class AttemptsService {
         .where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId)))
         .for('share');
       if (attempt?.status !== 'in_progress') throw invalidState('ATTEMPT_CLOSED');
+      // Kiểm lại hạn sau khi nhận khóa: nếu phải chờ Thu hồi hay Nộp bài thì giờ đã trôi. Job quét sẽ đóng Lượt này.
+      if (isPastGrace(attempt.deadline, this.clock.now())) throw invalidState('ATTEMPT_CLOSED');
 
       const items = await this.content.itemsOf(gate.examId, [...latest.keys()], tx);
       const results: SaveItemResult[] = [];
@@ -420,18 +449,13 @@ export class AttemptsService {
 
   /** Nộp một Lượt đang làm; không làm gì nếu đã nộp. Trả `true` nếu vừa đóng. */
   async closeOne(executor: Executor, attemptId: string, reason: SubmitReason, now: Date) {
-    const rows = await executor
-      .update(attempts)
-      .set({ status: 'submitted', submittedAt: now, submitReason: reason })
-      .where(and(eq(attempts.id, attemptId), eq(attempts.status, 'in_progress')))
-      .returning({ id: attempts.id });
-    return rows.length > 0;
+    return (await closeInProgress(executor, eq(attempts.id, attemptId), reason, now)).length > 0;
   }
 
   // --- Phụ trợ ---------------------------------------------------------------------------------------------------------
 
   private pastGrace(attempt: AttemptRow, now: Date) {
-    return now.getTime() > attempt.deadline.getTime() + ATTEMPT_GRACE_SECONDS * 1000;
+    return isPastGrace(attempt.deadline, now);
   }
 
   private submittedState(attempt: AttemptRow, now: Date) {
@@ -471,6 +495,19 @@ export class AttemptsService {
     if (!row) throw new ApiError('NOT_FOUND');
     return row;
   }
+}
+
+/**
+ * Thiết bị này với Phiên thi: `active` (đã vào, dùng được), `revoked` (đã bị thu hồi), `other` (người này đang dùng thiết bị khác),
+ * `none` (chưa có thiết bị nào đang gắn, cần nhập Mã vào thi).
+ */
+function deviceStatusOf(
+  rows: { status: 'active' | 'revoked'; deviceHash: string }[],
+  hash: string | undefined,
+): 'active' | 'revoked' | 'other' | 'none' {
+  const mine = rows.find((row) => row.deviceHash === hash);
+  if (mine) return mine.status;
+  return rows.some((row) => row.status === 'active') ? 'other' : 'none';
 }
 
 /** Id Phương án (chọn một, chọn nhiều) hoặc Mệnh đề (chùm đúng/sai) theo thứ tự gốc của bản chụp. */

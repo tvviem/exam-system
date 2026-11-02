@@ -140,6 +140,21 @@ describe('vào thi: nhập Mã vào thi và Gắn thiết bị (Q229)', () => {
   });
 });
 
+describe('Phiên thi của tôi cho biết thiết bị hiện tại đã vào chưa', () => {
+  it('none khi chưa nhập mã, active trên thiết bị đã gắn, other trên thiết bị khác', async () => {
+    const state = async (who: Taker) =>
+      (await who.call('GET', '/take/sessions')).json().items[0].deviceStatus;
+    expect(await state(an)).toBe('none');
+    await an.join('AB3K9X');
+    expect(await state(an)).toBe('active');
+    const phone = await Taker.signIn(t, 'an');
+    expect(await state(phone)).toBe('other');
+    await examinerApi('POST', `/sessions/${sessionId}/roster/${anId}/revoke-device`, {});
+    expect(await state(an)).toBe('revoked');
+    expect(await state(phone)).toBe('none'); // đã có thiết bị bị thu hồi nhưng không còn thiết bị nào đang gắn
+  });
+});
+
 describe('Phiên thi của tôi', () => {
   it('liệt kê Phiên thi trong Danh sách kèm dữ liệu cho màn xác nhận (Q210, Q232)', async () => {
     await examinerApi('PATCH' as 'PUT', `/sessions/${sessionId}/roster/${anId}`, {
@@ -245,6 +260,34 @@ describe('bắt đầu và xem đề (Q230, Q232)', () => {
     expect(reasonOf(await an.call('POST', `/take/sessions/${sessionId}/start`))).toBe(
       'ATTEMPTS_EXHAUSTED',
     );
+  });
+
+  it('làm tiếp Lượt đã quá ân hạn: Lượt cũ được nộp (hết giờ) và việc đó được giữ lại dù bắt đầu mới bị từ chối', async () => {
+    await sql(`update sessions set max_attempts = 1 where id = $1`, [sessionId]);
+    await an.join('AB3K9X');
+    await an.call('POST', `/take/sessions/${sessionId}/start`);
+    t.clock.advance(minutes(45) + 31_000);
+    const res = await an.call('POST', `/take/sessions/${sessionId}/start`);
+    expect(res.statusCode).toBe(409);
+    expect(reasonOf(res)).toBe('ATTEMPTS_EXHAUSTED');
+    const [row] = await sql<{ status: string; submit_reason: string }>(
+      `select status, submit_reason from attempts`,
+    );
+    expect(row).toEqual({ status: 'submitted', submit_reason: 'timeout' });
+  });
+
+  it('Bộ đề bị Lưu trữ giữa kỳ thi: Phiên thi vẫn chạy, xem đề và lưu bài vẫn được (Q203)', async () => {
+    await an.join('AB3K9X');
+    const view = (await an.call('POST', `/take/sessions/${sessionId}/start`)).json();
+    expect((await examinerApi('POST', `/exams/${examId}/archive`)).statusCode).toBe(200);
+    expect((await an.call('GET', `/take/attempts/${view.attempt.id}`)).statusCode).toBe(200);
+    const item = view.sections[0].items.find((i: { type: string }) => i.type === 'essay').itemId;
+    const saved = await an.call('PUT', `/take/attempts/${view.attempt.id}/responses`, {
+      items: [{ itemId: item, clientSeq: 1, value: { text: 'vẫn lưu' } }],
+    });
+    expect(saved.statusCode).toBe(200);
+    await binh.join('AB3K9X');
+    expect((await binh.call('POST', `/take/sessions/${sessionId}/start`)).statusCode).toBe(200); // người chưa vào vẫn bắt đầu được
   });
 
   it('bố cục cố định theo hạt giống: xem lại và làm tiếp cho cùng thứ tự; xáo bật thì Phương án đổi thứ tự', async () => {
@@ -439,6 +482,15 @@ describe('lưu Câu trả lời theo lô (Q216, Q231)', () => {
     }));
     expect((await save(many)).statusCode).toBe(400);
     expect((await save([{ itemId: items.essay, clientSeq: 1 }])).statusCode).toBe(400);
+  });
+
+  it('clientSeq vượt giới hạn của cột số nguyên bị từ chối 400, không phải 500', async () => {
+    const res = await save([{ itemId: items.essay, clientSeq: 2 ** 31, value: { text: 'x' } }]);
+    expect(res.statusCode).toBe(400);
+    expect(
+      (await save([{ itemId: items.essay, clientSeq: 2 ** 31 - 1, value: { text: 'x' } }]))
+        .statusCode,
+    ).toBe(200);
   });
 
   it('thiết bị khác không lưu được; người khác nhận 404', async () => {

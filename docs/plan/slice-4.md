@@ -159,7 +159,7 @@ session_devices (                                       -- Thiết bị dự thi
   id, session_id → sessions, user_id → users,
   device_hash text NOT NULL,                            -- SHA-256 của cookie exam_did
   ip inet, user_agent text,                             -- để Người ra đề nhận ra thiết bị lạ
-  status enum('active','revoked','pardoned'),          -- pardoned = đã "Cho vào lại"
+  status enum('active','revoked'),                      -- Cho vào lại: revoked → active, ghi pardoned_at (Q234)
   bound_at, revoked_at, revoked_by → users, revoke_reason text NULL, pardoned_at NULL
 )
 UNIQUE (session_id, user_id)     WHERE status = 'active'    -- tối đa một thiết bị đang gắn mỗi người
@@ -433,6 +433,10 @@ Làm đúng Q226–Q236, kèm các điều chỉnh nhỏ đã phát sinh khi cà
 - **Cổng thêm so với Q228:** `CANDIDATE_MEDIA` và `USER_DEACTIVATION_HOOKS` (đúng Q218, Q219); `ExamContent` có thêm `hasIllustration` và `summariesOf`.
 - **Hàng đợi** chỉ có `schedule(name, cron)`; job quét dùng cron 6 trường `*/10 * * * * *`.
 - **Đo tải 500 người** bằng `pnpm --filter @exam/api load:exam` (Q236): 0 lỗi, p99 lưu 28 ms, `start` 75 ms, xem đề 37 ms; xem [ops/demo-wsl.md](../ops/demo-wsl.md).
+- **Thứ tự khóa** (sau review): Hủy, Thu hồi, Cho vào lại, Bớt người khóa Phiên thi trước; `start` khóa Phiên thi `FOR SHARE` ngay câu đọc đầu (qua `SessionEntry.gateFor(..., { lock: true })`), rồi thiết bị, rồi Lượt. `save` khóa thiết bị rồi Lượt (không khóa Phiên thi), `submit` khóa Lượt rồi thiết bị: không vòng nào. `closeAll`/`closeForUser` đóng theo thứ tự `id`.
+- **Làm tiếp Lượt đã quá ân hạn:** `start` đóng Lượt cũ (hết giờ) trong giao dịch riêng rồi xét như chưa có Lượt dở: còn lượt và Phiên thi còn mở thì tạo Lượt mới (tốn một lượt), hết lượt thì `ATTEMPTS_EXHAUSTED`; việc đóng được giữ lại.
+- **"Phiên thi của tôi"** mang `deviceStatus` (`active`, `revoked`, `other`, `none`) để giao diện chọn ô nhập mã hay nút Bắt đầu.
+- **Giới hạn nhập mã** là cửa sổ cố định 10 phút theo ô giờ (như giới hạn đăng nhập), nên quanh ranh giới ô có thể nhiều hơn 5 lần.
 - **Chưa làm (đúng phạm vi):** heartbeat, presence, `session_events`, Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi, màn Theo dõi (4d); Xem thử (4c); Chuyển giao Phiên thi (4e). Giao diện cho Thu hồi và Cho vào lại thiết bị ở 4d.
 
 ## Thuật ngữ mới (đã vào GLOSSARY)

@@ -184,7 +184,7 @@ export class IllustrationsService {
   }
 
   /** Như `variantKey` nhưng không kiểm chủ: bên gọi (khu ảnh của Người dự thi) đã kiểm quyền qua cổng `CANDIDATE_MEDIA`. */
-  async variantKeyUnchecked(id: string, side: number): Promise<string> {
+  async variantKeyAfterAccessCheck(id: string, side: number): Promise<string> {
     const [found] = await this.db.select().from(illustrations).where(eq(illustrations.id, id));
     if (!found) throw new ApiError('NOT_FOUND');
     return this.fitVariantKey(found, side);

@@ -138,6 +138,57 @@ describe('Danh sách dự thi cho Người ra đề thấy thiết bị và số
   });
 });
 
+describe('tranh chấp giữa bắt đầu và thao tác của Người ra đề (S4)', () => {
+  /** Phiên thi mới cùng Bộ đề, mã riêng, Danh sách có An và Bình. */
+  async function freshSession(code: string) {
+    const created = await api('POST', '/sessions', {
+      examId,
+      title: `Ca ${code}`,
+      opensAt: '2026-11-02T07:00:00+07:00',
+      closesAt: '2026-11-02T10:00:00+07:00',
+      durationMinutes: 45,
+      accessCode: code,
+    });
+    const id = created.json().id as string;
+    await api('POST', `/sessions/${id}/roster`, { userIds: [anId, binhId] });
+    return id;
+  }
+
+  it('bắt đầu xen Hủy Phiên thi: không bao giờ còn Lượt đang làm trong Phiên thi đã hủy, không có lỗi 500', async () => {
+    for (let round = 0; round < 6; round++) {
+      const id = await freshSession(`CANC0${round}`);
+      const taker = await Taker.signIn(t, 'an');
+      await taker.join(`CANC0${round}`);
+      const [started, cancelled] = await Promise.all([
+        taker.call('POST', `/take/sessions/${id}/start`),
+        api('POST', `/sessions/${id}/cancel`, {}),
+      ]);
+      expect(cancelled.statusCode, cancelled.body).toBe(200);
+      expect([200, 409], started.body).toContain(started.statusCode);
+      if (started.statusCode === 409) expect(reasonOf(started)).toBe('SESSION_CANCELLED');
+      const open = await sql(
+        `select 1 from attempts where session_id = $1 and status = 'in_progress'`,
+        [id],
+      );
+      expect(open, `vòng ${round}`).toHaveLength(0);
+    }
+  });
+
+  it('bắt đầu xen Thu hồi, Cho vào lại và Bớt người: không bế tắc (không có lỗi 500)', async () => {
+    for (let round = 0; round < 6; round++) {
+      const id = await freshSession(`LOCK0${round}`);
+      const taker = await Taker.signIn(t, 'an');
+      await taker.join(`LOCK0${round}`);
+      const results = await Promise.all([
+        taker.call('POST', `/take/sessions/${id}/start`),
+        api('POST', `/sessions/${id}/roster/${anId}/revoke-device`, {}),
+        api('DELETE', `/sessions/${id}/roster`, { userIds: [binhId] }),
+      ]);
+      for (const res of results) expect(res.statusCode, res.body).toBeLessThan(500);
+    }
+  });
+});
+
 describe('Thu hồi thiết bị và Cho vào lại (ADR-0007, Q194, Q234)', () => {
   const revoke = (userId: string, body: unknown = {}, who = examiner) =>
     api('POST', `/sessions/${sessionId}/roster/${userId}/revoke-device`, body, who);

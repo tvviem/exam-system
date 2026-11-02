@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ATTEMPT_GRACE_SECONDS,
   deadlineOf,
+  isPastGrace,
   type LayoutInput,
   layoutOf,
   responseSchemaFor,
@@ -40,8 +41,11 @@ describe('deadlineOf: hạn nộp của một Lượt (Q208, Q230)', () => {
     expect(deadlineOf({ ...base, hardClose: true })).toEqual(at('2026-12-01T01:55:00Z'));
   });
 
-  it('ân hạn nhận Câu trả lời là 30 giây', () => {
+  it('ân hạn nhận Câu trả lời là 30 giây: đúng 30 giây vẫn nhận, quá một mili giây là hết', () => {
     expect(ATTEMPT_GRACE_SECONDS).toBe(30);
+    const deadline = at('2026-12-01T01:55:00Z');
+    expect(isPastGrace(deadline, at('2026-12-01T01:55:30.000Z'))).toBe(false);
+    expect(isPastGrace(deadline, at('2026-12-01T01:55:30.001Z'))).toBe(true);
   });
 });
 

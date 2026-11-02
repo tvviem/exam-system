@@ -25,7 +25,11 @@ const saveSchema = z.strictObject({
       z
         .strictObject({
           itemId: z.uuid(),
-          clientSeq: z.number().int().min(0),
+          clientSeq: z
+            .number()
+            .int()
+            .min(0)
+            .max(2 ** 31 - 1),
           value: z.unknown().optional(),
           flagged: z.boolean().optional(),
         })
@@ -54,8 +58,8 @@ export class AttemptsController {
   constructor(private readonly attempts: AttemptsService) {}
 
   @Get('sessions')
-  sessions(@CurrentUser() user: AuthenticatedUser) {
-    return this.attempts.listFor(user.id);
+  sessions(@CurrentUser() user: AuthenticatedUser, @Req() req: FastifyRequest) {
+    return this.attempts.listFor(user.id, deviceKeyOf(req));
   }
 
   @Post('join')

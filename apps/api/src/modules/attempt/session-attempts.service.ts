@@ -1,10 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, eq, inArray, sql } from 'drizzle-orm';
+import { and, count, eq, sql } from 'drizzle-orm';
+import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
-import type { DeviceSummary, SessionAttempts, SubmitReason } from '../../common/session-attempts';
+import { uniqueViolationOf } from '../../common/pg-error';
+import type {
+  ExamDeviceSummary,
+  SessionAttempts,
+  SubmitReason,
+} from '../../common/session-attempts';
 import type { UserDeactivationHooks } from '../../common/user-deactivation';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { attempts, sessionDevices } from './attempt.schema';
+import { closeInProgress } from './attempt-close';
+
+/** Lý do ghi khi thiết bị đang gắn bị thu hồi để nhường chỗ cho thiết bị được Cho vào lại (Q234). */
+const PARDON_SWAP_REASON = 'pardon_swap';
 
 /** Cài đặt cổng `SESSION_ATTEMPTS` (Q228) cho `session`. */
 @Injectable()
@@ -32,21 +42,13 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
   }
 
   async closeAll(tx: Transaction, sessionId: string, reason: SubmitReason) {
-    const rows = await tx
-      .update(attempts)
-      .set({ status: 'submitted', submittedAt: this.clock.now(), submitReason: reason })
-      .where(and(eq(attempts.sessionId, sessionId), eq(attempts.status, 'in_progress')))
-      .returning({ id: attempts.id });
-    return rows.length;
+    return (await closeInProgress(tx, eq(attempts.sessionId, sessionId), reason, this.clock.now()))
+      .length;
   }
 
   async closeForUser(tx: Transaction, userId: string, reason: SubmitReason) {
-    const rows = await tx
-      .update(attempts)
-      .set({ status: 'submitted', submittedAt: this.clock.now(), submitReason: reason })
-      .where(and(eq(attempts.userId, userId), eq(attempts.status, 'in_progress')))
-      .returning({ id: attempts.id });
-    return rows.length;
+    return (await closeInProgress(tx, eq(attempts.userId, userId), reason, this.clock.now()))
+      .length;
   }
 
   /** Khóa đăng nhập hoặc Xóa người dùng (Q218): nộp các Lượt đang làm của người đó. */
@@ -59,7 +61,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       .select()
       .from(sessionDevices)
       .where(eq(sessionDevices.sessionId, sessionId));
-    const map = new Map<string, DeviceSummary[]>();
+    const map = new Map<string, ExamDeviceSummary[]>();
     for (const row of rows) {
       const list = map.get(row.userId) ?? [];
       list.push({
@@ -123,7 +125,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
         status: 'revoked',
         revokedAt: input.now,
         revokedBy: input.by,
-        revokeReason: 'pardon_swap',
+        revokeReason: PARDON_SWAP_REASON,
       })
       .where(
         and(
@@ -133,10 +135,20 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
           sql`${sessionDevices.id} <> ${input.deviceId}`,
         ),
       );
-    await tx
-      .update(sessionDevices)
-      .set({ status: 'active', pardonedAt: input.now })
-      .where(inArray(sessionDevices.id, [input.deviceId]));
+    try {
+      // Điểm lưu: thiết bị khác vừa nhập mã và chiếm chỗ "đang gắn" thì báo lỗi rõ ràng thay vì lỗi máy chủ.
+      await tx.transaction(async (inner) => {
+        await inner
+          .update(sessionDevices)
+          .set({ status: 'active', pardonedAt: input.now })
+          .where(eq(sessionDevices.id, input.deviceId));
+      });
+    } catch (error) {
+      if (uniqueViolationOf(error)) {
+        throw new ApiError('INVALID_STATE', { reason: 'DEVICE_BOUND_ELSEWHERE' });
+      }
+      throw error;
+    }
     return true;
   }
 }

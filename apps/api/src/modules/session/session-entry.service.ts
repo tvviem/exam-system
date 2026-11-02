@@ -48,10 +48,12 @@ export class SessionEntryService implements SessionEntry {
     sessionId: string,
     userId: string,
     executor: EntryExecutor = this.db,
+    options: { lock?: boolean } = {},
   ): Promise<EntryGate | null> {
-    const [row] = await this.base(executor).where(
+    const query = this.base(executor).where(
       and(eq(sessions.id, sessionId), eq(sessionRoster.userId, userId)),
     );
+    const [row] = await (options.lock ? query.for('share', { of: sessions }) : query);
     return row ?? null;
   }
 

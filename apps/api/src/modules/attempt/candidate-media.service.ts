@@ -1,4 +1,4 @@
-import { ATTEMPT_GRACE_SECONDS } from '@exam/shared';
+import { isPastGrace } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import type { CandidateMedia } from '../../common/candidate-media';
@@ -31,9 +31,7 @@ export class CandidateMediaService implements CandidateMedia {
       .from(attempts)
       .where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId)));
     if (attempt?.status !== 'in_progress') return false;
-    if (this.clock.now().getTime() > attempt.deadline.getTime() + ATTEMPT_GRACE_SECONDS * 1000) {
-      return false;
-    }
+    if (isPastGrace(attempt.deadline, this.clock.now())) return false;
     const [device] = await this.db
       .select({ id: sessionDevices.id })
       .from(sessionDevices)

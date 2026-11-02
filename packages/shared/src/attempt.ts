@@ -7,6 +7,11 @@ export const ATTEMPT_GRACE_SECONDS = 30;
 /** Bật Cắt cứng mà còn dưới số giây này đến giờ đóng thì không cho bắt đầu Lượt mới (Q230). */
 export const HARD_CLOSE_MIN_SECONDS = 60;
 
+/** Quá hạn cộng ân hạn: Lượt không còn nhận Câu trả lời và bị đóng vì hết giờ (Q212). */
+export function isPastGrace(deadline: Date, now: Date): boolean {
+  return now.getTime() > deadline.getTime() + ATTEMPT_GRACE_SECONDS * 1000;
+}
+
 export interface DeadlineInput {
   startedAt: Date;
   durationMinutes: number;
