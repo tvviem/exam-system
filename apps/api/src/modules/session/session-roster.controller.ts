@@ -32,6 +32,8 @@ const addSchema = z.union([
 ]);
 
 const removeSchema = z.strictObject({ userIds: z.array(z.uuid()).min(1).max(500) });
+const revokeSchema = z.strictObject({ reason: z.string().trim().max(500).optional() });
+const pardonSchema = z.strictObject({ deviceId: z.uuid() });
 const extraSchema = z.strictObject({ extraMinutes: z.number().int().min(0).max(600) });
 
 @RequireTag('examiner')
@@ -91,6 +93,30 @@ export class SessionRosterController {
       userId,
       extraSchema.parse(body ?? {}).extraMinutes,
     );
+  }
+
+  @Post(':userId/revoke-device')
+  @HttpCode(200)
+  revokeDevice(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: unknown,
+    @CurrentActor() actor: Actor,
+  ) {
+    const { reason } = revokeSchema.parse(body ?? {});
+    return this.roster.revokeDevice(actor, sessionId, userId, reason || null);
+  }
+
+  @Post(':userId/pardon-device')
+  @HttpCode(200)
+  pardonDevice(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: unknown,
+    @CurrentActor() actor: Actor,
+  ) {
+    const { deviceId } = pardonSchema.parse(body ?? {});
+    return this.roster.pardonDevice(actor, sessionId, userId, deviceId);
   }
 
   @Post(':userId/reissue-password')

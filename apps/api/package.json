@@ -18,7 +18,8 @@
     "test:integration": "vitest run --project integration",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node dist/db/migrate.js",
-    "cli": "node dist/cli/main.js"
+    "cli": "node dist/cli/main.js",
+    "load:exam": "node scripts/load-exam.cjs"
   },
   "dependencies": {
     "@exam/shared": "workspace:*",

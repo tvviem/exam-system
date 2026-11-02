@@ -4,6 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
+import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import { sessionRoster, sessions } from './session.schema';
@@ -20,11 +21,12 @@ export class SessionLifecycleService {
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
+    @Inject(SESSION_ATTEMPTS) private readonly attempts: SessionAttempts,
     private readonly sessions: SessionsService,
     private readonly notifications: NotificationsService,
   ) {}
 
-  /** Hủy không hoàn tác (Q203). Các Lượt đang làm sẽ được nộp tự động từ PR 4b khi có Lượt làm bài. */
+  /** Hủy không hoàn tác (Q203); các Lượt đang làm được nộp ngay với lý do `session_cancelled`. */
   async cancel(ownerId: string, id: string, reason: string | undefined) {
     await this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, id);
@@ -38,6 +40,8 @@ export class SessionLifecycleService {
           version: sql`${sessions.version} + 1`,
         })
         .where(eq(sessions.id, id));
+      // Q203: mọi Lượt đang làm được nộp ngay trong cùng giao dịch.
+      await this.attempts.closeAll(tx, id, 'session_cancelled');
       await notifyRoster(this.notifications, tx, id, 'session.cancelled', {
         sessionId: id,
         title: session.title,
@@ -51,6 +55,10 @@ export class SessionLifecycleService {
   async remove(ownerId: string, id: string) {
     await this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, id);
+      // Q202: chỉ xóa khi chưa từng có Lượt làm bài; còn lại Hủy để giữ bài đã làm.
+      if (await this.attempts.hasAttempts(id, tx)) {
+        throw new ApiError('INVALID_STATE', { reason: 'HAS_ATTEMPTS' });
+      }
       if (!session.cancelledAt) {
         await notifyRoster(this.notifications, tx, id, 'session.cancelled', {
           sessionId: id,

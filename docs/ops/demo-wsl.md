@@ -39,7 +39,20 @@ Image do workflow CI đẩy lên GHCR mỗi lần push `main`, thẻ là mã com
 | Ghi bền Câu trả lời, 500 người mỗi ~10 giây (~55 lượt/giây) | p99 7 ms; Postgres chịu 2.700–6.200 lượt/giây |
 | RAM api | ~300–350 MB; cả hệ thống dưới 1 GB |
 
-**Chưa đo, không được coi là đã đạt:** đường mạng (tunnel Cloudflare, đường upload của nhà mạng, 500 điện thoại thật trên 4G và Wi-Fi), luồng vào thi và làm bài thật (API có ở PR 4b), Socket.IO của màn Theo dõi (PR 4d). K6 500 người ở PR 4e sẽ thay các bài đo tạm này.
+**Luồng vào thi và làm bài thật (PR 4b-2, 2/11/2026)**, đo bằng `pnpm --filter @exam/api load:exam` (500 người vào rải 60 giây, làm bài 180 giây, lưu mỗi 5–15 giây, `DB_POOL_MAX=10`, đề 20 câu):
+
+| Bước | Số lần | p50 | p99 | Ngưỡng p99 |
+|---|---|---|---|---|
+| Đăng nhập | 500 | 40 ms | 70 ms | |
+| Nhập Mã vào thi (`join`) | 500 | 15 ms | 40 ms | |
+| Bắt đầu Lượt (`start`) | 500 | 28 ms | 75 ms | 1000 ms |
+| Xem đề (`view`) | 500 | 15 ms | 37 ms | 500 ms |
+| Lưu Câu trả lời | 9.264 | 15 ms | 28 ms | 100 ms |
+| Nộp bài | 500 | 11 ms | 15 ms | |
+
+0 lỗi; CPU api trung bình 31%, đỉnh 106% của một lõi; RAM api đỉnh 356 MB.
+
+**Chưa đo, không được coi là đã đạt:** đường mạng (tunnel Cloudflare, đường upload của nhà mạng, 500 điện thoại thật trên 4G và Wi-Fi), Socket.IO của màn Theo dõi (PR 4d). Bài đo chạy trên loopback với script Node; k6 qua tunnel ở PR 4e vẫn cần làm.
 
 **Hai điều chỉnh bắt buộc cho 500 người cùng nơi** (đã duyệt, Q224):
 

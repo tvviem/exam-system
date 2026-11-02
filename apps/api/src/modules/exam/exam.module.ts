@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ExamCatalogService } from './exam-catalog.service';
+import { ExamContentService } from './exam-content.service';
 import { ExamLifecycleService } from './exam-lifecycle.service';
 import { ExamOwnedContent } from './exam-owned-content';
 import { ExamUsageService } from './exam-usage.service';
@@ -15,7 +16,8 @@ import { ExamsService } from './exams.service';
     ExamUsageService,
     ExamOwnedContent,
     ExamCatalogService,
+    ExamContentService,
   ],
-  exports: [ExamUsageService, ExamOwnedContent, ExamCatalogService],
+  exports: [ExamUsageService, ExamOwnedContent, ExamCatalogService, ExamContentService],
 })
 export class ExamModule {}

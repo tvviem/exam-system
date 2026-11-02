@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AttemptPortsWiringModule } from '../attempt-ports-wiring.module';
 import { ClockModule } from '../common/clock';
 import { ConfigModule } from '../config/config.module';
 import { DbModule } from '../db/db.module';
@@ -35,6 +36,7 @@ import { SessionUsageWiringModule } from '../session-usage-wiring.module';
     ExamUsageWiringModule,
     SessionUsageWiringModule,
     SessionPortsWiringModule,
+    AttemptPortsWiringModule,
   ],
   providers: [JobWorker],
 })

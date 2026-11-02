@@ -180,11 +180,22 @@ export class IllustrationsService {
     if (found.ownerId !== userId && !(await this.examUsage.canViewIllustration(userId, id))) {
       throw new ApiError('NOT_FOUND');
     }
+    return this.fitVariantKey(found, side);
+  }
+
+  /** Như `variantKey` nhưng không kiểm chủ: bên gọi (khu ảnh của Người dự thi) đã kiểm quyền qua cổng `CANDIDATE_MEDIA`. */
+  async variantKeyAfterAccessCheck(id: string, side: number): Promise<string> {
+    const [found] = await this.db.select().from(illustrations).where(eq(illustrations.id, id));
+    if (!found) throw new ApiError('NOT_FOUND');
+    return this.fitVariantKey(found, side);
+  }
+
+  private fitVariantKey(found: Row, side: number): string {
     if (found.status !== 'ready') throw new ApiError('NOT_FOUND');
     const fit =
       found.variants.filter((v) => v <= side).sort((a, b) => b - a)[0] ?? found.variants[0];
     if (fit === undefined) throw new ApiError('NOT_FOUND');
-    return variantKeyOf(id, fit);
+    return variantKeyOf(found.id, fit);
   }
 
   /**

@@ -1,4 +1,5 @@
 import { type DynamicModule, Module } from '@nestjs/common';
+import { AttemptPortsWiringModule } from '../attempt-ports-wiring.module';
 import { type Clock, ClockModule } from '../common/clock';
 import { ConfigModule } from '../config/config.module';
 import { DbModule } from '../db/db.module';
@@ -29,6 +30,7 @@ export class CliModule {
         ExamUsageWiringModule,
         SessionUsageWiringModule,
         SessionPortsWiringModule,
+        AttemptPortsWiringModule,
       ],
     };
   }
