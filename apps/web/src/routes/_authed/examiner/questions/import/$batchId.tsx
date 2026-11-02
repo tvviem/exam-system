@@ -1,7 +1,7 @@
 import { QUESTION_TYPES, type QuestionType } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { CheckCircle2, Loader2, Plus } from 'lucide-react';
+import { CheckCircle2, Plus } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PageResult } from '../../../../../lib/admin';
@@ -22,7 +22,7 @@ import {
   parseErrorOf,
   selectImportItems,
 } from '../../../../../lib/question-imports';
-import { buttonClass, Card, ErrorMessage, PrimaryButton } from '../../../../../lib/ui';
+import { BusyNotice, buttonClass, Card, ErrorMessage, PrimaryButton } from '../../../../../lib/ui';
 import { EmptyState, ListSkeleton, Pagination } from '../../../../../lib/ui/admin';
 import { Breadcrumb } from '../../../../../lib/ui/breadcrumb';
 import { CancelImportButton } from '../../../../../lib/ui/cancel-import';
@@ -292,7 +292,8 @@ function Preview({ batch }: { batch: ImportBatch }) {
               {t('questionImport.selectedN', { count: counts.selected })}
             </span>
             <PrimaryButton
-              disabled={counts.selected === 0 || commit.isPending || select.isPending}
+              loading={commit.isPending}
+              disabled={counts.selected === 0 || select.isPending}
               onClick={() => commit.mutate()}
             >
               {commit.isPending
@@ -341,14 +342,8 @@ function GroupToggle({
   );
 }
 
-/** Thông báo đang xử lý; trang tự cập nhật nên chỉ cần báo cho trình đọc màn hình một lần. */
+/** Báo đang xử lý; trang tự cập nhật nên chỉ cần báo cho trình đọc màn hình một lần. */
 function BusyCard({ children }: { children: string }) {
-  return (
-    <Card>
-      <p className="flex items-center gap-3" role="status">
-        <Loader2 aria-hidden className="size-5 animate-spin text-fg-muted" />
-        {children}
-      </p>
-    </Card>
-  );
+  const { t } = useTranslation();
+  return <BusyNotice title={children} hint={t('busy.longWait')} />;
 }

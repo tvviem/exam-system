@@ -30,7 +30,7 @@ import {
 } from '../account-requests';
 import { errorMessage } from '../errors';
 import { formatDate, formatDateTime } from '../format';
-import { Badge, Button, buttonClass, Dialog, ErrorMessage } from '.';
+import { Badge, BusyNotice, Button, buttonClass, Dialog, ErrorMessage } from '.';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
 import { Chip, ChipGroup } from './chips';
 import { DataList } from './data-list';
@@ -166,12 +166,7 @@ export function AccountRequestView({
           </header>
 
           {request.data.status === 'parsing' && (
-            <p
-              role="status"
-              className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-on-primary-soft"
-            >
-              {t('accountRequests.parsingHint')}
-            </p>
+            <BusyNotice title={t('accountRequests.parsingHint')} hint={t('busy.longWait')} />
           )}
           {request.data.status === 'parse_failed' && (
             <ErrorMessage>
@@ -197,12 +192,7 @@ export function AccountRequestView({
           )}
 
           {request.data.status === 'approving' && (
-            <p
-              role="status"
-              className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-on-primary-soft"
-            >
-              {t('accountRequests.approvingHint')}
-            </p>
+            <BusyNotice title={t('accountRequests.approvingHint')} hint={t('busy.longWait')} />
           )}
 
           <SlipsSection requestId={id} status={request.data.status} />
@@ -489,6 +479,7 @@ function ReviewBar({
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <Button
           variant="primary"
+          loading={mutation.isPending && mutation.variables?.allValid === true}
           disabled={pendingValid === 0 || mutation.isPending}
           onClick={() => mutation.mutate({ allValid: true })}
         >

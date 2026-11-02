@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
@@ -14,7 +14,7 @@ import {
   shrinkForUpload,
   uploadIllustration,
 } from '../illustrations';
-import { Button, buttonClass, Dialog, ErrorMessage, PrimaryButton, TextField } from '.';
+import { Button, buttonClass, Dialog, ErrorMessage, PrimaryButton, Spinner, TextField } from '.';
 import { IllustrationPicture } from './illustration-image';
 import type { ImageAttrs } from './image-extension';
 
@@ -25,7 +25,7 @@ function Status({ illustration }: { illustration: Illustration }) {
   if (illustration.status === 'processing') {
     return (
       <p role="status" className="inline-flex items-center gap-2 text-sm text-fg-muted">
-        <Loader2 aria-hidden className="size-4 animate-spin" />
+        <Spinner className="size-4" />
         {t('illustration.processing')}
       </p>
     );

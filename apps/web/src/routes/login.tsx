@@ -67,7 +67,7 @@ function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
           <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
-          <PrimaryButton type="submit" disabled={mutation.isPending}>
+          <PrimaryButton loading={mutation.isPending} type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? t('login.submitting') : t('login.submit')}
           </PrimaryButton>
         </form>

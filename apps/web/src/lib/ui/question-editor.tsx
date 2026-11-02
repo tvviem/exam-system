@@ -391,6 +391,7 @@ export function QuestionEditor({
             </ErrorMessage>
           )}
           <PrimaryButton
+            loading={save.isPending}
             className="lg:min-w-32"
             disabled={problems.length > 0 || !dirty || save.isPending}
             onClick={() => save.mutate(draft)}

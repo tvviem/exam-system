@@ -94,6 +94,7 @@ export function ExamPublishDialog({
       </ErrorMessage>
       <div className="flex flex-col gap-2 sm:flex-row-reverse">
         <PrimaryButton
+          loading={publish.isPending}
           disabled={!check.isSuccess || problems.length > 0 || publish.isPending}
           onClick={() => publish.mutate()}
         >

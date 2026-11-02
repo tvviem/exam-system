@@ -1,4 +1,4 @@
-import { CircleAlert, Search, X } from 'lucide-react';
+import { CircleAlert, Loader2, Search, X } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -128,16 +128,70 @@ const buttonVariants = {
 export const buttonClass = (variant: keyof typeof buttonVariants = 'secondary', extra = '') =>
   `${buttonBase} ${buttonVariants[variant]} ${extra}`;
 
+/** Biểu tượng quay báo "đang xử lý"; chỉ quay khi người dùng không tắt chuyển động (`motion-safe`). */
+export function Spinner({ className = 'size-5' }: { className?: string }) {
+  return <Loader2 data-spinner aria-hidden className={`${className} motion-safe:animate-spin`} />;
+}
+
+/**
+ * `loading`: nút đang chờ kết quả. Hiện biểu tượng quay thay cho biểu tượng của nút, đặt `aria-busy` và khóa nút
+ * (bấm lại không gửi lần hai). Chữ trên nút do bên gọi đổi sang "Đang …" để trình đọc màn hình cũng nghe được.
+ */
 export function Button({
   variant = 'secondary',
   className = '',
   type = 'button',
+  loading = false,
+  disabled,
+  children,
   ...button
-}: { variant?: keyof typeof buttonVariants } & ComponentProps<'button'>) {
-  return <button type={type} className={buttonClass(variant, className)} {...button} />;
+}: { variant?: keyof typeof buttonVariants; loading?: boolean } & ComponentProps<'button'>) {
+  return (
+    <button
+      type={type}
+      className={buttonClass(
+        variant,
+        `${loading ? '[&>svg:not([data-spinner])]:hidden ' : ''}${className}`,
+      )}
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
+      {...button}
+    >
+      {loading && <Spinner />}
+      {children}
+    </button>
+  );
 }
 
-export function PrimaryButton(props: ComponentProps<'button'>) {
+/**
+ * Khối báo tác vụ nặng đang chạy (tải file lớn, server đọc file, tạo hàng loạt). `role="status"` để trình đọc màn
+ * hình đọc một lần; `hint` nói rõ có thể chờ lâu và được rời trang.
+ */
+export function BusyNotice({
+  title,
+  detail,
+  hint,
+}: {
+  title: ReactNode;
+  detail?: ReactNode;
+  hint?: ReactNode;
+}) {
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-3 rounded-xl border border-border bg-primary-soft p-4 text-on-primary-soft"
+    >
+      <Spinner className="mt-0.5 size-6 shrink-0" />
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="font-medium">{title}</p>
+        {detail && <p className="break-words text-sm">{detail}</p>}
+        {hint && <p className="text-sm">{hint}</p>}
+      </div>
+    </div>
+  );
+}
+
+export function PrimaryButton(props: Omit<ComponentProps<typeof Button>, 'variant'>) {
   return <Button variant="primary" {...props} />;
 }
 

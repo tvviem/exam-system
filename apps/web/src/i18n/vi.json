@@ -1,4 +1,8 @@
 {
+  "busy": {
+    "uploading": "Đang tải file lên…",
+    "longWait": "File nhiều dòng có thể mất vài phút. Bạn có thể rời trang, hệ thống vẫn tiếp tục xử lý."
+  },
   "app": {
     "title": "Hệ thống thi trực tuyến"
   },
