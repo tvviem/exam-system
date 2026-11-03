@@ -225,6 +225,18 @@ describe('Xem thử qua Phiên thi: theo thiết lập của Phiên thi', () => 
     expect(shown?.payload.scoringRule).toBe('proportional');
   });
 
+  it('chủ Phiên thi đã mất thẻ Người ra đề thì không Xem thử được, cũng nhận 404', async () => {
+    expect((await tryView()).statusCode).toBe(200);
+    await sql(
+      `delete from user_role_tags where tag = 'examiner' and user_id = (select id from users where username = 'gv1')`,
+    );
+    // Phiên đăng nhập cũ vẫn mang thẻ cũ: đăng nhập lại để nhận thẻ mới
+    const again = (await login(t.app, 'gv1', DEFAULT_PASSWORD)).cookie as string;
+    const res = await tryView(again);
+    expect(res.statusCode).toBe(404);
+    expect((await tryMedia(again, imageId)).statusCode).toBe(404);
+  });
+
   it('quản trị viên không Xem thử được Phiên thi của người khác', async () => {
     await seedUser({ username: 'qt', isAdmin: true, roleTags: ['examiner'] });
     const admin = (await login(t.app, 'qt', DEFAULT_PASSWORD)).cookie as string;

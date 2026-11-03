@@ -143,7 +143,7 @@ export class CandidateMediaController {
 }
 
 /**
- * Ảnh trong đề khi Xem thử (Q245): chỉ chủ Phiên thi, ở mọi trạng thái của Phiên thi. Quyền do cổng `CANDIDATE_MEDIA`
+ * Ảnh trong đề khi Xem thử (Q245): chỉ chủ Phiên thi còn là Người ra đề, ở mọi trạng thái của Phiên thi. Quyền do cổng `CANDIDATE_MEDIA`
  * quyết định; người khác nhận 404 như khi ảnh không tồn tại.
  */
 @Controller('sessions')
@@ -165,7 +165,10 @@ export class PreviewMediaController {
   ) {
     const side = variantSchema.safeParse(variant);
     if (!side.success) throw validationFailed('variant', 'invalid');
-    if (!(await this.candidateMedia.canPreview(user.id, sessionId, id))) {
+    if (
+      !user.roleTags.includes('examiner') ||
+      !(await this.candidateMedia.canPreview(user.id, sessionId, id))
+    ) {
       throw new ApiError('NOT_FOUND');
     }
     const key = await this.illustrations.variantKeyAfterAccessCheck(id, side.data);
