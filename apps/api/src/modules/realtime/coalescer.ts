@@ -20,7 +20,10 @@ export class Coalescer {
     // Đồng hồ nhảy lùi thì coi như vừa phát (chờ tối đa một khoảng), không giữ tin theo mốc ở tương lai.
     const elapsed = last === undefined ? Number.POSITIVE_INFINITY : Math.max(0, this.now() - last);
     const wait = this.intervalMs - elapsed;
-    if (wait <= 0) return this.fire(key);
+    if (wait <= 0) {
+      this.fire(key);
+      return;
+    }
     this.waiting.set(
       key,
       setTimeout(() => {
