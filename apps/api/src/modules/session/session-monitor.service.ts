@@ -13,6 +13,7 @@ import type { Actor } from '../../common/actor';
 import { ApiError } from '../../common/api-error';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
+import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
@@ -28,7 +29,18 @@ export class SessionMonitorService {
     @Inject(SESSION_ATTEMPTS) private readonly attempts: SessionAttempts,
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     private readonly audit: AuditService,
+    @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
   ) {}
+
+  /** Người này là chủ của Phiên thi (được vào phòng Theo dõi của kênh đẩy). */
+  async ownsSession(ownerId: string, sessionId: string): Promise<boolean> {
+    try {
+      await findOwnedSession(this.db, ownerId, sessionId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Ảnh chụp cả phòng cho màn Theo dõi (Q252, Q253): trạng thái từng người, tiến độ, thiết bị và dấu hiệu Cần chú ý.
@@ -126,7 +138,7 @@ export class SessionMonitorService {
 
   /** Cộng giờ cho một Lượt, một nhóm hoặc cả phòng (Q254). Phiên thi đã đóng Khung giờ vẫn Cộng giờ được. */
   async extendTime(actor: Actor, sessionId: string, request: ExtendTimeRequest) {
-    return this.db.transaction(async (tx) => {
+    const { result, touched } = await this.db.transaction(async (tx) => {
       await this.lockLiveSession(tx, actor, sessionId);
       const { replayed, attemptIds, ...result } = await this.attempts.extendTime(tx, {
         sessionId,
@@ -155,13 +167,24 @@ export class SessionMonitorService {
           tx,
         );
       }
-      return result;
+      return { result, touched: replayed ? [] : attemptIds };
     });
+    this.tell(sessionId, touched);
+    return result;
+  }
+
+  /**
+   * Báo kênh đẩy sau khi giao dịch đã xác nhận: Người dự thi bị tác động gửi heartbeat ngay, màn Theo dõi tải lại. Báo
+   * trước khi xác nhận thì trình duyệt hỏi lại sẽ thấy dữ liệu cũ.
+   */
+  private tell(sessionId: string, attemptIds: readonly string[]) {
+    this.realtime.attemptNudge(attemptIds);
+    this.realtime.sessionChanged(sessionId);
   }
 
   /** Buộc nộp một Lượt, một nhóm hoặc cả phòng (Q254). Làm lại cùng yêu cầu không đổi gì thêm. */
   async forceSubmit(actor: Actor, sessionId: string, request: ForceSubmitRequest) {
-    return this.db.transaction(async (tx) => {
+    const { result, touched } = await this.db.transaction(async (tx) => {
       await this.lockLiveSession(tx, actor, sessionId);
       const { closedIds, ...result } = await this.attempts.forceSubmit(tx, {
         sessionId,
@@ -180,8 +203,10 @@ export class SessionMonitorService {
           tx,
         );
       }
-      return result;
+      return { result, touched: closedIds };
     });
+    this.tell(sessionId, touched);
+    return result;
   }
 
   /** Cảnh cáo (vẫn làm tiếp) hoặc Đình chỉ (nộp ngay) một Lượt đang làm, bắt buộc lý do (Q259). */
@@ -191,7 +216,7 @@ export class SessionMonitorService {
     attemptId: string,
     request: ViolationRequest,
   ) {
-    return this.db.transaction(async (tx) => {
+    const created = await this.db.transaction(async (tx) => {
       await this.lockLiveSession(tx, actor, sessionId);
       const { id, userId } = await this.attempts.recordViolation(tx, {
         sessionId,
@@ -213,6 +238,8 @@ export class SessionMonitorService {
       );
       return { id };
     });
+    this.tell(sessionId, [attemptId]);
+    return created;
   }
 
   /** Đóng cửa vào thi (GLOSSARY): chặn Lượt mới, người đang làm tiếp tục. Làm lại không đổi giờ đã đóng. */
@@ -233,7 +260,7 @@ export class SessionMonitorService {
   }
 
   private async setEntryClosed(actor: Actor, sessionId: string, closed: boolean) {
-    return this.db.transaction(async (tx) => {
+    const result = await this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, actor.id, sessionId);
       const now = this.clock.now();
       requireNotOver(session, now);
@@ -252,5 +279,7 @@ export class SessionMonitorService {
       }
       return { entryClosedAt: next };
     });
+    this.realtime.sessionChanged(sessionId);
+    return result;
   }
 }

@@ -4,6 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
+import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -24,6 +25,7 @@ export class SessionLifecycleService {
     @Inject(SESSION_ATTEMPTS) private readonly attempts: SessionAttempts,
     private readonly sessions: SessionsService,
     private readonly notifications: NotificationsService,
+    @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
   ) {}
 
   /** Hủy không hoàn tác (Q203); các Lượt đang làm được nộp ngay với lý do `session_cancelled`. */
@@ -48,6 +50,8 @@ export class SessionLifecycleService {
         reason: reason || null,
       });
     });
+    // Các Lượt đang làm vừa bị đóng: màn Theo dõi (nếu đang mở) tải lại; Người dự thi biết qua heartbeat kế tiếp.
+    this.realtime.sessionChanged(id);
     return this.sessions.get(ownerId, id);
   }
 

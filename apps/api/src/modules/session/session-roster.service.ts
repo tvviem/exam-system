@@ -11,6 +11,7 @@ import {
 } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { type Page } from '../../common/pagination';
+import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
@@ -43,6 +44,7 @@ export class SessionRosterService {
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     @Inject(SESSION_ATTEMPTS) private readonly attempts: SessionAttempts,
     private readonly audit: AuditService,
+    @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     private readonly notifications: NotificationsService,
     private readonly credentials: RequesterCredentialsService,
   ) {}
@@ -293,6 +295,7 @@ export class SessionRosterService {
         tx,
       );
     });
+    await this.tellDevice(sessionId, userId);
     return { ok: true };
   }
 
@@ -321,7 +324,14 @@ export class SessionRosterService {
         tx,
       );
     });
+    await this.tellDevice(sessionId, userId);
     return { ok: true };
+  }
+
+  /** Thiết bị đổi: Người dự thi đang làm gửi heartbeat ngay (biết bị chặn hay được vào lại), màn Theo dõi tải lại. */
+  private async tellDevice(sessionId: string, userId: string) {
+    this.realtime.attemptNudge(await this.attempts.liveAttemptIds(sessionId, [userId]));
+    this.realtime.sessionChanged(sessionId);
   }
 
   private async requireMember(tx: Transaction, sessionId: string, userId: string) {

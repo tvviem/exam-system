@@ -42,6 +42,6 @@ export default defineConfig({
   },
   preview: {
     port: 4173,
-    proxy: { '/api': apiTarget },
+    proxy: { '/api': apiTarget, '/ws': { target: apiTarget, ws: true } },
   },
 });

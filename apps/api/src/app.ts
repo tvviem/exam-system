@@ -2,6 +2,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { registerOriginCheck } from './common/origin-check';
@@ -37,5 +38,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
   registerOriginCheck(app.getHttpAdapter().getInstance(), app.get<Env>(ENV).APP_ORIGINS);
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new ZodExceptionFilter());
+  // Socket.IO dùng chung máy chủ HTTP của Fastify (đường dẫn /api/ws).
+  app.useWebSocketAdapter(new IoAdapter(app));
   app.enableShutdownHooks();
 }

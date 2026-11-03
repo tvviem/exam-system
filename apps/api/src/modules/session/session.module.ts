@@ -24,6 +24,6 @@ import { SessionsService } from './sessions.service';
     SessionUsageService,
     SessionEntryService,
   ],
-  exports: [SessionUsageService, SessionEntryService],
+  exports: [SessionUsageService, SessionEntryService, SessionMonitorService],
 })
 export class SessionModule {}

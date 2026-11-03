@@ -20,17 +20,24 @@ export class AttemptPresence {
     return `presence:${sessionId}`;
   }
 
-  /** Ghi lần báo mới nhất. Redis lỗi thì bỏ qua (chỉ mất trạng thái trực tuyến, ADR-0002), không làm hỏng heartbeat. */
-  async touch(sessionId: string, attemptId: string, now: Date): Promise<void> {
+  /**
+   * Ghi lần báo mới nhất và trả lần báo trước (`null` nếu chưa có hoặc Redis lỗi). Redis lỗi thì bỏ qua (chỉ mất trạng
+   * thái trực tuyến, ADR-0002), không làm hỏng heartbeat.
+   */
+  async touch(sessionId: string, attemptId: string, now: Date): Promise<Date | null> {
     const key = this.key(sessionId);
     try {
-      await this.redis
+      const results = await this.redis
         .multi()
+        .hget(key, attemptId)
         .hset(key, attemptId, String(now.getTime()))
         .pexpire(key, PRESENCE_TTL_MS)
         .exec();
+      const previous = results?.[0]?.[1];
+      return typeof previous === 'string' ? new Date(Number(previous)) : null;
     } catch (error) {
       log.warn(`Không ghi được presence: ${String(error)}`);
+      return null;
     }
   }
 

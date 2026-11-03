@@ -33,6 +33,8 @@ const envSchema = z.object({
     .default(500 * 1024 * 1024),
   // Nếu có (ví dụ /_media), api trả ảnh bằng X-Accel-Redirect để nginx đọc file thay vì api (Q141).
   MEDIA_ACCEL_PREFIX: z.string().optional(),
+  // Hai tin `monitor.changed` liền nhau cách nhau ít nhất chừng này (ms); test đặt nhỏ để khỏi chờ 2 giây thật.
+  REALTIME_THROTTLE_MS: z.coerce.number().int().min(50).max(60_000).default(2000),
   // Origin được phép gửi request đổi dữ liệu (chống CSRF), cách nhau bằng dấu phẩy.
   APP_ORIGINS: z
     .string()

@@ -17,6 +17,7 @@ import { AuthService } from './auth/auth.service';
 import { AuthSessionStore } from './auth/auth-session-store';
 import { LoginBlock } from './auth/login-block';
 import { LoginRateLimiter } from './auth/login-rate-limiter';
+import { TokenAuthenticator } from './auth/token-authenticator';
 import { CandidateDirectoryService } from './candidate-directory.service';
 import { CredentialSlipsController } from './credential-slips/credential-slips.controller';
 import { CredentialSlipsService } from './credential-slips/credential-slips.service';
@@ -55,6 +56,7 @@ import { UsersRepository } from './users.repository';
     AuthService,
     AccountService,
     AuthSessionStore,
+    TokenAuthenticator,
     LoginRateLimiter,
     LoginBlock,
     UsersRepository,
@@ -79,6 +81,7 @@ import { UsersRepository } from './users.repository';
   // CLI và các module khác chỉ dùng những gì được xuất ở đây.
   exports: [
     AuthSessionStore,
+    TokenAuthenticator,
     AdminAccountsService,
     RequesterCredentialsService,
     CandidateDirectoryService,

@@ -18,10 +18,14 @@ export interface TestApp {
   queue: InlineJobQueue;
   /** Phiếu tài khoản đã dựng (thay cho bộ dựng PDF thật). */
   slips: CapturingSlipRenderer;
+  /** Cổng đang nghe, chỉ có khi tạo với `listen: true` (test Socket.IO cần kết nối thật). */
+  port: number;
 }
 
 /** `realSlips`: dùng bộ dựng PDF thật thay cho bản ghi lại dữ liệu. */
-export async function createTestApp(options: { realSlips?: boolean } = {}): Promise<TestApp> {
+export async function createTestApp(
+  options: { realSlips?: boolean; listen?: boolean } = {},
+): Promise<TestApp> {
   const clock = new FakeClock();
   const queue = new InlineJobQueue();
   const slips = new CapturingSlipRenderer();
@@ -39,5 +43,10 @@ export async function createTestApp(options: { realSlips?: boolean } = {}): Prom
   await configureApp(app);
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
-  return { app, clock, queue, slips };
+  let port = 0;
+  if (options.listen) {
+    await app.listen(0, '127.0.0.1');
+    port = (app.getHttpServer().address() as { port: number }).port;
+  }
+  return { app, clock, queue, slips, port };
 }
