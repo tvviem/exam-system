@@ -1,7 +1,7 @@
 import type { RichText } from '@exam/shared';
 import { describe, expect, it } from 'vitest';
 import type { AttemptView, TakeItem } from '../take';
-import { mediaOf } from './warm-media';
+import { mediaOf, warmMedia } from './warm-media';
 
 const IMG1 = '0197a6f0-0000-7000-8000-0000000000a1';
 const IMG2 = '0197a6f0-0000-7000-8000-0000000000a2';
@@ -56,11 +56,33 @@ describe('ảnh và công thức cần có sẵn khi mất mạng', () => {
     expect(result.imageIds.sort()).toEqual([IMG1, IMG2, '0197a6f0-0000-7000-8000-0000000000a3']);
   });
 
-  it('có công thức ở stem hay phương án thì báo cần KaTeX', () => {
-    expect(mediaOf(viewOf([item({ stem: doc(math) })])).hasMath).toBe(true);
-    expect(
-      mediaOf(viewOf([item({ payload: { options: [{ id: 'o', content: doc(math) }] } })])).hasMath,
-    ).toBe(true);
-    expect(mediaOf(viewOf([item({})])).hasMath).toBe(false);
+  it('gom công thức ở stem và phương án, mỗi (latex, display) một lần', () => {
+    const display = (latex: string) => ({
+      type: 'paragraph',
+      content: [{ type: 'math', attrs: { latex, display: true } }],
+    });
+    const formulas = mediaOf(
+      viewOf([
+        item({ stem: doc(math, display('\\int_0^1 x\\,dx')) }),
+        item({ payload: { options: [{ id: 'o', content: doc(math) }] } }),
+      ]),
+    ).formulas;
+    expect(formulas).toEqual([
+      { latex: 'x^2', display: false },
+      { latex: '\\int_0^1 x\\,dx', display: true },
+    ]);
+    expect(mediaOf(viewOf([item({})])).formulas).toEqual([]);
+  });
+});
+
+describe('warmMedia', () => {
+  it('đưa công thức của đề cho bên dựng thử; đề không có công thức thì không gọi', () => {
+    const calls: unknown[] = [];
+    warmMedia(viewOf([item({ stem: doc(math) })]), (formulas) => calls.push(formulas));
+    expect(calls).toEqual([[{ latex: 'x^2', display: false }]]);
+
+    calls.length = 0;
+    warmMedia(viewOf([item({})]), (formulas) => calls.push(formulas));
+    expect(calls).toEqual([]);
   });
 });

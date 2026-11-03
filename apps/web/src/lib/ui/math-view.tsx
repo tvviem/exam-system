@@ -12,8 +12,35 @@ const loadKatex = () => {
   return katexModule;
 };
 
-/** Tải trước KaTeX (bản làm bài ngoại tuyến cần có sẵn trong bộ nhớ đệm). */
-export const preloadKatex = () => void loadKatex();
+/**
+ * Vẽ thử các công thức ngoài màn hình để trình duyệt tải đúng những file phông KaTeX mà đề cần (bản làm bài ngoại tuyến
+ * cần có sẵn trong bộ nhớ đệm). Chỉ tải mã và CSS thì chưa đủ: file phông chỉ được tải khi có chữ dùng đến nó.
+ */
+export function preloadFormulas(formulas: { latex: string; display: boolean }[]) {
+  void loadKatex().then(async (katex) => {
+    const probe = document.createElement('div');
+    probe.setAttribute('aria-hidden', 'true');
+    // Không dùng display:none: phần tử không dàn trang thì trình duyệt không tải phông.
+    probe.style.cssText =
+      'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none';
+    for (const { latex, display } of formulas) {
+      const host = document.createElement('span');
+      try {
+        katex.render(latex, host, { ...KATEX_OPTIONS, displayMode: display });
+      } catch {
+        continue; // công thức lỗi thì MathView hiện mã LaTeX, không cần phông
+      }
+      probe.append(host);
+    }
+    document.body.append(probe);
+    void probe.offsetHeight; // dàn trang ngay để các yêu cầu tải phông bắt đầu trước khi chờ `fonts.ready`
+    try {
+      await document.fonts.ready;
+    } finally {
+      probe.remove();
+    }
+  });
+}
 
 /** Dựng thử `latex`; trả `null` nếu hợp lệ, ngược lại là thông báo lỗi của KaTeX. */
 export async function latexError(latex: string): Promise<string | null> {

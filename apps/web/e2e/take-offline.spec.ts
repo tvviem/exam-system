@@ -172,3 +172,53 @@ test('PWA: có manifest và service worker điều khiển trang', async ({ page
   });
   expect(cachedApi).toEqual([]);
 });
+
+/** Các mặt chữ KaTeX đã tải xong, đọc từ `document.fonts`. */
+const loadedKatexFaces = (page: Page) =>
+  page.evaluate(() =>
+    [...document.fonts]
+      .filter((face) => face.status === 'loaded' && face.family.includes('KaTeX'))
+      .map((face) => face.family.replace(/["']/g, '')),
+  );
+
+test('Công thức ở câu chưa xem: phông KaTeX được tải trước, mất mạng rồi tải lại vẫn dựng đúng', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  const tag = p === 'desktop' ? 'D' : 'M';
+  const code = `TKMT${tag}`;
+  const examiner = await examinerPage(browser, `e2e-lb-gv-${p}`);
+  // \mathbb cần phông AMS, mà câu 1 (đang hiện) không có công thức nào.
+  await seedOpenSession(examiner, `${p}-mt`, code, `TK8-${tag}-001`, {
+    essayLatex: String.raw`\int_0^1 \sqrt{x}\,dx \in \mathbb{R}`,
+  });
+
+  // Đặt "Từng câu" từ trước khi trang tải: màn rộng mặc định "Cả đề" sẽ vẽ mọi công thức ngay lúc mở.
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      'exam:prefs',
+      JSON.stringify({ viewMode: 'one', fontScale: 100, serif: true }),
+    ),
+  );
+  await signIn(page, `e2e-lb-mt-${p}`);
+  await page.goto('/take');
+  await page.getByLabel('Mã vào thi').fill(code);
+  await page.getByRole('button', { name: 'Vào thi' }).click();
+  await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
+  await page.waitForURL(/\/take\/attempts\//);
+
+  await expect(page.getByText(`Thủ đô của Việt Nam ${p}-mt?`)).toBeVisible();
+  await expect(page.locator('[data-math]')).toHaveCount(0); // chỉ câu 1 hiện: chưa có công thức nào được vẽ
+  await expect.poll(() => loadedKatexFaces(page), { timeout: 20_000 }).toContain('KaTeX_AMS');
+  await expect.poll(() => shellReady(page), { timeout: 20_000 }).toBe(true);
+
+  await page.context().setOffline(true);
+  await page.reload();
+  await expect(page.getByText('Đang mở đề đã lưu trên máy')).toBeVisible();
+  await page.getByRole('button', { name: 'Câu tiếp' }).click();
+  await page.getByRole('button', { name: 'Câu tiếp' }).click();
+  await page.getByRole('button', { name: 'Câu tiếp' }).click();
+  await expect(page.locator('[data-math] .katex')).toBeVisible();
+  await expect.poll(() => loadedKatexFaces(page)).toContain('KaTeX_AMS'); // lấy từ bộ nhớ đệm, không phải mạng
+});

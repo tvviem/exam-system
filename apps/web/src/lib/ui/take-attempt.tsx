@@ -31,7 +31,7 @@ import { type StopReason, stopReasonOf, useSaver } from '../take/use-saver';
 import { warmMedia } from '../take/warm-media';
 import { BusyNotice, Button, buttonClass, Dialog, ErrorMessage, PrimaryButton, Spinner } from '.';
 import { MediaSourceContext } from './illustration-image';
-import { preloadKatex } from './math-view';
+import { preloadFormulas } from './math-view';
 import { RichTextView } from './rich-text-view';
 import { TakePrefsDialog } from './take-prefs';
 import { TakeQuestion } from './take-question';
@@ -126,7 +126,7 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
 
   // Còn mạng thì tải trước ảnh và KaTeX, để tải lại lúc mất mạng vẫn thấy đủ (Q243).
   useEffect(() => {
-    if (!view.offline) warmMedia(view, preloadKatex);
+    if (!view.offline) warmMedia(view, preloadFormulas);
   }, [view]);
 
   const alive = useRef(true);

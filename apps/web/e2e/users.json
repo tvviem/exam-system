@@ -612,5 +612,25 @@
     "roleTags": ["candidate"],
     "code": "TK7-M-001",
     "classLabel": "LOP-TK7-M"
+  },
+  {
+    "username": "e2e-lb-mt-desktop",
+    "fullName": "Lê Thị Công Thức (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK8-D-001",
+    "classLabel": "LOP-TK8-D"
+  },
+  {
+    "username": "e2e-lb-mt-mobile",
+    "fullName": "Lê Thị Công Thức (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK8-M-001",
+    "classLabel": "LOP-TK8-M"
   }
 ]
