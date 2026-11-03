@@ -524,6 +524,22 @@
     "roleTags": ["examiner"]
   },
   {
+    "username": "e2e-rt-gv-desktop",
+    "fullName": "Người ra đề tốc độ (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rt-gv-mobile",
+    "fullName": "Người ra đề tốc độ (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
     "username": "e2e-lb-sv-mobile",
     "fullName": "Lê Văn Thi (mobile)",
     "password": "mat-khau-on-dinh",

@@ -36,6 +36,9 @@ async function save(page: Page) {
 test('Người ra đề tạo Chủ đề rồi soạn đủ 4 loại câu hỏi, tìm không dấu, nhân bản, chuyển và xóa', async ({
   page,
 }, testInfo) => {
+  // Kịch bản dài (~40 thao tác, gõ trong trình soạn): chạy riêng ~14 giây nhưng quá 30 giây khi máy đang chạy nhiều test.
+  // Tốc độ phản hồi của từng thao tác được giữ ở response-time.spec.ts, không ở thời hạn của cả kịch bản.
+  test.slow();
   await signIn(page, `e2e-ch-soan-${testInfo.project.name}`);
   await page.goto('/examiner/questions');
   await expect(page.getByRole('heading', { name: 'Ngân hàng câu hỏi', level: 1 })).toBeVisible();

@@ -22,3 +22,7 @@ Dùng đúng thuật ngữ trong [GLOSSARY.md](GLOSSARY.md) (ví dụ Người r
 ## Quy trình làm việc
 
 Chủ dự án duyệt thiết kế trước khi viết code: đề xuất thay đổi kiến trúc hoặc mô hình dữ liệu dưới dạng tài liệu hoặc ADR ở trạng thái `proposed`, chờ đồng ý rồi mới triển khai.
+
+## Hiệu năng
+
+Phản hồi tức thời là yêu cầu hàng đầu của chủ dự án: chờ quá 2–3 giây là đã chậm, mục tiêu là cỡ mili giây. Khi viết hoặc chạy test, xem cả thời gian (không chỉ đúng/sai); thao tác hay yêu cầu nào quá khoảng 300 ms là đáng xem lại, quá 1 giây là lỗi. Ngân sách và số đo hiện có ở [docs/architecture.md](docs/architecture.md), mục "Ngân sách phản hồi".
