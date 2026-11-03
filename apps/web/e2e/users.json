@@ -524,6 +524,62 @@
     "roleTags": ["examiner"]
   },
   {
+    "username": "e2e-lc-gv-desktop",
+    "fullName": "Người ra đề lượt đóng (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lc-sv-desktop",
+    "fullName": "Trần Thị Lượt Đóng (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK11-D-001",
+    "classLabel": "LOP-TK11-D"
+  },
+  {
+    "username": "e2e-lo-sv-desktop",
+    "fullName": "Phan Văn Đăng Xuất (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK12-D-001",
+    "classLabel": "LOP-TK12-D"
+  },
+  {
+    "username": "e2e-lc-gv-mobile",
+    "fullName": "Người ra đề lượt đóng (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lc-sv-mobile",
+    "fullName": "Trần Thị Lượt Đóng (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK11-M-001",
+    "classLabel": "LOP-TK11-M"
+  },
+  {
+    "username": "e2e-lo-sv-mobile",
+    "fullName": "Phan Văn Đăng Xuất (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK12-M-001",
+    "classLabel": "LOP-TK12-M"
+  },
+  {
     "username": "e2e-rt-gv-desktop",
     "fullName": "Người ra đề tốc độ (desktop)",
     "password": "mat-khau-on-dinh",

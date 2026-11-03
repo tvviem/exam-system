@@ -222,3 +222,89 @@ test('Công thức ở câu chưa xem: phông KaTeX được tải trước, m�
   await expect(page.locator('[data-math] .katex')).toBeVisible();
   await expect.poll(() => loadedKatexFaces(page)).toContain('KaTeX_AMS'); // lấy từ bộ nhớ đệm, không phải mạng
 });
+
+test('Lượt đóng khi còn câu chưa gửi: màn "Đã nộp" nói rõ số câu không được ghi nhận (Q243)', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  const tag = p === 'desktop' ? 'D' : 'M';
+  const code = `TKLC${tag}`;
+  const examiner = await examinerPage(browser, `e2e-lc-gv-${p}`);
+  const sessionId = await seedOpenSession(examiner, `${p}-lc`, code, `TK11-${tag}-001`);
+
+  await startAttempt(page, `e2e-lc-sv-${p}`, code);
+  const status = page.getByRole('status', { name: 'Trạng thái lưu' });
+
+  // Server không nhận được gì từ máy này: hai câu cứ nằm trong hàng đợi
+  const savePath = '**/api/take/attempts/*/responses';
+  await page.route(savePath, (route) => route.abort());
+  await page.getByRole('radio', { name: 'Hà Nội' }).check();
+  await page.getByRole('checkbox', { name: 'hai' }).check();
+  await expect(status).toContainText('Chưa lưu (2 câu)');
+
+  // Người ra đề Hủy Phiên thi: server nộp Lượt này ngay
+  const cancelled = await examiner.request.post(`/api/sessions/${sessionId}/cancel`, {
+    headers: { origin: ORIGIN },
+    data: {},
+  });
+  expect(cancelled.ok(), await cancelled.text()).toBe(true);
+
+  // Có mạng lại: lần gửi kế tiếp thấy Lượt đã đóng, hai câu cuối không được nhận và được báo rõ
+  await page.unroute(savePath);
+  await expect(page.getByRole('heading', { name: 'Đã nộp' })).toBeVisible({ timeout: 30_000 });
+  await expect(
+    page.getByText(
+      '2 câu trả lời cuối chưa kịp gửi trước khi Lượt làm bài đóng nên không được ghi nhận.',
+    ),
+  ).toBeVisible();
+  await expect.poll(() => localRecords(page)).toEqual([0, 0]); // Lượt đã đóng: không giữ gì trên máy
+});
+
+test('Đăng xuất: bỏ bản sao đề, chỉ giữ phần chưa gửi để người khác dùng chung máy không đọc được câu đã gửi', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  const tag = p === 'desktop' ? 'D' : 'M';
+  const code = `TKLO${tag}`;
+  const examiner = await examinerPage(browser, `e2e-lc-gv-${p}`);
+  await seedOpenSession(examiner, `${p}-lo`, code, `TK12-${tag}-001`);
+
+  await startAttempt(page, `e2e-lo-sv-${p}`, code);
+  const status = page.getByRole('status', { name: 'Trạng thái lưu' });
+  await page.getByRole('radio', { name: 'Hà Nội' }).check();
+  await expect(status).toContainText('Đã lưu'); // câu đã gửi
+  expect(await localRecords(page)).toEqual([1, 1]);
+
+  // Một câu nữa không tới được server: vẫn nằm trong hàng đợi
+  await page.route('**/api/take/attempts/*/responses', (route) => route.abort());
+  await page.getByRole('checkbox', { name: 'hai' }).check();
+  await expect(status).toContainText('Chưa lưu (1 câu)');
+
+  // Sang trang Phiên thi của tôi rồi đăng xuất
+  await page.goto('/take');
+  await page.getByRole('button', { name: 'Tài khoản', exact: true }).click();
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await page.waitForURL(/\/login/);
+
+  const left = await page.evaluate(
+    () =>
+      new Promise<{ views: number; queues: { answers: unknown[]; items: unknown[] }[] }>(
+        (resolve, reject) => {
+          const open = indexedDB.open('exam-take');
+          open.onerror = () => reject(open.error);
+          open.onsuccess = () => {
+            const tx = open.result.transaction(['views', 'queues']);
+            const views = tx.objectStore('views').count();
+            const queues = tx.objectStore('queues').getAll();
+            tx.oncomplete = () => resolve({ views: views.result, queues: queues.result as never });
+          };
+        },
+      ),
+  );
+  expect(left.views, 'bản sao đề bị bỏ').toBe(0);
+  expect(left.queues).toHaveLength(1);
+  expect(left.queues[0]?.items, 'còn câu chưa gửi').toHaveLength(1);
+  expect(left.queues[0]?.answers, 'câu đã gửi xong không còn đọc được').toHaveLength(1);
+});
