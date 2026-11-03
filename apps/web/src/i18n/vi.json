@@ -309,6 +309,7 @@
     "submitted": {
       "title": "Đã nộp",
       "body": "Lượt làm bài của bạn được ghi nhận lúc {{time}}.",
+      "lost": "{{count}} câu trả lời cuối chưa kịp gửi trước khi Lượt làm bài đóng nên không được ghi nhận.",
       "reason": {
         "timeout": "Lượt làm bài kết thúc vì hết giờ.",
         "examiner": "Người ra đề đã Buộc nộp Lượt làm bài này.",
@@ -321,7 +322,7 @@
     "stop": {
       "DEVICE_REVOKED": {
         "title": "Thiết bị này đã bị thu hồi",
-        "body": "Người ra đề đã thu hồi thiết bị này khỏi Phiên thi nên không làm tiếp ở đây được. Hãy báo Người ra đề; các câu đã lưu được giữ nguyên. Nếu Người ra đề cho thiết bị này vào lại, bạn làm tiếp đúng Lượt làm bài này, kể cả các câu chưa gửi còn giữ trên máy."
+        "body": "Người ra đề đã thu hồi thiết bị này khỏi Phiên thi nên không làm tiếp ở đây được. Hãy báo Người ra đề; các câu đã lưu được giữ nguyên. Nếu Người ra đề hoàn tác việc thu hồi, bạn làm tiếp đúng Lượt làm bài này trên thiết bị này, kể cả các câu chưa gửi còn giữ trên máy."
       },
       "NOT_FOUND": {
         "title": "Không tìm thấy Lượt làm bài",
@@ -338,7 +339,7 @@
     },
     "offline": {
       "title": "Đang mở đề đã lưu trên máy",
-      "body": "Không kết nối được hệ thống. Bạn vẫn làm bài được; câu trả lời được giữ trên máy và tự gửi khi có mạng trở lại. Đồng hồ vẫn chạy theo giờ của hệ thống."
+      "body": "Không kết nối được hệ thống. Bạn vẫn làm bài được; câu trả lời được giữ trên máy và tự gửi khi có mạng trở lại. Giờ còn lại lúc này chỉ là ước tính, sẽ chỉnh theo hệ thống khi có mạng; câu trả lời gửi sau giờ làm bài không được nhận."
     }
   },
   "pagination": {

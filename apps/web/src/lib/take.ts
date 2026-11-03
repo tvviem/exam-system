@@ -98,6 +98,8 @@ export interface SubmittedState {
     submitReason: SubmitReason | null;
     serverNow: string;
   };
+  /** Chỉ phía trình duyệt: số câu trả lời chưa kịp gửi khi Lượt đóng (server không nhận), để báo cho Người dự thi. */
+  lostAnswers?: number;
 }
 
 export type AttemptState = AttemptView | SubmittedState;

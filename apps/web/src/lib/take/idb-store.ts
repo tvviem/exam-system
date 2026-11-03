@@ -1,3 +1,4 @@
+import { memoryStore, onlyUnsent } from './memory-store';
 import type { QueueStore, StoredQueue, StoredView } from './offline-attempt';
 
 // `QueueStore` thật trên IndexedDB (Q243): hai kho khóa theo id Lượt làm bài. Máy không có IndexedDB (chế độ riêng tư
@@ -76,30 +77,13 @@ function indexedStore(): QueueStore {
         cursor.onsuccess = () => {
           const at = cursor.result;
           if (!at) return;
-          if ((at.value as StoredQueue).items.length === 0) at.delete();
+          const queue = at.value as StoredQueue;
+          if (queue.items.length === 0) at.delete();
+          else at.update(onlyUnsent(queue)); // câu đã gửi xong không cần giữ sau đăng xuất
           at.continue();
         };
       }
       await finished(tx);
-    },
-  };
-}
-
-function memoryStore(): QueueStore {
-  const views = new Map<string, StoredView>();
-  const queues = new Map<string, StoredQueue>();
-  return {
-    load: async (id) => ({ view: views.get(id), queue: queues.get(id) }),
-    saveView: async (id, value) => void views.set(id, value),
-    saveQueue: async (id, value) => void queues.set(id, value),
-    forget: async (id) => {
-      views.delete(id);
-      queues.delete(id);
-    },
-    forgetAll: async (keepUnsent) => {
-      views.clear();
-      for (const [id, queue] of queues)
-        if (!keepUnsent || queue.items.length === 0) queues.delete(id);
     },
   };
 }

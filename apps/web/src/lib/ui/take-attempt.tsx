@@ -137,6 +137,8 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
     };
   }, []);
   const { drain, change } = saver;
+  const unsavedRef = useRef(0);
+  unsavedRef.current = saver.unsaved;
 
   /** Lượt đã đóng ở server (hết giờ, bị Hủy): lấy trạng thái "đã nộp" thật; mất mạng thì thử lại cho đến khi được. */
   const closeNow = useCallback(async () => {
@@ -144,7 +146,13 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
       try {
         // Hỏi thẳng server: bản sao trên máy không cho biết Lượt đã đóng.
         const state = await fetchAttemptOnline(attemptId);
-        queryClient.setQueryData(attemptQueryKey(attemptId), state);
+        // Câu còn chờ gửi khi Lượt đóng sẽ không được nhận: nói rõ, không để mất âm thầm.
+        queryClient.setQueryData(
+          attemptQueryKey(attemptId),
+          state.status === 'submitted' && unsavedRef.current > 0
+            ? { ...state, lostAnswers: unsavedRef.current }
+            : state,
+        );
         return;
       } catch (error) {
         if (stopReasonOf(error) === 'DEVICE_REVOKED') {

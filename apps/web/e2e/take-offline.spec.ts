@@ -137,7 +137,7 @@ test('Thiết bị bị thu hồi: màn chiếm toàn bộ, câu chưa gửi v�
   await expect(page.getByRole('link', { name: 'Về danh sách Phiên thi' })).toBeVisible();
   expect(await overflow(page), 'màn thu hồi').toBe(0);
 
-  // Câu vừa chọn chưa tới server: vẫn giữ trên máy để làm tiếp nếu Người ra đề cho thiết bị vào lại
+  // Câu vừa chọn chưa tới server: vẫn giữ trên máy để làm tiếp nếu Người ra đề hoàn tác Thu hồi
   const [, queues] = await localRecords(page);
   expect(queues).toBe(1);
 

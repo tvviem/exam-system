@@ -34,3 +34,7 @@ export async function apiFetch<T>(
   }
   return data as T;
 }
+
+/** Không tới được server: mất mạng (fetch ném lỗi) hoặc cổng web báo 502/503/504. */
+export const isUnreachable = (error: unknown) =>
+  !(error instanceof ApiError) || [502, 503, 504].includes(error.status);

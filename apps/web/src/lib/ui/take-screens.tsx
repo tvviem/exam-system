@@ -26,9 +26,11 @@ export function StopScreen({ reason }: { reason: Exclude<StopReason, 'ATTEMPT_CL
 export function SubmittedScreen({
   submittedAt,
   reason,
+  lostAnswers = 0,
 }: {
   submittedAt: string | null;
   reason: SubmitReason | null;
+  lostAnswers?: number;
 }) {
   const { t } = useTranslation();
   return (
@@ -37,6 +39,11 @@ export function SubmittedScreen({
       <h1 className="text-2xl font-semibold">{t('take.submitted.title')}</h1>
       {submittedAt && <p>{t('take.submitted.body', { time: formatDateTime(submittedAt) })}</p>}
       {reason && reason !== 'candidate' && <p>{t(`take.submitted.reason.${reason}`)}</p>}
+      {lostAnswers > 0 && (
+        <p role="alert" className="text-warning">
+          {t('take.submitted.lost', { count: lostAnswers })}
+        </p>
+      )}
       <p className="text-fg-muted">{t('take.submitted.note')}</p>
       <Link to="/take" className={buttonClass('primary')}>
         {t('take.backToList')}

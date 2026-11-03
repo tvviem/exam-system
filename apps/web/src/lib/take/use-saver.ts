@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../api';
 import { saveResponses } from '../take';
 import { takeStore, takeStoreDurable } from './idb-store';
-import { persistQueue, type QueueStore } from './offline-attempt';
+import { persistQueue } from './offline-attempt';
 import {
   ack,
   type Change,
@@ -50,8 +50,6 @@ export function useSaver(options: {
   known: SaveItem[];
   /** Thay đổi còn giữ trên máy từ lần trước mà server chưa nhận: gửi lại ngay khi có thể (Q243). */
   unsent?: SaveItem[];
-  /** Kho giữ hàng đợi qua lần tải lại; mặc định là IndexedDB. */
-  store?: QueueStore;
   onServerTime: (time: { deadline: string; serverNow: string }) => void;
   onStop: (reason: StopReason) => void;
 }) {
@@ -78,11 +76,10 @@ export function useSaver(options: {
     (next: QueueState) => {
       queue.current = next;
       setView(next);
-      const store = callbacks.current.store ?? takeStore;
       const key = JSON.stringify([knownAnswers(next), unsentOf(next)]);
       if (key === written.current) return;
       written.current = key;
-      persistQueue(store, attemptId, next).catch(() => setDurable(false));
+      persistQueue(takeStore, attemptId, next).catch(() => setDurable(false));
     },
     [attemptId],
   );

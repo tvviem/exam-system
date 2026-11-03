@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { ApiError, apiFetch } from './api';
+import { ApiError, apiFetch, isUnreachable } from './api';
 import { forgetOnLogout } from './take/local-data';
 
 export type RoleTag = 'examiner' | 'candidate';
@@ -42,10 +42,6 @@ const lastKnownMe = (): Me | null => {
   }
 };
 
-/** Không tới được server (mất mạng, cổng web báo 502/503/504). */
-const unreachable = (error: unknown) =>
-  !(error instanceof ApiError) || [502, 503, 504].includes(error.status);
-
 /** null khi chưa đăng nhập hoặc phiên đã hết hạn. */
 export const meQuery = queryOptions({
   queryKey: ['auth', 'me'],
@@ -57,11 +53,12 @@ export const meQuery = queryOptions({
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         rememberMe(null);
+        void forgetOnLogout(); // phiên hết hạn cũng như đăng xuất: bỏ bản sao đề và ảnh trên máy
         return null;
       }
       // Mất mạng lúc tải lại trang làm bài: dùng người dùng đã biết để mở được bản đề lưu trên máy. Mọi lời gọi tới
       // server vẫn phải có phiên hợp lệ, nên đây chỉ là giao diện, không cấp quyền gì.
-      if (unreachable(error)) {
+      if (isUnreachable(error)) {
         const known = lastKnownMe();
         if (known) return known;
       }

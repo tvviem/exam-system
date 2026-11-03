@@ -1,4 +1,4 @@
-import { ApiError } from '../api';
+import { ApiError, isUnreachable } from '../api';
 import type { AttemptState, AttemptView } from '../take';
 import { knownAnswers, type QueueState, type SaveItem, unsentOf } from './save-queue';
 
@@ -30,11 +30,7 @@ export interface QueueStore {
   forgetAll(keepUnsent: boolean): Promise<void>;
 }
 
-/** Không tới được server: mất mạng (fetch ném lỗi) hoặc cổng web báo 502/503/504. */
-export const isUnreachable = (error: unknown) =>
-  !(error instanceof ApiError) || [502, 503, 504].includes(error.status);
-
-/** Ghi trạng thái hàng đợi xuống máy sau mỗi thay đổi; chỉ phần chưa được server xác nhận mới cần giữ. */
+/** Ghi hàng đợi xuống máy sau mỗi thay đổi: câu trả lời mới nhất của từng câu (để mở lại đề) và phần server chưa xác nhận. */
 export const persistQueue = (store: QueueStore, attemptId: string, queue: QueueState) =>
   store.saveQueue(attemptId, { answers: knownAnswers(queue), items: unsentOf(queue) });
 
