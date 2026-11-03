@@ -572,5 +572,45 @@
     "roleTags": ["candidate"],
     "code": "TK5-M-001",
     "classLabel": "LOP-TK5-M"
+  },
+  {
+    "username": "e2e-lb-ng-desktop",
+    "fullName": "Hồ Thị Tải Lại (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK6-D-001",
+    "classLabel": "LOP-TK6-D"
+  },
+  {
+    "username": "e2e-lb-th-desktop",
+    "fullName": "Ngô Văn Thu Hồi (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK7-D-001",
+    "classLabel": "LOP-TK7-D"
+  },
+  {
+    "username": "e2e-lb-ng-mobile",
+    "fullName": "Hồ Thị Tải Lại (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK6-M-001",
+    "classLabel": "LOP-TK6-M"
+  },
+  {
+    "username": "e2e-lb-th-mobile",
+    "fullName": "Ngô Văn Thu Hồi (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK7-M-001",
+    "classLabel": "LOP-TK7-M"
   }
 ]

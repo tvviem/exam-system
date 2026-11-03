@@ -12,25 +12,26 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiFetch } from '../api';
 import { errorMessage } from '../errors';
 import {
-  type AttemptState,
   type AttemptView,
-  attemptQuery,
   attemptQueryKey,
+  fetchAttemptOnline,
   submitAttempt,
   type TakeItem,
   UnsavedError,
 } from '../take';
 import { type AnswerState, answerStateOf, progressOf } from '../take/answers';
 import { formatClock } from '../take/clock';
+import { forgetAttemptLocally } from '../take/local-data';
 import type { SaveStatus } from '../take/save-queue';
 import { useCountdown } from '../take/use-countdown';
 import { usePrefs } from '../take/use-prefs';
 import { type StopReason, stopReasonOf, useSaver } from '../take/use-saver';
+import { warmMedia } from '../take/warm-media';
 import { BusyNotice, Button, buttonClass, Dialog, ErrorMessage, PrimaryButton, Spinner } from '.';
 import { MediaSourceContext } from './illustration-image';
+import { preloadKatex } from './math-view';
 import { RichTextView } from './rich-text-view';
 import { TakePrefsDialog } from './take-prefs';
 import { TakeQuestion } from './take-question';
@@ -97,16 +98,36 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [stop, setStop] = useState<StopReason | null>(null);
+  // Mở từ bản sao trên máy (mất mạng lúc tải lại) cho tới khi server nhận được một lần lưu.
+  const [connected, setConnected] = useState(!view.offline);
 
   const countdown = useCountdown(view.attempt);
   const saver = useSaver({
     attemptId,
-    seqs: Object.fromEntries(
-      items.flatMap((item) => (item.response ? [[item.itemId, item.response.clientSeq]] : [])),
+    known: items.flatMap((item) =>
+      item.response
+        ? [
+            {
+              itemId: item.itemId,
+              clientSeq: item.response.clientSeq,
+              value: item.response.value,
+              flagged: item.response.flagged,
+            },
+          ]
+        : [],
     ),
-    onServerTime: countdown.resync,
+    unsent: view.unsent,
+    onServerTime: (time) => {
+      setConnected(true);
+      countdown.resync(time);
+    },
     onStop: setStop,
   });
+
+  // Còn mạng thì tải trước ảnh và KaTeX, để tải lại lúc mất mạng vẫn thấy đủ (Q243).
+  useEffect(() => {
+    if (!view.offline) warmMedia(view, preloadKatex);
+  }, [view]);
 
   const alive = useRef(true);
   useEffect(() => {
@@ -121,7 +142,9 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
   const closeNow = useCallback(async () => {
     while (alive.current) {
       try {
-        await queryClient.fetchQuery({ ...attemptQuery(attemptId), staleTime: 0 });
+        // Hỏi thẳng server: bản sao trên máy không cho biết Lượt đã đóng.
+        const state = await fetchAttemptOnline(attemptId);
+        queryClient.setQueryData(attemptQueryKey(attemptId), state);
         return;
       } catch (error) {
         if (stopReasonOf(error) === 'DEVICE_REVOKED') {
@@ -143,7 +166,7 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
     const onVisible = async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        const state = await apiFetch<AttemptState>(`/take/attempts/${attemptId}`);
+        const state = await fetchAttemptOnline(attemptId);
         if (state.status === 'submitted')
           queryClient.setQueryData(attemptQueryKey(attemptId), state);
         else resync(state.attempt);
@@ -161,6 +184,7 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
       return submitAttempt(attemptId);
     },
     onSuccess: (state) => {
+      void forgetAttemptLocally(attemptId);
       queryClient.setQueryData(attemptQueryKey(attemptId), state);
     },
     onError: (error) => {
@@ -184,7 +208,9 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
         continue;
       }
       try {
-        queryClient.setQueryData(attemptQueryKey(attemptId), await submitAttempt(attemptId));
+        const state = await submitAttempt(attemptId);
+        void forgetAttemptLocally(attemptId);
+        queryClient.setQueryData(attemptQueryKey(attemptId), state);
         return;
       } catch (error) {
         const reason = stopReasonOf(error);
@@ -304,6 +330,7 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
         className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-4 pb-32"
         style={{ fontSize: `${prefs.fontScale / 100}rem` }}
       >
+        {!connected && <OfflineNotice />}
         {timedOut && <BusyNotice title={t('take.timedOut')} hint={t('take.timedOutHint')} />}
         {saver.rejected.length > 0 && (
           <ErrorMessage>
@@ -514,6 +541,23 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
         <ThemeSwitcher />
       </TakePrefsDialog>
     </MediaSourceContext.Provider>
+  );
+}
+
+/** Tải lại lúc mất mạng: đề lấy từ bản sao trên máy; câu trả lời được giữ và tự gửi khi có mạng (Q243). */
+function OfflineNotice() {
+  const { t } = useTranslation();
+  return (
+    <p
+      role="status"
+      className="flex items-start gap-2 rounded-lg border border-warning bg-warning-soft p-3 font-sans text-sm text-warning"
+    >
+      <CloudOff aria-hidden className="mt-0.5 size-5 shrink-0" />
+      <span>
+        <strong className="block">{t('take.offline.title')}</strong>
+        {t('take.offline.body')}
+      </span>
+    </p>
   );
 }
 

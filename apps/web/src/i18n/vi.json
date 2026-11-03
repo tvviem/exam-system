@@ -321,7 +321,7 @@
     "stop": {
       "DEVICE_REVOKED": {
         "title": "Thiết bị này đã bị thu hồi",
-        "body": "Người ra đề đã thu hồi thiết bị này khỏi Phiên thi nên không làm tiếp ở đây được. Hãy báo Người ra đề; các câu đã lưu được giữ nguyên."
+        "body": "Người ra đề đã thu hồi thiết bị này khỏi Phiên thi nên không làm tiếp ở đây được. Hãy báo Người ra đề; các câu đã lưu được giữ nguyên. Nếu Người ra đề cho thiết bị này vào lại, bạn làm tiếp đúng Lượt làm bài này, kể cả các câu chưa gửi còn giữ trên máy."
       },
       "NOT_FOUND": {
         "title": "Không tìm thấy Lượt làm bài",
@@ -335,6 +335,10 @@
       "typeface": "Kiểu chữ nội dung đề",
       "serif": "Có chân",
       "sans": "Không chân"
+    },
+    "offline": {
+      "title": "Đang mở đề đã lưu trên máy",
+      "body": "Không kết nối được hệ thống. Bạn vẫn làm bài được; câu trả lời được giữ trên máy và tự gửi khi có mạng trở lại. Đồng hồ vẫn chạy theo giờ của hệ thống."
     }
   },
   "pagination": {

@@ -1,7 +1,10 @@
 import type { RichText } from '@exam/shared';
 import { queryOptions } from '@tanstack/react-query';
-import { apiFetch } from './api';
+import { ApiError, apiFetch } from './api';
 import type { SessionRow } from './take/entry';
+import { takeStore } from './take/idb-store';
+import { forgetAttemptLocally } from './take/local-data';
+import { loadAttempt, rememberView } from './take/offline-attempt';
 import type { ItemResult, SaveItem } from './take/save-queue';
 
 // Khu làm bài của Người dự thi (docs/plan/slice-4.md, Q229–Q233, Q237–Q247).
@@ -72,6 +75,10 @@ export interface AttemptView {
   /** Gốc đường dẫn ảnh của Lượt này: `<mediaBase>/<illustrationId>/<cỡ>`. */
   mediaBase: string;
   sections: TakeSection[];
+  /** Chỉ có khi đọc từ bản sao trên máy lúc mất kết nối (Q243). */
+  offline?: boolean;
+  /** Thay đổi còn giữ trên máy mà server chưa nhận (Q243); màn làm bài đưa lại vào hàng đợi lưu. */
+  unsent?: SaveItem[];
 }
 
 export type SubmitReason =
@@ -100,19 +107,48 @@ export class UnsavedError extends Error {}
 
 export const attemptQueryKey = (id: string) => ['take', 'attempt', id] as const;
 
-/** Nội dung đề chỉ tải một lần cho mỗi lần mở trang; Câu trả lời sau đó nằm ở trạng thái cục bộ của màn làm bài. */
+/** Nội dung đề chỉ tải một lần cho mỗi lần mở trang (mất mạng thì mở bản sao trên máy, Q243); Câu trả lời sau đó nằm ở trạng thái cục bộ của màn làm bài. */
 export const attemptQuery = (id: string) =>
   queryOptions({
     queryKey: attemptQueryKey(id),
-    queryFn: () => apiFetch<AttemptState>(`/take/attempts/${id}`),
+    queryFn: async () => {
+      try {
+        const state = await loadAttempt(id, {
+          fetchAttempt: () => apiFetch<AttemptState>(`/take/attempts/${id}`),
+          store: takeStore,
+          now: Date.now,
+        });
+        // Đã nộp hoặc đóng ở server: ảnh lưu đệm cũng không còn cần (hàng đợi và bản sao đề do loadAttempt xóa).
+        if (state.status === 'submitted') void forgetAttemptLocally(id);
+        return state;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) void forgetAttemptLocally(id);
+        throw error;
+      }
+    },
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 0,
     retry: false,
     refetchOnWindowFocus: false,
   });
 
-export const startAttempt = (sessionId: string) =>
-  apiFetch<AttemptState>(`/take/sessions/${sessionId}/start`, { method: 'POST' });
+/** Hỏi thẳng server, không rơi về bản sao trên máy: dùng khi cần biết Lượt đã đóng hay chưa. */
+export async function fetchAttemptOnline(id: string): Promise<AttemptState> {
+  const state = await apiFetch<AttemptState>(`/take/attempts/${id}`);
+  if (state.status === 'submitted') void forgetAttemptLocally(id);
+  return state;
+}
+
+export async function startAttempt(sessionId: string): Promise<AttemptState> {
+  const state = await apiFetch<AttemptState>(`/take/sessions/${sessionId}/start`, {
+    method: 'POST',
+  });
+  // Giữ bản sao đề ngay từ lúc bắt đầu (màn làm bài nhận đề từ đây, không qua `loadAttempt`).
+  if (state.status === 'in_progress') {
+    await rememberView(takeStore, state, Date.now()).catch(() => undefined);
+  }
+  return state;
+}
 
 export interface SaveResponse {
   status: 'in_progress';

@@ -12,6 +12,9 @@ const loadKatex = () => {
   return katexModule;
 };
 
+/** Tải trước KaTeX (bản làm bài ngoại tuyến cần có sẵn trong bộ nhớ đệm). */
+export const preloadKatex = () => void loadKatex();
+
 /** Dựng thử `latex`; trả `null` nếu hợp lệ, ngược lại là thông báo lỗi của KaTeX. */
 export async function latexError(latex: string): Promise<string | null> {
   const katex = await loadKatex();

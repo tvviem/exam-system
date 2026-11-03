@@ -102,7 +102,7 @@ Quy tắc: một module chỉ gọi module khác qua service công khai của mo
 - Client lưu ngay khi người dùng chọn. Với Câu tự luận, client debounce 2 giây rồi lưu.
 - Gửi `PUT /attempts/:id/responses/:itemId { value, clientSeq }`.
 - Server upsert, chỉ nhận khi `clientSeq` lớn hơn giá trị đang lưu (chống ghi đè dữ liệu cũ). Từ chối nếu đã quá `deadline + grace`.
-- Mất mạng: Câu trả lời nằm trong hàng đợi IndexedDB và được gửi lại khi có mạng. Giao diện hiển thị trạng thái "Đã lưu ✓" hoặc "Đang chờ mạng…".
+- Mất mạng: Câu trả lời nằm trong hàng đợi IndexedDB (cùng bản sao đề, nên tải lại trang vẫn làm tiếp được) và được gửi lại khi có mạng. Giao diện hiển thị trạng thái "Đã lưu ✓" hoặc "Đang chờ mạng…".
 
 ### 5.3 Nộp bài
 - Nộp bài là idempotent (gửi nhiều lần cho cùng kết quả), dùng khóa Redis chống bấm đúp.

@@ -4,7 +4,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './i18n';
 import './index.css';
+import { registerServiceWorker } from './lib/register-sw';
 import { routeTree } from './routeTree.gen';
+
+registerServiceWorker();
 
 const queryClient = new QueryClient();
 const router = createRouter({ routeTree, context: { queryClient } });

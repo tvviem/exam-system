@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../api';
 import { saveResponses } from '../take';
+import { takeStore, takeStoreDurable } from './idb-store';
+import { persistQueue, type QueueStore } from './offline-attempt';
 import {
   ack,
   type Change,
   emptyQueue,
   enqueue,
   fail,
+  knownAnswers,
   nextBatch,
   type QueueState,
   retryDelayMs,
+  type SaveItem,
   type SaveStatus,
   saveStatusOf,
-  seedSeqs,
+  seedAnswers,
+  unsentOf,
 } from './save-queue';
 
 // Chạy hàng đợi lưu bài (Q241): gộp thao tác, gửi từng lô, thử lại khi lỗi mạng, dừng khi server báo Lượt không còn nhận.
@@ -41,13 +46,20 @@ const isBadRequest = (error: unknown) =>
 
 export function useSaver(options: {
   attemptId: string;
-  /** `clientSeq` server đã lưu của từng câu. */
-  seqs: Record<string, number>;
+  /** Câu trả lời đã biết lúc mở màn (server, cộng phần còn giữ trên máy), kèm `clientSeq` để đếm tiếp. */
+  known: SaveItem[];
+  /** Thay đổi còn giữ trên máy từ lần trước mà server chưa nhận: gửi lại ngay khi có thể (Q243). */
+  unsent?: SaveItem[];
+  /** Kho giữ hàng đợi qua lần tải lại; mặc định là IndexedDB. */
+  store?: QueueStore;
   onServerTime: (time: { deadline: string; serverNow: string }) => void;
   onStop: (reason: StopReason) => void;
 }) {
   const { attemptId } = options;
-  const [initial] = useState(() => seedSeqs(emptyQueue(), options.seqs));
+  const [initial] = useState(() => ({
+    ...seedAnswers(emptyQueue(), options.known),
+    pending: options.unsent ?? [],
+  }));
   const queue = useRef<QueueState>(initial);
   const [view, setView] = useState<QueueState>(initial);
   const mounted = useRef(true);
@@ -58,10 +70,22 @@ export function useSaver(options: {
   const callbacks = useRef(options);
   callbacks.current = options;
 
-  const commit = useCallback((next: QueueState) => {
-    queue.current = next;
-    setView(next);
-  }, []);
+  // Ghi hàng đợi xuống máy sau mỗi thay đổi (bỏ qua khi phần chưa gửi không đổi), để tải lại trang hay mất mạng
+  // lâu không mất câu trả lời (Q243). Lỗi ghi thì `durable` về false và màn làm bài cảnh báo trước khi đóng tab.
+  const [durable, setDurable] = useState(takeStoreDurable);
+  const written = useRef('');
+  const commit = useCallback(
+    (next: QueueState) => {
+      queue.current = next;
+      setView(next);
+      const store = callbacks.current.store ?? takeStore;
+      const key = JSON.stringify([knownAnswers(next), unsentOf(next)]);
+      if (key === written.current) return;
+      written.current = key;
+      persistQueue(store, attemptId, next).catch(() => setDurable(false));
+    },
+    [attemptId],
+  );
 
   const flush = useCallback(async (): Promise<void> => {
     if (sending.current || stopped.current || !mounted.current) return;
@@ -150,6 +174,8 @@ export function useSaver(options: {
     };
     const goOffline = () => setOnline(false);
     mounted.current = true;
+    // Còn phần chưa gửi từ lần trước (tải lại lúc mất mạng): gửi ngay nếu có mạng, không thì chờ nhịp thử lại.
+    if (queue.current.pending.length > 0) void flush();
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
     return () => {
@@ -164,13 +190,13 @@ export function useSaver(options: {
 
   const status: SaveStatus = saveStatusOf(view, online);
 
-  // Còn việc chưa lưu thì trình duyệt hỏi lại trước khi đóng tab (4c-2 sẽ giữ hàng đợi qua IndexedDB).
+  // Hàng đợi đã nằm trên máy (IndexedDB) thì đóng tab hay tải lại không mất gì; chỉ khi không ghi được mới hỏi lại.
   useEffect(() => {
-    if (status === 'saved') return;
+    if (status === 'saved' || durable) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [status]);
+  }, [status, durable]);
 
   const unsaved = view.pending.length + view.inflight.length;
   return useMemo(
