@@ -61,11 +61,13 @@ export function useHeartbeat(options: {
       sending = true;
       clearTimeout(timer);
       const { body, sentIds } = nextBeat(state);
+      let succeeded = false;
       try {
         const reply = await sendHeartbeat(attemptId, body);
         if (disposed) return;
         const acked = ackBeat(state, sentIds, reply);
         state = acked.state;
+        succeeded = true;
         storeCursor(attemptId, state.cursor);
         if (reply.status === 'submitted') {
           stopped = true;
@@ -91,7 +93,10 @@ export function useHeartbeat(options: {
         // Lỗi mạng: giữ nguyên sự kiện, nhịp sau gửi lại cùng mã nên server không ghi trùng.
       } finally {
         sending = false;
-        if (!stopped) timer = setTimeout(() => void beat(), HEARTBEAT_INTERVAL_MS);
+        // Sự kiện xảy ra lúc nhịp đang bay thì gửi tiếp ngay (chỉ khi nhịp vừa rồi thành công, để lỗi mạng không thành
+        // vòng lặp dồn dập); còn lại chờ nhịp 15 giây.
+        const next = succeeded && state.pending.length > 0 ? 0 : HEARTBEAT_INTERVAL_MS;
+        if (!stopped) timer = setTimeout(() => void beat(), next);
       }
     };
 
