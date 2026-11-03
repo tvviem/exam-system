@@ -1,4 +1,6 @@
+import { NUDGE_JITTER_MAX_MS, REALTIME_EVENT, REALTIME_JOIN } from '@exam/shared';
 import { useEffect, useRef } from 'react';
+import { realtime } from '../realtime';
 import { sendHeartbeat } from '../take';
 import { newId } from '../uuid';
 import {
@@ -119,7 +121,24 @@ export function useHeartbeat(options: {
     window.addEventListener('offline', onOffline);
     window.addEventListener('online', onOnline);
     void beat();
+
+    // Kênh đẩy (PR 4d-3): Người ra đề vừa Cộng giờ, Buộc nộp, Cảnh cáo hay Thu hồi thì gửi heartbeat ngay thay vì chờ nhịp
+    // 15 giây. Chờ ngẫu nhiên chút ít để Cộng giờ cả phòng không dồn 500 yêu cầu một lúc. Mất kênh thì nhịp 15 giây vẫn
+    // chạy như cũ; nối lại thì gửi ngay để bù tin có thể đã lỡ.
+    let nudgeTimer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = realtime.subscribe({
+      join: REALTIME_JOIN.attempt,
+      payload: { attemptId },
+      event: REALTIME_EVENT.attemptNudge,
+      onEvent: () => {
+        clearTimeout(nudgeTimer);
+        nudgeTimer = setTimeout(() => void beat(), Math.random() * NUDGE_JITTER_MAX_MS);
+      },
+      onConnected: () => void beat(),
+    });
     return () => {
+      unsubscribe();
+      clearTimeout(nudgeTimer);
       disposed = true;
       stopped = true;
       clearTimeout(timer);
