@@ -131,6 +131,20 @@ describe('session_events: chỉ ghi nhận (Q198)', () => {
     await event('device_rejected', null);
   });
 
+  it('cùng mã sự kiện của trình duyệt trong một Lượt chỉ ghi một lần; sự kiện không mã thì ghi bao nhiêu cũng được', async () => {
+    const insert = (clientEventId: string | null) =>
+      sql(
+        `insert into session_events (session_id, user_id, attempt_id, type, client_event_id)
+         values ($1, $2, $3, 'tab_hidden', $4)`,
+        [sessionId, anId, attemptId, clientEventId],
+      );
+    const id = crypto.randomUUID();
+    await insert(id);
+    await expect(insert(id)).rejects.toThrow(/session_events_client_event_unique/);
+    await insert(null);
+    await insert(null);
+  });
+
   it('chỉ ghi thêm: không sửa, không xóa', async () => {
     await event('tab_hidden');
     await expect(sql(`update session_events set type = 'tab_visible'`)).rejects.toThrow(

@@ -1,5 +1,5 @@
 {
-  "id": "45617fa5-5379-4a7f-9563-db814ef7512c",
+  "id": "cc27cf2b-e361-42e7-a8d8-63307444296b",
   "prevId": "547b9f81-7053-4e89-980c-d2cd3a25509c",
   "version": "7",
   "dialect": "postgresql",
@@ -622,6 +622,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "client_event_id": {
+          "name": "client_event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "at": {
           "name": "at",
           "type": "timestamp with time zone",
@@ -631,6 +637,28 @@
         }
       },
       "indexes": {
+        "session_events_client_event_unique": {
+          "name": "session_events_client_event_unique",
+          "columns": [
+            {
+              "expression": "attempt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "client_event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"session_events\".\"client_event_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "session_events_attempt_idx": {
           "name": "session_events_attempt_idx",
           "columns": [

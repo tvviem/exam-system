@@ -175,9 +175,14 @@ export const sessionEvents = pgTable(
     attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'restrict' }),
     type: sessionEventTypeEnum('type').notNull(),
     data: jsonb('data'),
+    /** Mã sự kiện do trình duyệt sinh: gửi lại heartbeat không ghi trùng sự kiện. */
+    clientEventId: uuid('client_event_id'),
     at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    uniqueIndex('session_events_client_event_unique')
+      .on(t.attemptId, t.clientEventId)
+      .where(sql`${t.clientEventId} IS NOT NULL`),
     index('session_events_attempt_idx').on(t.attemptId, t.type),
     index('session_events_session_idx').on(t.sessionId, t.at),
   ],

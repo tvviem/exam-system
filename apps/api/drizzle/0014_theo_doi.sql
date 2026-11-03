@@ -23,6 +23,7 @@ CREATE TABLE "session_events" (
 	"attempt_id" uuid,
 	"type" "session_event_type" NOT NULL,
 	"data" jsonb,
+	"client_event_id" uuid,
 	"at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -51,10 +52,12 @@ ALTER TABLE "violations" ADD CONSTRAINT "violations_attempt_id_attempts_id_fk" F
 ALTER TABLE "violations" ADD CONSTRAINT "violations_session_id_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."sessions"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "violations" ADD CONSTRAINT "violations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "violations" ADD CONSTRAINT "violations_recorded_by_users_id_fk" FOREIGN KEY ("recorded_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "session_events_client_event_unique" ON "session_events" USING btree ("attempt_id","client_event_id") WHERE "session_events"."client_event_id" IS NOT NULL;--> statement-breakpoint
 CREATE INDEX "session_events_attempt_idx" ON "session_events" USING btree ("attempt_id","type");--> statement-breakpoint
 CREATE INDEX "session_events_session_idx" ON "session_events" USING btree ("session_id","at");--> statement-breakpoint
 CREATE INDEX "violations_attempt_idx" ON "violations" USING btree ("attempt_id");--> statement-breakpoint
-CREATE INDEX "violations_session_idx" ON "violations" USING btree ("session_id");--> statement-breakpoint
+CREATE INDEX "violations_session_idx" ON "violations" USING btree ("session_id");
+--> statement-breakpoint
 -- Lớp bảo vệ thứ hai sau service (Q172, Q198, Q256, Q259). Nhật ký sự kiện và nhật ký Cộng giờ chỉ ghi thêm.
 CREATE FUNCTION append_only_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
