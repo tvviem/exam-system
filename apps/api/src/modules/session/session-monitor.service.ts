@@ -115,7 +115,13 @@ export class SessionMonitorService {
         reasons,
       };
     });
-    return { serverNow: now, totalItems: live.totalItems, summary, people };
+    return {
+      serverNow: now,
+      entryClosed: session.entryClosedAt !== null && session.entryClosedAt <= now,
+      totalItems: live.totalItems,
+      summary,
+      people,
+    };
   }
 
   /** Cộng giờ cho một Lượt, một nhóm hoặc cả phòng (Q254). Phiên thi đã đóng Khung giờ vẫn Cộng giờ được. */

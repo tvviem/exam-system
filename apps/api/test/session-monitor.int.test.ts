@@ -46,6 +46,7 @@ const monitor = async (who = live.examiner) => {
   expect(res.statusCode, res.body).toBe(200);
   return res.json() as {
     serverNow: string;
+    entryClosed: boolean;
     totalItems: number;
     summary: Record<string, number>;
     people: Person[];
@@ -280,6 +281,14 @@ describe('quyền và bất biến', () => {
     await live.api('POST', `/sessions/${live.sessionId}/cancel`, {});
     const body = await monitor();
     expect(body.summary).toMatchObject({ submitted: 3 });
+  });
+
+  it('cho biết cửa vào thi đã đóng hay chưa để màn Theo dõi hiện đúng nút Đóng hoặc Mở lại', async () => {
+    expect((await monitor()).entryClosed).toBe(false);
+    await live.api('POST', `/sessions/${live.sessionId}/close-entry`, {});
+    expect((await monitor()).entryClosed).toBe(true);
+    await live.api('POST', `/sessions/${live.sessionId}/reopen-entry`, {});
+    expect((await monitor()).entryClosed).toBe(false);
   });
 
   it('Người ra đề mất máy: đăng nhập thiết bị khác vẫn thấy đủ trạng thái; Người dự thi không bị ảnh hưởng', async () => {

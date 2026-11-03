@@ -717,7 +717,9 @@ function ExaminerNotice({ notice, onDismiss }: { notice: Notice; onDismiss: () =
     <div
       role={warning ? 'alert' : 'status'}
       className={`flex items-start gap-2 rounded-lg border p-3 font-sans text-sm ${
-        warning ? 'border-danger bg-danger-soft text-danger' : 'border-primary bg-primary-soft text-on-primary-soft'
+        warning
+          ? 'border-danger bg-danger-soft text-danger'
+          : 'border-primary bg-primary-soft text-on-primary-soft'
       }`}
     >
       {warning ? (

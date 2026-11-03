@@ -27,6 +27,7 @@ import {
 } from '../../../../lib/ui';
 import { ListSkeleton } from '../../../../lib/ui/admin';
 import { Breadcrumb } from '../../../../lib/ui/breadcrumb';
+import { MonitorScreen } from '../../../../lib/ui/monitor/screen';
 import { PageHeader } from '../../../../lib/ui/page-header';
 import { RowMenu } from '../../../../lib/ui/row-menu';
 import {
@@ -41,12 +42,14 @@ import { StickyActionBar } from '../../../../lib/ui/sticky-action-bar';
 import { Tabs } from '../../../../lib/ui/tabs';
 import { useToast } from '../../../../lib/ui/toast';
 
-type Tab = 'overview' | 'roster';
+type Tab = 'overview' | 'roster' | 'monitor';
 
 export const Route = createFileRoute('/_authed/examiner/sessions/$sessionId')({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } => ({
-    tab: search.tab === 'roster' ? 'roster' : undefined,
+    tab: search.tab === 'roster' || search.tab === 'monitor' ? search.tab : undefined,
   }),
+  // Tab Theo dõi cần chỗ rộng cho Bảng và Lưới (Q107).
+  staticData: { wide: true },
   component: SessionPage,
 });
 
@@ -166,7 +169,9 @@ function SessionDetail({ session }: { session: SessionSummary }) {
       <Tabs
         label={t('session.tabs.label')}
         value={tab}
-        onChange={(id) => navigate({ search: id === 'roster' ? { tab: 'roster' } : {} })}
+        onChange={(id) =>
+          navigate({ search: id === 'roster' || id === 'monitor' ? { tab: id } : {} })
+        }
         items={[
           {
             id: 'overview',
@@ -181,6 +186,12 @@ function SessionDetail({ session }: { session: SessionSummary }) {
             id: 'roster',
             label: t('session.tabs.roster'),
             content: <SessionRoster session={session} />,
+          },
+          {
+            id: 'monitor',
+            label: t('session.tabs.monitor'),
+            // Chỉ dựng khi đang xem: tab ẩn vẫn nằm trong cây, nhưng không được hỏi lại số liệu mỗi 5 giây.
+            content: tab === 'monitor' ? <MonitorScreen sessionId={session.id} /> : null,
           },
         ]}
       />
