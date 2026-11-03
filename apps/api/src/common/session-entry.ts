@@ -33,7 +33,7 @@ export interface SessionEntry {
   findByCode(userId: string, code: string, executor?: EntryExecutor): Promise<EntryGate[]>;
   /**
    * Phiên thi này nếu người này có trong Danh sách; ngược lại `null`. `lock: true` khóa dòng Phiên thi `FOR SHARE` đến hết
-   * giao dịch: Hủy, Thu hồi, Cho vào lại, Bớt người đều khóa Phiên thi trước nên các thao tác nối đuôi nhau, không bế tắc.
+   * giao dịch: Hủy, Thu hồi, Hoàn tác Thu hồi, Bớt người đều khóa Phiên thi trước nên các thao tác nối đuôi nhau, không bế tắc.
    */
   gateFor(
     sessionId: string,

@@ -176,8 +176,12 @@ Thiết bị duy nhất được gắn cho một Người dự thi trong một P
 _Avoid_: máy thi, phiên thi của thiết bị
 
 **Thu hồi thiết bị** (`Revoke`):
-Hành động của Người ra đề gỡ Thiết bị dự thi của một Người dự thi khi thiết bị gặp sự cố hoặc nghi ngờ thi hộ. Thiết bị bị thu hồi bị loại khỏi Phiên thi đó cho người ấy; thiết bị mới đầu tiên nhập đúng Mã vào thi sẽ được gắn và làm tiếp đúng Lượt làm bài cũ. Câu trả lời đã lưu được giữ, Câu trả lời chưa gửi từ thiết bị cũ không được nhận.
+Hành động của Người ra đề gỡ Thiết bị dự thi của một Người dự thi khi thiết bị gặp sự cố hoặc nghi ngờ thi hộ. Thiết bị bị thu hồi bị loại khỏi Phiên thi đó cho người ấy; thiết bị mới đầu tiên nhập đúng Mã vào thi sẽ được gắn và làm tiếp đúng Lượt làm bài cũ. Câu trả lời đã lưu được giữ, Câu trả lời chưa gửi từ thiết bị cũ không được nhận, trừ khi Người ra đề Hoàn tác Thu hồi.
 _Avoid_: đổi thiết bị, cho phép đổi thiết bị, đăng xuất
+
+**Hoàn tác Thu hồi** (`Pardon`):
+Hành động của Người ra đề cho một thiết bị đã bị Thu hồi quay lại Phiên thi, thay cho thiết bị mới nếu thiết bị mới đã được gắn; Người dự thi làm tiếp đúng Lượt làm bài cũ, kể cả các Câu trả lời chưa gửi còn giữ trên thiết bị.
+_Avoid_: mở khóa thiết bị, cho đổi thiết bị, cho thiết bị vào lại
 
 **Thời lượng** (`Duration`):
 Thời gian tối đa của một Lượt làm bài tính từ lúc bắt đầu.
