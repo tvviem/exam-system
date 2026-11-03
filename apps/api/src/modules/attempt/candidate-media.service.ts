@@ -47,4 +47,9 @@ export class CandidateMediaService implements CandidateMedia {
     const gate = await this.entry.gateFor(attempt.sessionId, userId);
     return gate !== null && (await this.content.hasIllustration(gate.examId, illustrationId));
   }
+
+  async canPreview(userId: string, sessionId: string, illustrationId: string): Promise<boolean> {
+    const gate = await this.entry.gateForOwner(sessionId, userId);
+    return gate !== null && (await this.content.hasIllustration(gate.examId, illustrationId));
+  }
 }

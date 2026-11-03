@@ -3,7 +3,6 @@ import {
   deadlineOf,
   HARD_CLOSE_MIN_SECONDS,
   isPastGrace,
-  type LayoutInput,
   layoutOf,
   normalizeAccessCode,
   phaseOf,
@@ -21,7 +20,7 @@ import { type EntryGate, SESSION_ENTRY, type SessionEntry } from '../../common/s
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { attempts, responses, sessionDevices } from './attempt.schema';
 import { closeInProgress } from './attempt-close';
-import { buildAttemptSections, type SavedResponse } from './attempt-view';
+import { buildAttemptSections, layoutInputOf, type SavedResponse } from './attempt-view';
 import { generateDeviceKey, hashDeviceKey } from './device-key';
 import { JoinRateLimiter } from './join-rate-limiter';
 
@@ -246,17 +245,7 @@ export class AttemptsService {
       const content = await this.content.contentOf(gate.examId, tx);
       if (!content) throw new ApiError('NOT_FOUND');
       const seed = randomInt(0, 2 ** 48 - 1);
-      const layoutInput: LayoutInput = {
-        sections: content.sections.map((section) => ({
-          sectionId: section.id,
-          items: section.items.map((item) => ({
-            itemId: item.itemId,
-            type: item.snapshot.type,
-            optionIds: optionIdsOf(item.snapshot.payload),
-            shuffleOptions: item.snapshot.payload.shuffleOptions === true,
-          })),
-        })),
-      };
+      const layoutInput = layoutInputOf(content);
       try {
         // Điểm lưu (savepoint): vi phạm chỉ mục duy nhất chỉ hủy lần chèn này, không hủy cả giao dịch.
         return await tx.transaction(async (inner) => {
@@ -513,10 +502,4 @@ function deviceStatusOf(
   const mine = rows.find((row) => row.deviceHash === hash);
   if (mine) return mine.status;
   return rows.some((row) => row.status === 'active') ? 'other' : 'none';
-}
-
-/** Id Phương án (chọn một, chọn nhiều) hoặc Mệnh đề (chùm đúng/sai) theo thứ tự gốc của bản chụp. */
-function optionIdsOf(payload: Record<string, unknown>): string[] {
-  const list = (payload.options ?? payload.statements) as { id: string }[] | undefined;
-  return list?.map((entry) => entry.id) ?? [];
 }

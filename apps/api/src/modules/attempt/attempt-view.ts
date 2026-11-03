@@ -1,4 +1,4 @@
-import { type CandidateSource, candidateViewOf } from '@exam/shared';
+import { type CandidateSource, candidateViewOf, type LayoutInput } from '@exam/shared';
 import type { ContentSnapshot, ExamContentData } from '../../common/exam-content';
 import type { StoredLayout } from './attempt.schema';
 
@@ -78,4 +78,25 @@ export function buildAttemptSections(input: {
     });
     return [{ id: section.id, title: section.title, instructions: section.instructions, items }];
   });
+}
+
+/** Id Phương án (chọn một, chọn nhiều) hoặc Mệnh đề (chùm đúng/sai) theo thứ tự gốc của bản chụp. */
+function optionIdsOf(payload: Record<string, unknown>): string[] {
+  const list = (payload.options ?? payload.statements) as { id: string }[] | undefined;
+  return list?.map((entry) => entry.id) ?? [];
+}
+
+/** Đầu vào của `layoutOf`: các câu của Bộ đề theo thứ tự gốc, kèm điều kiện trộn Phương án của từng câu. */
+export function layoutInputOf(content: ExamContentData): LayoutInput {
+  return {
+    sections: content.sections.map((section) => ({
+      sectionId: section.id,
+      items: section.items.map((item) => ({
+        itemId: item.itemId,
+        type: item.snapshot.type,
+        optionIds: optionIdsOf(item.snapshot.payload),
+        shuffleOptions: item.snapshot.payload.shuffleOptions === true,
+      })),
+    })),
+  };
 }

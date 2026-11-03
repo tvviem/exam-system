@@ -41,6 +41,15 @@ export interface SessionEntry {
     executor?: EntryExecutor,
     options?: { lock?: boolean },
   ): Promise<EntryGate | null>;
+  /**
+   * Phiên thi này nếu `userId` là chủ (Người ra đề tạo ra nó); ngược lại `null`. Dùng cho Xem thử (Q245): Người ra đề không
+   * nằm trong Danh sách dự thi nên `gateFor` không thấy. `extraMinutes` luôn là 0.
+   */
+  gateForOwner(
+    sessionId: string,
+    userId: string,
+    executor?: EntryExecutor,
+  ): Promise<EntryGate | null>;
   /** Phiên thi của người này (mới nhất trước, tối đa 100), bỏ những cái đã đóng quá `since`. */
   listFor(userId: string, since: Date, executor?: EntryExecutor): Promise<EntryGate[]>;
 }

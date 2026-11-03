@@ -5,6 +5,7 @@ import {
   CandidateMediaController,
   IllustrationsController,
   MediaController,
+  PreviewMediaController,
 } from './illustrations/illustrations.controller';
 import { IllustrationsService } from './illustrations/illustrations.service';
 import { QuestionImportCleanupJob } from './imports/question-import-cleanup.job';
@@ -27,6 +28,7 @@ import { QuestionBankOwnedContent } from './transfer/question-bank-owned-content
     IllustrationsController,
     MediaController,
     CandidateMediaController,
+    PreviewMediaController,
     QuestionImportsController,
   ],
   providers: [

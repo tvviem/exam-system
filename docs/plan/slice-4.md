@@ -310,7 +310,7 @@ Người ra đề (`@RequireTag('examiner')`, chỉ chủ Phiên thi, người k
 | `POST /sessions/:id/close-entry`, `/force-submit` | Đóng cửa vào thi, Buộc nộp cả phòng |
 | `POST /sessions/:id/attempts/:attemptId/extend \| force-submit \| violations` | Cộng giờ, Buộc nộp, ghi Vi phạm (Cảnh cáo hoặc Đình chỉ) |
 | `POST /sessions/:id/roster/:userId/revoke-device \| pardon-device` | Thu hồi thiết bị, Cho thiết bị vào lại |
-| `GET /sessions/:id/try` | Xem thử qua Phiên thi (nội dung như Người dự thi, không ghi gì, Q220) |
+| `GET /sessions/:id/try` | Xem thử qua Phiên thi (nội dung như Người dự thi, không ghi gì, Q220); ảnh ở `GET /sessions/:id/try-media/:illustrationId/:side` (Q248) |
 
 Người dự thi (`@RequireTag('candidate')`, cookie `exam_did` bắt buộc):
 
@@ -532,6 +532,39 @@ Chuẩn bị như 4c-1, nhưng **service worker chỉ chạy ở bản dựng th
 | Q244 thiết bị bị thu hồi | Người ra đề Thu hồi thiết bị (API; giao diện ở 4d), Người dự thi chọn một đáp án | Màn "Thiết bị này đã bị thu hồi" chiếm toàn bộ, không còn đề; tải lại vẫn thế; `queues` vẫn giữ câu vừa chọn |
 
 Chỗ cần anh nhận xét: chữ và vị trí dải "Đang mở đề đã lưu trên máy"; chữ ở màn thu hồi; biểu tượng ứng dụng (mũ tốt nghiệp trên nền xanh của thương hiệu); anh có muốn thêm nút "Cài ứng dụng" hay để người dùng tự cài từ trình duyệt.
+
+### PR 4c-3: Xem thử qua Phiên thi (3/11/2026)
+
+| # | Quyết định | Trạng thái |
+|---|---|---|
+| Q248 | API: `GET /sessions/:id/try` trả nội dung đề cùng hình dạng như `view` của Người dự thi (dựng bằng `candidateViewOf`, nên không có `key` hay `rubric`), kèm `status: 'preview'`, `durationMinutes`, `mediaBase`. Ảnh ở `GET /sessions/:id/try-media/:illustrationId/:side`. Chỉ chủ Phiên thi (`SessionEntry.gateForOwner`); người khác, kể cả Người dự thi trong Danh sách và Người ra đề khác, nhận 404 như khi Phiên thi không tồn tại. Không tạo `attempts`, không gắn thiết bị, không ghi gì. Admin chưa được Xem thử Phiên thi của người khác | đã duyệt |
+| Q249 | Xem thử ở mọi trạng thái của Phiên thi: chưa mở, đã đóng, đã Hủy. Thứ tự đề theo thiết lập trộn câu và trộn Phương án của Phiên thi, hạt giống mới mỗi lần mở | đã duyệt |
+| Q250 | Dùng lại màn làm bài, có dải "Đang xem thử"; không đồng hồ, không chỉ báo lưu; câu trả lời chỉ ở bộ nhớ trang (tải lại thì mất và đề trộn lại); nút "Nộp bài" thành "Kết thúc xem thử" và quay về trang Phiên thi, không gọi server; không đụng IndexedDB hay bộ nhớ đệm làm bài của 4c-2 | đã duyệt |
+| Q251 | Test seam: (1) API tích hợp qua HTTP (`session-preview.int.test.ts`); (2) E2E desktop và mobile (`take-preview.spec.ts`). Không viết unit riêng cho `gateForOwner` | đã duyệt |
+
+**Ghi chú triển khai**
+
+- **Đường dẫn giao diện là `/examiner/sessions/:id/try`** (chủ dự án đã duyệt 3/11/2026), không phải `/take/try/...` như Q250 viết: khu `/take` chỉ cho Người dự thi (`beforeLoad` kiểm vai trò), còn Xem thử là việc của Người ra đề. Nút "Xem thử" nằm ở đầu trang chi tiết Phiên thi.
+- **Không dùng `@RequireTag('examiner')`** trên hai đường Xem thử: thẻ trả 403 và cho biết đường dẫn có thật, trái với điều đã duyệt ở Q251 ("Người dự thi nhận 404"). Thay vào đó controller kiểm thẻ `examiner` rồi trả 404, cộng với `gateForOwner` (chỉ chủ); người còn sở hữu Phiên thi nhưng đã mất thẻ cũng nhận 404 (có test). Chủ dự án đã duyệt việc này (3/11/2026).
+- **Kiểm thử bổ sung sau review:** trộn câu và trộn Phương án theo thiết lập của Phiên thi (nhiều lần mở cho thứ tự khác nhau, giữ đủ câu), `showScoringRules`, quản trị viên không Xem thử Phiên thi của người khác. Đột biến (bỏ trộn, ép `showScoringRules` tắt) làm các test này đỏ.
+- **`AttemptRunner` được tách** thành `useAttemptSession` (mọi thứ gắn server: lưu, đồng hồ, nộp, mất mạng, giữ nguyên logic 4c-2), `AttemptScreen` (giao diện) và `PreviewRunner`. Hai bên đưa vào màn một `RunnerSession`; `clock`, `saving`, `submit` là `null` khi xem thử, nên không phải rải điều kiện `preview` khắp hook.
+- `previewQuery` đặt `gcTime: 0`, không tự làm mới khi đổi tab hay có mạng lại (nếu không đề sẽ đổi chỗ giữa chừng), `retry: false` (404 báo ngay).
+- Đường ảnh Xem thử qua cổng `CANDIDATE_MEDIA.canPreview`; `question-bank` vẫn không biết Phiên thi. Đường ảnh này nằm dưới `/api/sessions/…` nên service worker của 4c-2 không lưu đệm.
+- `layoutInputOf` tách từ `start` để Xem thử và bắt đầu Lượt dùng chung cách dựng đầu vào của `layoutOf`.
+- E2E dùng hai Người ra đề riêng (`e2e-lb-pvgv-*`, `e2e-lb-pvlg-*`): giới hạn đăng nhập 10 lần mỗi 10 phút cho một tên đăng nhập đã bị chạm khi dồn thêm test vào `e2e-lb-gv-*`.
+
+#### Hướng dẫn thử 4c-3 (cho chủ dự án)
+
+| Mục | Làm | Kỳ vọng |
+|---|---|---|
+| Q248 nút | Đăng nhập Người ra đề, mở một Phiên thi, bấm "Xem thử" | Mở màn làm bài với dải "Đang xem thử: <tên Phiên thi>"; không có đồng hồ, không có chỉ báo lưu |
+| Q248 không ghi gì | Làm thử vài câu, chuyển hai chế độ, mở lưới câu; xem tab Network | Chỉ có một yêu cầu `GET .../try` (và ảnh nếu có); không có yêu cầu ghi nào |
+| Q249 mọi trạng thái | Thử với Phiên thi chưa mở, đã đóng, đã Hủy | Đều Xem thử được |
+| Q249 trộn | Phiên thi bật trộn câu hoặc Phương án; mở Xem thử hai lần | Thứ tự đề khác nhau giữa hai lần |
+| Q250 tải lại | Trả lời rồi tải lại trang | Đáp án mất, đề trộn lại |
+| Q250 kết thúc | Bấm "Kết thúc xem thử" | Về trang Phiên thi, không có hộp thoại nộp |
+| Q248 quyền | Đăng nhập Người ra đề khác, mở thẳng đường dẫn `/examiner/sessions/<id>/try` của Phiên thi này | Chỉ thấy thông báo lỗi và nút "Về Phiên thi" |
+| Q248 Danh sách dự thi | Vào Danh sách dự thi của Phiên thi sau khi Xem thử | Không có Lượt làm bài nào mới |
 
 ## Thuật ngữ mới (đã vào GLOSSARY)
 
