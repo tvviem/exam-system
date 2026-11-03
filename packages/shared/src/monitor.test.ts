@@ -7,6 +7,8 @@ import {
   extensionScopeOf,
   extensionWithinCap,
   forceSubmitSchema,
+  HEARTBEAT_EVENTS_MAX,
+  heartbeatSchema,
   violationSchema,
 } from './monitor.js';
 
@@ -194,5 +196,29 @@ describe('forceSubmitSchema: yêu cầu Buộc nộp (Q254)', () => {
     );
     expect(forceSubmitSchema.safeParse({ attemptIds: [] }).success).toBe(false);
     expect(forceSubmitSchema.safeParse({ attemptIds: ['abc'] }).success).toBe(false);
+  });
+});
+
+describe('heartbeatSchema: nhịp báo còn làm bài (Q213)', () => {
+  const event = { id: batchId, type: 'tab_hidden' };
+
+  it('nhận danh sách sự kiện rỗng hoặc thiếu, và mốc since tùy chọn', () => {
+    expect(heartbeatSchema.parse({})).toEqual({ events: [] });
+    expect(heartbeatSchema.safeParse({ events: [event], since: '2026-12-01T01:10:00.000Z' }).success).toBe(true);
+  });
+
+  it('sự kiện có mã UUID và một trong bốn loại', () => {
+    for (const type of ['tab_hidden', 'tab_visible', 'went_offline', 'back_online']) {
+      expect(heartbeatSchema.safeParse({ events: [{ id: attemptId, type }] }).success).toBe(true);
+    }
+    expect(heartbeatSchema.safeParse({ events: [{ id: attemptId, type: 'device_rejected' }] }).success).toBe(false);
+    expect(heartbeatSchema.safeParse({ events: [{ id: 'abc', type: 'tab_hidden' }] }).success).toBe(false);
+  });
+
+  it('tối đa 20 sự kiện một nhịp; since phải là giờ hợp lệ', () => {
+    const many = Array.from({ length: HEARTBEAT_EVENTS_MAX + 1 }, () => event);
+    expect(HEARTBEAT_EVENTS_MAX).toBe(20);
+    expect(heartbeatSchema.safeParse({ events: many }).success).toBe(false);
+    expect(heartbeatSchema.safeParse({ since: 'hôm qua' }).success).toBe(false);
   });
 });

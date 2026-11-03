@@ -105,3 +105,23 @@ export const violationSchema = z.strictObject({
   reason: reasonOf(VIOLATION_REASON_MAX),
 });
 export type ViolationRequest = z.infer<typeof violationSchema>;
+
+/** Số sự kiện tối đa mà một nhịp heartbeat mang theo. */
+export const HEARTBEAT_EVENTS_MAX = 20;
+
+/** Loại sự kiện trình duyệt báo qua heartbeat (còn `device_rejected` do server ghi). */
+export const HEARTBEAT_EVENT_TYPES = ['tab_hidden', 'tab_visible', 'went_offline', 'back_online'] as const;
+export type HeartbeatEventType = (typeof HEARTBEAT_EVENT_TYPES)[number];
+
+/**
+ * Nhịp báo còn làm bài mỗi 15 giây (Q213). Mỗi sự kiện mang mã UUID do trình duyệt sinh nên gửi lại không ghi trùng.
+ * `since` là mốc `cursor` của lần trả lời trước, để nhận thông báo mới (Cộng giờ, Cảnh cáo).
+ */
+export const heartbeatSchema = z.strictObject({
+  events: z
+    .array(z.strictObject({ id: z.uuid(), type: z.enum(HEARTBEAT_EVENT_TYPES) }))
+    .max(HEARTBEAT_EVENTS_MAX)
+    .default([]),
+  since: z.iso.datetime({ offset: true }).optional(),
+});
+export type HeartbeatRequest = z.infer<typeof heartbeatSchema>;

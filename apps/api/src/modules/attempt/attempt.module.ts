@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AttemptPresence } from './attempt-presence';
 import { AttemptSweepJob } from './attempt-sweep.job';
 import { AttemptsController } from './attempts.controller';
 import { AttemptsService } from './attempts.service';
@@ -15,6 +16,7 @@ import { SessionPreviewService } from './session-preview.service';
   providers: [
     AttemptsService,
     JoinRateLimiter,
+    AttemptPresence,
     SessionAttemptsService,
     AttemptSweepJob,
     CandidateMediaService,
