@@ -138,7 +138,13 @@ export async function readWorkbook(
   }));
 }
 
+/** Chữ trong ô luôn ở dạng dựng sẵn (NFC): file lưu chữ Việt bằng dấu rời vẫn vào hệ thống giống hệt chữ gõ thường. */
 function cellValue(value: ExcelJS.CellValue): Cell {
+  const cell = rawCellValue(value);
+  return typeof cell === 'string' ? cell.normalize('NFC') : cell;
+}
+
+function rawCellValue(value: ExcelJS.CellValue): Cell {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) return value;
   if (typeof value === 'object') {
@@ -147,7 +153,7 @@ function cellValue(value: ExcelJS.CellValue): Cell {
         .map((part) => part.text)
         .join('')
         .trim();
-    if ('result' in value) return cellValue(value.result as ExcelJS.CellValue);
+    if ('result' in value) return rawCellValue(value.result as ExcelJS.CellValue);
     if ('text' in value) return String(value.text).trim();
     return '';
   }
@@ -156,7 +162,7 @@ function cellValue(value: ExcelJS.CellValue): Cell {
 
 /** CSV theo RFC 4180: dấu phân cách là `,` hoặc `;` (Excel tiếng Việt hay xuất `;`), BOM được bỏ. */
 function readCsv(buffer: Buffer): Table {
-  const text = buffer.toString('utf8').replace(/^﻿/, '');
+  const text = buffer.toString('utf8').replace(/^﻿/, '').normalize('NFC');
   const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
   const delimiter = count(firstLine, ';') > count(firstLine, ',') ? ';' : ',';
 

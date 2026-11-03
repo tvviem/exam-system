@@ -33,9 +33,11 @@ const markSchema = z.strictObject({
   type: z.enum(['bold', 'italic', 'underline', 'superscript', 'subscript']),
 });
 
+// Mọi chữ trong nội dung được đưa về dạng dựng sẵn (NFC) ngay khi nhận: chữ Việt gõ hay dán ở dạng dấu rời (NFD) vẫn lưu,
+// đếm ký tự và hiển thị giống hệt dạng dựng sẵn, nên nội dung Câu hỏi thống nhất trên toàn hệ thống.
 const textNodeSchema = z.strictObject({
   type: z.literal('text'),
-  text: z.string().min(1),
+  text: z.string().normalize('NFC').min(1),
   marks: z.array(markSchema).max(5).optional(),
 });
 
@@ -45,7 +47,7 @@ const hardBreakSchema = z.strictObject({ type: z.literal('hardBreak') });
 const mathSchema = z.strictObject({
   type: z.literal('math'),
   attrs: z.strictObject({
-    latex: z.string().min(1).max(MATH_MAX_CHARS),
+    latex: z.string().normalize('NFC').min(1).max(MATH_MAX_CHARS),
     display: z.boolean(),
   }),
 });
@@ -55,7 +57,7 @@ const imageSchema = z.strictObject({
   type: z.literal('image'),
   attrs: z.strictObject({
     illustrationId: z.uuid(),
-    alt: z.string().trim().min(1).max(IMAGE_ALT_MAX_CHARS),
+    alt: z.string().normalize('NFC').trim().min(1).max(IMAGE_ALT_MAX_CHARS),
   }),
 });
 
