@@ -319,6 +319,14 @@
       },
       "note": "Kết quả (nếu có) chỉ hiện sau khi Người ra đề công bố."
     },
+    "notice": {
+      "dismiss": "Đã hiểu",
+      "time_extended": {
+        "title": "Người ra đề đã cộng giờ",
+        "body": "Bạn được cộng thêm {{minutes}} phút. Lý do: {{reason}}"
+      },
+      "warning": { "title": "Cảnh cáo từ Người ra đề" }
+    },
     "stop": {
       "DEVICE_REVOKED": {
         "title": "Thiết bị này đã bị thu hồi",
