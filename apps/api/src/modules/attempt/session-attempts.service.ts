@@ -13,7 +13,7 @@ import { type Database, DB, type Transaction } from '../../db/db.module';
 import { attempts, sessionDevices } from './attempt.schema';
 import { closeInProgress } from './attempt-close';
 
-/** Lý do ghi khi thiết bị đang gắn bị thu hồi để nhường chỗ cho thiết bị được Cho vào lại (Q234). */
+/** Lý do ghi khi thiết bị đang gắn bị thu hồi để nhường chỗ cho thiết bị được Hoàn tác Thu hồi (Q234). */
 const PARDON_SWAP_REASON = 'pardon_swap';
 
 /** Cài đặt cổng `SESSION_ATTEMPTS` (Q228) cho `session`. */

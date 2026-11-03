@@ -1,6 +1,6 @@
 # Lát cắt 4: Phiên thi, Lượt làm bài và Theo dõi phòng thi
 
-> Trạng thái: **accepted** (1/11/2026): chủ dự án đã đồng ý Q192–Q211 qua ba vòng hỏi đáp và Q212–Q222 cùng năm thuật ngữ mới. Chưa có dòng code nào; mỗi PR 4a–4e vẫn cần thiết kế chi tiết và seam test được duyệt riêng. Thuật ngữ theo [GLOSSARY.md](../../GLOSSARY.md) (đã thêm Thiết bị dự thi, Thu hồi thiết bị, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi); nền tảng ở [architecture.md](../architecture.md), [data-model.md](../data-model.md), [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md), [ADR-0007](../adr/0007-gan-thiet-bi-du-thi-bang-ma-thiet-bi.md) (accepted).
+> Trạng thái: **accepted** (1/11/2026): chủ dự án đã đồng ý Q192–Q211 qua ba vòng hỏi đáp và Q212–Q222 cùng năm thuật ngữ mới. Chưa có dòng code nào; mỗi PR 4a–4e vẫn cần thiết kế chi tiết và seam test được duyệt riêng. Thuật ngữ theo [GLOSSARY.md](../../GLOSSARY.md) (đã thêm Thiết bị dự thi, Thu hồi thiết bị, Hoàn tác Thu hồi, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi); nền tảng ở [architecture.md](../architecture.md), [data-model.md](../data-model.md), [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md), [ADR-0007](../adr/0007-gan-thiet-bi-du-thi-bang-ma-thiet-bi.md) (accepted).
 
 ## Mục tiêu
 
@@ -159,7 +159,7 @@ session_devices (                                       -- Thiết bị dự thi
   id, session_id → sessions, user_id → users,
   device_hash text NOT NULL,                            -- SHA-256 của cookie exam_did
   ip inet, user_agent text,                             -- để Người ra đề nhận ra thiết bị lạ
-  status enum('active','revoked'),                      -- Cho vào lại: revoked → active, ghi pardoned_at (Q234)
+  status enum('active','revoked'),                      -- Hoàn tác Thu hồi: revoked → active, ghi pardoned_at (Q234)
   bound_at, revoked_at, revoked_by → users, revoke_reason text NULL, pardoned_at NULL
 )
 UNIQUE (session_id, user_id)     WHERE status = 'active'    -- tối đa một thiết bị đang gắn mỗi người
@@ -309,7 +309,7 @@ Người ra đề (`@RequireTag('examiner')`, chỉ chủ Phiên thi, người k
 | `GET /sessions/:id/monitor` | ảnh chụp trạng thái cả phòng (cũng là đường dự phòng khi Socket.IO hỏng) |
 | `POST /sessions/:id/close-entry`, `/force-submit` | Đóng cửa vào thi, Buộc nộp cả phòng |
 | `POST /sessions/:id/attempts/:attemptId/extend \| force-submit \| violations` | Cộng giờ, Buộc nộp, ghi Vi phạm (Cảnh cáo hoặc Đình chỉ) |
-| `POST /sessions/:id/roster/:userId/revoke-device \| pardon-device` | Thu hồi thiết bị, Cho thiết bị vào lại |
+| `POST /sessions/:id/roster/:userId/revoke-device \| pardon-device` | Thu hồi thiết bị, Hoàn tác Thu hồi |
 | `GET /sessions/:id/try` | Xem thử qua Phiên thi (nội dung như Người dự thi, không ghi gì, Q220); ảnh ở `GET /sessions/:id/try-media/:illustrationId/:side` (Q248) |
 
 Người dự thi (`@RequireTag('candidate')`, cookie `exam_did` bắt buộc):
@@ -340,7 +340,7 @@ Mã lỗi mới: `INVALID_ACCESS_CODE` (một mã chung, Q201), `INVALID_STATE` 
 | **4a** Phiên thi và Danh sách dự thi | `session`: tạo theo các bước, danh sách và lọc trạng thái, chi tiết, sửa theo trạng thái (Q202), thiết lập, Mã vào thi, thêm theo người hoặc Lớp, Cấp lại mật khẩu tạm, Nhân bản, Hủy, Xóa, thông báo "được thêm vào" và "bị Hủy" và "đổi giờ"; `ExamUsage` hiện số Phiên thi trên Bộ đề; ràng buộc loại trừ mã | 0012 | S1, S2, S3, S6 |
 | **4b** Vào thi và Lượt làm bài (API), chia 4b-1 và 4b-2 (Q226) | `attempt`: `join`, Gắn thiết bị, `start`, `view`, `saveResponses`, `submit`, `close`, job quét tự nộp, hook Khóa đăng nhập (Q218), ảnh cho Người dự thi (Q219), cookie `exam_did` | 0013 | S1, S2, S3, S4, S5, S8 |
 | **4c** Khu làm bài `/take` | giao diện điện thoại theo prototype đã duyệt: Phiên thi của tôi, nhập mã, màn xác nhận (Q210), hai chế độ, lưới số câu, đồng hồ có cảnh báo 5 và 1 phút, hàng đợi IndexedDB tự xả, hộp thoại xác nhận Nộp bài, báo thiết bị bị thu hồi, menu chuyển khu (Q143), Xem thử qua Phiên thi (Q220), PWA | không | S6 |
-| **4d** Theo dõi phòng thi | prototype trước (Q207), rồi: Socket.IO, presence, `session_events`, Cộng giờ, Thu hồi thiết bị và Cho vào lại, Đóng cửa vào thi, Buộc nộp, Vi phạm và Đình chỉ (Q221) | 0014 | S2, S4, S6, S7 |
+| **4d** Theo dõi phòng thi | prototype trước (Q207), rồi: Socket.IO, presence, `session_events`, Cộng giờ, Thu hồi thiết bị và Hoàn tác Thu hồi, Đóng cửa vào thi, Buộc nộp, Vi phạm và Đình chỉ (Q221) | 0014 | S2, S4, S6, S7 |
 | **4e** Hoàn thiện | Phiên thi trong Chuyển giao và Xóa người dùng (Q205), k6 500 người (Q214), hướng dẫn dùng thử trong README | không | S2, S6, S9 |
 
 Quy trình mỗi PR: thiết kế chi tiết và seam test cho riêng PR đó chốt với chủ dự án trước; làm theo từng lát dọc đỏ-xanh; chạy `code-review` (Standards và Spec); mở PR bằng skill `pr`; chờ CI xanh; chỉ merge khi chủ dự án ra lệnh.
@@ -405,14 +405,14 @@ Chủ dự án đồng ý cả mười một điểm Q226–Q236. Không có thu
 | # | Quyết định |
 |---|---|
 | Q226 | Chia 4b thành **4b-1** (ranh giới module và cấu hình, không đổi hành vi, lưới an toàn là test 4a) và **4b-2** (vào thi và Lượt làm bài) |
-| Q227 | 4b-2 làm: `join`, Gắn thiết bị, "Phiên thi của tôi", `start`, `view`, lưu lô, Nộp bài, `close`, job quét, Thu hồi và Cho vào lại (API), Hủy Phiên thi nộp Lượt, chặn Xóa Phiên thi và bớt người khi đã có Lượt, hook Q218, ảnh Q219. Để lại: heartbeat, presence, `session_events`, Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi, màn Theo dõi (4d); Xem thử (4c); Chuyển giao (4e) |
+| Q227 | 4b-2 làm: `join`, Gắn thiết bị, "Phiên thi của tôi", `start`, `view`, lưu lô, Nộp bài, `close`, job quét, Thu hồi và Hoàn tác Thu hồi (API), Hủy Phiên thi nộp Lượt, chặn Xóa Phiên thi và bớt người khi đã có Lượt, hook Q218, ảnh Q219. Để lại: heartbeat, presence, `session_events`, Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi, màn Theo dõi (4d); Xem thử (4c); Chuyển giao (4e) |
 | Q228 | Bảy cổng: `ExamCatalog` (`exam`→`session`), `CandidateDirectory` (`identity`→`session`), `SessionEntry` (`session`→`attempt`), `ExamContent` (`exam`→`attempt`), `SessionAttempts` (`attempt`→`session`), `CandidateMedia` (`attempt`→`question-bank`), `UserDeactivationHooks` (`attempt`→`identity`). Test kiến trúc cấm import chéo bảng với `session` và `attempt`; 8 import nợ cũ (5 cặp module) nằm trong danh sách cố định. Cấm bớt người đã có Lượt bằng khóa ngoại ghép `attempts(session_id,user_id)→session_roster ON DELETE RESTRICT` thay cho trigger; dòng thiết bị dùng khóa ngoại ghép `CASCADE` |
 | Q229 | `join`: cookie `exam_did` 128 bit cấp ở lần `join` đầu; một lỗi chung `INVALID_ACCESS_CODE`; sau khi tìm thấy mới báo `NOT_OPEN_YET`, `ENTRY_CLOSED`, `WINDOW_CLOSED`, `SESSION_CANCELLED`; sai quá 5 lần/10 phút/người thì `RATE_LIMITED`; người đang có Lượt vẫn `join` được khi Đóng cửa vào thi hoặc Khung giờ đã đóng; `start` khi chưa `join` là `INVALID_STATE NOT_JOINED` |
 | Q230 | `start`: làm tiếp Lượt đang mở nếu có; tạo mới chỉ khi Đang mở và còn lượt (`ATTEMPTS_EXHAUSTED`); `deadline = bây giờ + Thời lượng + giờ cộng sẵn`, Cắt cứng lấy `min` với giờ đóng; Cắt cứng mà còn dưới 60 giây thì `WINDOW_CLOSED`; `seed` 48 bit, `layout` lưu một lần |
 | Q231 | Lưu lô 1–50 phần tử (kích thước **một lần gửi**, không giới hạn số câu của đề: tối đa 200 câu/Bộ đề, 500 người/Phiên thi); một giao dịch khóa thiết bị và Lượt `FOR SHARE`; ân hạn 30 giây; kết quả từng câu `saved`/`stale`/`rejected`; chỉ trả 200 sau khi đã ghi |
 | Q232 | `view` theo `layout` qua `candidateViewOf`, kèm `points`; ảnh qua `GET /take-media/:attemptId/:illustrationId/:variant`; Lượt đã nộp chỉ trả `{status, submittedAt}`; "Phiên thi của tôi" mang đủ dữ liệu cho màn xác nhận Q210 |
 | Q233 | Nộp bài idempotent; `close(tx, attemptId, reason)` nội bộ idempotent; job `attempt.sweep` cron `*/10 * * * * *`, lô 200, `FOR UPDATE SKIP LOCKED`; Hủy Phiên thi đóng Lượt cùng giao dịch, khóa Phiên thi trước rồi Lượt theo `id` |
-| Q234 | Thu hồi: `active→revoked`; Cho vào lại thu hồi thiết bị mới (nếu có) và kích hoạt lại thiết bị cũ trong một thao tác. Bỏ giá trị `pardoned` khỏi enum, giữ cột `pardoned_at`. Danh sách dự thi mang thông tin thiết bị và số Lượt |
+| Q234 | Thu hồi: `active→revoked`; Hoàn tác Thu hồi: thu hồi thiết bị mới (nếu có) và kích hoạt lại thiết bị cũ trong một thao tác. Bỏ giá trị `pardoned` khỏi enum, giữ cột `pardoned_at`. Danh sách dự thi mang thông tin thiết bị và số Lượt |
 | Q235 | `DB_POOL_MAX` (1–100, mặc định 10); `TRUST_PROXY` (mặc định `loopback`; chỉ nhận `loopback` hoặc danh sách địa chỉ/dải, không nhận số bước vì Fastify không hỗ trợ kiểu số); nginx đặt `X-Forwarded-For` từ `CF-Connecting-IP` hoặc `$remote_addr`, bỏ `$proxy_add_x_forwarded_for` |
 | Q236 | Script tải 500 người `pnpm load:exam` (không chạy trong CI), ngưỡng: 0 lỗi, lưu p99 < 100 ms, `start` p99 < 1 giây, xem đề p99 < 500 ms; k6 ở 4e vẫn làm |
 
@@ -433,11 +433,11 @@ Làm đúng Q226–Q236, kèm các điều chỉnh nhỏ đã phát sinh khi cà
 - **Cổng thêm so với Q228:** `CANDIDATE_MEDIA` và `USER_DEACTIVATION_HOOKS` (đúng Q218, Q219); `ExamContent` có thêm `hasIllustration` và `summariesOf`.
 - **Hàng đợi** chỉ có `schedule(name, cron)`; job quét dùng cron 6 trường `*/10 * * * * *`.
 - **Đo tải 500 người** bằng `pnpm --filter @exam/api load:exam` (Q236): 0 lỗi, p99 lưu 28 ms, `start` 75 ms, xem đề 37 ms; xem [ops/demo-wsl.md](../ops/demo-wsl.md).
-- **Thứ tự khóa** (sau review): Hủy, Thu hồi, Cho vào lại, Bớt người khóa Phiên thi trước; `start` khóa Phiên thi `FOR SHARE` ngay câu đọc đầu (qua `SessionEntry.gateFor(..., { lock: true })`), rồi thiết bị, rồi Lượt. `save` khóa thiết bị rồi Lượt (không khóa Phiên thi), `submit` khóa Lượt rồi thiết bị: không vòng nào. `closeAll`/`closeForUser` đóng theo thứ tự `id`.
+- **Thứ tự khóa** (sau review): Hủy, Thu hồi, Hoàn tác Thu hồi, Bớt người khóa Phiên thi trước; `start` khóa Phiên thi `FOR SHARE` ngay câu đọc đầu (qua `SessionEntry.gateFor(..., { lock: true })`), rồi thiết bị, rồi Lượt. `save` khóa thiết bị rồi Lượt (không khóa Phiên thi), `submit` khóa Lượt rồi thiết bị: không vòng nào. `closeAll`/`closeForUser` đóng theo thứ tự `id`.
 - **Làm tiếp Lượt đã quá ân hạn:** `start` đóng Lượt cũ (hết giờ) trong giao dịch riêng rồi xét như chưa có Lượt dở: còn lượt và Phiên thi còn mở thì tạo Lượt mới (tốn một lượt), hết lượt thì `ATTEMPTS_EXHAUSTED`; việc đóng được giữ lại.
 - **"Phiên thi của tôi"** mang `deviceStatus` (`active`, `revoked`, `other`, `none`) để giao diện chọn ô nhập mã hay nút Bắt đầu.
 - **Giới hạn nhập mã** là cửa sổ cố định 10 phút theo ô giờ (như giới hạn đăng nhập), nên quanh ranh giới ô có thể nhiều hơn 5 lần.
-- **Chưa làm (đúng phạm vi):** heartbeat, presence, `session_events`, Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi, màn Theo dõi (4d); Xem thử (4c); Chuyển giao Phiên thi (4e). Giao diện cho Thu hồi và Cho vào lại thiết bị ở 4d.
+- **Chưa làm (đúng phạm vi):** heartbeat, presence, `session_events`, Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi, màn Theo dõi (4d); Xem thử (4c); Chuyển giao Phiên thi (4e). Giao diện cho Thu hồi và Hoàn tác Thu hồi thiết bị ở 4d.
 
 ## PR 4c: thiết kế chi tiết (đã duyệt 2/11/2026)
 
@@ -509,7 +509,7 @@ Làm đúng Q243, Q244, Q247 (phần ngoại tuyến), không thuật ngữ mớ
 - **Mở trang khi mất mạng:** `meQuery` rơi về người dùng đăng nhập lần cuối (`localStorage`) khi không tới được server, chỉ để dựng giao diện; mọi lời gọi API vẫn cần phiên hợp lệ. Đăng xuất xóa bản nhớ này, bản sao đề và ảnh đã lưu đệm, nhưng giữ hàng đợi còn câu chưa gửi để đăng nhập lại gửi nốt. Nộp bài hoặc Lượt đóng xóa mọi thứ của Lượt đó, kể cả ảnh.
 - **Tải trước ảnh và KaTeX** của đề khi còn mạng (đúng cỡ ảnh trình duyệt sẽ chọn), để câu ở sau vẫn có ảnh khi mất mạng rồi tải lại.
 - **Màn thu hồi (Q244):** thêm câu cho biết các câu chưa gửi còn giữ trên máy và làm tiếp được nếu Người ra đề cho thiết bị vào lại; có E2E (S6e).
-- **Sau review hai trục:** đăng xuất và phiên hết hạn (401) bỏ bản sao đề và ảnh; hàng đợi còn câu chưa gửi được giữ nhưng chỉ phần chưa gửi (câu đã gửi xong không còn đọc được trên máy dùng chung); Lượt đóng khi còn câu chưa gửi thì màn "Đã nộp" nói rõ số câu không được ghi nhận; dải ngoại tuyến nói giờ còn lại chỉ là ước tính; bỏ chữ "Cho thiết bị vào lại" khỏi giao diện (chưa là thuật ngữ trong GLOSSARY) và dùng "hoàn tác Thu hồi".
+- **Sau review hai trục:** đăng xuất và phiên hết hạn (401) bỏ bản sao đề và ảnh; hàng đợi còn câu chưa gửi được giữ nhưng chỉ phần chưa gửi (câu đã gửi xong không còn đọc được trên máy dùng chung); Lượt đóng khi còn câu chưa gửi thì màn "Đã nộp" nói rõ số câu không được ghi nhận; dải ngoại tuyến nói giờ còn lại chỉ là ước tính; giao diện dùng "Hoàn tác Thu hồi" thay cho "Cho thiết bị vào lại" (thuật ngữ chính thức trong GLOSSARY từ 3/11/2026).
 - **Phông KaTeX (sau rà soát phông, 3/11/2026):** chỉ tải mã và CSS KaTeX thì file phông chưa được tải, vì trình duyệt chỉ tải phông khi có chữ dùng đến nó; ở chế độ "Từng câu", công thức ở câu chưa xem sẽ mất phông khi mất mạng rồi tải lại. `warmMedia` nay đưa công thức của đề (mỗi cặp latex/display một lần) cho `preloadFormulas`, vẽ thử ngoài màn hình để tải đúng các mặt chữ đề cần; có E2E (công thức dùng `\mathbb` ở câu 4, câu 1 không có công thức, tải lại lúc mất mạng vẫn dựng đúng bằng phông từ bộ nhớ đệm).
 - **Giới hạn đã biết (4c-2):** nhiều tab cùng một Lượt trên cùng thiết bị ghi đè hàng đợi của nhau trong IndexedDB (tab ghi sau thắng, server vẫn chặn bản cũ bằng `clientSeq`); đồng hồ máy chỉnh lùi lúc ngoại tuyến làm giờ còn lại hiển thị đứng ở số lúc chụp (server vẫn là bên quyết định hạn, câu gửi sau hạn bị từ chối và được báo); ảnh phóng to (cỡ 1600) và ảnh ở cỡ trình duyệt không chọn không được tải trước; đề có đổi giờ (Cộng giờ, 4d) lúc mất mạng chỉ được biết khi lưu thành công lần đầu; `@fontsource/noto-serif` cài ở PR riêng. Safari/iOS xóa dữ liệu trang web sau 7 ngày không dùng, không ảnh hưởng một buổi thi.
 - **Kiểm thử:** U1/U2 (`save-queue`, `offline-attempt` với kho giả, `warm-media`), S6b ngoại tuyến, S6e thu hồi, PWA (`take-offline.spec.ts`).
