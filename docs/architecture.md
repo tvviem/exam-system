@@ -237,6 +237,30 @@ exam-system/
 
 Một container api (Node.js) trên máy WSL hiện tại đủ đáp ứng với dư địa lớn; điểm nghẽn thực tế nhiều khả năng là đường truyền mạng của máy chủ và Wi-Fi phòng học. Trước Phiên thi thật đầu tiên sẽ chạy kiểm thử tải bằng k6 với kịch bản 500 người.
 
+### Ngân sách phản hồi (đề xuất 3/11/2026, chờ chủ dự án duyệt con số)
+
+Chủ dự án coi phản hồi tức thời là yêu cầu hàng đầu: người dùng chờ quá 2–3 giây là đã chậm, hệ thống cần trả lời trong cỡ mili giây. Ngân sách đề xuất:
+
+| Việc | Ngân sách |
+|---|---|
+| Thao tác thường của API (lưu câu trả lời, đọc đề, danh sách, tìm kiếm) | p95 dưới 200 ms (một người dùng), dưới 1 giây khi 100 người cùng lúc |
+| Báo lỗi (403, 404, 409…) | hiện trong dưới 0,5 giây; không thử lại lỗi 4xx (`lib/query-policy.ts`) |
+| Mọi chỗ chờ quá 1 giây | có chỉ báo đang xử lý (đã có ở các thao tác nặng) |
+| Tải trang đầu trên điện thoại | LCP dưới 2,5 giây trên mạng 4G giả lập (chưa đo trên 4G giả lập, mới đo cục bộ) |
+
+Số đo ngày 3/11/2026 (một tiến trình, PostgreSQL thật, máy phát triển, đo trong bộ test tích hợp nên chưa gồm mạng):
+
+| Đường | Một người | 100 người cùng lúc (p50 / p95) |
+|---|---|---|
+| Vào thi (`join`) | 15 ms | 376 / 443 ms |
+| Bắt đầu Lượt (`start`) | 30 ms | 982 / 1030 ms |
+| Đọc đề (`view`) | 13 ms | 409 / 445 ms |
+| Lưu Câu trả lời (1000 lần lưu) | 14 ms | 468 / 508 ms |
+| Nộp bài | 12 ms | 228 / 326 ms |
+| Danh sách / tìm kiếm Câu hỏi, 20.000 câu của một Người ra đề | 20–25 ms | không đo |
+
+Ước tính ở trên (5 lượt bắt đầu mỗi giây) thấp hơn nhiều so với khả năng đo được (khoảng 100 lượt bắt đầu mỗi giây trên một tiến trình), nên còn dư địa lớn. Chưa làm: đo bằng k6 qua HTTP thật với 500 người (kế hoạch ở 4e), đo LCP trên 4G giả lập, thử nghiệm giữ nội dung Bộ đề trong bộ nhớ để `start` khỏi đọc hai lần.
+
 ## 12. Phạm vi giai đoạn 1 và backlog
 
 **Giai đoạn 1** gồm các nghiệp vụ đã chốt trong [GLOSSARY.md](../GLOSSARY.md):
