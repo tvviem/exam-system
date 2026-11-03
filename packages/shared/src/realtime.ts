@@ -19,10 +19,12 @@ export interface JoinAck {
   ok: boolean;
 }
 
-/** Hai nhịp `monitor.changed` liền nhau cách nhau ít nhất chừng này (tránh 300 nhịp một giây dội xuống Người ra đề). */
-export const MONITOR_PUSH_MIN_INTERVAL_MS = 2000;
-/** Khi kênh đẩy đang nối, vẫn hỏi lại chừng này một lần phòng khi lỡ một tin; kênh đứt thì về 5 giây. */
-export const MONITOR_SAFETY_POLL_MS = 30_000;
+/**
+ * Khi kênh đẩy đang nối, vẫn hỏi lại chừng này một lần: phòng khi lỡ một tin, và vì "mất kết nối quá 45 giây", hết giờ,
+ * đến `closesAt` do server tính theo thời gian chứ không có tin đẩy. 10 giây giữ độ trễ phát hiện dưới 55 giây; kênh đứt thì
+ * về 5 giây.
+ */
+export const MONITOR_SAFETY_POLL_MS = 10_000;
 /** Trình duyệt chờ ngẫu nhiên đến chừng này trước khi gửi heartbeat vì `attempt.nudge`, để Cộng giờ cả phòng không dồn 500 yêu cầu một lúc. */
 export const NUDGE_JITTER_MAX_MS = 300;
 

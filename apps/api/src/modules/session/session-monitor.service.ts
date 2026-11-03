@@ -169,17 +169,8 @@ export class SessionMonitorService {
       }
       return { result, touched: replayed ? [] : attemptIds };
     });
-    this.tell(sessionId, touched);
+    this.realtime.affected(sessionId, touched);
     return result;
-  }
-
-  /**
-   * Báo kênh đẩy sau khi giao dịch đã xác nhận: Người dự thi bị tác động gửi heartbeat ngay, màn Theo dõi tải lại. Báo
-   * trước khi xác nhận thì trình duyệt hỏi lại sẽ thấy dữ liệu cũ.
-   */
-  private tell(sessionId: string, attemptIds: readonly string[]) {
-    this.realtime.attemptNudge(attemptIds);
-    this.realtime.sessionChanged(sessionId);
   }
 
   /** Buộc nộp một Lượt, một nhóm hoặc cả phòng (Q254). Làm lại cùng yêu cầu không đổi gì thêm. */
@@ -205,7 +196,7 @@ export class SessionMonitorService {
       }
       return { result, touched: closedIds };
     });
-    this.tell(sessionId, touched);
+    this.realtime.affected(sessionId, touched);
     return result;
   }
 
@@ -238,7 +229,7 @@ export class SessionMonitorService {
       );
       return { id };
     });
-    this.tell(sessionId, [attemptId]);
+    this.realtime.affected(sessionId, [attemptId]);
     return created;
   }
 

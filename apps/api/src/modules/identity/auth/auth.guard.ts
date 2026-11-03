@@ -21,7 +21,8 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Cổng Socket.IO tự xác thực lúc bắt tay (cùng TokenAuthenticator); guard này chỉ dành cho HTTP.
+    // Cổng Socket.IO tự xác thực lúc bắt tay (cùng TokenAuthenticator); guard này chỉ dành cho HTTP. CẢNH BÁO: ngữ cảnh
+    // không phải HTTP đi qua không kiểm gì, nên mọi handler WS mới phải dựa vào `socket.data` do bắt tay đặt và tự kiểm quyền.
     if (context.getType() !== 'http') return true;
     const targets = [context.getHandler(), context.getClass()];
     const request = context.switchToHttp().getRequest<FastifyRequest & { auth?: unknown }>();

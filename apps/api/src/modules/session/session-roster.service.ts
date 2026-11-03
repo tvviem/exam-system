@@ -330,8 +330,7 @@ export class SessionRosterService {
 
   /** Thiết bị đổi: Người dự thi đang làm gửi heartbeat ngay (biết bị chặn hay được vào lại), màn Theo dõi tải lại. */
   private async tellDevice(sessionId: string, userId: string) {
-    this.realtime.attemptNudge(await this.attempts.liveAttemptIds(sessionId, [userId]));
-    this.realtime.sessionChanged(sessionId);
+    this.realtime.affected(sessionId, await this.attempts.liveAttemptIds(sessionId, [userId]));
   }
 
   private async requireMember(tx: Transaction, sessionId: string, userId: string) {

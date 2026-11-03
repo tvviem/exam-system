@@ -38,7 +38,7 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
   registerOriginCheck(app.getHttpAdapter().getInstance(), app.get<Env>(ENV).APP_ORIGINS);
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new ZodExceptionFilter());
-  // Socket.IO dùng chung máy chủ HTTP của Fastify (đường dẫn /api/ws).
+  // Socket.IO dùng chung máy chủ HTTP của Fastify (đường dẫn `/ws`, không dưới tiền tố `/api`; khớp location /ws/ của nginx).
   app.useWebSocketAdapter(new IoAdapter(app));
   app.enableShutdownHooks();
 }

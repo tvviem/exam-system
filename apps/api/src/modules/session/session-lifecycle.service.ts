@@ -30,6 +30,8 @@ export class SessionLifecycleService {
 
   /** Hủy không hoàn tác (Q203); các Lượt đang làm được nộp ngay với lý do `session_cancelled`. */
   async cancel(ownerId: string, id: string, reason: string | undefined) {
+    // Lấy các Lượt đang làm trước khi bị đóng, để báo Người dự thi ngay thay vì chờ heartbeat kế tiếp.
+    const live = await this.attempts.liveAttemptIds(id);
     await this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, id);
       if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
@@ -50,8 +52,7 @@ export class SessionLifecycleService {
         reason: reason || null,
       });
     });
-    // Các Lượt đang làm vừa bị đóng: màn Theo dõi (nếu đang mở) tải lại; Người dự thi biết qua heartbeat kế tiếp.
-    this.realtime.sessionChanged(id);
+    this.realtime.affected(id, live);
     return this.sessions.get(ownerId, id);
   }
 

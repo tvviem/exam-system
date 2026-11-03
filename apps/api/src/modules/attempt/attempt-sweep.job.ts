@@ -36,23 +36,27 @@ export class AttemptSweepJob implements OnModuleInit {
     const now = this.clock.now();
     let total = 0;
     const sessions = new Set<string>();
-    for (;;) {
-      const result = await this.db.execute(sql`
-        update attempts set status = 'submitted', submitted_at = ${now}, submit_reason = 'timeout'
-        where id in (
-          select id from attempts
-          where status = 'in_progress' and deadline + make_interval(secs => ${ATTEMPT_GRACE_SECONDS}) < ${now}
-          order by deadline
-          limit ${BATCH}
-          for update skip locked
-        )
-        returning id, session_id`);
-      total += result.rows.length;
-      for (const row of result.rows) sessions.add(String(row.session_id));
-      if (result.rows.length < BATCH) break;
+    try {
+      for (;;) {
+        const result = await this.db.execute(sql`
+          update attempts set status = 'submitted', submitted_at = ${now}, submit_reason = 'timeout'
+          where id in (
+            select id from attempts
+            where status = 'in_progress' and deadline + make_interval(secs => ${ATTEMPT_GRACE_SECONDS}) < ${now}
+            order by deadline
+            limit ${BATCH}
+            for update skip locked
+          )
+          returning id, session_id`);
+        total += result.rows.length;
+        for (const row of result.rows) sessions.add(String(row.session_id));
+        if (result.rows.length < BATCH) break;
+      }
+    } finally {
+      // Worker không có cổng Socket.IO; báo qua Redis để màn Theo dõi thấy các Lượt vừa tự nộp, kể cả khi một lô sau lỗi
+      // (các lô trước đã xác nhận).
+      for (const sessionId of sessions) this.realtime.sessionChanged(sessionId);
     }
-    // Worker không có cổng Socket.IO; báo qua Redis để màn Theo dõi thấy các Lượt vừa tự nộp.
-    for (const sessionId of sessions) this.realtime.sessionChanged(sessionId);
     if (total > 0) this.logger.log(`Đã tự nộp ${total} Lượt làm bài hết giờ`);
     return total;
   }

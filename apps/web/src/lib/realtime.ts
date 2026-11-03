@@ -20,7 +20,7 @@ export interface RoomSubscription {
   /** Sự kiện server đẩy xuống phòng này. */
   event: string;
   onEvent: () => void;
-  /** Mỗi lần (nối lại) kết nối xong, kể cả lần đầu: nơi gọi nên tải lại để bù tin có thể đã lỡ. */
+  /** Mỗi lần (nối lại) vào phòng xong, kể cả lần đầu: nơi gọi nên tải lại để bù tin có thể đã lỡ. */
   onConnected?: () => void;
   /** Đã vào phòng và kênh đang nối (true), hay chưa/đã đứt (false). */
   onLive?: (live: boolean) => void;
@@ -31,7 +31,14 @@ export function createRealtime(loadSocket: () => Promise<SocketLike>) {
   let subscribers = 0;
 
   function acquire() {
-    socket ??= loadSocket();
+    if (!socket) {
+      const loading = loadSocket();
+      // Nạp thư viện lỗi (mạng chập chờn): bỏ lời hứa hỏng để lần đăng ký sau thử nạp lại.
+      loading.catch(() => {
+        if (socket === loading) socket = undefined;
+      });
+      socket = loading;
+    }
     subscribers++;
     return socket;
   }
@@ -41,7 +48,10 @@ export function createRealtime(loadSocket: () => Promise<SocketLike>) {
     if (subscribers > 0 || !socket) return;
     const closing = socket;
     socket = undefined;
-    void closing.then((s) => s.disconnect());
+    closing.then(
+      (s) => s.disconnect(),
+      () => undefined,
+    );
   }
 
   /** Đăng ký vào một phòng; trả hàm hủy. Nối lại tự vào phòng lại (phòng của Socket.IO mất khi đứt). */
@@ -49,9 +59,11 @@ export function createRealtime(loadSocket: () => Promise<SocketLike>) {
     let disposed = false;
     let attached: SocketLike | undefined;
     const enter = (s: SocketLike) => {
-      options.onConnected?.();
       s.emit(options.join, options.payload, (reply) => {
-        if (!disposed) options.onLive?.(reply?.ok === true);
+        if (disposed) return;
+        options.onLive?.(reply?.ok === true);
+        // Báo SAU khi đã vào phòng: ảnh chụp tải sau thời điểm này không còn khoảng hở nào mà tin đẩy có thể lọt qua.
+        options.onConnected?.();
       });
     };
     const onEvent = () => options.onEvent();

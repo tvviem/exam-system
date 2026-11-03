@@ -272,8 +272,8 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
     return deviceProblem(devices, deviceKey) === null;
   }
 
-  async liveAttemptIds(sessionId: string, userIds: string[]) {
-    if (userIds.length === 0) return [];
+  async liveAttemptIds(sessionId: string, userIds?: string[]) {
+    if (userIds?.length === 0) return [];
     const rows = await this.db
       .select({ id: attempts.id })
       .from(attempts)
@@ -281,7 +281,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
         and(
           eq(attempts.sessionId, sessionId),
           eq(attempts.status, 'in_progress'),
-          inArray(attempts.userId, userIds),
+          userIds ? inArray(attempts.userId, userIds) : undefined,
         ),
       );
     return rows.map((row) => row.id);

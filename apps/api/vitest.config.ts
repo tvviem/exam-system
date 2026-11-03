@@ -28,6 +28,8 @@ export default defineConfig({
             APP_ORIGINS: 'http://localhost:5173',
             // Ngắn để test không phải chờ 2 giây thật giữa hai nhịp đẩy.
             REALTIME_THROTTLE_MS: '300',
+            // Test phát tán mở 300 kết nối bằng cùng một cookie.
+            REALTIME_MAX_SOCKETS_PER_USER: '1000',
             SLIP_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'),
             MEDIA_DIR: path.join(tmpdir(), 'exam-test-media'),
             // Nhỏ để thử hạn mức bằng vài ảnh nhiễu.

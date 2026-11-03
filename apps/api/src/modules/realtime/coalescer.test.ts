@@ -74,4 +74,21 @@ describe('Coalescer', () => {
     vi.advanceTimersByTime(2000);
     expect(calls).toEqual(['s1', 's1']);
   });
+
+  it('không giữ mãi mọi khóa: dọn các khóa đã yên lặng khi bảng lớn', () => {
+    let clock = 0;
+    const calls: string[] = [];
+    const coalescer = new Coalescer(
+      1000,
+      (key) => calls.push(key),
+      () => clock,
+    );
+    for (let i = 0; i < 300; i++) coalescer.trigger(`old-${i}`);
+    clock = 5000;
+    coalescer.trigger('new');
+    // Khóa cũ đã bị dọn nên lần sau chạy ngay như khóa mới (không đòi chờ mốc cũ).
+    coalescer.trigger('old-0');
+    expect(calls.filter((key) => key === 'old-0')).toHaveLength(2);
+    expect(coalescer.size()).toBeLessThan(300);
+  });
 });

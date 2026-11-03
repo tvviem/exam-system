@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test, type WebSocketRoute } from '@playwright/test';
 import { beat, openMonitor, openPerson, room } from './monitor-support';
 import { signIn } from './take-support';
 
@@ -159,4 +159,35 @@ test('Quản trị viên và trang không cần kênh đẩy: không mở kết 
   await taker.goto('/take');
   await expect(taker.getByRole('heading', { name: 'Vào thi' })).toBeVisible();
   expect(takerSockets, 'danh sách Phiên thi không mở kết nối Socket.IO').toBe(0);
+});
+
+test('Người ra đề: kênh đẩy đứt rồi tự nối lại, số liệu phát sinh lúc đứt vẫn được bù', async ({
+  browser,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const { examiner, sessionId, candidate } = await room(browser, project, 'nl', {
+    prefix: 'live',
+    fakeClock: false,
+  });
+  const sv1 = await candidate(1);
+  await candidate(2);
+
+  // Đi qua một đường chuyển tiếp để test đứt được kết nối phía trang (như mạng rớt) mà không cần đụng server
+  const sockets: WebSocketRoute[] = [];
+  await examiner.routeWebSocket(/\/ws\//, (ws) => {
+    ws.connectToServer();
+    sockets.push(ws);
+  });
+  await openMonitor(examiner, sessionId);
+  await expect(examiner.getByText('Cập nhật trực tiếp')).toBeVisible();
+  expect(sockets.length).toBeGreaterThan(0);
+
+  await sockets[0]?.close();
+  await expect(examiner.getByText('Cập nhật mỗi 5 giây')).toBeVisible();
+  await sv1.getByRole('button', { name: 'Cả đề' }).click();
+  await sv1.getByRole('radio', { name: 'Hà Nội' }).check(); // phát sinh khi kênh đang đứt
+  // Tự nối lại, vào phòng lại và tải lại ảnh chụp: số liệu mới hiện và chỉ báo trở về trực tiếp
+  await expect(examiner.getByText('Cập nhật trực tiếp')).toBeVisible({ timeout: 15_000 });
+  await expect(examiner.getByText('1/4').first()).toBeVisible({ timeout: 5000 });
+  expect(sockets.length, 'đã nối lại bằng kết nối mới').toBeGreaterThan(1);
 });

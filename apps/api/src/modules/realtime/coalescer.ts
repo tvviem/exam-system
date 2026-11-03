@@ -3,6 +3,9 @@
  * gộp thành đúng một lần ở cuối khoảng. Dùng để 500 Người dự thi gửi nhịp liên tục không biến thành 500 tin mỗi giây
  * xuống màn hình của Người ra đề.
  */
+/** Quá chừng này khóa thì dọn các khóa đã yên lặng. */
+const PRUNE_ABOVE = 256;
+
 export class Coalescer {
   private readonly last = new Map<string, number>();
   private readonly waiting = new Map<string, ReturnType<typeof setTimeout>>();
@@ -33,6 +36,11 @@ export class Coalescer {
     );
   }
 
+  /** Số khóa đang giữ mốc (cho test). */
+  size(): number {
+    return this.last.size;
+  }
+
   dispose(): void {
     for (const timer of this.waiting.values()) clearTimeout(timer);
     this.waiting.clear();
@@ -40,7 +48,15 @@ export class Coalescer {
   }
 
   private fire(key: string) {
-    this.last.set(key, this.now());
+    const now = this.now();
+    this.last.set(key, now);
+    // Bỏ các khóa đã yên lặng quá một khoảng (Phiên thi đã xong), để bảng không lớn dần theo số Phiên thi.
+    if (this.last.size > PRUNE_ABOVE) {
+      for (const [other, at] of this.last) {
+        if (other !== key && now - at >= this.intervalMs && !this.waiting.has(other))
+          this.last.delete(other);
+      }
+    }
     this.run(key);
   }
 }

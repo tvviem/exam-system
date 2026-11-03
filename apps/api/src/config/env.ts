@@ -35,6 +35,8 @@ const envSchema = z.object({
   MEDIA_ACCEL_PREFIX: z.string().optional(),
   // Hai tin `monitor.changed` liền nhau cách nhau ít nhất chừng này (ms); test đặt nhỏ để khỏi chờ 2 giây thật.
   REALTIME_THROTTLE_MS: z.coerce.number().int().min(50).max(60_000).default(2000),
+  // Số kết nối Socket.IO tối đa của một người (nhiều tab, nhiều thiết bị); quá thì bắt tay bị từ chối.
+  REALTIME_MAX_SOCKETS_PER_USER: z.coerce.number().int().min(1).max(10_000).default(20),
   // Origin được phép gửi request đổi dữ liệu (chống CSRF), cách nhau bằng dấu phẩy.
   APP_ORIGINS: z
     .string()

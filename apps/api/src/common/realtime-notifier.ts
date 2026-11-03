@@ -11,4 +11,6 @@ export interface RealtimeNotifier {
   sessionChanged(sessionId: string): void;
   /** Các Lượt vừa bị tác động (Cộng giờ, Buộc nộp, Cảnh cáo, Thu hồi): báo Người dự thi gửi heartbeat ngay. */
   attemptNudge(attemptIds: readonly string[]): void;
+  /** Một thao tác của Người ra đề tác động tới các Lượt này: báo Người dự thi và cả màn Theo dõi của Phiên thi. */
+  affected(sessionId: string, attemptIds: readonly string[]): void;
 }

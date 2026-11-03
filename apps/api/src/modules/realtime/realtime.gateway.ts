@@ -30,9 +30,12 @@ import { TokenAuthenticator } from '../identity/auth/token-authenticator';
 import { Coalescer } from './coalescer';
 import { parseCookieHeader } from './cookies';
 
+/** Số phòng tối đa một kết nối được vào (một màn chỉ cần một phòng). */
+const MAX_ROOMS_PER_SOCKET = 10;
+
 const monitorJoin = z.strictObject({ sessionId: z.uuid() });
 const attemptJoin = z.strictObject({ attemptId: z.uuid() });
-const message = z.discriminatedUnion('t', [
+const realtimeMessageSchema = z.discriminatedUnion('t', [
   z.strictObject({ t: z.literal('session'), id: z.uuid() }),
   z.strictObject({ t: z.literal('attempt'), id: z.uuid() }),
 ]);
@@ -51,11 +54,19 @@ interface SocketData {
  * - Phòng `attempt:{id}` (Người dự thi, đúng Lượt và đúng thiết bị): `attempt.nudge` đến ngay.
  * - Nguồn tin là kênh Redis `realtime:events`, nên api và worker (job quét) đều báo được và nhiều bản api vẫn đúng.
  */
-@WebSocketGateway({ path: REALTIME_PATH, serveClient: false, transports: ['websocket', 'polling'] })
+@WebSocketGateway({
+  path: REALTIME_PATH,
+  serveClient: false,
+  transports: ['websocket', 'polling'],
+  // Thông điệp lên chỉ là hai lệnh vào phòng nhỏ xíu; chặn gói lớn từ máy khách.
+  maxHttpBufferSize: 4096,
+})
 export class RealtimeGateway implements OnGatewayInit, OnApplicationShutdown {
   private readonly log = new Logger(RealtimeGateway.name);
   @WebSocketServer() private server!: Server;
   private subscriber: Redis | undefined;
+  /** Số kết nối đang mở của từng người, để chặn một tài khoản mở hàng nghìn kết nối. */
+  private readonly open = new Map<string, number>();
   private readonly coalescer: Coalescer;
 
   constructor(
@@ -78,8 +89,18 @@ export class RealtimeGateway implements OnGatewayInit, OnApplicationShutdown {
       try {
         const auth = await this.authenticator.authenticate(cookies[AUTH_SESSION_COOKIE]);
         if (!auth) return next(new Error('UNAUTHENTICATED'));
-        const data: SocketData = { userId: auth.user.id, deviceKey: cookies[DEVICE_COOKIE] };
+        const userId = auth.user.id;
+        if ((this.open.get(userId) ?? 0) >= this.env.REALTIME_MAX_SOCKETS_PER_USER) {
+          return next(new Error('TOO_MANY_CONNECTIONS'));
+        }
+        const data: SocketData = { userId, deviceKey: cookies[DEVICE_COOKIE] };
         socket.data = data;
+        this.open.set(userId, (this.open.get(userId) ?? 0) + 1);
+        socket.once('disconnect', () => {
+          const left = (this.open.get(userId) ?? 1) - 1;
+          if (left <= 0) this.open.delete(userId);
+          else this.open.set(userId, left);
+        });
         next();
       } catch (error) {
         this.log.warn(`Bắt tay lỗi: ${String(error)}`);
@@ -96,6 +117,7 @@ export class RealtimeGateway implements OnGatewayInit, OnApplicationShutdown {
   ): Promise<JoinAck> {
     const parsed = monitorJoin.safeParse(body);
     if (!parsed.success) return { ok: false };
+    if (socket.rooms.size > MAX_ROOMS_PER_SOCKET) return { ok: false };
     const { sessionId } = parsed.data;
     const ok = await this.access
       .canMonitor((socket.data as SocketData).userId, sessionId)
@@ -111,6 +133,7 @@ export class RealtimeGateway implements OnGatewayInit, OnApplicationShutdown {
   ): Promise<JoinAck> {
     const parsed = attemptJoin.safeParse(body);
     if (!parsed.success) return { ok: false };
+    if (socket.rooms.size > MAX_ROOMS_PER_SOCKET) return { ok: false };
     const { attemptId } = parsed.data;
     const { userId, deviceKey } = socket.data as SocketData;
     const ok = await this.access.canFollow(userId, attemptId, deviceKey).catch(() => false);
@@ -120,12 +143,14 @@ export class RealtimeGateway implements OnGatewayInit, OnApplicationShutdown {
 
   async onApplicationShutdown() {
     this.coalescer.dispose();
-    this.subscriber?.disconnect();
+    await this.subscriber?.quit().catch(() => this.subscriber?.disconnect());
   }
 
   /** Nghe kênh Redis bằng một kết nối riêng (kết nối đã `subscribe` không dùng cho lệnh khác được). */
   private listen() {
-    const subscriber = this.redis.duplicate();
+    // `maxRetriesPerRequest: null`: lệnh subscribe chờ đến khi Redis sẵn sàng (kết nối chính chỉ thử một lần), nên Redis chậm
+    // dậy lúc khởi động không làm cổng mất tin vĩnh viễn; mất kết nối giữa chừng thì ioredis tự đăng ký lại.
+    const subscriber = this.redis.duplicate({ maxRetriesPerRequest: null });
     this.subscriber = subscriber;
     subscriber.on('error', (error) =>
       this.log.warn(`Kênh Redis của cổng đẩy lỗi: ${String(error)}`),
@@ -139,7 +164,7 @@ export class RealtimeGateway implements OnGatewayInit, OnApplicationShutdown {
   private dispatch(raw: string) {
     let parsed: RealtimeMessage;
     try {
-      const result = message.safeParse(JSON.parse(raw));
+      const result = realtimeMessageSchema.safeParse(JSON.parse(raw));
       if (!result.success) return;
       parsed = result.data;
     } catch {

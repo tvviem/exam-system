@@ -6,6 +6,7 @@ import { DbModule } from '../db/db.module';
 import { ExamUsageWiringModule } from '../exam-usage-wiring.module';
 import { MediaModule } from '../media/media-store';
 import { IdentityModule } from '../modules/identity/identity.module';
+import { RealtimeNotifierModule } from '../modules/realtime/realtime-notifier.module';
 import { OwnedContentWiringModule } from '../owned-content-wiring.module';
 import { QueueModule } from '../queue/job-queue';
 import { RedisModule } from '../redis/redis.module';
@@ -23,6 +24,7 @@ export class CliModule {
         ClockModule.forRoot(clock),
         DbModule,
         RedisModule,
+        RealtimeNotifierModule,
         MediaModule,
         QueueModule,
         IdentityModule,

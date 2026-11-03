@@ -112,6 +112,41 @@ describe('createRealtime', () => {
     expect(live).toHaveBeenLastCalledWith(true);
   });
 
+  it('onConnected chỉ gọi sau khi server nhận vào phòng (ack), để ảnh chụp tải sau đó không lọt tin', async () => {
+    const { socket, realtime } = setup();
+    const order: string[] = [];
+    const emit = socket.emit.bind(socket);
+    socket.emit = (event, payload, ack) => {
+      order.push('join');
+      emit(event, payload, ack);
+    };
+    realtime.subscribe({ join: 'j', payload: {}, event: 'e', onEvent: vi.fn(), onConnected: () => order.push('reload') });
+    await tick();
+    socket.connect();
+    expect(order).toEqual(['join', 'reload']);
+  });
+
+  it('nạp thư viện lỗi thì lần đăng ký sau thử nạp lại và không có lỗi chưa bắt', async () => {
+    let attempts = 0;
+    const socket = new FakeSocket();
+    const realtime = createRealtime(async () => {
+      attempts++;
+      if (attempts === 1) throw new Error('mạng đứt');
+      return socket;
+    });
+    const live = vi.fn();
+    const first = realtime.subscribe({ join: 'j', payload: {}, event: 'e', onEvent: vi.fn(), onLive: live });
+    await tick();
+    expect(live).toHaveBeenLastCalledWith(false);
+    first();
+    await tick();
+    realtime.subscribe({ join: 'j', payload: {}, event: 'e', onEvent: vi.fn(), onLive: live });
+    await tick();
+    socket.connect();
+    expect(attempts).toBe(2);
+    expect(live).toHaveBeenLastCalledWith(true);
+  });
+
   it('hủy đăng ký thì không nhận tin nữa; người cuối hủy thì đóng kết nối', async () => {
     const { socket, realtime } = setup();
     const a = vi.fn();

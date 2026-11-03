@@ -14,6 +14,8 @@ import { resetState } from './support/reset';
 let t: TestApp;
 let live: Awaited<ReturnType<typeof openLiveSession>>;
 const open: Socket[] = [];
+/** Khoảng gộp tin của môi trường test (vitest.config.ts); các lần chờ dưới đây suy ra từ đây. */
+const THROTTLE_MS = Number(process.env.REALTIME_THROTTLE_MS);
 
 beforeAll(async () => {
   t = await createTestApp({ listen: true });
@@ -25,7 +27,7 @@ beforeEach(async () => {
   await resetState();
   live = await openLiveSession(t);
   // Cho bộ gộp tin của phần chuẩn bị (start, join) chạy hết để không lẫn vào tin đang thử.
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  await new Promise((resolve) => setTimeout(resolve, THROTTLE_MS + 100));
 });
 afterEach(() => {
   for (const socket of open.splice(0)) socket.disconnect();
@@ -202,6 +204,24 @@ describe('đẩy sớm cho Người dự thi (attempt.nudge)', () => {
     );
   });
 
+  it('Hủy Phiên thi đẩy tới mọi Lượt đang làm, để Người dự thi biết ngay Lượt đã đóng', async () => {
+    const an = await candidate('an');
+    const binh = await candidate('binh');
+    await joinAttempt(an, 'an');
+    await joinAttempt(binh, 'binh');
+    const got = [
+      waitFor(an, REALTIME_EVENT.attemptNudge),
+      waitFor(binh, REALTIME_EVENT.attemptNudge),
+    ];
+    expect((await live.api('POST', `/sessions/${live.sessionId}/cancel`, {})).statusCode).toBe(200);
+    expect(await Promise.all(got)).not.toContain(null);
+  });
+
+  it('Lượt đã nộp thì không vào phòng được nữa', async () => {
+    await live.takers.an?.call('POST', `/take/attempts/${live.attemptIds.an}/submit`);
+    expect(await joinAttempt(await candidate('an'), 'an')).toEqual({ ok: false });
+  });
+
   it('Đình chỉ đẩy tới Lượt bị đình chỉ', async () => {
     const an = await candidate('an');
     await joinAttempt(an, 'an');
@@ -248,7 +268,7 @@ describe('đẩy cho Người ra đề (monitor.changed), gộp theo khoảng', 
       'Nộp bài': () => live.takers.an?.call('POST', `/take/attempts/${live.attemptIds.an}/submit`),
     };
     for (const [label, act] of Object.entries(acts)) {
-      await sleep(350); // qua khoảng gộp để lần sau chạy ngay
+      await sleep(THROTTLE_MS + 50); // qua khoảng gộp để lần sau chạy ngay
       const got = waitFor(examiner, REALTIME_EVENT.monitorChanged);
       const res = await act();
       expect(res?.statusCode, label).toBe(200);
