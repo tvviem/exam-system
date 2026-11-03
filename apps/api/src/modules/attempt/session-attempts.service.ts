@@ -1,6 +1,6 @@
 import { EXTEND_TOTAL_MINUTES_MAX, extensionScopeOf } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, eq, inArray, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
@@ -9,12 +9,15 @@ import type {
   ExamDeviceSummary,
   ExtendTimeInput,
   ExtendTimeResult,
+  ForceSubmitInput,
+  ForceSubmitResult,
   SessionAttempts,
   SubmitReason,
+  ViolationInput,
 } from '../../common/session-attempts';
 import type { UserDeactivationHooks } from '../../common/user-deactivation';
 import { type Database, DB, type Transaction } from '../../db/db.module';
-import { attempts, attemptTimeExtensions, sessionDevices } from './attempt.schema';
+import { attempts, attemptTimeExtensions, sessionDevices, violations } from './attempt.schema';
 import { closeInProgress } from './attempt-close';
 
 /** Lý do ghi khi thiết bị đang gắn bị thu hồi để nhường chỗ cho thiết bị được Hoàn tác Thu hồi (Q234). */
@@ -167,13 +170,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
     if ((done?.n ?? 0) > 0) return { extended: done?.n ?? 0, skipped: 0, replayed: true };
 
     const chosen = input.attemptIds ? [...new Set(input.attemptIds)] : null;
-    if (chosen) {
-      const [known] = await tx
-        .select({ n: count() })
-        .from(attempts)
-        .where(and(eq(attempts.sessionId, sessionId), inArray(attempts.id, chosen)));
-      if ((known?.n ?? 0) !== chosen.length) throw new ApiError('NOT_FOUND');
-    }
+    if (chosen) await this.requireInSession(tx, sessionId, chosen);
     // Khóa theo thứ tự id như `closeInProgress`; Nộp bài xen vào thì chờ rồi bị loại vì không còn đang làm.
     const targets = await tx
       .select({ id: attempts.id })
@@ -218,5 +215,56 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       })),
     );
     return { extended: ids.length, skipped, replayed: false };
+  }
+
+  async forceSubmit(tx: Transaction, input: ForceSubmitInput): Promise<ForceSubmitResult> {
+    const chosen = input.attemptIds ? [...new Set(input.attemptIds)] : null;
+    if (chosen) await this.requireInSession(tx, input.sessionId, chosen);
+    const closed = await closeInProgress(
+      tx,
+      and(
+        eq(attempts.sessionId, input.sessionId),
+        chosen ? inArray(attempts.id, chosen) : undefined,
+      ) as SQL,
+      'examiner',
+      input.now,
+    );
+    return { closed: closed.length, skipped: chosen ? chosen.length - closed.length : 0 };
+  }
+
+  async recordViolation(tx: Transaction, input: ViolationInput) {
+    const [attempt] = await tx
+      .select({ userId: attempts.userId, status: attempts.status })
+      .from(attempts)
+      .where(and(eq(attempts.id, input.attemptId), eq(attempts.sessionId, input.sessionId)))
+      .for('update');
+    if (!attempt) throw new ApiError('NOT_FOUND');
+    if (attempt.status !== 'in_progress') {
+      throw new ApiError('INVALID_STATE', { reason: 'ATTEMPT_CLOSED' });
+    }
+    const id = uuidv7();
+    await tx.insert(violations).values({
+      id,
+      attemptId: input.attemptId,
+      sessionId: input.sessionId,
+      userId: attempt.userId,
+      action: input.action,
+      reason: input.reason,
+      recordedBy: input.by,
+      recordedAt: input.now,
+    });
+    if (input.action === 'disqualify') {
+      await closeInProgress(tx, eq(attempts.id, input.attemptId), 'disqualified', input.now);
+    }
+    return { id, userId: attempt.userId };
+  }
+
+  /** Mọi id phải là Lượt của Phiên thi này, nếu không coi như không tồn tại (không lộ Lượt của Phiên thi khác). */
+  private async requireInSession(tx: Transaction, sessionId: string, ids: string[]) {
+    const [known] = await tx
+      .select({ n: count() })
+      .from(attempts)
+      .where(and(eq(attempts.sessionId, sessionId), inArray(attempts.id, ids)));
+    if ((known?.n ?? 0) !== ids.length) throw new ApiError('NOT_FOUND');
   }
 }

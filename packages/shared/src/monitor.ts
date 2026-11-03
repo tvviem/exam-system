@@ -55,19 +55,30 @@ export const GROUP_MAX_ATTEMPTS = 500;
 
 const reasonOf = (max: number) => z.string().trim().min(1).max(max);
 
+// Chọn Lượt cho một thao tác của Người ra đề: danh sách Lượt (một hoặc một nhóm) hoặc cả phòng, đúng một cách (Q254).
+const targetShape = {
+  attemptIds: z.array(z.uuid()).min(1).max(GROUP_MAX_ATTEMPTS).optional(),
+  scope: z.literal('all').optional(),
+};
+const exactlyOneTarget = (request: { attemptIds?: unknown; scope?: unknown }) =>
+  (request.attemptIds === undefined) !== (request.scope === undefined);
+
 /**
  * Yêu cầu Cộng giờ cho một Lượt, một nhóm hoặc cả phòng (Q254). `batchId` do giao diện sinh để thử lại không cộng
  * hai lần (Q262).
  */
 export const extendTimeSchema = z
   .strictObject({
-    attemptIds: z.array(z.uuid()).min(1).max(GROUP_MAX_ATTEMPTS).optional(),
-    scope: z.literal('all').optional(),
+    ...targetShape,
     minutes: z.number().int().min(1).max(EXTEND_MINUTES_MAX),
     reason: reasonOf(EXTEND_REASON_MAX),
     batchId: z.uuid(),
   })
-  .refine((request) => (request.attemptIds === undefined) !== (request.scope === undefined));
+  .refine(exactlyOneTarget);
+/** Yêu cầu Buộc nộp một Lượt, một nhóm hoặc cả phòng (Q254). Làm lại cùng yêu cầu không đổi gì thêm. */
+export const forceSubmitSchema = z.strictObject(targetShape).refine(exactlyOneTarget);
+export type ForceSubmitRequest = z.infer<typeof forceSubmitSchema>;
+
 export type ExtendTimeRequest = z.infer<typeof extendTimeSchema>;
 
 export type ExtensionScope = 'one' | 'group' | 'all';

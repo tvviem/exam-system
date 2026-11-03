@@ -45,6 +45,28 @@ export interface ExtendTimeResult {
   replayed: boolean;
 }
 
+export interface ForceSubmitInput {
+  sessionId: string;
+  /** Các Lượt được chọn; `null` là mọi Lượt đang làm của Phiên thi. */
+  attemptIds: string[] | null;
+  now: Date;
+}
+
+export interface ForceSubmitResult {
+  closed: number;
+  /** Số Lượt được chọn nhưng đã nộp từ trước. */
+  skipped: number;
+}
+
+export interface ViolationInput {
+  sessionId: string;
+  attemptId: string;
+  action: 'warning' | 'disqualify';
+  reason: string;
+  by: string;
+  now: Date;
+}
+
 export interface SessionAttempts {
   /** Phiên thi đã có Lượt làm bài nào chưa (kể cả đã nộp). */
   hasAttempts(sessionId: string, executor?: Transaction): Promise<boolean>;
@@ -69,4 +91,14 @@ export interface SessionAttempts {
    * Lượt được chọn không thuộc Phiên thi, `INVALID_STATE` (`EXTENSION_LIMIT`) nếu có Lượt vượt trần tổng giờ cộng thêm.
    */
   extendTime(tx: Transaction, input: ExtendTimeInput): Promise<ExtendTimeResult>;
+  /**
+   * Buộc nộp (Q254): nộp các Lượt đang làm được chọn với lý do `examiner`, giữ Câu trả lời. Ném `NOT_FOUND` nếu một Lượt
+   * được chọn không thuộc Phiên thi. Làm lại không đổi gì thêm.
+   */
+  forceSubmit(tx: Transaction, input: ForceSubmitInput): Promise<ForceSubmitResult>;
+  /**
+   * Ghi Vi phạm của một Lượt đang làm (Q259); Đình chỉ nộp Lượt ngay với lý do `disqualified`. Ném `NOT_FOUND` nếu Lượt
+   * không thuộc Phiên thi, `INVALID_STATE` (`ATTEMPT_CLOSED`) nếu Lượt đã nộp. Trả id Vi phạm và người bị ghi.
+   */
+  recordViolation(tx: Transaction, input: ViolationInput): Promise<{ id: string; userId: string }>;
 }

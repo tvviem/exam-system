@@ -6,6 +6,7 @@ import {
   extendTimeSchema,
   extensionScopeOf,
   extensionWithinCap,
+  forceSubmitSchema,
   violationSchema,
 } from './monitor.js';
 
@@ -180,5 +181,18 @@ describe('extensionScopeOf: phạm vi ghi vào nhật ký Cộng giờ (Q254)', 
     expect(extensionScopeOf(['a'])).toBe('one');
     expect(extensionScopeOf(['a', 'b'])).toBe('group');
     expect(extensionScopeOf(null)).toBe('all');
+  });
+});
+
+describe('forceSubmitSchema: yêu cầu Buộc nộp (Q254)', () => {
+  it('nhận một Lượt, một nhóm hoặc cả phòng; phải chọn đúng một cách', () => {
+    expect(forceSubmitSchema.safeParse({ attemptIds: [attemptId] }).success).toBe(true);
+    expect(forceSubmitSchema.safeParse({ scope: 'all' }).success).toBe(true);
+    expect(forceSubmitSchema.safeParse({}).success).toBe(false);
+    expect(forceSubmitSchema.safeParse({ attemptIds: [attemptId], scope: 'all' }).success).toBe(
+      false,
+    );
+    expect(forceSubmitSchema.safeParse({ attemptIds: [] }).success).toBe(false);
+    expect(forceSubmitSchema.safeParse({ attemptIds: ['abc'] }).success).toBe(false);
   });
 });

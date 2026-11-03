@@ -1,10 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
-import { call, login } from './support/http';
+import { openLiveSession } from './support/live-session';
 import { resetState } from './support/reset';
-import { fullExam, Taker } from './support/take';
-import { DEFAULT_PASSWORD, seedUser } from './support/users';
+import { Taker } from './support/take';
 
 // S2 (Q254, Q256, Q262): Cộng giờ qua HTTP + PostgreSQL thật, một Lượt, một nhóm và cả phòng.
 
@@ -12,8 +11,11 @@ let t: TestApp;
 let examiner: string;
 let other: string;
 let sessionId: string;
-const takers: Record<string, Taker> = {};
-const attemptIds: Record<string, string> = {};
+let takers: Record<string, Taker>;
+let attemptIds: Record<string, string>;
+let examinerApi: Live['api'];
+
+type Live = Awaited<ReturnType<typeof openLiveSession>>;
 
 beforeAll(async () => {
   t = await createTestApp();
@@ -21,13 +23,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await t.app.close();
 });
-
-const examinerApi = (
-  method: 'GET' | 'POST' | 'PUT',
-  path: string,
-  body?: unknown,
-  who = examiner,
-) => call(t.app, method, `/api${path}`, { cookie: who, body });
 
 const batch = () => crypto.randomUUID();
 const extend = (body: Record<string, unknown>, who = examiner) =>
@@ -37,42 +32,9 @@ const deadlineOf = async (name: string) =>
     await sql<{ deadline: Date }>(`select deadline from attempts where id = $1`, [attemptIds[name]])
   )[0]?.deadline.getTime() as number;
 
-// Giờ giả mặc định 2/11/2026 08:00 (GMT+7); Phiên thi mở 07:00, đóng 10:00, Thời lượng 45 phút.
 beforeEach(async () => {
   await resetState();
-  t.clock.set(new Date('2026-11-02T08:00:00+07:00'));
-  await seedUser({ username: 'gv1', roleTags: ['examiner'] });
-  await seedUser({ username: 'gv2', roleTags: ['examiner'] });
-  const ids: string[] = [];
-  for (const [username, code] of [
-    ['an', 'SV001'],
-    ['binh', 'SV002'],
-    ['chi', 'SV003'],
-    ['dung', 'SV004'],
-  ] as const) {
-    ids.push((await seedUser({ username, code, roleTags: ['candidate'] })).id);
-  }
-  examiner = (await login(t.app, 'gv1', DEFAULT_PASSWORD)).cookie as string;
-  other = (await login(t.app, 'gv2', DEFAULT_PASSWORD)).cookie as string;
-  const examId = (await fullExam(t, examiner)).id;
-  const created = await examinerApi('POST', '/sessions', {
-    examId,
-    title: 'Giữa kỳ - ca 1',
-    opensAt: '2026-11-02T07:00:00+07:00',
-    closesAt: '2026-11-02T10:00:00+07:00',
-    durationMinutes: 45,
-    accessCode: 'AB3K9X',
-  });
-  sessionId = created.json().id;
-  await examinerApi('POST', `/sessions/${sessionId}/roster`, { userIds: ids });
-  // An, Bình, Chi đang làm; Dũng chưa vào.
-  for (const name of ['an', 'binh', 'chi']) {
-    const taker = await Taker.signIn(t, name);
-    takers[name] = taker;
-    await taker.join('AB3K9X');
-    const view = (await taker.call('POST', `/take/sessions/${sessionId}/start`)).json();
-    attemptIds[name] = view.attempt.id;
-  }
+  ({ examiner, other, sessionId, takers, attemptIds, api: examinerApi } = await openLiveSession(t));
 });
 
 describe('Cộng giờ cho một Lượt', () => {
