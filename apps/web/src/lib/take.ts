@@ -81,6 +81,28 @@ export interface AttemptView {
   unsent?: SaveItem[];
 }
 
+/** Phần nội dung màn làm bài cần để dựng đề, chung cho Lượt thật và Xem thử. */
+export type TakeContent = Pick<AttemptView, 'exam' | 'sections' | 'mediaBase'>;
+
+/** Xem thử qua Phiên thi (Q220, Q245): nội dung như Người dự thi thấy, không có Lượt, hạn giờ hay Câu trả lời. */
+export interface PreviewView extends TakeContent {
+  status: 'preview';
+  session: { id: string; title: string };
+  durationMinutes: number;
+}
+
+/** Không lưu đệm lâu: mỗi lần mở là một lần trộn mới, và đổi tab không được làm đề đổi chỗ giữa chừng. */
+export const previewQuery = (sessionId: string) =>
+  queryOptions({
+    queryKey: ['preview', sessionId],
+    queryFn: () => apiFetch<PreviewView>(`/sessions/${sessionId}/try`),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false, // 404 (không phải chủ) hay lỗi khác: báo ngay, không thử lại vài giây
+  });
+
 export type SubmitReason =
   | 'candidate'
   | 'timeout'

@@ -9,20 +9,23 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudOff,
+  Eye,
   LayoutGrid,
   type LucideIcon,
   Timer,
   TriangleAlert,
   Type,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
 import {
   type AttemptView,
   attemptQueryKey,
   fetchAttemptOnline,
+  type PreviewView,
   submitAttempt,
+  type TakeContent,
   type TakeItem,
   UnsavedError,
 } from '../take';
@@ -49,6 +52,23 @@ import { ThemeSwitcher } from './theme-switcher';
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type Answers = Record<string, { value: unknown; flagged: boolean }>;
+
+/**
+ * Những gì màn làm bài cần từ bên dưới: Lượt thật (`useAttemptSession`) hay Xem thử (`PreviewRunner`) cùng đưa vào đây.
+ * `null` ở `clock`, `saving`, `submit` nghĩa là không có (xem thử không có giờ, không lưu, không nộp).
+ */
+interface RunnerSession {
+  answers: Answers;
+  setValue: (itemId: string, value: unknown, kind?: 'choice' | 'text') => void;
+  setFlag: (itemId: string, flagged: boolean) => void;
+  blurText: () => void;
+  clock: { remaining: number; warning: ReturnType<typeof useCountdown>['warning'] } | null;
+  saving: { status: SaveStatus; unsaved: number; rejected: { itemId: string }[] } | null;
+  connected: boolean;
+  timedOut: boolean;
+  submit: { pending: boolean; failed: boolean; error: unknown; run: () => void } | null;
+  stop: StopReason | null;
+}
 
 const STATE_KEY = {
   done: 'take.state.done',
@@ -82,12 +102,11 @@ function SaveBadge({ status, unsaved }: { status: SaveStatus; unsaved: number })
   );
 }
 
-export function AttemptRunner({ view }: { view: AttemptView }) {
-  const { t } = useTranslation();
+/** Mọi thứ màn làm bài cần từ phía server cho một Lượt thật: lưu, đồng hồ, nộp, báo mất mạng. */
+function useAttemptSession(view: AttemptView): RunnerSession {
   const queryClient = useQueryClient();
   const attemptId = view.attempt.id;
   const items = useMemo(() => view.sections.flatMap((section) => section.items), [view]);
-  const { prefs, update: updatePrefs, mode } = usePrefs();
 
   const [answers, setAnswers] = useState<Answers>(() =>
     Object.fromEntries(
@@ -98,10 +117,6 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
       ),
     ),
   );
-  const [current, setCurrent] = useState(0);
-  const [gridOpen, setGridOpen] = useState(false);
-  const [submitOpen, setSubmitOpen] = useState(false);
-  const [prefsOpen, setPrefsOpen] = useState(false);
   const [stop, setStop] = useState<StopReason | null>(null);
   // Mở từ bản sao trên máy (mất mạng lúc tải lại) cho tới khi server nhận được một lần lưu.
   const [connected, setConnected] = useState(!view.offline);
@@ -252,6 +267,104 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
     change({ itemId, flagged });
   };
 
+  return {
+    answers,
+    setValue,
+    setFlag,
+    blurText: () => void drain({ retryNow: false }),
+    clock: { remaining: countdown.remaining, warning: countdown.warning },
+    saving: { status: saver.status, unsaved: saver.unsaved, rejected: saver.rejected },
+    connected,
+    timedOut,
+    submit: {
+      pending: submit.isPending,
+      failed: submit.isError,
+      error: submit.error,
+      run: () => submit.mutate(),
+    },
+    stop,
+  };
+}
+
+export function AttemptRunner({ view }: { view: AttemptView }) {
+  const session = useAttemptSession(view);
+  if (session.stop === 'DEVICE_REVOKED' || session.stop === 'NOT_FOUND') {
+    return <StopScreen reason={session.stop} />;
+  }
+  return <AttemptScreen content={view} session={session} />;
+}
+
+/** Xem thử qua Phiên thi (Q220, Q245): cùng màn hình, nhưng không có giờ, không lưu, không nộp. Câu trả lời chỉ ở trang. */
+export function PreviewRunner({ view, onExit }: { view: PreviewView; onExit: () => void }) {
+  const { t } = useTranslation();
+  const [answers, setAnswers] = useState<Answers>({});
+  const session: RunnerSession = {
+    answers,
+    setValue: (itemId, value) =>
+      setAnswers((previous) => ({
+        ...previous,
+        [itemId]: { value, flagged: previous[itemId]?.flagged ?? false },
+      })),
+    setFlag: (itemId, flagged) =>
+      setAnswers((previous) => ({
+        ...previous,
+        [itemId]: { value: previous[itemId]?.value, flagged },
+      })),
+    blurText: () => {},
+    clock: null,
+    saving: null,
+    connected: true,
+    timedOut: false,
+    submit: null,
+    stop: null,
+  };
+  return (
+    <AttemptScreen
+      content={view}
+      session={session}
+      finishLabel={t('take.preview.finish')}
+      onFinish={onExit}
+      banner={
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-border bg-primary-soft p-3 font-sans text-sm text-on-primary-soft"
+        >
+          <Eye aria-hidden className="mt-0.5 size-5 shrink-0" />
+          <span>
+            <strong className="block">
+              {t('take.preview.title', { title: view.session.title })}
+            </strong>
+            {t('take.preview.body', { minutes: view.durationMinutes })}
+          </span>
+        </p>
+      }
+    />
+  );
+}
+
+function AttemptScreen({
+  content,
+  session,
+  onFinish,
+  finishLabel,
+  banner,
+}: {
+  content: TakeContent;
+  session: RunnerSession;
+  /** Có thì nút kết thúc làm việc này ngay (xem thử); không có thì mở hộp thoại xác nhận Nộp bài. */
+  onFinish?: () => void;
+  finishLabel?: string;
+  banner?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const items = useMemo(() => content.sections.flatMap((section) => section.items), [content]);
+  const { prefs, update: updatePrefs, mode } = usePrefs();
+  const [current, setCurrent] = useState(0);
+  const [gridOpen, setGridOpen] = useState(false);
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  const { answers, clock, saving, submit } = session;
+
   const progress = progressOf(
     items.map((item) => ({
       item,
@@ -276,41 +389,43 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
     }
   };
 
-  if (stop === 'DEVICE_REVOKED' || stop === 'NOT_FOUND') {
-    return <StopScreen reason={stop} />;
-  }
-
   const handlers = {
-    onValue: setValue,
-    onFlag: setFlag,
-    onBlurText: () => void drain({ retryNow: false }),
+    onValue: session.setValue,
+    onFlag: session.setFlag,
+    onBlurText: session.blurText,
   };
   const visible =
     mode === 'one' ? [items[current]].filter((item): item is TakeItem => !!item) : items;
-  const sectionOf = (item: TakeItem) => view.sections.find((s) => s.items.includes(item));
-  const warning = countdown.warning;
+  const sectionOf = (item: TakeItem) => content.sections.find((s) => s.items.includes(item));
+  const warning = clock?.warning;
   const clockTone =
     warning === 'one' || warning === 'over'
       ? 'bg-danger-soft text-danger'
       : warning === 'five'
         ? 'bg-warning-soft text-warning'
         : 'text-fg';
-  const hasInstructions = (view.exam.instructions?.content ?? []).some(
+  const hasInstructions = (content.exam.instructions?.content ?? []).some(
     (block) => block.type !== 'paragraph' || (block.content ?? []).length > 0,
   );
 
   return (
-    <MediaSourceContext.Provider value={(id, side) => `${view.mediaBase}/${id}/${side}`}>
+    <MediaSourceContext.Provider value={(id, side) => `${content.mediaBase}/${id}/${side}`}>
       <header className="sticky top-0 z-20 border-b border-border bg-surface">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-1 px-3">
-          <div
-            role="timer"
-            aria-label={t('take.timeLeft')}
-            className={`inline-flex min-h-12 items-center rounded-lg px-3 font-mono text-lg font-semibold tabular-nums ${clockTone}`}
-          >
-            {formatClock(countdown.remaining)}
-          </div>
-          <SaveBadge status={saver.status} unsaved={saver.unsaved} />
+          {clock ? (
+            <div
+              role="timer"
+              aria-label={t('take.timeLeft')}
+              className={`inline-flex min-h-12 items-center rounded-lg px-3 font-mono text-lg font-semibold tabular-nums ${clockTone}`}
+            >
+              {formatClock(clock.remaining)}
+            </div>
+          ) : (
+            <span className="inline-flex min-h-12 items-center rounded-lg bg-primary-soft px-3 font-sans text-sm font-semibold text-on-primary-soft">
+              {t('take.preview.badge')}
+            </span>
+          )}
+          {saving && <SaveBadge status={saving.status} unsaved={saving.unsaved} />}
           <div className="ml-auto flex items-center gap-1">
             <button
               type="button"
@@ -321,8 +436,8 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
             >
               <Type aria-hidden className="size-5" />
             </button>
-            <Button variant="primary" onClick={() => setSubmitOpen(true)}>
-              {t('take.submit')}
+            <Button variant="primary" onClick={onFinish ?? (() => setSubmitOpen(true))}>
+              {finishLabel ?? t('take.submit')}
             </Button>
           </div>
         </div>
@@ -343,12 +458,15 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
         className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-4 pb-32"
         style={{ fontSize: `${prefs.fontScale / 100}rem` }}
       >
-        {!connected && <OfflineNotice />}
-        {timedOut && <BusyNotice title={t('take.timedOut')} hint={t('take.timedOutHint')} />}
-        {saver.rejected.length > 0 && (
+        {banner}
+        {!session.connected && <OfflineNotice />}
+        {session.timedOut && (
+          <BusyNotice title={t('take.timedOut')} hint={t('take.timedOutHint')} />
+        )}
+        {saving && saving.rejected.length > 0 && (
           <ErrorMessage>
             {t('take.save.rejected', {
-              items: saver.rejected
+              items: saving.rejected
                 .map(({ itemId }) => items.find((item) => item.itemId === itemId)?.no)
                 .filter((no) => no !== undefined)
                 .join(', '),
@@ -386,7 +504,7 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
             <summary className="min-h-12 cursor-pointer py-3 font-sans font-medium">
               {t('take.instructions')}
             </summary>
-            {view.exam.instructions && <RichTextView doc={view.exam.instructions} />}
+            {content.exam.instructions && <RichTextView doc={content.exam.instructions} />}
           </details>
         )}
 
@@ -494,56 +612,60 @@ export function AttemptRunner({ view }: { view: AttemptView }) {
         </div>
       </Dialog>
 
-      <Dialog
-        open={submitOpen}
-        onClose={() => !submit.isPending && setSubmitOpen(false)}
-        title={t('take.confirm.title')}
-        dismissible={!submit.isPending}
-      >
-        <div className="flex flex-col gap-3">
-          {progress.blank === 0 && progress.partial === 0 ? (
-            <p>{t('take.confirm.allDone', { count: progress.total })}</p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {progress.blank > 0 && (
-                <li className="flex items-start gap-2 text-danger">
-                  <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
-                  <span>{t('take.confirm.blank', { count: progress.blank })}</span>
-                </li>
-              )}
-              {progress.partial > 0 && (
-                <li className="flex items-start gap-2 text-warning">
-                  <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
-                  <span>{t('take.confirm.partial', { count: progress.partial })}</span>
-                </li>
-              )}
-            </ul>
-          )}
-          {progress.flagged > 0 && <p>{t('take.confirm.flagged', { count: progress.flagged })}</p>}
-          <JumpList
-            items={items.flatMap((item, index) =>
-              stateOf(item) !== 'done' || answers[item.itemId]?.flagged ? [{ item, index }] : [],
+      {submit && (
+        <Dialog
+          open={submitOpen}
+          onClose={() => !submit.pending && setSubmitOpen(false)}
+          title={t('take.confirm.title')}
+          dismissible={!submit.pending}
+        >
+          <div className="flex flex-col gap-3">
+            {progress.blank === 0 && progress.partial === 0 ? (
+              <p>{t('take.confirm.allDone', { count: progress.total })}</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {progress.blank > 0 && (
+                  <li className="flex items-start gap-2 text-danger">
+                    <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
+                    <span>{t('take.confirm.blank', { count: progress.blank })}</span>
+                  </li>
+                )}
+                {progress.partial > 0 && (
+                  <li className="flex items-start gap-2 text-warning">
+                    <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
+                    <span>{t('take.confirm.partial', { count: progress.partial })}</span>
+                  </li>
+                )}
+              </ul>
             )}
-            onJump={goTo}
-          />
-          <p className="text-sm text-fg-muted">{t('take.confirm.final')}</p>
-          {submit.isError && (
-            <ErrorMessage>
-              {submit.error instanceof UnsavedError
-                ? t('take.confirm.unsaved')
-                : errorMessage(t, submit.error)}
-            </ErrorMessage>
-          )}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button onClick={() => setSubmitOpen(false)} disabled={submit.isPending}>
-              {t('take.confirm.continue')}
-            </Button>
-            <PrimaryButton loading={submit.isPending} onClick={() => submit.mutate()}>
-              {submit.isPending ? t('take.confirm.submitting') : t('take.submit')}
-            </PrimaryButton>
+            {progress.flagged > 0 && (
+              <p>{t('take.confirm.flagged', { count: progress.flagged })}</p>
+            )}
+            <JumpList
+              items={items.flatMap((item, index) =>
+                stateOf(item) !== 'done' || answers[item.itemId]?.flagged ? [{ item, index }] : [],
+              )}
+              onJump={goTo}
+            />
+            <p className="text-sm text-fg-muted">{t('take.confirm.final')}</p>
+            {submit.failed && (
+              <ErrorMessage>
+                {submit.error instanceof UnsavedError
+                  ? t('take.confirm.unsaved')
+                  : errorMessage(t, submit.error)}
+              </ErrorMessage>
+            )}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button onClick={() => setSubmitOpen(false)} disabled={submit.pending}>
+                {t('take.confirm.continue')}
+              </Button>
+              <PrimaryButton loading={submit.pending} onClick={() => submit.run()}>
+                {submit.pending ? t('take.confirm.submitting') : t('take.submit')}
+              </PrimaryButton>
+            </div>
           </div>
-        </div>
-      </Dialog>
+        </Dialog>
+      )}
 
       <TakePrefsDialog
         open={prefsOpen}

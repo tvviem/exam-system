@@ -340,6 +340,13 @@
     "offline": {
       "title": "Đang mở đề đã lưu trên máy",
       "body": "Không kết nối được hệ thống. Bạn vẫn làm bài được; câu trả lời được giữ trên máy và tự gửi khi có mạng trở lại. Giờ còn lại lúc này chỉ là ước tính, sẽ chỉnh theo hệ thống khi có mạng; câu trả lời gửi sau giờ làm bài không được nhận."
+    },
+    "preview": {
+      "badge": "Xem thử",
+      "finish": "Kết thúc xem thử",
+      "title": "Đang xem thử: {{title}}",
+      "body": "Bạn đang đi qua đề đúng như Người dự thi thấy. Không có Lượt làm bài nào được tạo và không có gì được lưu hay chấm; không giới hạn giờ (Phiên thi quy định {{minutes}} phút). Tải lại trang thì đề được trộn lại và câu trả lời mất.",
+      "back": "Về Phiên thi"
     }
   },
   "pagination": {
@@ -1257,6 +1264,7 @@
     },
     "action": {
       "edit": "Sửa",
+      "preview": "Xem thử",
       "duplicate": "Nhân bản",
       "cancel": "Hủy Phiên thi",
       "delete": "Xóa",

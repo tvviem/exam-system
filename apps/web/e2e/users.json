@@ -652,5 +652,57 @@
     "roleTags": ["candidate"],
     "code": "TK8-M-001",
     "classLabel": "LOP-TK8-M"
+  },
+  {
+    "username": "e2e-lb-pv-desktop",
+    "fullName": "Đỗ Văn Xem Thử (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK10-D-001",
+    "classLabel": "LOP-TK10-D"
+  },
+  {
+    "username": "e2e-lb-pv-mobile",
+    "fullName": "Đỗ Văn Xem Thử (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK10-M-001",
+    "classLabel": "LOP-TK10-M"
+  },
+  {
+    "username": "e2e-lb-pvgv-desktop",
+    "fullName": "Người ra đề xem thử chủ (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-pvlg-desktop",
+    "fullName": "Người ra đề xem thử lạ (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-pvgv-mobile",
+    "fullName": "Người ra đề xem thử chủ (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-pvlg-mobile",
+    "fullName": "Người ra đề xem thử lạ (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]

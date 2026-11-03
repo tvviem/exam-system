@@ -1,7 +1,7 @@
 import { sessionEditableFields } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Copy, Pencil, Trash2 } from 'lucide-react';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { Copy, Eye, Pencil, Trash2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
@@ -18,6 +18,7 @@ import {
 import {
   Badge,
   Button,
+  buttonClass,
   Card,
   Dialog,
   ErrorMessage,
@@ -127,6 +128,14 @@ function SessionDetail({ session }: { session: SessionSummary }) {
               <Pencil aria-hidden className="size-5" />
               {t('session.action.edit')}
             </Button>
+            <Link
+              to="/examiner/sessions/$sessionId/try"
+              params={{ sessionId: session.id }}
+              className={buttonClass('secondary')}
+            >
+              <Eye aria-hidden className="size-5" />
+              {t('session.action.preview')}
+            </Link>
             <RowMenu
               label={t('session.action.more')}
               items={[
