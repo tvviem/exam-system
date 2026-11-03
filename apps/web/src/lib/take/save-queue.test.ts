@@ -4,10 +4,12 @@ import {
   emptyQueue,
   enqueue,
   fail,
+  knownAnswers,
   nextBatch,
   retryDelayMs,
   saveStatusOf,
-  seedSeqs,
+  seedAnswers,
+  unsentOf,
 } from './save-queue';
 
 const A = '00000000-0000-4000-8000-00000000000a';
@@ -15,7 +17,7 @@ const B = '00000000-0000-4000-8000-00000000000b';
 
 describe('hàng đợi lưu bài', () => {
   it('mỗi câu có clientSeq tăng dần, bắt đầu từ số server đã lưu', () => {
-    let q = seedSeqs(emptyQueue(), { [A]: 4 });
+    let q = seedAnswers(emptyQueue(), [{ itemId: A, clientSeq: 4, value: { optionId: 'w' } }]);
     q = enqueue(q, { itemId: A, value: { optionId: 'x' } });
     q = enqueue(q, { itemId: B, value: { optionId: 'y' } });
     const { batch } = nextBatch(q);
@@ -135,5 +137,50 @@ describe('saveStatusOf: chỉ báo lưu', () => {
   it('lỗi liên tiếp thì báo chưa lưu', () => {
     const q = fail(nextBatch(enqueue(emptyQueue(), { itemId: A, flagged: true })).queue);
     expect(saveStatusOf(q, true)).toBe('unsaved');
+  });
+});
+
+describe('phần chưa gửi (giữ qua IndexedDB)', () => {
+  it('gộp lô đang bay và phần đang chờ; câu đổi ý trong lúc bay thì giữ bản mới', () => {
+    let q = emptyQueue();
+    q = enqueue(q, { itemId: A, value: { optionId: 'x' } });
+    q = nextBatch(q).queue; // A đang bay với clientSeq 1
+    q = enqueue(q, { itemId: A, value: { optionId: 'y' } }); // đổi ý khi đang bay: clientSeq 2
+    q = enqueue(q, { itemId: B, flagged: true });
+    expect(unsentOf(q)).toEqual([
+      { itemId: A, clientSeq: 2, value: { optionId: 'y' } },
+      { itemId: B, clientSeq: 1, flagged: true },
+    ]);
+  });
+
+  it('hàng đợi đã trống thì không còn gì chưa gửi', () => {
+    let q = enqueue(emptyQueue(), { itemId: A, value: { optionId: 'x' } });
+    const sent = nextBatch(q);
+    q = ack(sent.queue, [{ itemId: A, status: 'saved' }]);
+    expect(unsentOf(q)).toEqual([]);
+  });
+});
+
+describe('câu trả lời mới nhất của từng câu (giữ trên máy để mở lại lúc mất mạng)', () => {
+  it('bắt đầu từ những gì đã biết, gộp mọi thay đổi sau đó, kể cả khi đã được server nhận', () => {
+    let q = seedAnswers(emptyQueue(), [{ itemId: A, clientSeq: 4, value: { optionId: 'w' } }]);
+    q = enqueue(q, { itemId: A, flagged: true }); // giữ đáp án cũ, thêm cờ
+    q = enqueue(q, { itemId: B, value: { optionId: 'y' } });
+    q = ack(nextBatch(q).queue, [
+      { itemId: A, status: 'saved' },
+      { itemId: B, status: 'saved' },
+    ]);
+    expect(unsentOf(q)).toEqual([]); // đã gửi hết...
+    expect(knownAnswers(q)).toEqual([
+      // ...nhưng câu trả lời vẫn còn trong danh sách để mở lại
+      { itemId: A, clientSeq: 5, value: { optionId: 'w' }, flagged: true },
+      { itemId: B, clientSeq: 1, value: { optionId: 'y' } },
+    ]);
+  });
+
+  it('câu server từ chối thì không còn là câu trả lời đã biết', () => {
+    let q = enqueue(emptyQueue(), { itemId: A, value: { optionId: 'x' } });
+    q = ack(nextBatch(q).queue, [{ itemId: A, status: 'rejected', reason: 'bad_request' }]);
+    expect(knownAnswers(q)).toEqual([]);
   });
 });

@@ -497,6 +497,42 @@ Chuẩn bị: `podman pod start dev-exam`, `pnpm dev`, mở `http://localhost:51
 
 Chỗ cần anh nhận xét: bố cục thanh trên (đồng hồ, chỉ báo lưu, Aa, Nộp bài) trên 360 px; thứ tự và chữ trên các nút; mức nổi bật của dải cảnh báo; chữ trong màn xác nhận.
 
+### PR 4c-2: ghi chú triển khai (3/11/2026)
+
+Làm đúng Q243, Q244, Q247 (phần ngoại tuyến), không thuật ngữ mới:
+
+- **Kho trên máy (IndexedDB `exam-take`)** sau giao diện `QueueStore` (bản thật `idb-store.ts`, bản giả trong test). Mỗi Lượt có hai bản ghi: *bản sao `view`* (đề, kèm giờ máy lúc nhận để bù giờ khi đọc lại) và *hàng đợi* gồm `answers` (câu trả lời mới nhất của từng câu, kể cả đã gửi xong) và `items` (phần server chưa xác nhận). Chỉ giữ `answers` mà không giữ bản đã gửi xong là sai: bản sao đề chụp lúc bắt đầu sẽ không có câu server nhận sau đó, tải lại lúc mất mạng thấy câu ấy trống. Đã bắt được ở E2E.
+- **Đọc Lượt có chịu mất mạng (`loadAttempt`).** Đọc được từ server thì cập nhật bản sao và phủ phần còn giữ trên máy nếu mới hơn (`clientSeq` lớn hơn server); không tới được server (mất mạng, 502/503/504) thì mở bản sao với `serverNow` bù theo thời gian đã trôi (không bù âm nếu đồng hồ máy bị chỉnh lùi); `deadline` luôn là của server. Lượt đã nộp, đóng hoặc 404 thì xóa sạch; `DEVICE_REVOKED` thì giữ dữ liệu để hoàn tác Thu hồi thì làm tiếp được.
+- **Hàng đợi tự khôi phục:** phần chưa gửi nạp lại vào hàng đợi lúc mở màn và gửi ngay khi có mạng (nhịp thử lại 1, 2, 4… giây như cũ). `beforeunload` chỉ còn hỏi khi máy không có IndexedDB (kho rơi về bộ nhớ trang).
+- **Hỏi thẳng server khi cần biết Lượt đã đóng** (`fetchAttemptOnline`): bản sao trên máy không được trả lời câu "Lượt đã đóng chưa", nên `closeNow` và hiện lại tab không dùng đường rơi về bản sao.
+- **PWA:** `manifest.webmanifest` (khởi động ở `/take`, `standalone`), biểu tượng, và `sw.js` viết tay. Chỉ lưu đệm vỏ ứng dụng (`index.html` và `/assets/*`) và `/api/take-media/*`; không lưu response API nào khác (E2E kiểm). Điều hướng: ưu tiên mạng, quá 4 giây hoặc mất mạng thì mở `index.html` đã lưu. Mỗi bản dựng một kho vỏ riêng (mã băm điền vào `sw.js` lúc build), bản mới không `skipWaiting` để đề đang làm không bị đổi mã giữa chừng. Lần mở đầu tiên, trang nhờ service worker lưu nốt các file đã tải trước khi nó điều khiển được trang.
+- **Mở trang khi mất mạng:** `meQuery` rơi về người dùng đăng nhập lần cuối (`localStorage`) khi không tới được server, chỉ để dựng giao diện; mọi lời gọi API vẫn cần phiên hợp lệ. Đăng xuất xóa bản nhớ này, bản sao đề và ảnh đã lưu đệm, nhưng giữ hàng đợi còn câu chưa gửi để đăng nhập lại gửi nốt. Nộp bài hoặc Lượt đóng xóa mọi thứ của Lượt đó, kể cả ảnh.
+- **Tải trước ảnh và KaTeX** của đề khi còn mạng (đúng cỡ ảnh trình duyệt sẽ chọn), để câu ở sau vẫn có ảnh khi mất mạng rồi tải lại.
+- **Màn thu hồi (Q244):** thêm câu cho biết các câu chưa gửi còn giữ trên máy và làm tiếp được nếu Người ra đề cho thiết bị vào lại; có E2E (S6e).
+- **Sau review hai trục:** đăng xuất và phiên hết hạn (401) bỏ bản sao đề và ảnh; hàng đợi còn câu chưa gửi được giữ nhưng chỉ phần chưa gửi (câu đã gửi xong không còn đọc được trên máy dùng chung); Lượt đóng khi còn câu chưa gửi thì màn "Đã nộp" nói rõ số câu không được ghi nhận; dải ngoại tuyến nói giờ còn lại chỉ là ước tính; bỏ chữ "Cho thiết bị vào lại" khỏi giao diện (chưa là thuật ngữ trong GLOSSARY) và dùng "hoàn tác Thu hồi".
+- **Phông KaTeX (sau rà soát phông, 3/11/2026):** chỉ tải mã và CSS KaTeX thì file phông chưa được tải, vì trình duyệt chỉ tải phông khi có chữ dùng đến nó; ở chế độ "Từng câu", công thức ở câu chưa xem sẽ mất phông khi mất mạng rồi tải lại. `warmMedia` nay đưa công thức của đề (mỗi cặp latex/display một lần) cho `preloadFormulas`, vẽ thử ngoài màn hình để tải đúng các mặt chữ đề cần; có E2E (công thức dùng `\mathbb` ở câu 4, câu 1 không có công thức, tải lại lúc mất mạng vẫn dựng đúng bằng phông từ bộ nhớ đệm).
+- **Giới hạn đã biết (4c-2):** nhiều tab cùng một Lượt trên cùng thiết bị ghi đè hàng đợi của nhau trong IndexedDB (tab ghi sau thắng, server vẫn chặn bản cũ bằng `clientSeq`); đồng hồ máy chỉnh lùi lúc ngoại tuyến làm giờ còn lại hiển thị đứng ở số lúc chụp (server vẫn là bên quyết định hạn, câu gửi sau hạn bị từ chối và được báo); ảnh phóng to (cỡ 1600) và ảnh ở cỡ trình duyệt không chọn không được tải trước; đề có đổi giờ (Cộng giờ, 4d) lúc mất mạng chỉ được biết khi lưu thành công lần đầu; `@fontsource/noto-serif` cài ở PR riêng. Safari/iOS xóa dữ liệu trang web sau 7 ngày không dùng, không ảnh hưởng một buổi thi.
+- **Kiểm thử:** U1/U2 (`save-queue`, `offline-attempt` với kho giả, `warm-media`), S6b ngoại tuyến, S6e thu hồi, PWA (`take-offline.spec.ts`).
+
+#### Hướng dẫn thử 4c-2 (cho chủ dự án)
+
+Chuẩn bị như 4c-1, nhưng **service worker chỉ chạy ở bản dựng thật**, không chạy ở `pnpm dev`. Dựng và mở bản xem trước: `pnpm -C apps/web build && pnpm -C apps/web preview` (cổng 4173, `API_URL` mặc định `http://localhost:3000`, api vẫn chạy ở 3000), mở `http://localhost:4173`. Thử bằng Chrome giả lập thiết bị; ô Offline ở DevTools > Network. Mở DevTools > Application để xem Service Workers, Cache Storage (`exam-shell-…`, `exam-take-media`) và IndexedDB (`exam-take`).
+
+| Điểm thiết kế | Cách thử | Mong đợi |
+|---|---|---|
+| Q243 PWA | Mở `/login`, vào Application > Manifest | Có tên, biểu tượng, `start_url` là `/take`; Chrome cho "Cài đặt ứng dụng" |
+| Q243 vỏ ứng dụng | Application > Service Workers; Cache Storage | Có một service worker "activated"; kho `exam-shell-…` có `/` và các file `/assets/…`; không có response `/api/...` nào (trừ ảnh đề `exam-take-media`) |
+| Q243 giữ đề trên máy | Đăng nhập Người dự thi, bắt đầu làm bài, xem IndexedDB `exam-take` | Có một bản ghi ở `views` và một ở `queues` |
+| Q243 tải lại lúc mất mạng | Trả lời vài câu, bật Offline, trả lời thêm, **tải lại trang** (F5) | Trang vẫn mở, có dải "Đang mở đề đã lưu trên máy"; mọi đáp án (cả câu đã lưu lẫn câu làm lúc mất mạng) còn nguyên; đồng hồ vẫn chạy đúng; chỉ báo "Mất kết nối (n câu chưa lưu)" |
+| Q243 có mạng lại | Tắt Offline | Tự gửi, về "Đã lưu", dải "Đang mở đề…" biến mất; tải lại thấy đủ đáp án |
+| Q243 đóng hẳn trình duyệt | Mất mạng, trả lời, đóng tab, mở lại `/take` rồi vào Lượt đang làm | Đáp án làm lúc mất mạng vẫn còn; có mạng thì tự gửi |
+| Q243 ảnh đề | Đề có ảnh ở câu sau; làm bài khi còn mạng, bật Offline, tải lại, đi tới câu đó | Ảnh vẫn hiện |
+| Q243 nộp thì xóa | Nộp bài, xem lại IndexedDB và `exam-take-media` | Không còn bản ghi của Lượt đó |
+| Q243 đăng xuất | Đăng xuất (đã nộp hết) | `views` trống, `exam-take-media` bị xóa |
+| Q244 thiết bị bị thu hồi | Người ra đề Thu hồi thiết bị (API; giao diện ở 4d), Người dự thi chọn một đáp án | Màn "Thiết bị này đã bị thu hồi" chiếm toàn bộ, không còn đề; tải lại vẫn thế; `queues` vẫn giữ câu vừa chọn |
+
+Chỗ cần anh nhận xét: chữ và vị trí dải "Đang mở đề đã lưu trên máy"; chữ ở màn thu hồi; biểu tượng ứng dụng (mũ tốt nghiệp trên nền xanh của thương hiệu); anh có muốn thêm nút "Cài ứng dụng" hay để người dùng tự cài từ trình duyệt.
+
 ## Thuật ngữ mới (đã vào GLOSSARY)
 
 Thiết bị dự thi, Thu hồi thiết bị, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi. "Nhân bản" cố ý không thành thuật ngữ riêng (chủ dự án: người dùng dùng một lần là hiểu). Các định nghĩa trong GLOSSARY là nguồn để viết hướng dẫn sử dụng cho người dùng cuối, nên giữ chúng chính xác khi hành vi thay đổi.

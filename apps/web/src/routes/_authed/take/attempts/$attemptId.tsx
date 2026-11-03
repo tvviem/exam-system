@@ -43,6 +43,7 @@ function AttemptPage() {
       <SubmittedScreen
         submittedAt={attempt.data.attempt.submittedAt}
         reason={attempt.data.attempt.submitReason}
+        lostAnswers={attempt.data.lostAnswers}
       />
     );
   }

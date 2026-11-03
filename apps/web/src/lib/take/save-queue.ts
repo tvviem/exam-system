@@ -20,6 +20,8 @@ export type ItemResult =
 export interface QueueState {
   /** `clientSeq` lớn nhất đã dùng của từng câu. */
   seqs: Record<string, number>;
+  /** Câu trả lời mới nhất của từng câu (gộp mọi thay đổi, kể cả đã gửi xong): để mở lại đề lúc mất mạng thấy đủ. */
+  latest: Record<string, SaveItem>;
   pending: SaveItem[];
   inflight: SaveItem[];
   failures: number;
@@ -28,17 +30,22 @@ export interface QueueState {
 
 export const emptyQueue = (): QueueState => ({
   seqs: {},
+  latest: {},
   pending: [],
   inflight: [],
   failures: 0,
   rejected: [],
 });
 
-/** Tiếp tục từ `clientSeq` server đã lưu (máy khác, hoặc tải lại trang). */
-export const seedSeqs = (queue: QueueState, seqs: Record<string, number>): QueueState => ({
+/** Bắt đầu từ những câu trả lời đã biết (server, hoặc còn giữ trên máy): `clientSeq` tiếp tục từ đó. */
+export const seedAnswers = (queue: QueueState, answers: SaveItem[]): QueueState => ({
   ...queue,
-  seqs: { ...queue.seqs, ...seqs },
+  seqs: { ...queue.seqs, ...Object.fromEntries(answers.map((a) => [a.itemId, a.clientSeq])) },
+  latest: { ...queue.latest, ...Object.fromEntries(answers.map((a) => [a.itemId, a])) },
 });
+
+/** Câu trả lời mới nhất của từng câu, theo thứ tự câu được chạm lần đầu. */
+export const knownAnswers = (queue: QueueState): SaveItem[] => Object.values(queue.latest);
 
 /** Gộp hai thay đổi của cùng một câu: trường của bản mới thắng, `clientSeq` lấy bản mới. */
 function merged(older: SaveItem, newer: SaveItem): SaveItem {
@@ -64,6 +71,12 @@ export function enqueue(queue: QueueState, change: Change): QueueState {
   return {
     ...queue,
     seqs: { ...queue.seqs, [change.itemId]: clientSeq },
+    latest: {
+      ...queue.latest,
+      [change.itemId]: queue.latest[change.itemId]
+        ? merged(queue.latest[change.itemId] as SaveItem, item)
+        : item,
+    },
     pending: withItem(queue.pending, item, true),
   };
 }
@@ -82,15 +95,17 @@ export function nextBatch(queue: QueueState): { batch: SaveItem[]; queue: QueueS
 export function ack(queue: QueueState, results: ItemResult[]): QueueState {
   const answered = new Map(results.map((result) => [result.itemId, result]));
   let pending = queue.pending;
+  const latest = { ...queue.latest };
   const rejected = [...queue.rejected];
   for (const item of queue.inflight) {
     const result = answered.get(item.itemId);
     if (!result) pending = withItem(pending, item, false);
     else if (result.status === 'rejected') {
       rejected.push({ itemId: item.itemId, reason: result.reason });
+      if (latest[item.itemId]?.clientSeq === item.clientSeq) delete latest[item.itemId];
     }
   }
-  return { ...queue, pending, inflight: [], failures: 0, rejected };
+  return { ...queue, pending, latest, inflight: [], failures: 0, rejected };
 }
 
 /** Gửi lỗi (mạng, 5xx): lô quay lại hàng đợi; câu đã đổi ý trong lúc bay thì giữ bản mới. */
@@ -98,6 +113,13 @@ export function fail(queue: QueueState): QueueState {
   let pending = queue.pending;
   for (const item of queue.inflight) pending = withItem(pending, item, false);
   return { ...queue, pending, inflight: [], failures: queue.failures + 1 };
+}
+
+/** Mọi thay đổi server chưa xác nhận (lô đang bay + phần chờ): phần cần giữ qua IndexedDB để tải lại trang không mất. */
+export function unsentOf(queue: QueueState): SaveItem[] {
+  let items = queue.pending;
+  for (const item of queue.inflight) items = withItem(items, item, false);
+  return items;
 }
 
 /** Chờ bao lâu trước lần gửi lại: 1, 2, 4, 8 giây, tối đa 15 giây. */

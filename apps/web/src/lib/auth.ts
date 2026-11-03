@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
-import { ApiError, apiFetch } from './api';
+import { ApiError, apiFetch, isUnreachable } from './api';
+import { forgetOnLogout } from './take/local-data';
 
 export type RoleTag = 'examiner' | 'candidate';
 
@@ -20,14 +21,47 @@ export interface AuthSession {
   current: boolean;
 }
 
+const ME_KEY = 'exam:me';
+
+const rememberMe = (me: Me | null) => {
+  try {
+    if (me) localStorage.setItem(ME_KEY, JSON.stringify(me));
+    else localStorage.removeItem(ME_KEY);
+  } catch {
+    // Không có localStorage: chỉ mất khả năng mở lại trang khi ngoại tuyến.
+  }
+};
+
+/** Người dùng đăng nhập lần cuối trên máy này; chỉ để mở lại trang làm bài khi mất mạng (Q243). */
+const lastKnownMe = (): Me | null => {
+  try {
+    const raw = localStorage.getItem(ME_KEY);
+    return raw ? (JSON.parse(raw) as Me) : null;
+  } catch {
+    return null;
+  }
+};
+
 /** null khi chưa đăng nhập hoặc phiên đã hết hạn. */
 export const meQuery = queryOptions({
   queryKey: ['auth', 'me'],
   queryFn: async (): Promise<Me | null> => {
     try {
-      return await apiFetch<Me>('/auth/me');
+      const me = await apiFetch<Me>('/auth/me');
+      rememberMe(me);
+      return me;
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) return null;
+      if (error instanceof ApiError && error.status === 401) {
+        rememberMe(null);
+        void forgetOnLogout(); // phiên hết hạn cũng như đăng xuất: bỏ bản sao đề và ảnh trên máy
+        return null;
+      }
+      // Mất mạng lúc tải lại trang làm bài: dùng người dùng đã biết để mở được bản đề lưu trên máy. Mọi lời gọi tới
+      // server vẫn phải có phiên hợp lệ, nên đây chỉ là giao diện, không cấp quyền gì.
+      if (isUnreachable(error)) {
+        const known = lastKnownMe();
+        if (known) return known;
+      }
       throw error;
     }
   },
@@ -42,7 +76,14 @@ export const authSessionsQuery = queryOptions({
 export const login = (identifier: string, password: string) =>
   apiFetch('/auth/login', { method: 'POST', body: { identifier, password } });
 
-export const logout = () => apiFetch('/auth/logout', { method: 'POST' });
+export const logout = async () => {
+  rememberMe(null);
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } finally {
+    await forgetOnLogout();
+  }
+};
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
   apiFetch('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } });

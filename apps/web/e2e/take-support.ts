@@ -24,6 +24,7 @@ export async function seedOpenSession(
   tag: string,
   code: string,
   candidateCode: string,
+  options: { essayLatex?: string } = {},
 ) {
   const headers = { origin: ORIGIN };
   const post = async (url: string, data: unknown) => {
@@ -80,7 +81,20 @@ export async function seedOpenSession(
   const essay = await post('/api/questions', {
     ...common,
     type: 'essay',
-    stem: rich(`Trình bày định nghĩa giới hạn ${tag}`),
+    stem: options.essayLatex
+      ? {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: `Trình bày định nghĩa giới hạn ${tag}: ` },
+                { type: 'math', attrs: { latex: options.essayLatex, display: false } },
+              ],
+            },
+          ],
+        }
+      : rich(`Trình bày định nghĩa giới hạn ${tag}`),
     defaultPoints: 5,
     payload: { maxLength: 1000, rubric: rich('Nêu đủ ε-δ') },
   });
