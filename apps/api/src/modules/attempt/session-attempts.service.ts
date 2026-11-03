@@ -1,16 +1,20 @@
+import { EXTEND_TOTAL_MINUTES_MAX, extensionScopeOf } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, eq, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, sql } from 'drizzle-orm';
+import { v7 as uuidv7 } from 'uuid';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
 import { uniqueViolationOf } from '../../common/pg-error';
 import type {
   ExamDeviceSummary,
+  ExtendTimeInput,
+  ExtendTimeResult,
   SessionAttempts,
   SubmitReason,
 } from '../../common/session-attempts';
 import type { UserDeactivationHooks } from '../../common/user-deactivation';
 import { type Database, DB, type Transaction } from '../../db/db.module';
-import { attempts, sessionDevices } from './attempt.schema';
+import { attempts, attemptTimeExtensions, sessionDevices } from './attempt.schema';
 import { closeInProgress } from './attempt-close';
 
 /** Lý do ghi khi thiết bị đang gắn bị thu hồi để nhường chỗ cho thiết bị được Hoàn tác Thu hồi (Q234). */
@@ -150,5 +154,69 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       throw error;
     }
     return true;
+  }
+
+  async extendTime(tx: Transaction, input: ExtendTimeInput): Promise<ExtendTimeResult> {
+    const { sessionId, batchId, minutes } = input;
+    // Thử lại cùng yêu cầu: đã có dòng nhật ký của mã lô trong Phiên thi này thì không đổi gì (Q262).
+    const [done] = await tx
+      .select({ n: count() })
+      .from(attemptTimeExtensions)
+      .innerJoin(attempts, eq(attempts.id, attemptTimeExtensions.attemptId))
+      .where(and(eq(attempts.sessionId, sessionId), eq(attemptTimeExtensions.batchId, batchId)));
+    if ((done?.n ?? 0) > 0) return { extended: done?.n ?? 0, skipped: 0, replayed: true };
+
+    const chosen = input.attemptIds ? [...new Set(input.attemptIds)] : null;
+    if (chosen) {
+      const [known] = await tx
+        .select({ n: count() })
+        .from(attempts)
+        .where(and(eq(attempts.sessionId, sessionId), inArray(attempts.id, chosen)));
+      if ((known?.n ?? 0) !== chosen.length) throw new ApiError('NOT_FOUND');
+    }
+    // Khóa theo thứ tự id như `closeInProgress`; Nộp bài xen vào thì chờ rồi bị loại vì không còn đang làm.
+    const targets = await tx
+      .select({ id: attempts.id })
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.sessionId, sessionId),
+          eq(attempts.status, 'in_progress'),
+          chosen ? inArray(attempts.id, chosen) : undefined,
+        ),
+      )
+      .orderBy(attempts.id)
+      .for('update');
+    const skipped = chosen ? chosen.length - targets.length : 0;
+    if (targets.length === 0) return { extended: 0, skipped, replayed: false };
+    const ids = targets.map((row) => row.id);
+
+    const sums = await tx
+      .select({ total: sql<number>`coalesce(sum(${attemptTimeExtensions.minutes}), 0)::int` })
+      .from(attemptTimeExtensions)
+      .where(inArray(attemptTimeExtensions.attemptId, ids))
+      .groupBy(attemptTimeExtensions.attemptId);
+    if (sums.some((row) => row.total + minutes > EXTEND_TOTAL_MINUTES_MAX)) {
+      throw new ApiError('INVALID_STATE', { reason: 'EXTENSION_LIMIT' });
+    }
+
+    await tx
+      .update(attempts)
+      .set({ deadline: sql`${attempts.deadline} + make_interval(mins => ${minutes})` })
+      .where(inArray(attempts.id, ids));
+    const scope = extensionScopeOf(chosen);
+    await tx.insert(attemptTimeExtensions).values(
+      ids.map((attemptId) => ({
+        id: uuidv7(),
+        attemptId,
+        minutes,
+        scope,
+        reason: input.reason,
+        batchId,
+        extendedBy: input.by,
+        at: input.now,
+      })),
+    );
+    return { extended: ids.length, skipped, replayed: false };
   }
 }

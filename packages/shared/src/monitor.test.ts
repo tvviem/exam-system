@@ -4,6 +4,7 @@ import {
   attentionReasonsOf,
   extendedDeadline,
   extendTimeSchema,
+  extensionScopeOf,
   extensionWithinCap,
   violationSchema,
 } from './monitor.js';
@@ -171,5 +172,13 @@ describe('violationSchema: Cảnh cáo và Đình chỉ (Q259)', () => {
       false,
     );
     expect(violationSchema.safeParse({ action: 'ban', reason: 'x' }).success).toBe(false);
+  });
+});
+
+describe('extensionScopeOf: phạm vi ghi vào nhật ký Cộng giờ (Q254)', () => {
+  it('một Lượt là one, nhiều Lượt là group, cả phòng là all', () => {
+    expect(extensionScopeOf(['a'])).toBe('one');
+    expect(extensionScopeOf(['a', 'b'])).toBe('group');
+    expect(extensionScopeOf(null)).toBe('all');
   });
 });

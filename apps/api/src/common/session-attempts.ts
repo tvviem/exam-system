@@ -24,6 +24,27 @@ export interface ExamDeviceSummary {
   revokedAt: Date | null;
 }
 
+export interface ExtendTimeInput {
+  sessionId: string;
+  /** Các Lượt được chọn; `null` là mọi Lượt đang làm của Phiên thi. */
+  attemptIds: string[] | null;
+  minutes: number;
+  reason: string;
+  /** Mã lô do giao diện sinh: gửi lại cùng mã thì không cộng lần nữa (Q262). */
+  batchId: string;
+  by: string;
+  now: Date;
+}
+
+export interface ExtendTimeResult {
+  /** Số Lượt đã được cộng giờ. */
+  extended: number;
+  /** Số Lượt được chọn nhưng đã nộp nên bị bỏ qua. */
+  skipped: number;
+  /** Mã lô này đã được xử lý trước đó; lần này không đổi gì. */
+  replayed: boolean;
+}
+
 export interface SessionAttempts {
   /** Phiên thi đã có Lượt làm bài nào chưa (kể cả đã nộp). */
   hasAttempts(sessionId: string, executor?: Transaction): Promise<boolean>;
@@ -43,4 +64,9 @@ export interface SessionAttempts {
     tx: Transaction,
     input: { sessionId: string; userId: string; deviceId: string; by: string; now: Date },
   ): Promise<boolean>;
+  /**
+   * Cộng giờ (Q254, Q256, Q262): kéo dài hạn các Lượt đang làm và ghi nhật ký, một dòng mỗi Lượt. Ném `NOT_FOUND` nếu một
+   * Lượt được chọn không thuộc Phiên thi, `INVALID_STATE` (`EXTENSION_LIMIT`) nếu có Lượt vượt trần tổng giờ cộng thêm.
+   */
+  extendTime(tx: Transaction, input: ExtendTimeInput): Promise<ExtendTimeResult>;
 }

@@ -70,6 +70,14 @@ export const extendTimeSchema = z
   .refine((request) => (request.attemptIds === undefined) !== (request.scope === undefined));
 export type ExtendTimeRequest = z.infer<typeof extendTimeSchema>;
 
+export type ExtensionScope = 'one' | 'group' | 'all';
+
+/** Phạm vi của một lần Cộng giờ: `null` là cả phòng, một Lượt là `one`, nhiều Lượt là `group` (Q254). */
+export function extensionScopeOf(attemptIds: readonly string[] | null): ExtensionScope {
+  if (attemptIds === null) return 'all';
+  return attemptIds.length === 1 ? 'one' : 'group';
+}
+
 /** Hạn mới sau Cộng giờ. Cắt cứng không chặn Cộng giờ (GLOSSARY). */
 export function extendedDeadline(deadline: Date, minutes: number): Date {
   return new Date(deadline.getTime() + minutes * 60_000);
