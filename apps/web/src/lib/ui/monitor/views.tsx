@@ -1,8 +1,11 @@
+import { ATTENTION_HIDDEN_COUNT } from '@exam/shared';
+import type { TFunction } from 'i18next';
 import { Ban, CircleCheck, Eye, ShieldOff, Smartphone, Turtle, WifiOff } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MonitorPerson } from '../../monitor';
 import { isLive } from '../../monitor-view';
+import { warningOf } from '../../take/clock';
 import { Button } from '..';
 import { DataList } from '../data-list';
 import { ProgressBar, ReasonBadges, Remaining, StateBadge, useRemaining } from './parts';
@@ -82,10 +85,10 @@ export function CardsView({
             <button
               type="button"
               onClick={() => onPress(p.userId)}
-              className="min-w-0 flex-1 cursor-pointer text-left"
+              className="min-h-12 min-w-0 flex-1 cursor-pointer text-left"
             >
               <p className="font-semibold">{p.fullName}</p>
-              <p className="text-xs text-fg-muted">{identity(p)}</p>
+              <p className="text-[13px] text-fg-muted">{identity(p)}</p>
             </button>
             <Remaining person={p} />
           </div>
@@ -130,7 +133,7 @@ export function TableView({
       }`}
     >
       <span>{p.fullName}</span>
-      <span className="text-xs text-fg-muted">{identity(p)}</span>
+      <span className="text-[13px] text-fg-muted">{identity(p)}</span>
     </button>
   );
   const allSelected = people.length > 0 && people.every((p) => selected.has(p.userId));
@@ -227,6 +230,46 @@ const SEAT_LOOK: Record<MonitorPerson['state'], string> = {
   not_started: 'border-dashed border-border-strong text-fg-muted',
 };
 
+/** Dòng dưới của ô: chỉ phần này đăng ký đồng hồ 1 giây, nên mỗi giây không vẽ lại cả trăm ô. */
+function SeatFoot({ p, glyph }: { p: MonitorPerson; glyph: boolean }) {
+  const { t } = useTranslation();
+  const left = useRemaining(p);
+  const text = glyph
+    ? initials(p)
+    : left !== null && warningOf(left * 1000) !== 'none'
+      ? t('monitor.minutesShort', { count: Math.ceil(left / 60) })
+      : String(p.answered);
+  return (
+    <span aria-hidden className="text-[13px] font-normal leading-none opacity-80">
+      {text}
+    </span>
+  );
+}
+
+/** Nhãn đọc được của một ô: đủ trạng thái, tiến độ và mọi dấu hiệu, vì các biểu tượng trên ô đều ẩn với trình đọc màn hình. */
+function seatLabel(p: MonitorPerson, totalItems: number, picked: boolean, t: TFunction) {
+  const signs = p.reasons.flatMap((reason) => {
+    if (reason === 'hidden') return [t('monitor.reason.hidden', { count: p.hiddenCount })];
+    if (reason === 'slow')
+      return [t('monitor.reason.slow', { answered: p.answered, total: totalItems })];
+    if (reason === 'device')
+      return [t(`monitor.device.${p.device === 'revoked' ? 'revoked' : 'new'}`)];
+    return [];
+  });
+  return [
+    p.fullName,
+    t(`monitor.state.${p.state}`),
+    t('monitor.seatProgress', { answered: p.answered, total: totalItems }),
+    ...signs.filter(
+      (sign) => !(p.state === 'disconnected' && sign === t('monitor.state.disconnected')),
+    ),
+    p.warnings > 0 ? t('monitor.panel.warnings', { count: p.warnings }) : '',
+    picked ? t('monitor.picked') : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
 function Seat({
   p,
   totalItems,
@@ -241,7 +284,6 @@ function Seat({
   onPress: () => void;
 }) {
   const { t } = useTranslation();
-  const left = useRemaining(p);
   const pct = totalItems > 0 ? Math.round((p.answered / totalItems) * 100) : 0;
   const glyph = {
     working: null,
@@ -250,16 +292,7 @@ function Seat({
     suspended: <Ban aria-hidden className="size-4" />,
     not_started: null,
   }[p.state];
-  const slow = p.reasons.includes('slow');
-  const label = [
-    p.fullName,
-    t(`monitor.state.${p.state}`),
-    t('monitor.seatProgress', { answered: p.answered, total: totalItems }),
-    p.hiddenCount >= 3 ? t('monitor.reason.hidden', { count: p.hiddenCount }) : '',
-    picked ? t('monitor.picked') : '',
-  ]
-    .filter(Boolean)
-    .join(', ');
+  const label = seatLabel(p, totalItems, picked, t);
   return (
     <button
       type="button"
@@ -283,17 +316,13 @@ function Seat({
       }
     >
       {glyph ?? <span aria-hidden>{initials(p)}</span>}
-      <span aria-hidden className="text-[11px] font-normal leading-none opacity-80">
-        {glyph
-          ? initials(p)
-          : left !== null && left <= 300
-            ? `${Math.ceil(left / 60)}'`
-            : p.answered}
-      </span>
-      {p.hiddenCount >= 3 && (
+      <SeatFoot p={p} glyph={glyph !== null} />
+      {p.reasons.includes('hidden') && (
         <Eye aria-hidden className="absolute top-0.5 right-0.5 size-3 text-danger" />
       )}
-      {slow && <Turtle aria-hidden className="absolute top-0.5 left-0.5 size-3 text-warning" />}
+      {p.reasons.includes('slow') && (
+        <Turtle aria-hidden className="absolute top-0.5 left-0.5 size-3 text-warning" />
+      )}
       {p.device === 'revoked' && (
         <ShieldOff aria-hidden className="absolute bottom-0.5 left-0.5 size-3 text-danger" />
       )}
@@ -325,7 +354,8 @@ export function GridView({ people, totalItems, selected, openId, onPress }: View
       >
         <li>{t('monitor.legend.how')}</li>
         <li className="inline-flex items-center gap-1">
-          <Eye aria-hidden className="size-4 text-danger" /> {t('monitor.legend.hidden')}
+          <Eye aria-hidden className="size-4 text-danger" />{' '}
+          {t('monitor.legend.hidden', { count: ATTENTION_HIDDEN_COUNT })}
         </li>
         <li className="inline-flex items-center gap-1">
           <Turtle aria-hidden className="size-4 text-warning" /> {t('monitor.legend.slow')}
@@ -343,9 +373,9 @@ export function GridView({ people, totalItems, selected, openId, onPress }: View
           aria-label={t('monitor.classSection', { name: className || t('monitor.noClass') })}
           className="flex flex-col gap-2"
         >
-          <h2 className="text-sm font-semibold text-fg-muted">
+          <h3 className="text-sm font-semibold text-fg-muted">
             {className || t('monitor.noClass')} · {t('monitor.people', { count: list.length })}
-          </h2>
+          </h3>
           <div className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(3rem,1fr))] lg:[grid-template-columns:repeat(auto-fill,minmax(3.25rem,1fr))]">
             {list.map((p) => (
               <Seat

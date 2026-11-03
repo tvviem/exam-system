@@ -1,20 +1,9 @@
-import { VIOLATION_REASON_MAX } from '@exam/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { LayoutGrid, ListFilter, Rows3, Table2, UserCheck } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../errors';
-import {
-  extendTime,
-  forceSubmit,
-  type MonitorSnapshot,
-  monitorQuery,
-  monitorQueryKey,
-  pardonDevice,
-  recordViolation,
-  revokeDevice,
-  setEntryClosed,
-} from '../../monitor';
+import { type MonitorSnapshot, monitorQuery } from '../../monitor';
 import {
   countsOf,
   defaultViewFor,
@@ -29,24 +18,20 @@ import { ListSkeleton } from '../admin';
 import { Chip } from '../chips';
 import { RowMenu } from '../row-menu';
 import { StickyActionBar } from '../sticky-action-bar';
-import { useToast } from '../toast';
-import { ConfirmDialog, ExtendDialog, ReasonDialog } from './dialogs';
+import { type DialogState, MonitorDialogs } from './dialogs-host';
 import { PersonPanel } from './panel';
 import { SnapshotClock, SummaryBar, useMedia } from './parts';
+import { useMonitorActions } from './use-actions';
 import { CardsView, GridView, TableView, type ViewProps } from './views';
-
-type Scope = 'one' | 'group' | 'all';
-type DialogState =
-  | { kind: 'extend'; ids: string[]; scope: Scope }
-  | { kind: 'force'; ids: string[]; scope: Scope }
-  | { kind: 'revoke' | 'pardon' | 'warn' | 'suspend'; userId: string }
-  | { kind: 'entry' };
 
 const VIEWS: { key: MonitorView; icon: ReactNode }[] = [
   { key: 'cards', icon: <Rows3 aria-hidden className="size-4" /> },
   { key: 'table', icon: <Table2 aria-hidden className="size-4" /> },
   { key: 'grid', icon: <LayoutGrid aria-hidden className="size-4" /> },
 ];
+
+/** Bảng và Thẻ vẽ từng dòng nên chỉ vẽ từng đợt chừng này người (Q253); Lưới vẽ cả phòng vì ô nhẹ. */
+const PAGE_SIZE = 100;
 
 /**
  * Màn Theo dõi của Người ra đề (Q252–Q254): trạng thái cả phòng ở ba chế độ xem theo mật độ, bộ lọc Cần chú ý, chọn một
@@ -60,8 +45,6 @@ export function MonitorScreen({ sessionId }: { sessionId: string }) {
   return <MonitorBody sessionId={sessionId} data={snapshot.data} offline={snapshot.isError} />;
 }
 
-const fieldsId = (name: string) => `monitor-${name}`;
-
 function MonitorBody({
   sessionId,
   data,
@@ -72,8 +55,6 @@ function MonitorBody({
   offline: boolean;
 }) {
   const { t } = useTranslation();
-  const toast = useToast();
-  const queryClient = useQueryClient();
   const { people, totalItems } = data;
   const clock = useMemo(
     () => ({ serverNow: data.serverNow, receivedAt: performance.now() }),
@@ -83,6 +64,7 @@ function MonitorBody({
   const [filter, setFilter] = useState<FilterKey | null>(null);
   const [cls, setCls] = useState('');
   const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(PAGE_SIZE);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
@@ -111,6 +93,10 @@ function MonitorBody({
         (!q || foldText(`${p.fullName} ${p.code ?? ''}`).includes(q)),
     );
   }, [people, filter, cls, query]);
+  // Đổi bộ lọc thì quay về đợt đầu.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy khi bộ lọc đổi
+  useEffect(() => setLimit(PAGE_SIZE), [filter, cls, query, view]);
+  const visible = view === 'grid' ? shown : shown.slice(0, limit);
   const byId = useMemo(() => new Map(people.map((p) => [p.userId, p])), [people]);
 
   /** Mã Lượt đang làm của những người được chọn: chỉ họ mới Cộng giờ hay Buộc nộp được. */
@@ -121,72 +107,19 @@ function MonitorBody({
     });
   const allLive = people.filter(isLive);
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: monitorQueryKey(sessionId) });
-  const fail = (error: unknown) => toast(errorMessage(t, error), 'error');
-  const done = (message: string) => {
-    toast(message);
-    setDialog(null);
-    void refresh();
+  const leaveSelect = () => {
+    setSelectMode(false);
+    setSelected(new Set());
   };
-
-  const extend = useMutation({
-    mutationFn: (input: {
-      ids: string[];
-      scope: Scope;
-      minutes: number;
-      reason: string;
-      batchId: string;
-    }) =>
-      extendTime(sessionId, {
-        ...(input.scope === 'all' ? { scope: 'all' as const } : { attemptIds: input.ids }),
-        minutes: input.minutes,
-        reason: input.reason,
-        batchId: input.batchId,
-      }),
-    onSuccess: (result, input) =>
-      done(t('monitor.toast.extended', { minutes: input.minutes, count: result.extended })),
-    onError: fail,
-  });
-  const force = useMutation({
-    mutationFn: (input: { ids: string[]; scope: Scope }) =>
-      forceSubmit(sessionId, input.scope === 'all' ? { scope: 'all' } : { attemptIds: input.ids }),
-    onSuccess: (result, input) => {
-      done(t('monitor.toast.forced', { count: result.closed }));
-      if (input.scope === 'group') leaveSelect();
-    },
-    onError: fail,
-  });
-  const violation = useMutation({
-    mutationFn: (input: { person: string; action: 'warning' | 'disqualify'; reason: string }) => {
-      const attemptId = byId.get(input.person)?.attemptId;
-      if (!attemptId) throw new Error('no attempt');
-      return recordViolation(sessionId, attemptId, { action: input.action, reason: input.reason });
-    },
-    onSuccess: (_result, input) =>
-      done(t(input.action === 'warning' ? 'monitor.toast.warned' : 'monitor.toast.suspended')),
-    onError: fail,
-  });
-  const revoke = useMutation({
-    mutationFn: (input: { userId: string; reason: string }) =>
-      revokeDevice(sessionId, input.userId, input.reason),
-    onSuccess: () => done(t('monitor.toast.revoked')),
-    onError: fail,
-  });
-  const pardon = useMutation({
-    mutationFn: (userId: string) => {
-      const deviceId = byId.get(userId)?.revokedDeviceId;
-      if (!deviceId) throw new Error('no device');
-      return pardonDevice(sessionId, userId, deviceId);
-    },
-    onSuccess: () => done(t('monitor.toast.pardoned')),
-    onError: fail,
-  });
-  const entry = useMutation({
-    mutationFn: () => setEntryClosed(sessionId, !data.entryClosed),
-    onSuccess: () => done(t(data.entryClosed ? 'monitor.toast.reopened' : 'monitor.toast.closed')),
-    onError: fail,
+  const actions = useMonitorActions({
+    sessionId,
+    byId,
+    entryClosed: data.entryClosed,
+    onDone: () => setDialog(null),
+    onGroupForced: leaveSelect,
   });
 
+  const extendOne = (userId: string) => setDialog({ kind: 'extend', ids: [userId], scope: 'one' });
   const press = (userId: string) =>
     selectMode
       ? setSelected((current) => {
@@ -198,31 +131,25 @@ function MonitorBody({
   const allShownPicked = shown.length > 0 && shown.every((p) => selected.has(p.userId));
   const toggleAll = () =>
     setSelected(allShownPicked ? new Set() : new Set(shown.map((p) => p.userId)));
-  function leaveSelect() {
-    setSelectMode(false);
-    setSelected(new Set());
-  }
 
   const viewProps: ViewProps = {
-    people: shown,
+    people: visible,
     totalItems,
     selected,
     selectMode,
     openId,
     onPress: press,
     onOpen: setOpenId,
-    onExtend: (userId) => setDialog({ kind: 'extend', ids: [userId], scope: 'one' }),
+    onExtend: extendOne,
     onToggleAll: toggleAll,
   };
   const person = openId ? byId.get(openId) : undefined;
-  const target = dialog && 'userId' in dialog ? byId.get(dialog.userId) : undefined;
   const selectedIds = [...selected];
-  const scopeLabel = (scope: Scope) => t(`monitor.scope.${scope}`);
   const hasFilters = !!(filter || cls || query);
 
   const searchField = (
     <SearchField
-      id={fieldsId('search')}
+      id="monitor-search"
       label={t('monitor.search')}
       value={query}
       onChange={(e) => setQuery(e.target.value)}
@@ -230,7 +157,7 @@ function MonitorBody({
   );
   const classField = (
     <SelectField
-      id={fieldsId('class')}
+      id="monitor-class"
       label={t('monitor.class')}
       value={cls}
       onChange={(e) => setCls(e.target.value)}
@@ -371,6 +298,17 @@ function MonitorBody({
           <GridView {...viewProps} />
         )}
 
+        {visible.length < shown.length && (
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <span className="text-sm text-fg-muted">
+              {t('monitor.showing', { shown: visible.length, total: shown.length })}
+            </span>
+            <Button onClick={() => setLimit((current) => current + PAGE_SIZE)}>
+              {t('monitor.more', { count: Math.min(PAGE_SIZE, shown.length - visible.length) })}
+            </Button>
+          </div>
+        )}
+
         {selectMode && (
           <StickyActionBar>
             <p className="text-sm" aria-live="polite">
@@ -406,9 +344,10 @@ function MonitorBody({
         <PersonPanel
           person={person}
           totalItems={totalItems}
+          closeOnEscape={dialog === null}
           onClose={() => setOpenId(null)}
           handlers={{
-            onExtend: (userId) => setDialog({ kind: 'extend', ids: [userId], scope: 'one' }),
+            onExtend: extendOne,
             onForce: (userId) => setDialog({ kind: 'force', ids: [userId], scope: 'one' }),
             onRevoke: (userId) => setDialog({ kind: 'revoke', userId }),
             onPardon: (userId) => setDialog({ kind: 'pardon', userId }),
@@ -417,99 +356,15 @@ function MonitorBody({
           }}
         />
 
-        {dialog?.kind === 'extend' && (
-          <ExtendDialog
-            count={liveAttempts(dialog.ids).length}
-            scope={scopeLabel(dialog.scope)}
-            busy={extend.isPending}
-            onClose={() => setDialog(null)}
-            onConfirm={(input) =>
-              extend.mutate({ ids: liveAttempts(dialog.ids), scope: dialog.scope, ...input })
-            }
-          />
-        )}
-        {dialog?.kind === 'force' && (
-          <ConfirmDialog
-            title={t('monitor.force.title')}
-            danger
-            busy={force.isPending}
-            confirmLabel={t('monitor.force.confirm', { count: liveAttempts(dialog.ids).length })}
-            onClose={() => setDialog(null)}
-            onConfirm={() => force.mutate({ ids: liveAttempts(dialog.ids), scope: dialog.scope })}
-          >
-            {scopeLabel(dialog.scope)}:{' '}
-            <strong className="text-fg">
-              {t('monitor.people', { count: liveAttempts(dialog.ids).length })}
-            </strong>{' '}
-            {t('monitor.force.body')}
-          </ConfirmDialog>
-        )}
-        {dialog?.kind === 'warn' && target && (
-          <ReasonDialog
-            title={t('monitor.warn.title')}
-            body={t('monitor.warn.body', { name: target.fullName })}
-            confirmLabel={t('monitor.warn.confirm')}
-            required
-            maxLength={VIOLATION_REASON_MAX}
-            busy={violation.isPending}
-            onClose={() => setDialog(null)}
-            onConfirm={(reason) =>
-              violation.mutate({ person: target.userId, action: 'warning', reason })
-            }
-          />
-        )}
-        {dialog?.kind === 'suspend' && target && (
-          <ReasonDialog
-            title={t('monitor.suspend.title')}
-            body={t('monitor.suspend.body', { name: target.fullName })}
-            confirmLabel={t('monitor.suspend.confirm')}
-            danger
-            required
-            maxLength={VIOLATION_REASON_MAX}
-            busy={violation.isPending}
-            onClose={() => setDialog(null)}
-            onConfirm={(reason) =>
-              violation.mutate({ person: target.userId, action: 'disqualify', reason })
-            }
-          />
-        )}
-        {dialog?.kind === 'revoke' && target && (
-          <ReasonDialog
-            title={t('monitor.revoke.title')}
-            body={t('monitor.revoke.body', { name: target.fullName })}
-            confirmLabel={t('monitor.revoke.confirm')}
-            danger
-            required={false}
-            maxLength={500}
-            busy={revoke.isPending}
-            onClose={() => setDialog(null)}
-            onConfirm={(reason) => revoke.mutate({ userId: target.userId, reason })}
-          />
-        )}
-        {dialog?.kind === 'pardon' && target && (
-          <ConfirmDialog
-            title={t('monitor.pardon.title')}
-            busy={pardon.isPending}
-            confirmLabel={t('monitor.pardon.confirm')}
-            onClose={() => setDialog(null)}
-            onConfirm={() => pardon.mutate(target.userId)}
-          >
-            {t('monitor.pardon.body', { name: target.fullName })}
-          </ConfirmDialog>
-        )}
-        {dialog?.kind === 'entry' && (
-          <ConfirmDialog
-            title={t(data.entryClosed ? 'monitor.entry.reopenTitle' : 'monitor.entry.closeTitle')}
-            busy={entry.isPending}
-            confirmLabel={t(data.entryClosed ? 'monitor.entry.reopen' : 'monitor.entry.close')}
-            onClose={() => setDialog(null)}
-            onConfirm={() => entry.mutate()}
-          >
-            {data.entryClosed
-              ? t('monitor.entry.reopenBody')
-              : t('monitor.entry.closeBody', { count: counts.not_started })}
-          </ConfirmDialog>
-        )}
+        <MonitorDialogs
+          dialog={dialog}
+          actions={actions}
+          byId={byId}
+          liveAttempts={liveAttempts}
+          entryClosed={data.entryClosed}
+          notStarted={counts.not_started}
+          onClose={() => setDialog(null)}
+        />
 
         <Dialog
           open={filtersOpen}
@@ -549,6 +404,8 @@ function ProgressDistribution({
     return out;
   }, [people, totalItems]);
   const peak = Math.max(1, ...buckets.map((b) => b.n));
+  // Nhãn đọc được phải mang đủ số liệu của từng cột, không chỉ tên biểu đồ.
+  const summary = buckets.map((b) => `${t('monitor.bucket', { from: b.from })}: ${b.n}`).join('; ');
   return (
     <details className="rounded-xl border border-border bg-surface">
       <summary className="flex min-h-12 cursor-pointer items-center px-4 text-sm font-semibold">
@@ -557,16 +414,16 @@ function ProgressDistribution({
       <div
         className="flex h-28 items-end gap-1 px-4 pb-3"
         role="img"
-        aria-label={t('monitor.distribution.label')}
+        aria-label={t('monitor.distribution.label', { buckets: summary })}
       >
         {buckets.map(({ id, from, n }) => (
           <div key={id} className="flex flex-1 flex-col items-center justify-end gap-0.5">
-            <span className="text-[11px] tabular-nums text-fg-muted">{n}</span>
+            <span className="text-[13px] tabular-nums text-fg-muted">{n}</span>
             <span
               className="w-full rounded-t bg-primary"
               style={{ height: `${(n / peak) * 100}%`, minHeight: 2 }}
             />
-            <span className="text-[11px] text-fg-muted">{from}+</span>
+            <span className="text-[13px] text-fg-muted">{t('monitor.bucket', { from })}</span>
           </div>
         ))}
       </div>

@@ -22,6 +22,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { MonitorPerson } from '../../monitor';
 import { type Counts, remainingSecondsAt } from '../../monitor-view';
+import { warningOf } from '../../take/clock';
 import { Badge } from '..';
 
 // Các mảnh dùng chung của màn Theo dõi (docs/plan/slice-4.md, Q252–Q254; docs/ui-design.md mục 10).
@@ -104,13 +105,19 @@ export function Remaining({ person }: { person: MonitorPerson }) {
   const { t } = useTranslation();
   const left = useRemaining(person);
   if (left === null) return <span className="text-fg-muted">–</span>;
+  const level = warningOf(left * 1000); // cùng mốc 5 phút và 1 phút như đồng hồ của Người dự thi
   const tone =
-    left <= 60 ? 'text-danger font-semibold' : left <= 300 ? 'text-warning font-semibold' : '';
+    level === 'one' || level === 'over'
+      ? 'text-danger font-semibold'
+      : level === 'five'
+        ? 'text-warning font-semibold'
+        : '';
   return (
     <span className={`tabular-nums ${tone}`}>
       {clockText(left)}
-      {left <= 300 && (
+      {level !== 'none' && (
         <TriangleAlert
+          role="img"
           aria-label={t('monitor.almostOver')}
           className="ml-1 inline size-3.5 align-[-2px]"
         />
@@ -174,7 +181,7 @@ export function SummaryBar({
           <span className={`text-xl font-semibold tabular-nums ${tile.tone}`}>
             {counts[tile.key]}
           </span>
-          <span className="text-[12px] leading-tight text-fg-muted md:text-sm">
+          <span className="text-[13px] leading-tight text-fg-muted md:text-sm">
             {t(tile.key === 'violations' ? 'monitor.tile.violations' : `monitor.state.${tile.key}`)}
           </span>
         </button>

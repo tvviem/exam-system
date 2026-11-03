@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { sendHeartbeat } from '../take';
+import { newId } from '../uuid';
 import {
   ackBeat,
   emptyBeats,
@@ -16,21 +17,42 @@ import { type StopReason, stopReasonOf } from './use-saver';
 
 export const HEARTBEAT_INTERVAL_MS = 15_000;
 
+// Mốc `since` giữ theo từng Lượt trong sessionStorage: tải lại trang vẫn nhận Cảnh cáo và Cộng giờ phát sinh lúc trang đóng.
+const cursorKey = (attemptId: string) => `exam:hb-cursor:${attemptId}`;
+const storedCursor = (attemptId: string): string | null => {
+  try {
+    return sessionStorage.getItem(cursorKey(attemptId));
+  } catch {
+    return null;
+  }
+};
+const storeCursor = (attemptId: string, cursor: string) => {
+  try {
+    sessionStorage.setItem(cursorKey(attemptId), cursor);
+  } catch {
+    // Không lưu được thì lần tải lại sau chỉ mất mốc, không mất gì khác.
+  }
+};
+
 export function useHeartbeat(options: {
   attemptId: string;
-  /** Giờ server lúc mở Lượt: mốc đầu tiên để nhận thông báo mới. */
+  /** Mốc đầu tiên để nhận thông báo: lần mở Lượt đầu là giờ bắt đầu; tải lại trang thì mốc đã lưu của lần trước. */
   since: string;
+  /** Tắt khi màn làm bài đã dừng (thiết bị bị thu hồi, Lượt đã đóng): không gửi thêm nhịp thừa. */
+  active: boolean;
   onServerTime: (time: { deadline: string; serverNow: string }) => void;
   onStop: (reason: StopReason) => void;
   onNotices: (notices: Notice[]) => void;
 }) {
   const callbacks = useRef(options);
   callbacks.current = options;
-  const { attemptId } = options;
+  const { attemptId, active } = options;
 
   useEffect(() => {
-    let state: HeartbeatState = emptyBeats(callbacks.current.since);
+    if (!active) return;
+    let state: HeartbeatState = emptyBeats(storedCursor(attemptId) ?? callbacks.current.since);
     let stopped = false;
+    let disposed = false;
     let sending = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -41,8 +63,10 @@ export function useHeartbeat(options: {
       const { body, sentIds } = nextBeat(state);
       try {
         const reply = await sendHeartbeat(attemptId, body);
+        if (disposed) return;
         const acked = ackBeat(state, sentIds, reply);
         state = acked.state;
+        storeCursor(attemptId, state.cursor);
         if (reply.status === 'submitted') {
           stopped = true;
           callbacks.current.onStop('ATTEMPT_CLOSED');
@@ -58,6 +82,7 @@ export function useHeartbeat(options: {
           if (acked.fresh.length > 0) callbacks.current.onNotices(acked.fresh);
         }
       } catch (error) {
+        if (disposed) return;
         const reason = stopReasonOf(error);
         if (reason) {
           stopped = true;
@@ -71,11 +96,13 @@ export function useHeartbeat(options: {
     };
 
     const note = (type: HeartbeatEventType) => {
-      state = recordEvent(state, type, crypto.randomUUID());
+      state = recordEvent(state, type, newId());
     };
+    // Gửi ngay cả khi ẩn: trình duyệt giãn bộ đếm của tab nền (khoảng một phút một lần), nên chờ nhịp sau thì Người ra đề
+    // thấy muộn và có thể nhầm là mất kết nối.
     const onVisibility = () => {
       note(document.visibilityState === 'hidden' ? 'tab_hidden' : 'tab_visible');
-      if (document.visibilityState === 'visible') void beat();
+      void beat();
     };
     const onOffline = () => note('went_offline');
     const onOnline = () => {
@@ -88,11 +115,12 @@ export function useHeartbeat(options: {
     window.addEventListener('online', onOnline);
     void beat();
     return () => {
+      disposed = true;
       stopped = true;
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('offline', onOffline);
       window.removeEventListener('online', onOnline);
     };
-  }, [attemptId]);
+  }, [attemptId, active]);
 }

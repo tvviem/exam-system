@@ -65,7 +65,7 @@ test('Theo dõi: thấy cả phòng, Cộng giờ cho một người, Người d
   const summary = examiner.getByRole('region', { name: /Tóm tắt phòng thi, 2 người/ });
   await expect(summary.getByRole('button', { name: /Đang làm/ })).toContainText('2');
 
-  const before = await sv1.getByRole('timer').innerText();
+  const before = await sv1.getByRole('timer').textContent();
   await openPerson(examiner, /Thí sinh Theo dõi 1/);
   // Thẻ cũng có nút "Cộng giờ…" riêng; ở đây thử nút trong ngăn chi tiết (ngăn kéo hoặc bottom sheet).
   const panel =
@@ -83,7 +83,7 @@ test('Theo dõi: thấy cả phòng, Cộng giờ cho một người, Người d
   const notice = sv1.getByRole('status').filter({ hasText: 'Người ra đề đã cộng giờ' });
   await expect(notice).toContainText('Bạn được cộng thêm 30 phút');
   await expect(notice).toContainText('Mất điện phòng máy');
-  const after = await sv1.getByRole('timer').innerText();
+  const after = (await sv1.getByRole('timer').textContent()) ?? '';
   expect(after, `đồng hồ trước ${before}, sau ${after}`).toMatch(/^(5[89]|60):\d\d$/);
   await notice.getByRole('button', { name: 'Đã hiểu' }).click();
   await expect(notice).toBeHidden();
@@ -196,6 +196,28 @@ test('Theo dõi: chọn nhóm, Buộc nộp cả nhóm; Đóng cửa vào thi; b
   await expect(examiner.getByRole('menuitem', { name: 'Mở lại cửa vào thi…' })).toBeVisible();
   await examiner.keyboard.press('Escape');
 
+  // Một câu đã lưu trước khi bị Buộc nộp: phải còn nguyên sau đó
+  await sv1.getByRole('radio', { name: 'Hà Nội' }).check();
+  await expect(sv1.getByRole('status', { name: 'Trạng thái lưu' })).toContainText('Đã lưu');
+
+  // Cộng giờ cả phòng với số phút tùy ý; thao tác phải xong tức thì (AGENTS.md: > 300 ms đáng xem, > 1 s là lỗi)
+  await examiner.getByRole('button', { name: 'Thao tác cả phòng' }).click();
+  await examiner.getByRole('menuitem', { name: 'Cộng giờ cả phòng…' }).click();
+  const all = examiner.getByRole('dialog', { name: 'Cộng giờ' });
+  await expect(all).toContainText('Cả phòng: 2 người');
+  await all.getByLabel('Số phút khác (1–180)').fill('7');
+  await all.getByLabel('Lý do (bắt buộc)').fill('Mạng phòng máy chập chờn');
+  const asked = Date.now();
+  await all.getByRole('button', { name: 'Cộng 7 phút cho 2 người' }).click();
+  await expect(examiner.getByText('Đã cộng 7 phút cho 2 người')).toBeVisible();
+  const took = Date.now() - asked;
+  console.info(`[${project}] Cộng giờ cả phòng: ${took} ms`);
+  expect(took, 'Cộng giờ cả phòng phải tức thì').toBeLessThan(1000);
+  await beat(sv2);
+  await expect(
+    sv2.getByRole('status').filter({ hasText: 'Bạn được cộng thêm 7 phút' }),
+  ).toBeVisible();
+
   // Chọn nhóm rồi Buộc nộp: hộp xác nhận nêu số người
   await examiner.getByRole('button', { name: /Chọn nhiều|Chọn$/ }).click();
   await examiner.getByRole('button', { name: /Chọn cả 2 người đang hiện/ }).click();
@@ -205,9 +227,66 @@ test('Theo dõi: chọn nhóm, Buộc nộp cả nhóm; Đóng cửa vào thi; b
   await dialog.getByRole('button', { name: 'Buộc nộp 2 người' }).click();
   await expect(examiner.getByText('Đã Buộc nộp 2 người')).toBeVisible();
 
+  // Câu đã lưu vẫn còn sau khi bị Buộc nộp (màn Theo dõi đếm từ dữ liệu đã ghi)
+  const snapshot = await examiner.request.get(`/api/sessions/${sessionId}/monitor`);
+  const people = (await snapshot.json()).people as {
+    fullName: string;
+    answered: number;
+    state: string;
+  }[];
+  expect(people.find((p) => p.fullName.includes('Theo dõi 1'))).toMatchObject({
+    answered: 1,
+    state: 'submitted',
+  });
+
   for (const page of [sv1, sv2]) {
     await beat(page);
     await expect(page.getByRole('heading', { name: 'Đã nộp' })).toBeVisible();
     await expect(page.getByText('Người ra đề đã Buộc nộp Lượt làm bài này.')).toBeVisible();
   }
+});
+
+test('Theo dõi: rời màn hình nhiều lần thì Cần chú ý; Cảnh cáo phát sinh lúc trang đóng vẫn hiện sau khi tải lại', async ({
+  browser,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const { examiner, sessionId, candidate } = await room(browser, project, 'cc');
+  const sv1 = await candidate(1);
+  await candidate(2);
+
+  // Rời màn hình 3 lần (giả lập tab ẩn rồi hiện); nhịp gửi ngay khi ẩn nên Người ra đề thấy sớm
+  for (let i = 0; i < 3; i++) {
+    for (const state of ['hidden', 'visible']) {
+      await sv1.evaluate((value) => {
+        Object.defineProperty(document, 'visibilityState', { value, configurable: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      }, state);
+    }
+  }
+  await expect
+    .poll(
+      async () => {
+        await openMonitor(examiner, sessionId);
+        return examiner.getByRole('button', { name: /Cần chú ý/ }).textContent();
+      },
+      { timeout: 15_000 },
+    )
+    .toContain('(1)');
+  await examiner.getByRole('button', { name: /Cần chú ý/ }).click();
+  await expect(examiner.getByText('1 / 2 người')).toBeVisible();
+  await expect(examiner.getByText('Rời màn hình 3 lần').first()).toBeVisible();
+
+  // Cảnh cáo khi trang của Người dự thi không gửi được nhịp nào (đóng hoặc mất mạng): tải lại vẫn thấy
+  await sv1.route('**/api/take/attempts/*/heartbeat', (route) => route.abort());
+  await examiner.getByRole('button', { name: 'Chi tiết' }).first().click();
+  await examiner.getByRole('button', { name: 'Cảnh cáo…' }).click();
+  const warn = examiner.getByRole('dialog', { name: 'Cảnh cáo' });
+  await warn.getByLabel('Lý do (bắt buộc)').fill('Mở tab khác trong giờ thi');
+  await warn.getByRole('button', { name: 'Cảnh cáo' }).click();
+  await expect(examiner.getByText('Đã Cảnh cáo')).toBeVisible();
+  await sv1.unroute('**/api/take/attempts/*/heartbeat');
+  await sv1.reload();
+  await expect(
+    sv1.getByRole('alert').filter({ hasText: 'Mở tab khác trong giờ thi' }),
+  ).toBeVisible();
 });

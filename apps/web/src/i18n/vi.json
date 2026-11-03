@@ -1459,7 +1459,7 @@
     "legend": {
       "label": "Chú giải",
       "how": "Chữ cái: tên gọi · số: câu đã làm · ô đầy dần: tiến độ",
-      "hidden": "rời màn hình từ 3 lần",
+      "hidden": "rời màn hình từ {{count}} lần",
       "slow": "chậm"
     },
     "select": {
@@ -1500,16 +1500,17 @@
     "reasonOptional": "Lý do (không bắt buộc)",
     "extend": {
       "title": "Cộng giờ",
-      "note": "đang làm sẽ được cộng giờ và thấy ngay trên màn hình của họ.",
+      "note": "{{scope}}: {{count}} người đang làm sẽ được cộng giờ và thấy ngay trên màn hình của họ.",
       "minutes": "Số phút",
       "plus": "+{{minutes}} phút",
       "reasonHint": "Ví dụ: mất điện phòng máy",
-      "confirm": "Cộng {{minutes}} phút cho {{count}} người"
+      "confirm": "Cộng {{minutes}} phút cho {{count}} người",
+      "custom": "Số phút khác (1–180)"
     },
     "force": {
       "title": "Buộc nộp",
       "confirm": "Buộc nộp {{count}} người",
-      "body": "đang làm sẽ nộp bài ngay. Các câu đã lưu được giữ và chấm như bình thường. Không hoàn tác được."
+      "body": "{{scope}}: {{count}} người đang làm sẽ nộp bài ngay. Các câu đã lưu được giữ và chấm như bình thường. Không hoàn tác được."
     },
     "warn": {
       "title": "Cảnh cáo",
@@ -1541,7 +1542,7 @@
     },
     "distribution": {
       "title": "Phân bố tiến độ của người đang làm",
-      "label": "Phân bố số câu đã làm của người đang làm"
+      "label": "Số câu đã làm của người đang làm, mỗi cột một nhóm câu: {{buckets}}"
     },
     "toast": {
       "extended": "Đã cộng {{minutes}} phút cho {{count}} người",
@@ -1552,6 +1553,10 @@
       "pardoned": "Đã Hoàn tác Thu hồi",
       "closed": "Đã đóng cửa vào thi",
       "reopened": "Đã mở lại cửa vào thi"
-    }
+    },
+    "minutesShort": "{{count}}′",
+    "bucket": "{{from}}+",
+    "more": "Hiện thêm {{count}} người",
+    "showing": "Đang hiện {{shown}} / {{total}} người"
   }
 }

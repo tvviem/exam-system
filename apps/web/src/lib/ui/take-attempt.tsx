@@ -162,7 +162,8 @@ function useAttemptSession(view: AttemptView): RunnerSession {
   const [notices, setNotices] = useState<Notice[]>([]);
   useHeartbeat({
     attemptId,
-    since: view.attempt.serverNow,
+    since: view.attempt.startedAt,
+    active: stop === null,
     onServerTime: (time) => {
       setConnected(true);
       countdown.resync(time);
@@ -708,7 +709,6 @@ function AttemptScreen({
   );
 }
 
-/** Tải lại lúc mất mạng: đề lấy từ bản sao trên máy; câu trả lời được giữ và tự gửi khi có mạng (Q243). */
 /** Thông báo của Người ra đề giữa giờ thi: Người dự thi phải thấy rõ và tự đóng (Q257, Q259). */
 function ExaminerNotice({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {
   const { t } = useTranslation();
@@ -744,6 +744,7 @@ function ExaminerNotice({ notice, onDismiss }: { notice: Notice; onDismiss: () =
   );
 }
 
+/** Tải lại lúc mất mạng: đề lấy từ bản sao trên máy; câu trả lời được giữ và tự gửi khi có mạng (Q243). */
 function OfflineNotice() {
   const { t } = useTranslation();
   return (

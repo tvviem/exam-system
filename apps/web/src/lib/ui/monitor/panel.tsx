@@ -20,21 +20,24 @@ export function PersonPanel({
   person,
   totalItems,
   handlers,
+  closeOnEscape,
   onClose,
 }: {
   person: MonitorPerson | undefined;
   totalItems: number;
   handlers: PanelHandlers;
+  /** Tắt khi có hộp thoại đang mở trên ngăn kéo: Esc chỉ đóng hộp thoại, không đóng luôn ngăn kéo. */
+  closeOnEscape: boolean;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const wide = useMedia('(min-width: 1024px)');
   useEffect(() => {
-    if (!wide || !person) return;
+    if (!wide || !person || !closeOnEscape) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [wide, person, onClose]);
+  }, [wide, person, closeOnEscape, onClose]);
 
   if (wide) {
     if (!person) return null;
@@ -47,7 +50,7 @@ export function PersonPanel({
           type="button"
           aria-label={t('common.close')}
           onClick={onClose}
-          className="absolute top-3 right-3 inline-flex size-10 cursor-pointer items-center justify-center rounded-lg text-fg-muted hover:bg-primary-soft"
+          className="absolute top-2 right-2 inline-flex size-12 cursor-pointer items-center justify-center rounded-lg text-fg-muted hover:bg-primary-soft"
         >
           <X aria-hidden className="size-5" />
         </button>
