@@ -57,6 +57,19 @@ export class SessionEntryService implements SessionEntry {
     return row ?? null;
   }
 
+  async gateForOwner(
+    sessionId: string,
+    userId: string,
+    executor: EntryExecutor = this.db,
+  ): Promise<EntryGate | null> {
+    const { extraMinutes: _own, ...columns } = gateColumns;
+    const [row] = await executor
+      .select(columns)
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.ownerId, userId)));
+    return row ? { ...row, extraMinutes: 0 } : null;
+  }
+
   listFor(userId: string, since: Date, executor: EntryExecutor = this.db): Promise<EntryGate[]> {
     return this.base(executor)
       .where(and(eq(sessionRoster.userId, userId), gt(sessions.closesAt, since)))

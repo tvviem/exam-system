@@ -141,3 +141,34 @@ export class CandidateMediaController {
     return sendVariant(reply, this.env, this.media, key);
   }
 }
+
+/**
+ * Ảnh trong đề khi Xem thử (Q245): chỉ chủ Phiên thi, ở mọi trạng thái của Phiên thi. Quyền do cổng `CANDIDATE_MEDIA`
+ * quyết định; người khác nhận 404 như khi ảnh không tồn tại.
+ */
+@Controller('sessions')
+export class PreviewMediaController {
+  constructor(
+    private readonly illustrations: IllustrationsService,
+    @Inject(CANDIDATE_MEDIA) private readonly candidateMedia: CandidateMedia,
+    @Inject(MEDIA_STORE) private readonly media: MediaStore,
+    @Inject(ENV) private readonly env: Env,
+  ) {}
+
+  @Get(':sessionId/try-media/:id/:variant')
+  async serve(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('variant') variant: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const side = variantSchema.safeParse(variant);
+    if (!side.success) throw validationFailed('variant', 'invalid');
+    if (!(await this.candidateMedia.canPreview(user.id, sessionId, id))) {
+      throw new ApiError('NOT_FOUND');
+    }
+    const key = await this.illustrations.variantKeyAfterAccessCheck(id, side.data);
+    return sendVariant(reply, this.env, this.media, key);
+  }
+}

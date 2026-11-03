@@ -15,4 +15,6 @@ export interface CandidateMedia {
     attemptId: string,
     illustrationId: string,
   ): Promise<boolean>;
+  /** Xem thử (Q245): chủ Phiên thi xem được ảnh nằm trong Bộ đề của Phiên thi đó, ở mọi trạng thái của Phiên thi. */
+  canPreview(userId: string, sessionId: string, illustrationId: string): Promise<boolean>;
 }
