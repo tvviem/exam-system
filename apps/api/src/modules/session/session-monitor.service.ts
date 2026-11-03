@@ -71,7 +71,14 @@ export class SessionMonitorService {
     } as const;
     const people = profiles.items.map((profile) => {
       const attempt = live.byUser.get(profile.id);
-      const device = deviceStateOf(devices.get(profile.id) ?? [], attempt?.startedAt ?? null);
+      const own = devices.get(profile.id) ?? [];
+      const device = deviceStateOf(own, attempt?.startedAt ?? null);
+      // Thiết bị bị Thu hồi gần nhất: đích của "Hoàn tác Thu hồi" (đưa máy cũ vào lại, máy đang gắn bị thu hồi thay).
+      const revokedDeviceId =
+        own
+          .filter((item) => item.status === 'revoked')
+          .sort((a, b) => (b.revokedAt?.getTime() ?? 0) - (a.revokedAt?.getTime() ?? 0))[0]
+          ?.deviceId ?? null;
       const reasons = attempt
         ? attentionReasonsOf({
             inProgress: attempt.status === 'in_progress',
@@ -104,6 +111,7 @@ export class SessionMonitorService {
         hiddenCount: attempt?.hiddenCount ?? 0,
         warnings: attempt?.warnings ?? 0,
         device,
+        revokedDeviceId,
         reasons,
       };
     });

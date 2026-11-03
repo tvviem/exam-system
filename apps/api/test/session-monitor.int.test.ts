@@ -36,6 +36,7 @@ interface Person {
   hiddenCount: number;
   warnings: number;
   device: string;
+  revokedDeviceId: string | null;
   reasons: string[];
   submitReason: string | null;
   deadline: string | null;
@@ -236,10 +237,10 @@ describe('thiết bị', () => {
       {},
     );
     expect(await person('an')).toMatchObject({ device: 'revoked', reasons: ['device'] });
-    const roster = (await live.api('GET', `/sessions/${live.sessionId}/roster`)).json() as {
-      items: { userId: string; revokedDevices: { id: string }[] }[];
-    };
-    const deviceId = roster.items.find((i) => i.userId === live.userIds.an)?.revokedDevices[0]?.id;
+    // Màn Theo dõi cho biết thiết bị nào để Hoàn tác Thu hồi, không phải đọc cả Danh sách dự thi.
+    const deviceId = (await person('an')).revokedDeviceId;
+    expect(deviceId).toEqual(expect.any(String));
+    expect((await person('binh')).revokedDeviceId).toBeNull();
     await live.api('POST', `/sessions/${live.sessionId}/roster/${live.userIds.an}/pardon-device`, {
       deviceId,
     });
