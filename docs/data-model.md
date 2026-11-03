@@ -123,6 +123,8 @@ Quy tắc ràng buộc ở tầng service:
 
 ## 2. Ngân hàng câu hỏi (module `question-bank`)
 
+**Chữ Việt luôn ở dạng NFC (dựng sẵn).** Nội dung Câu hỏi (lời dẫn, Phương án, Mệnh đề, hướng dẫn chấm, công thức, mô tả ảnh) được `richTextSchema` đưa về NFC ngay khi nhận, và mọi ô của file Excel/CSV nhập vào được đưa về NFC ở `common/spreadsheet.ts`. Nhờ vậy chữ gõ hay dán ở dạng dấu rời (NFD) vẫn lưu, đếm ký tự (giới hạn `STEM_MAX_CHARS`, `ITEM_MAX_CHARS`) và hiển thị giống hệt dạng dựng sẵn; bản chụp trong `exam_items.snapshot` được sao từ nội dung đã chuẩn hóa nên Bộ đề, Phiên thi và Lượt làm bài đọc cùng một chuỗi. Chưa áp dụng cho: tên Chủ đề, nhãn, tiêu đề và các chữ ngắn ngoài nội dung có định dạng; câu trả lời tự luận của Người dự thi (việc đếm `maxLength` vẫn theo ký tự thô).
+
 ```sql
 topics (                                  -- Chủ đề: danh sách phẳng của một Người ra đề
   id, owner_id → users NOT NULL, name, description, archived_at, created_at, updated_at,

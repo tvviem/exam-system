@@ -236,3 +236,36 @@ describe('node image (Hình minh họa)', () => {
     );
   });
 });
+
+// Nội dung Câu hỏi phải giống hệt nhau trên toàn hệ thống dù chữ Việt được gõ hay dán ở dạng dựng sẵn (NFC) hay dấu rời (NFD):
+// cùng một chữ thì cùng một chuỗi, cùng số ký tự, cùng cách hiển thị.
+describe('richTextSchema chuẩn hóa chữ Việt về NFC', () => {
+  const nfd = (value: string) => value.normalize('NFD');
+  const NFC_TEXT = 'Nguyễn Việt Hoàng giải phương trình bậc hai';
+
+  it('chữ trong đoạn văn nhập ở dạng dấu rời ra ở dạng dựng sẵn', () => {
+    const parsed = richTextSchema.parse(doc(para(text(nfd(NFC_TEXT), ['bold']))));
+    expect(plainTextOf(parsed)).toBe(NFC_TEXT);
+    expect(plainTextOf(parsed).length).toBe(NFC_TEXT.length);
+  });
+
+  it('công thức và mô tả ảnh cũng được chuẩn hóa', () => {
+    const parsed = richTextSchema.parse(
+      doc(para({ type: 'math', attrs: { latex: nfd('\\text{Việt}'), display: false } }), {
+        type: 'image',
+        attrs: {
+          illustrationId: '0197a6f0-0000-7000-8000-0000000000a1',
+          alt: nfd('Đồ thị hàm số'),
+        },
+      }),
+    );
+    expect(mathNodesOf(parsed)[0]?.latex).toBe('\\text{Việt}');
+    expect(imageNodesOf(parsed)[0]?.alt).toBe('Đồ thị hàm số');
+  });
+
+  it('hai dạng của cùng một nội dung cho ra đúng cùng một kết quả', () => {
+    const a = richTextSchema.parse(doc(para(text(NFC_TEXT))));
+    const b = richTextSchema.parse(doc(para(text(nfd(NFC_TEXT)))));
+    expect(b).toEqual(a);
+  });
+});

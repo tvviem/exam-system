@@ -303,3 +303,37 @@ describe('hình minh họa trong Câu hỏi', () => {
     expect(searchTextOf(input)).toContain('hinh');
   });
 });
+
+describe('đếm ký tự theo chữ Việt dựng sẵn (NFC)', () => {
+  // 1.000 chữ "ệ": ở dạng dấu rời mỗi chữ là 3 ký tự nên đếm thô sẽ là 3.000, vượt giới hạn 2.000 của Phương án.
+  const longNfd = 'ệ'.repeat(1000).normalize('NFD');
+  const longNfc = 'ệ'.repeat(1000);
+
+  it('Phương án dài 1.000 chữ có dấu được nhận dù nhập ở dạng dấu rời, và lưu giống hệt dạng dựng sẵn', () => {
+    const withText = (value: string) =>
+      single({
+        payload: {
+          options: [opt('o1', value), opt('o2'), opt('o3')],
+          key: ['o2'],
+          shuffleOptions: true,
+        },
+      });
+    expect(longNfd.length).toBe(3000);
+    expect(ok(withText(longNfd))).toBe(true);
+    const a = questionInputSchema.parse(withText(longNfd));
+    const b = questionInputSchema.parse(withText(longNfc));
+    expect(a).toEqual(b);
+  });
+
+  it('vẫn từ chối nội dung thật sự quá dài (đếm theo dạng dựng sẵn)', () => {
+    const tooLong = 'ệ'.repeat(2001).normalize('NFD');
+    const withText = single({
+      payload: {
+        options: [opt('o1', tooLong), opt('o2'), opt('o3')],
+        key: ['o2'],
+        shuffleOptions: true,
+      },
+    });
+    expect(ok(withText)).toBe(false);
+  });
+});
