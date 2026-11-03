@@ -196,11 +196,11 @@ Hành động của Người ra đề chặn việc bắt đầu Lượt làm b�
 _Avoid_: khóa phòng, đóng Phiên thi
 
 **Cộng giờ** (`ExtendTime`):
-Hành động của Người ra đề thêm số phút vào hạn nộp của một Lượt làm bài đang làm hoặc của mọi Lượt đang làm trong phòng, ví dụ khi mất điện hay mất mạng. Mỗi lần Cộng giờ được ghi lại kèm lý do và hiện ngay trên màn hình của Người dự thi. Người ra đề cũng có thể cộng sẵn giờ cho từng người trong Danh sách dự thi trước khi thi (ví dụ hỗ trợ đặc biệt); phần cộng sẵn tính vào hạn ngay khi họ bắt đầu.
+Hành động của Người ra đề thêm số phút vào hạn nộp của một Lượt làm bài đang làm, của một nhóm Lượt đã chọn, hoặc của mọi Lượt đang làm trong phòng, ví dụ khi mất điện hay mất mạng. Mỗi lần Cộng giờ được ghi lại kèm lý do và hiện ngay trên màn hình của Người dự thi. Người ra đề cũng có thể cộng sẵn giờ cho từng người trong Danh sách dự thi trước khi thi (ví dụ hỗ trợ đặc biệt); phần cộng sẵn tính vào hạn ngay khi họ bắt đầu.
 _Avoid_: gia hạn, kéo dài Phiên thi (kéo dài Khung giờ hoặc Thời lượng của cả Phiên thi là việc khác)
 
 **Buộc nộp** (`ForceSubmit`):
-Hành động của Người ra đề kết thúc ngay một Lượt làm bài, hoặc mọi Lượt đang làm của cả Phiên thi. Các Câu trả lời đã lưu được giữ và Chấm như bình thường. Khác Đình chỉ ở chỗ không kèm Vi phạm.
+Hành động của Người ra đề kết thúc ngay một Lượt làm bài, một nhóm Lượt đã chọn, hoặc mọi Lượt đang làm của cả Phiên thi. Các Câu trả lời đã lưu được giữ và Chấm như bình thường. Khác Đình chỉ ở chỗ không kèm Vi phạm.
 _Avoid_: thu bài, ép nộp
 
 **Hủy Phiên thi** (`Cancel`):
@@ -226,6 +226,10 @@ _Avoid_: đáp án, answer
 **Nộp bài** (`Submit`):
 Kết thúc Lượt làm bài, do Người dự thi chủ động hoặc hệ thống tự động khi hết thời gian. Người ra đề cũng có thể kết thúc Lượt bằng Buộc nộp, Đình chỉ hoặc Hủy Phiên thi. Sau khi Nộp bài, Câu trả lời không còn sửa được.
 _Avoid_: hoàn thành, finish
+
+**Cần chú ý** (`NeedsAttention`):
+Gợi ý trên màn Theo dõi rằng một Người dự thi đang làm bài có thể cần Người ra đề xem trước, vì có dấu hiệu như mất kết nối, rời màn hình nhiều lần, dùng thiết bị mới hoặc bị Thu hồi, hoặc làm chậm bất thường so với thời gian đã trôi. Chỉ để xem, không phải Vi phạm và không ghi vào Kết quả; Người ra đề tự quyết có hành động hay không.
+_Avoid_: nghi vấn, đáng ngờ, nghi gian lận
 
 **Vi phạm** (`Violation`):
 Ghi nhận của Người ra đề, kèm lý do, về hành vi sai quy định của Người dự thi trong một Lượt làm bài. Hành động đi kèm là *Cảnh cáo* (vẫn làm tiếp) hoặc *Đình chỉ*.

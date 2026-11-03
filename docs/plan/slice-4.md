@@ -33,7 +33,7 @@ Bất biến vẫn giữ: Đáp án đúng không bao giờ có trong response g
 | Q204 | Chia PR 4a–4e (xem mục "Chia PR"); mỗi PR có thiết kế chi tiết và seam test duyệt riêng | đã duyệt |
 | Q205 | Xóa người dùng là Người ra đề: mọi Phiên thi (kể cả đang diễn ra) sang người nhận cùng Bộ đề; Chuyển giao Chủ đề không đụng Phiên thi; Xóa người dùng là Người dự thi đang có Lượt: Lượt nộp tự động (Q76) | đã duyệt |
 | Q206 | `/take`: ô Nhập Mã vào thi ở đầu, dưới là **Phiên thi của tôi** (Đang mở / Sắp mở / Đã xong); menu chuyển khu "Soạn đề" ↔ "Làm bài" cho người mang cả hai Nhãn (Q143); chưa Công bố thì chỉ thấy "Đã nộp" | đã duyệt |
-| Q207 | Trước PR 4d, dựng 2–3 **prototype màn Theo dõi** trên nhánh `prototype/theo-doi` để chủ dự án chọn (Q110) | đã duyệt |
+| Q207 | Trước PR 4d, dựng 2–3 **prototype màn Theo dõi** trên nhánh `prototype/theo-doi` để chủ dự án chọn (Q110) | đã duyệt; **xong 3/11/2026**, chủ dự án duyệt bản gộp (xem Q252–Q254) |
 | Q208 | Khung giờ chỉ giới hạn việc **bắt đầu** (đúng GLOSSARY); mỗi Lượt được đủ Thời lượng. Công tắc Phiên thi **"Cắt cứng khi đóng Khung giờ"** (mặc định tắt): Lượt kết thúc lúc đóng. Sửa mâu thuẫn giữa GLOSSARY và kiến trúc 5.1 | đã duyệt |
 | Q209 | Một thiết bị chỉ phục vụ **một** Người dự thi trong một Phiên thi; không có công tắc tắt quy tắc 1 thiết bị | đã duyệt |
 | Q210 | Màn xác nhận trước khi bắt đầu hiện tên Bộ đề, Thời lượng, số câu, số lượt còn lại và nói rõ hệ thống ghi nhận thiết bị, địa chỉ IP, việc rời màn hình | đã duyệt |
@@ -52,6 +52,9 @@ Bất biến vẫn giữ: Đáp án đúng không bao giờ có trong response g
 | Q223 | **Ranh giới module bằng cổng thô theo nghiệp vụ** (phương án A, chủ dự án duyệt 2/11/2026, làm ở đầu 4b): `ExamCatalog` (`exam` cài đặt, `session` dùng), `CandidateDirectory` (`identity` cài đặt, `session` dùng), `SessionEntry` (`session` cài đặt, `attempt` dùng: một truy vấn nối trong chính `session` trả trạng thái, thiết lập và giờ cộng sẵn). Kèm một test kiến trúc cấm `session` import bảng của `exam` và `identity`. Đo trên 500 người: nối bảng p50 3,1 ms, qua cổng hai truy vấn p50 4,0 ms; đường nóng lúc thi không đi qua `users` hay `exams` | đã duyệt |
 | Q224 | **Cấu hình cho 500 người cùng nơi** (làm ở 4b): kích thước nhóm kết nối Postgres đọc từ biến môi trường (`DB_POOL_MAX`, mặc định giữ 10) và kiểm tra lại cách api nhận địa chỉ IP thật sau nginx và Cloudflare; môi trường demo đặt `LOGIN_MAX_PER_IP` từ 1000 trở lên vì cả lớp dùng chung một IP | đã duyệt |
 | Q225 | **Demo trên laptop WSL** theo [docs/ops/demo-wsl.md](../ops/demo-wsl.md): pod `prod-exam`, tên miền giá rẻ mua riêng, ra Internet qua `cloudflared`. Chủ dự án sẽ tự dừng và xóa pod `prod-plotracker` khi triển khai | đã duyệt |
+| Q252 | **Cần chú ý** là bộ lọc trên màn Theo dõi, không có vùng riêng: một chip "Cần chú ý (N)" cạnh các ô lọc trạng thái. Người đang làm bài thuộc diện này khi có một trong bốn dấu hiệu: mất kết nối, rời màn hình nhiều lần, thiết bị mới hoặc bị Thu hồi, làm chậm bất thường. Ngưỡng cố định ở bản đầu (chưa cho Người ra đề chỉnh), chờ đo ở phòng thi thật. Chỉ là gợi ý để xem, không phải Vi phạm | đã duyệt 3/11/2026 |
+| Q253 | **Ba chế độ xem theo mật độ**: Thẻ, Bảng, Lưới, đổi bằng một nút; chế độ mặc định theo số người trong Danh sách dự thi (đến 30 người: Thẻ; đến 150: Bảng; trên đó: Lưới). Bản đầu làm Bảng và Lưới, Thẻ làm sau. Bảng và Thẻ phải phân trang hoặc cuộn ảo khi trên khoảng 100 dòng (prototype đo được 500–620 ms khi đổi chế độ ở 300 người với CPU chậm 4 lần) | đã duyệt 3/11/2026 |
+| Q254 | **Phạm vi thao tác**: mọi hành động chọn được một Lượt, một nhóm hoặc cả Phiên thi. Nhóm chọn bằng ô tick hoặc "chọn cả những người đang lọc" (theo Lớp, theo trạng thái, theo Cần chú ý). Cộng giờ và Buộc nộp áp dụng cho cả ba phạm vi; **Đình chỉ chỉ áp dụng cho một Lượt** (Vi phạm gắn với từng Lượt và lý do cụ thể). Thao tác nặng luôn qua hộp xác nhận nêu số người bị ảnh hưởng; Cộng giờ bắt nhập lý do. `attempt_time_extensions.scope` thêm giá trị `group` (0014 chưa chạy) | đã duyệt 3/11/2026 |
 
 ### Lý do của Q212–Q222
 
@@ -380,6 +383,8 @@ Trước 4d, dựng trên nhánh `prototype/theo-doi` với dữ liệu giả (3
 | Yếu | khó nhìn tổng thể trên điện thoại | ít chữ, khó thấy chi tiết | có thể bỏ sót người im lặng |
 
 Dùng skill `prototype` và `ui-ux-pro-max`, kiểm bằng Playwright ở hai kích thước màn hình.
+
+**Kết quả (3/11/2026).** Chủ dự án không chọn một phương án mà yêu cầu gộp: mỗi phương án thành một chế độ xem (A thành Bảng, B thành Lưới, C thành Thẻ cùng bộ lọc Cần chú ý và biểu đồ phân bố tiến độ), thêm chọn nhóm và thao tác cả phòng (Q252–Q254). Bản gộp nằm ở nhánh `prototype/theo-doi` (đã đẩy lên GitHub, ở ngoài `main`), chạy ở `/examiner/sessions/theo-doi-thu?n=20|120|300`. Số đo: lọc và chọn nhóm 25–170 ms; đổi chế độ ở 300 người: Lưới 50 ms, Bảng và Thẻ 140–170 ms (500–620 ms khi CPU chậm 4 lần); vẽ lại mỗi nhịp 2 giây không tạo tác vụ dài (tối đa 105 ms khi CPU chậm 4 lần). Điểm còn mở cho thiết kế chi tiết 4d: trên điện thoại ô tìm và Lớp vào bottom sheet "Bộ lọc"; ô lưới cao khoảng 42 px (dưới mức 48 px); Cảnh cáo cần ô lý do; Thu hồi và Hoàn tác Thu hồi có hỏi lại hay không.
 
 ## Rủi ro và giới hạn đã biết
 
