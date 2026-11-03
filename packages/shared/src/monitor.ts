@@ -24,19 +24,39 @@ export interface AttentionInput {
   lastSeenAt: Date | null;
   /** Số lần rời màn hình làm bài. */
   hiddenCount: number;
-  device: 'ok' | 'new' | 'revoked';
+  device: DeviceState;
   /** Tỉ lệ số câu đã trả lời trên tổng số câu, từ 0 đến 1. */
   answeredFraction: number;
+}
+
+/** Quá 45 giây không có nhịp (hoặc, chưa có nhịp nào, kể từ lúc bắt đầu) thì coi là mất kết nối (Q261). */
+export function isDisconnected(lastSeenAt: Date | null, startedAt: Date, now: Date): boolean {
+  return now.getTime() - (lastSeenAt ?? startedAt).getTime() > ATTENTION_OFFLINE_SECONDS * 1000;
+}
+
+export type DeviceState = 'none' | 'ok' | 'new' | 'revoked';
+
+/**
+ * Thiết bị của một người so với Lượt của họ: `none` chưa gắn thiết bị, `revoked` chỉ còn thiết bị đã Thu hồi, `new`
+ * thiết bị đang gắn được gắn sau khi Lượt bắt đầu (làm tiếp trên máy khác sau Thu hồi), còn lại `ok`.
+ */
+export function deviceStateOf(
+  devices: readonly { status: 'active' | 'revoked'; boundAt: Date }[],
+  attemptStartedAt: Date | null,
+): DeviceState {
+  if (devices.length === 0) return 'none';
+  const active = devices.find((device) => device.status === 'active');
+  if (!active) return 'revoked';
+  return attemptStartedAt && active.boundAt > attemptStartedAt ? 'new' : 'ok';
 }
 
 /** Các dấu hiệu khiến một Lượt đang làm đáng được Người ra đề xem; chỉ là gợi ý, không phải Vi phạm. */
 export function attentionReasonsOf(input: AttentionInput): AttentionReason[] {
   const reasons: AttentionReason[] = [];
   if (!input.inProgress) return reasons;
-  const seen = (input.lastSeenAt ?? input.startedAt).getTime();
-  if (input.now.getTime() - seen > ATTENTION_OFFLINE_SECONDS * 1000) reasons.push('disconnected');
+  if (isDisconnected(input.lastSeenAt, input.startedAt, input.now)) reasons.push('disconnected');
   if (input.hiddenCount >= ATTENTION_HIDDEN_COUNT) reasons.push('hidden');
-  if (input.device !== 'ok') reasons.push('device');
+  if (input.device === 'new' || input.device === 'revoked') reasons.push('device');
   const total = input.deadline.getTime() - input.startedAt.getTime();
   const elapsed = total > 0 ? (input.now.getTime() - input.startedAt.getTime()) / total : 0;
   if (elapsed > ATTENTION_SLOW_AFTER && input.answeredFraction < elapsed - ATTENTION_SLOW_GAP)
@@ -110,7 +130,12 @@ export type ViolationRequest = z.infer<typeof violationSchema>;
 export const HEARTBEAT_EVENTS_MAX = 20;
 
 /** Loại sự kiện trình duyệt báo qua heartbeat (còn `device_rejected` do server ghi). */
-export const HEARTBEAT_EVENT_TYPES = ['tab_hidden', 'tab_visible', 'went_offline', 'back_online'] as const;
+export const HEARTBEAT_EVENT_TYPES = [
+  'tab_hidden',
+  'tab_visible',
+  'went_offline',
+  'back_online',
+] as const;
 export type HeartbeatEventType = (typeof HEARTBEAT_EVENT_TYPES)[number];
 
 /**

@@ -1,7 +1,8 @@
 import { extendTimeSchema, forceSubmitSchema, violationSchema } from '@exam/shared';
-import { Body, Controller, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import type { Actor } from '../../common/actor';
-import { CurrentActor, RequireTag } from '../identity/auth/auth.decorators';
+import { CurrentActor, CurrentUser, RequireTag } from '../identity/auth/auth.decorators';
+import type { AuthenticatedUser } from '../identity/auth/auth.types';
 import { SessionMonitorService } from './session-monitor.service';
 
 /** Theo dõi và thao tác lúc Phiên thi đang diễn ra (PR 4d); chỉ chủ Phiên thi, người khác nhận 404. */
@@ -9,6 +10,14 @@ import { SessionMonitorService } from './session-monitor.service';
 @Controller('sessions/:sessionId')
 export class SessionMonitorController {
   constructor(private readonly monitor: SessionMonitorService) {}
+
+  @Get('monitor')
+  monitorOf(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.monitor.monitor(user.id, sessionId);
+  }
 
   @Post('extend-time')
   @HttpCode(200)

@@ -4,6 +4,7 @@ import { and, count, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
+import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
 import { uniqueViolationOf } from '../../common/pg-error';
 import type {
   ExamDeviceSummary,
@@ -11,6 +12,7 @@ import type {
   ExtendTimeResult,
   ForceSubmitInput,
   ForceSubmitResult,
+  MonitorAttempt,
   SessionAttempts,
   SubmitReason,
   ViolationInput,
@@ -19,6 +21,7 @@ import type { UserDeactivationHooks } from '../../common/user-deactivation';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { attempts, attemptTimeExtensions, sessionDevices, violations } from './attempt.schema';
 import { closeInProgress } from './attempt-close';
+import { AttemptPresence } from './attempt-presence';
 
 /** Lý do ghi khi thiết bị đang gắn bị thu hồi để nhường chỗ cho thiết bị được Hoàn tác Thu hồi (Q234). */
 const PARDON_SWAP_REASON = 'pardon_swap';
@@ -29,6 +32,8 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
+    private readonly presence: AttemptPresence,
   ) {}
 
   async hasAttempts(sessionId: string, executor: Pick<Database, 'select'> = this.db) {
@@ -215,6 +220,62 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       })),
     );
     return { extended: ids.length, skipped, replayed: false };
+  }
+
+  async monitorAttempts(sessionId: string, examId: string) {
+    // Mọi truy vấn độc lập nhau nên chạy song song; số liệu đếm theo cả Phiên thi rồi lấy phần của Lượt mới nhất.
+    const [latest, counts, hidden, warned, lastSeen, summaries] = await Promise.all([
+      this.db.execute<{
+        id: string;
+        user_id: string;
+        attempt_no: number;
+        status: 'in_progress' | 'submitted';
+        submit_reason: SubmitReason | null;
+        started_at: Date;
+        deadline: Date;
+        submitted_at: Date | null;
+      }>(sql`
+        select distinct on (user_id) id, user_id, attempt_no, status, submit_reason, started_at, deadline, submitted_at
+        from attempts where session_id = ${sessionId} order by user_id, attempt_no desc`),
+      this.db.execute<{ attempt_id: string; n: number }>(sql`
+        select r.attempt_id, count(*)::int n
+        from responses r join attempts a on a.id = r.attempt_id
+        where a.session_id = ${sessionId}
+          and r.value is not null and r.value <> 'null'::jsonb
+          and r.value <> '{"optionIds":[]}'::jsonb and r.value <> '{"answers":{}}'::jsonb
+          and r.value <> '{"text":""}'::jsonb
+        group by r.attempt_id`),
+      this.db.execute<{ attempt_id: string; n: number }>(sql`
+        select attempt_id, count(*)::int n from session_events
+        where session_id = ${sessionId} and type = 'tab_hidden' and attempt_id is not null group by attempt_id`),
+      this.db.execute<{ attempt_id: string; n: number }>(sql`
+        select attempt_id, count(*)::int n from violations
+        where session_id = ${sessionId} and action = 'warning' group by attempt_id`),
+      this.presence.lastSeenOf(sessionId),
+      this.content.summariesOf([examId]),
+    ]);
+    const numbers = (rows: { attempt_id: string; n: number }[]) =>
+      new Map(rows.map((row) => [row.attempt_id, row.n]));
+    const answered = numbers(counts.rows);
+    const hiddenBy = numbers(hidden.rows);
+    const warnedBy = numbers(warned.rows);
+    const byUser = new Map<string, MonitorAttempt>();
+    for (const row of latest.rows) {
+      byUser.set(row.user_id, {
+        attemptId: row.id,
+        attemptNo: row.attempt_no,
+        status: row.status,
+        submitReason: row.submit_reason,
+        startedAt: new Date(row.started_at),
+        deadline: new Date(row.deadline),
+        submittedAt: row.submitted_at ? new Date(row.submitted_at) : null,
+        answered: answered.get(row.id) ?? 0,
+        hiddenCount: hiddenBy.get(row.id) ?? 0,
+        warnings: warnedBy.get(row.id) ?? 0,
+        lastSeenAt: lastSeen.get(row.id) ?? null,
+      });
+    }
+    return { totalItems: summaries.get(examId)?.itemCount ?? 0, byUser };
   }
 
   async forceSubmit(tx: Transaction, input: ForceSubmitInput): Promise<ForceSubmitResult> {

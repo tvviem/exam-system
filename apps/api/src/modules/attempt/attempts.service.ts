@@ -155,6 +155,7 @@ export class AttemptsService {
           deviceHash: hash,
           ip: meta.ip,
           userAgent: meta.userAgent,
+          boundAt: this.clock.now(),
         })
         .onConflictDoNothing()
         .returning({ id: sessionDevices.id });

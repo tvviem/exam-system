@@ -67,6 +67,25 @@ export interface ViolationInput {
   now: Date;
 }
 
+/** Lượt mới nhất của một người trong Phiên thi, kèm số liệu cho màn Theo dõi (PR 4d). */
+export interface MonitorAttempt {
+  attemptId: string;
+  attemptNo: number;
+  status: 'in_progress' | 'submitted';
+  submitReason: SubmitReason | null;
+  startedAt: Date;
+  deadline: Date;
+  submittedAt: Date | null;
+  /** Số câu đã trả lời (bỏ trả lời và trả lời rỗng không tính). */
+  answered: number;
+  /** Số lần rời màn hình làm bài. */
+  hiddenCount: number;
+  /** Số lần bị Cảnh cáo. */
+  warnings: number;
+  /** Lần gần nhất báo còn làm bài; `null` nếu chưa có nhịp nào. */
+  lastSeenAt: Date | null;
+}
+
 export interface SessionAttempts {
   /** Phiên thi đã có Lượt làm bài nào chưa (kể cả đã nộp). */
   hasAttempts(sessionId: string, executor?: Transaction): Promise<boolean>;
@@ -101,4 +120,9 @@ export interface SessionAttempts {
    * không thuộc Phiên thi, `INVALID_STATE` (`ATTEMPT_CLOSED`) nếu Lượt đã nộp. Trả id Vi phạm và người bị ghi.
    */
   recordViolation(tx: Transaction, input: ViolationInput): Promise<{ id: string; userId: string }>;
+  /** Lượt mới nhất của từng người trong Phiên thi và tổng số câu của Bộ đề (màn Theo dõi). */
+  monitorAttempts(
+    sessionId: string,
+    examId: string,
+  ): Promise<{ totalItems: number; byUser: Map<string, MonitorAttempt> }>;
 }

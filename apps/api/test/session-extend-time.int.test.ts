@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { AttemptSweepJob } from '../src/modules/attempt/attempt-sweep.job';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
+import { minutes } from './support/fake-clock';
 import { openLiveSession } from './support/live-session';
 import { resetState } from './support/reset';
 import { Taker } from './support/take';
@@ -208,5 +210,25 @@ describe('quyền', () => {
     expect((await extend(body, other)).statusCode).toBe(404);
     expect((await extend(body, takers.an?.cookie)).statusCode).toBe(403);
     expect(await sql(`select 1 from attempt_time_extensions`)).toHaveLength(0);
+  });
+});
+
+describe('job quét tự nộp tôn trọng hạn đã kéo dài (S5)', () => {
+  it('Lượt được Cộng giờ không bị nộp ở hạn cũ, chỉ bị nộp khi qua hạn mới cộng ân hạn', async () => {
+    await extend({
+      attemptIds: [attemptIds.an],
+      minutes: 15,
+      reason: 'Mất điện',
+      batchId: batch(),
+    });
+    const sweep = t.app.get(AttemptSweepJob);
+    t.clock.advance(minutes(46)); // quá hạn gốc 45 phút, còn trong hạn mới 60 phút
+    expect(await sweep.run()).toBe(2); // chỉ Bình và Chi (không được Cộng giờ) bị nộp
+    expect((await takers.an?.call('GET', `/take/attempts/${attemptIds.an}`))?.json().status).toBe(
+      'in_progress',
+    );
+    t.clock.advance(minutes(14) + 31_000);
+    expect(await sweep.run()).toBe(1);
+    expect(await sql(`select 1 from attempts where submit_reason = 'timeout'`)).toHaveLength(3);
   });
 });
