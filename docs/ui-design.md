@@ -209,10 +209,10 @@ Một khung dùng chung cho Quản trị viên và Người ra đề; Người d
 | **Chi tiết** | Người dùng, Phiên thi | Đầu trang + tab; cột phụ bên phải | Một cột, tab cuộn ngang |
 | **Soạn** | Câu hỏi, Bộ đề | Hai cột: soạn và xem trước đúng như Người dự thi sẽ thấy; trạng thái "Đã lưu" tự động | Hai tab "Soạn" và "Xem trước"; thanh công cụ dính trên bàn phím |
 | **Các bước** | Tạo Phiên thi, Phát hành Bộ đề | Chỉ báo bước ở đầu, tóm tắt bên phải | Chỉ báo bước thu gọn "Bước 2/4", nút Tiếp dính đáy |
-| **Theo dõi** | Phòng thi thời gian thực | Thanh tóm tắt (đang làm, đã nộp, mất kết nối, vi phạm) + bảng ổn định, hành động trong ngăn kéo bên phải | Thanh tóm tắt dính trên, thẻ lớn, hành động trong bottom sheet; dùng được bằng một tay |
+| **Theo dõi** | Phòng thi thời gian thực | Thanh tóm tắt dính (đang làm, đã nộp, mất kết nối, chưa vào, vi phạm; bấm để lọc); hàng công cụ: tìm, Lớp, chế độ xem Thẻ / Bảng / Lưới (mặc định theo số người: đến 30 Thẻ, đến 150 Bảng, trên đó Lưới), Chọn nhiều; chip "Cần chú ý"; hành động một người trong ngăn kéo bên phải; thanh hành động dính đáy khi chọn nhóm | Thanh tóm tắt dính trên, các điều khiển gọn một hàng (nút chỉ có biểu tượng), hành động một người trong bottom sheet, thanh hành động nhóm dính đáy; dùng được bằng một tay |
 | **Chấm** | Câu tự luận, Phúc khảo | Chia đôi: hàng đợi bài (ẩn tên) và nội dung + ô điểm; phím tắt J/K, nhập điểm bằng bàn phím | Một bài mỗi màn, nút Trước/Sau, tiến độ ở đầu |
 
-Mẫu **Theo dõi** và **Chấm** cần prototype riêng để chủ dự án chọn trước khi lập trình (ghi ở Q110).
+Mẫu **Theo dõi** đã chọn qua prototype (3/11/2026, bản gộp ở nhánh `prototype/theo-doi`; quyết định Q252–Q254 trong [plan/slice-4.md](plan/slice-4.md)). Mẫu **Chấm** vẫn cần prototype riêng để chủ dự án chọn trước khi lập trình (ghi ở Q110).
 
 ## 11. Thành phần dùng chung và mật độ (Q108, Q109)
 
