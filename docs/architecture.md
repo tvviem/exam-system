@@ -110,9 +110,10 @@ Quy tắc: một module chỉ gọi module khác qua service công khai của mo
 - Khi tới hạn mà client chưa gửi phần còn trong hàng đợi, server Nộp bài với những gì đã nhận.
 
 ### 5.4 Theo dõi Phiên thi (màn hình của Người ra đề)
-- Client gửi heartbeat qua WebSocket; Redis lưu trạng thái online, mất kết nối, đã nộp.
-- Ghi sự kiện bất thường: rời tab hoặc ứng dụng, mất kết nối lâu, có phiên đăng nhập thứ hai.
-- Người ra đề có thể: cộng giờ cho từng người hoặc cả phòng, buộc Nộp bài, Cho phép đổi thiết bị, **Đình chỉ** kèm lý do.
+- Người dự thi gửi **heartbeat** `POST /take/attempts/:id/heartbeat` mỗi 15 giây (Q213); Redis (`presence:{sessionId}`) giữ lần báo gần nhất, "mất kết nối" suy ra khi đọc (quá 45 giây). Response mang hạn hiện tại, trạng thái, thiết bị còn hợp lệ không và thông báo mới (Cộng giờ, Cảnh cáo) nên mọi thay đổi đến Người dự thi trong tối đa 15 giây dù không có kênh đẩy. Socket.IO (PR 4d-3) chỉ là phần tăng tốc: hỏng thì hệ thống vẫn đúng.
+- Sự kiện bất thường (rời màn hình, mất mạng) ghi vào `session_events`, không ghi từng nhịp.
+- Màn Theo dõi đọc `GET /sessions/:id/monitor`: trạng thái, tiến độ, thiết bị và dấu hiệu Cần chú ý của cả phòng, tính ở server bằng hàm thuần ở `packages/shared`. Mở lại màn hình trên thiết bị khác lấy lại đủ trạng thái; máy của Người ra đề không nằm trong đường găng của Người dự thi (hạn, job quét, lưu bài đều ở server).
+- Người ra đề có thể, cho một Lượt, một nhóm hoặc cả phòng: **Cộng giờ** (kèm lý do, mã lô chống cộng hai lần khi thử lại), **Buộc nộp**; cho một Lượt: **Cảnh cáo** hoặc **Đình chỉ** (kèm lý do); **Đóng và Mở lại cửa vào thi**; **Thu hồi thiết bị** và **Hoàn tác Thu hồi**. Mỗi thao tác ghi `audit_logs`.
 - Sau khi Phiên thi đã mở, chỉ được kéo dài Khung giờ hoặc Thời lượng, đổi Mã vào thi và thêm người vào Danh sách dự thi.
 
 ### 5.5 Chấm tự động

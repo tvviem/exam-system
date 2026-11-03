@@ -312,16 +312,30 @@ responses (                               -- Câu trả lời
 --   chờ rồi thấy đã nộp); câu phải thuộc Bộ đề của Phiên thi; không chuyển sang Lượt hay câu khác.
 -- Trigger sessions_guard (thay hàm của 0012): Phiên thi đã có Lượt thì không đổi exam_id, shuffle_items, shuffle_options.
 
-attempt_events (                          -- sự kiện bất thường: rời tab, mất kết nối... (PR 4d, migration 0014)
-  id bigserial, attempt_id, type text, data jsonb, at
+session_events (                          -- sự kiện bất thường (Q198, migration 0014): chỉ ghi nhận, chỉ ghi thêm
+  id bigserial, session_id → sessions, user_id → users, attempt_id → attempts NULL,
+  type enum('tab_hidden','tab_visible','went_offline','back_online','device_rejected'),
+  data jsonb, client_event_id uuid NULL,  -- mã do trình duyệt sinh: gửi lại heartbeat không ghi trùng
+  at timestamptz DEFAULT now()            -- giờ server nhận
+  -- UNIQUE (attempt_id, client_event_id) WHERE client_event_id IS NOT NULL
+  -- Trigger session_events_guard: không sửa, không xóa. (`device_rejected` chưa có nơi ghi.)
 )
 
-violations (                              -- Vi phạm
+attempt_time_extensions (                 -- nhật ký Cộng giờ (Q254, Q256, Q262): một dòng mỗi Lượt được cộng
+  id, attempt_id → attempts, minutes int CHECK (1..180), scope enum('one','group','all'),
+  reason text CHECK (1..200 ký tự), batch_id uuid, extended_by → users, at,
+  UNIQUE (attempt_id, batch_id)           -- gửi lại cùng yêu cầu không cộng hai lần
+  -- Trigger: chỉ ghi thêm; chỉ cho Lượt đang làm (khóa dòng Lượt FOR UPDATE); tổng phút của một Lượt ≤ 600.
+)
+
+violations (                              -- Vi phạm (Q259, migration 0014)
   id, attempt_id → attempts, session_id → sessions, user_id → users,
-  action enum('warning','disqualify'), reason text NOT NULL,
+  action enum('warning','disqualify'), reason text CHECK (1..500 ký tự),
   penalty_type enum('none','percent','void') DEFAULT 'none',
-  penalty_percent numeric(5,2) NULL,
+  penalty_percent numeric(5,2) NULL,      -- CHECK: có số phần trăm (0..100) khi và chỉ khi penalty_type = 'percent'
   recorded_by → users, recorded_at, penalty_decided_at
+  -- Trigger violations_guard: session_id và user_id phải khớp Lượt; sau khi ghi chỉ ba cột hình phạt được quyết
+  --   (lát cắt 5); không xóa.
 )
 
 appeals (                                 -- Phúc khảo: mỗi đối tượng 1 lần, trong 72 giờ sau Công bố

@@ -571,3 +571,24 @@ Chỗ cần anh nhận xét: chữ và vị trí dải "Đang mở đề đã l�
 Thiết bị dự thi, Thu hồi thiết bị, Cắt cứng, Đóng cửa vào thi, Cộng giờ, Buộc nộp, Hủy Phiên thi. "Nhân bản" cố ý không thành thuật ngữ riêng (chủ dự án: người dùng dùng một lần là hiểu). Các định nghĩa trong GLOSSARY là nguồn để viết hướng dẫn sử dụng cho người dùng cuối, nên giữ chúng chính xác khi hành vi thay đổi.
 
 Trước khi code mỗi PR còn cần: danh sách seam test chi tiết cho PR đó (bảng S1–S9 là khung) và mọi câu hỏi giao diện nảy sinh. Không bắt đầu code khi chưa được duyệt.
+
+## PR 4d-1: API theo dõi và thao tác của Người ra đề (4/11/2026)
+
+Làm đúng phần "PR 4d: thiết kế chi tiết (đã duyệt 4/11/2026)": migration 0014, `GET monitor`, heartbeat, Cộng giờ, Buộc nộp, Vi phạm, Đóng và Mở lại cửa vào thi. Chưa có giao diện (4d-2) và Socket.IO (4d-3).
+
+**Ghi chú triển khai**
+
+- **Hàm thuần ở `packages/shared/src/monitor.ts`** (S1): `attentionReasonsOf`, `isDisconnected`, `deviceStateOf`, `extendedDeadline`, `extensionWithinCap`, `extensionScopeOf` và các schema Zod `extendTimeSchema`, `forceSubmitSchema`, `violationSchema`, `heartbeatSchema`. Hằng số theo Q256, Q259, Q261.
+- **Migration 0014 và trigger** (S3): `session_events`, `attempt_time_extensions`, `violations`; hai nhật ký chỉ ghi thêm; Cộng giờ khóa dòng Lượt `FOR UPDATE` rồi kiểm trần 600 phút, nên Cộng giờ xen Nộp bài hay xen một Cộng giờ khác phải nối đuôi.
+- **Thêm so với thiết kế: `session_events.client_event_id`** (UUID do trình duyệt sinh, chỉ mục duy nhất theo Lượt). Gửi lại heartbeat (mạng chập chờn) không làm tăng số lần rời màn hình, nếu không sẽ báo "Cần chú ý" sai.
+- **Cộng giờ**: `UPDATE attempts SET deadline = deadline + make_interval(...)` cho các Lượt đang làm, một dòng nhật ký mỗi Lượt. Mã lô đã có trong Phiên thi thì trả kết quả lần đầu và không làm gì (kể cả cả phòng gửi lại sau khi có người mới vào). Một nhóm tối đa 500 Lượt. Cộng giờ không bị Cắt cứng chặn (GLOSSARY).
+- **Buộc nộp và Đình chỉ** dùng lại `closeInProgress` (lý do `examiner`, `disqualified`). Đình chỉ ghi Vi phạm và nộp Lượt trong cùng giao dịch.
+- **Vi phạm chỉ ghi cho Lượt đang làm** (đã nộp thì `ATTEMPT_CLOSED`). Ghi Vi phạm sau khi đã nộp là việc của lát cắt 5 (Chấm), cần thiết kế riêng.
+- **Heartbeat** trả `deviceOk: false` (không phải lỗi 4xx) khi thiết bị bị Thu hồi hay lạ, và khi đó không ghi presence hay sự kiện. `cursor` trả về lùi 5 giây so với giờ server và mỗi thông báo có `id`, nên giao dịch Cộng giờ xác nhận muộn không bị lỡ; thông báo có thể lặp tối đa hai nhịp, trình duyệt bỏ trùng theo `id`. Không có `since` thì không trả thông báo cũ.
+- **`device_rejected`** có trong enum nhưng chưa có nơi ghi: dấu hiệu thiết bị của Cần chú ý lấy từ `session_devices`, không từ sự kiện.
+- **`bound_at` của thiết bị theo đồng hồ ứng dụng** (trước là `now()` của PostgreSQL), để so được với giờ bắt đầu Lượt và để test dùng giờ giả. Một test cũ (`session-attempts`) phải cho máy thứ hai vào sau một phút vì dựa vào thứ tự giờ thật.
+- **Audit**: `session.time_extended`, `session.force_submitted`, `session.violation_recorded`, `session.entry_closed`, `session.entry_reopened`. Đóng hoặc Mở lại cửa vào thi lần hai không ghi thêm.
+- **Số đo** (504 người, 453 đang làm, qua HTTP trên máy dev): `GET monitor` p50 26 ms, p95 33 ms (ngân sách 100 ms); heartbeat p50 11 ms, p95 13 ms (ngân sách 30 ms); Cộng giờ cả phòng 84 ms và Buộc nộp cả phòng 22 ms (ngân sách 300 ms). Chưa cần cache "đã trả lời" 5 giây của thiết kế gốc.
+- **Kiểm thử**: S1 (`monitor.test.ts`, 31 test), S3 (`attempt-monitor-schema`, 19), S2/S4/S5 (`session-extend-time`, `session-examiner-actions`, `attempt-heartbeat`, `session-monitor`), S8 (quét JSON `key`, `rubric` cho heartbeat và monitor). S6 (Playwright) và S7 (Socket.IO) thuộc 4d-2 và 4d-3.
+- **Cách xem thử**: PR này chưa có giao diện nên chưa có hướng dẫn thử bằng màn hình (4d-2 sẽ có). Chạy `pnpm -C apps/api exec vitest run --project integration test/session-monitor.int.test.ts --silent=false` để xem các con số đo.
+
