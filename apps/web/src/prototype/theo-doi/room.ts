@@ -33,7 +33,6 @@ export const TOTAL_QUESTIONS = 40;
 export const DURATION_SECONDS = 45 * 60;
 export const SIM_STEP = 15;
 const TICK_MS = 2000;
-const HEADCOUNT = 300;
 
 function rng(seed: number) {
   let a = seed;
@@ -113,10 +112,10 @@ const DEVICES = [
 const pick = <T>(random: () => number, list: T[]): T =>
   list[Math.floor(random() * list.length)] as T;
 
-export function buildRoom(simNow: number): Person[] {
+export function buildRoom(simNow: number, headcount: number): Person[] {
   const random = rng(20261103);
   const people: Person[] = [];
-  for (let i = 0; i < HEADCOUNT; i++) {
+  for (let i = 0; i < headcount; i++) {
     const given = pick(random, GIVEN);
     const name = `${pick(random, FAMILY)} ${pick(random, MIDDLE)} ${given}`;
     const roll = random();
@@ -195,10 +194,10 @@ export interface RoomActions {
   suspend: (id: number) => void;
 }
 
-export function useRoom() {
+export function useRoom(headcount: number) {
   const [simNow, setSimNow] = useState(Math.floor(DURATION_SECONDS * 0.55));
   const [people, setPeople] = useState<Person[]>(() =>
-    buildRoom(Math.floor(DURATION_SECONDS * 0.55)),
+    buildRoom(Math.floor(DURATION_SECONDS * 0.55), headcount),
   );
   const [entryClosed, setEntryClosed] = useState(false);
   const [paused, setPaused] = useState(false);

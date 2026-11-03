@@ -2,8 +2,6 @@
 // cho mẫu Theo dõi (thanh tóm tắt, hành động trong ngăn kéo / bottom sheet). Bố cục bên trong do từng phương án tự quyết.
 import {
   Ban,
-  ChevronLeft,
-  ChevronRight,
   CircleCheck,
   CircleDashed,
   Eye,
@@ -11,29 +9,23 @@ import {
   ShieldOff,
   Smartphone,
   TriangleAlert,
+  Turtle,
   WifiOff,
   X,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
-import { Badge, Button, Dialog } from '../../lib/ui';
+import { Badge, Button, Dialog, TextField } from '../../lib/ui';
 import { useToast } from '../../lib/ui/toast';
 import {
   clock,
   type Person,
+  type Reason,
   type RoomActions,
   type RoomState,
+  reasonsOf,
   remainingOf,
   TOTAL_QUESTIONS,
 } from './room';
-
-export interface VariantProps {
-  people: Person[];
-  simNow: number;
-  actions: RoomActions;
-  /** Mở ngăn kéo / bottom sheet của một người. */
-  open: (id: number) => void;
-  selectedId: number | null;
-}
 
 export const STATE_META: Record<
   RoomState,
@@ -203,15 +195,22 @@ function useWide() {
   return wide;
 }
 
+export interface PanelHandlers {
+  actions: RoomActions;
+  onExtend: (id: number) => void;
+  onForce: (id: number) => void;
+  onSuspend: (id: number) => void;
+}
+
 export function PersonPanel({
   person,
   simNow,
-  actions,
+  handlers,
   onClose,
 }: {
   person: Person | undefined;
   simNow: number;
-  actions: RoomActions;
+  handlers: PanelHandlers;
   onClose: () => void;
 }) {
   const wide = useWide();
@@ -237,13 +236,13 @@ export function PersonPanel({
         >
           <X aria-hidden className="size-5" />
         </button>
-        <PanelBody person={person} simNow={simNow} actions={actions} />
+        <PanelBody person={person} simNow={simNow} handlers={handlers} />
       </aside>
     );
   }
   return (
     <Dialog open={!!person} onClose={onClose} title={person?.name ?? ''}>
-      {person && <PanelBody person={person} simNow={simNow} actions={actions} hideTitle />}
+      {person && <PanelBody person={person} simNow={simNow} handlers={handlers} hideTitle />}
     </Dialog>
   );
 }
@@ -251,15 +250,16 @@ export function PersonPanel({
 function PanelBody({
   person,
   simNow,
-  actions,
+  handlers,
   hideTitle,
 }: {
   person: Person;
   simNow: number;
-  actions: RoomActions;
+  handlers: PanelHandlers;
   hideTitle?: boolean;
 }) {
   const toast = useToast();
+  const { actions } = handlers;
   const live = person.state === 'working' || person.state === 'disconnected';
   const run = (fn: () => void, message: string) => () => {
     fn();
@@ -274,7 +274,7 @@ function PanelBody({
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
           <StateBadge state={person.state} />
-          <DeviceBadge device={person.device} />
+          <ReasonBadges person={person} simNow={simNow} />
           {person.warnings > 0 && (
             <Badge tone="danger" icon={<TriangleAlert aria-hidden className="size-3.5" />}>
               Cảnh cáo {person.warnings}
@@ -299,19 +299,13 @@ function PanelBody({
       </dl>
 
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium">Cộng giờ</p>
-        <div className="grid grid-cols-3 gap-2">
-          {[5, 10, 15].map((m) => (
-            <Button
-              key={m}
-              disabled={!live}
-              onClick={run(() => actions.extend([person.id], m), `Đã cộng ${m} phút`)}
-            >
-              +{m} phút
-            </Button>
-          ))}
-        </div>
         <div className="grid grid-cols-2 gap-2">
+          <Button disabled={!live} onClick={() => handlers.onExtend(person.id)}>
+            Cộng giờ…
+          </Button>
+          <Button disabled={!live} onClick={() => handlers.onForce(person.id)}>
+            Buộc nộp…
+          </Button>
           {person.device === 'revoked' ? (
             <Button onClick={run(() => actions.pardon(person.id), 'Đã Hoàn tác Thu hồi')}>
               Hoàn tác Thu hồi
@@ -324,23 +318,13 @@ function PanelBody({
               Thu hồi thiết bị
             </Button>
           )}
-          <Button
-            disabled={!live}
-            onClick={run(() => actions.forceSubmit([person.id]), 'Đã Buộc nộp')}
-          >
-            Buộc nộp
-          </Button>
           <Button disabled={!live} onClick={run(() => actions.warn(person.id), 'Đã Cảnh cáo')}>
             Cảnh cáo
           </Button>
-          <Button
-            variant="danger"
-            disabled={!live}
-            onClick={run(() => actions.suspend(person.id), 'Đã Đình chỉ')}
-          >
-            Đình chỉ
-          </Button>
         </div>
+        <Button variant="danger" disabled={!live} onClick={() => handlers.onSuspend(person.id)}>
+          Đình chỉ…
+        </Button>
       </div>
 
       <div className="flex flex-col gap-1">
@@ -362,69 +346,139 @@ function PanelBody({
   );
 }
 
+const REASON_BADGE: Record<Reason, (p: Person) => ReactNode> = {
+  disconnected: () => (
+    <Badge tone="warning" icon={<WifiOff aria-hidden className="size-3.5" />}>
+      Mất kết nối
+    </Badge>
+  ),
+  hidden: (p) => (
+    <Badge tone="danger" icon={<Eye aria-hidden className="size-3.5" />}>
+      Rời màn hình {p.hiddenCount} lần
+    </Badge>
+  ),
+  device: (p) =>
+    p.device === 'revoked' ? (
+      <Badge tone="danger" icon={<ShieldOff aria-hidden className="size-3.5" />}>
+        Thiết bị bị thu hồi
+      </Badge>
+    ) : (
+      <Badge tone="warning" icon={<Smartphone aria-hidden className="size-3.5" />}>
+        Thiết bị mới
+      </Badge>
+    ),
+  slow: (p) => (
+    <Badge tone="warning" icon={<Turtle aria-hidden className="size-3.5" />}>
+      Chậm: {p.answered}/{TOTAL_QUESTIONS} câu
+    </Badge>
+  ),
+};
+
+/** Các dấu hiệu "cần chú ý" (Q252) của một người, mỗi dấu hiệu một huy hiệu có biểu tượng và chữ. */
+export function ReasonBadges({ person, simNow }: { person: Person; simNow: number }) {
+  const reasons = reasonsOf(person, simNow);
+  return (
+    <>
+      {reasons.map((r) => (
+        <span key={r}>{REASON_BADGE[r](person)}</span>
+      ))}
+    </>
+  );
+}
+
+export function ConfirmDialog({
+  title,
+  children,
+  confirmLabel,
+  danger,
+  onConfirm,
+  onClose,
+}: {
+  title: string;
+  children: ReactNode;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open onClose={onClose} title={title}>
+      <div className="text-sm text-fg-muted">{children}</div>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button onClick={onClose}>Hủy</Button>
+        <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
+          {confirmLabel}
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
+/** Cộng giờ cho một người, một nhóm hoặc cả phòng: luôn nêu số người sẽ được cộng và bắt nhập lý do (glossary: Cộng giờ). */
+export function ExtendDialog({
+  count,
+  scope,
+  onConfirm,
+  onClose,
+}: {
+  count: number;
+  scope: string;
+  onConfirm: (minutes: number, reason: string) => void;
+  onClose: () => void;
+}) {
+  const [minutes, setMinutes] = useState(5);
+  const [reason, setReason] = useState('');
+  return (
+    <Dialog open onClose={onClose} title="Cộng giờ">
+      <p className="text-sm text-fg-muted">
+        {scope}: <strong className="text-fg">{count} người</strong> đang làm sẽ được cộng giờ và
+        thấy ngay trên màn hình của họ.
+      </p>
+      <fieldset className="m-0 grid grid-cols-4 gap-2 border-0 p-0">
+        <legend className="sr-only">Số phút</legend>
+        {[5, 10, 15, 30].map((m) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={minutes === m}
+            onClick={() => setMinutes(m)}
+            className={`min-h-12 cursor-pointer rounded-lg border text-sm font-semibold pointer-fine:min-h-9 ${
+              minutes === m
+                ? 'border-primary bg-primary-soft text-on-primary-soft'
+                : 'border-border-strong bg-surface'
+            }`}
+          >
+            +{m} phút
+          </button>
+        ))}
+      </fieldset>
+      <TextField
+        id="extend-reason"
+        label="Lý do (bắt buộc)"
+        value={reason}
+        maxLength={200}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="Ví dụ: mất điện phòng máy"
+      />
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button onClick={onClose}>Hủy</Button>
+        <Button
+          variant="primary"
+          disabled={count === 0 || reason.trim() === ''}
+          onClick={() => onConfirm(minutes, reason.trim())}
+        >
+          Cộng {minutes} phút cho {count} người
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
       <dt className="text-fg-muted">{label}</dt>
       <dd>{value}</dd>
-    </div>
-  );
-}
-
-/** Thanh nổi chuyển phương án (nằm ngoài thiết kế đang xét). Phím ← → cũng chuyển. */
-export function VariantSwitcher({
-  variants,
-  current,
-  onChange,
-}: {
-  variants: { key: string; name: string }[];
-  current: string;
-  onChange: (key: string) => void;
-}) {
-  const index = Math.max(
-    0,
-    variants.findIndex((v) => v.key === current),
-  );
-  const go = (step: number) => {
-    const next = variants[(index + step + variants.length) % variants.length];
-    if (next) onChange(next.key);
-  };
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target?.closest('input, textarea, select, [contenteditable]')) return;
-      if (e.key === 'ArrowLeft') go(-1);
-      if (e.key === 'ArrowRight') go(1);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-  if (import.meta.env.PROD && !import.meta.env.VITE_SHOW_SWITCHER) return null;
-  const now = variants[index];
-  return (
-    <div
-      data-testid="variant-switcher"
-      className="fixed bottom-[calc(var(--app-tabbar-h)+0.75rem)] left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full bg-fg p-1 text-bg shadow-xl lg:bottom-4"
-    >
-      <button
-        type="button"
-        aria-label="Phương án trước"
-        onClick={() => go(-1)}
-        className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full hover:bg-bg/20"
-      >
-        <ChevronLeft aria-hidden className="size-5" />
-      </button>
-      <span className="min-w-44 px-2 text-center text-sm font-semibold">
-        {now?.key} · {now?.name}
-      </span>
-      <button
-        type="button"
-        aria-label="Phương án sau"
-        onClick={() => go(1)}
-        className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full hover:bg-bg/20"
-      >
-        <ChevronRight aria-hidden className="size-5" />
-      </button>
     </div>
   );
 }
