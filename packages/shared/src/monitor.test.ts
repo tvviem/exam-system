@@ -3,7 +3,6 @@ import {
   type AttentionInput,
   attentionReasonsOf,
   deviceStateOf,
-  extendedDeadline,
   extendTimeSchema,
   extensionScopeOf,
   extensionWithinCap,
@@ -11,6 +10,7 @@ import {
   HEARTBEAT_EVENTS_MAX,
   heartbeatSchema,
   isDisconnected,
+  monitorStateOf,
   violationSchema,
 } from './monitor.js';
 
@@ -153,11 +153,7 @@ describe('extendTimeSchema: yêu cầu Cộng giờ (Q254, Q256, Q262)', () => {
   });
 });
 
-describe('extendedDeadline và extensionWithinCap (Q256, GLOSSARY: Cắt cứng không chặn Cộng giờ)', () => {
-  it('cộng thêm đúng số phút vào hạn hiện tại', () => {
-    expect(extendedDeadline(at('2026-12-01T01:45:00Z'), 15)).toEqual(at('2026-12-01T02:00:00Z'));
-  });
-
+describe('extensionWithinCap (Q256)', () => {
   it('tổng phần cộng thêm của một Lượt không quá 600 phút', () => {
     expect(extensionWithinCap(585, 15)).toBe(true);
     expect(extensionWithinCap(586, 15)).toBe(false);
@@ -268,5 +264,44 @@ describe('deviceStateOf: thiết bị của một người so với Lượt (Q25
   it('thiết bị đang gắn mà gắn sau khi bắt đầu (sau Thu hồi) thì new', () => {
     const list = [revoked('2026-12-01T01:05:00Z'), active('2026-12-01T01:30:00Z')];
     expect(deviceStateOf(list, startedAt)).toBe('new');
+  });
+});
+
+describe('monitorStateOf: trạng thái một người trên màn Theo dõi (Q252)', () => {
+  const started = at('2026-12-01T01:00:00Z');
+  const now = at('2026-12-01T01:10:00Z');
+  const working = {
+    status: 'in_progress' as const,
+    submitReason: null,
+    startedAt: started,
+    lastSeenAt: at('2026-12-01T01:09:55Z'),
+  };
+
+  it('chưa có Lượt thì chưa vào', () => {
+    expect(monitorStateOf(null, now)).toBe('not_started');
+  });
+
+  it('đang làm: còn nhịp là working, quá 45 giây không nhịp là disconnected', () => {
+    expect(monitorStateOf(working, now)).toBe('working');
+    expect(monitorStateOf({ ...working, lastSeenAt: at('2026-12-01T01:09:00Z') }, now)).toBe(
+      'disconnected',
+    );
+  });
+
+  it('đã nộp: nộp bình thường hay bị Buộc nộp là submitted, bị Đình chỉ là suspended', () => {
+    for (const submitReason of [
+      'candidate',
+      'timeout',
+      'examiner',
+      'account_locked',
+      'session_cancelled',
+    ]) {
+      expect(monitorStateOf({ ...working, status: 'submitted', submitReason }, now)).toBe(
+        'submitted',
+      );
+    }
+    expect(
+      monitorStateOf({ ...working, status: 'submitted', submitReason: 'disqualified' }, now),
+    ).toBe('suspended');
   });
 });

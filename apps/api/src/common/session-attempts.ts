@@ -41,8 +41,10 @@ export interface ExtendTimeResult {
   extended: number;
   /** Số Lượt được chọn nhưng đã nộp nên bị bỏ qua. */
   skipped: number;
-  /** Mã lô này đã được xử lý trước đó; lần này không đổi gì. */
+  /** Mã lô này đã được xử lý trước đó; lần này không đổi gì (và `skipped` của lần đầu không được giữ lại). */
   replayed: boolean;
+  /** Id các Lượt vừa được cộng giờ, cho nhật ký thao tác. */
+  attemptIds: string[];
 }
 
 export interface ForceSubmitInput {
@@ -56,6 +58,8 @@ export interface ForceSubmitResult {
   closed: number;
   /** Số Lượt được chọn nhưng đã nộp từ trước. */
   skipped: number;
+  /** Id các Lượt vừa bị nộp, cho nhật ký thao tác. */
+  closedIds: string[];
 }
 
 export interface ViolationInput {

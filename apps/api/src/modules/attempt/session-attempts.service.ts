@@ -1,6 +1,6 @@
-import { EXTEND_TOTAL_MINUTES_MAX, extensionScopeOf } from '@exam/shared';
+import { extensionScopeOf, extensionWithinCap } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, eq, inArray, type SQL, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
@@ -168,13 +168,30 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
     const { sessionId, batchId, minutes } = input;
     // Thử lại cùng yêu cầu: đã có dòng nhật ký của mã lô trong Phiên thi này thì không đổi gì (Q262).
     const [done] = await tx
-      .select({ n: count() })
+      .select({
+        n: count(),
+        minMinutes: sql<number>`min(${attemptTimeExtensions.minutes})::int`,
+        maxMinutes: sql<number>`max(${attemptTimeExtensions.minutes})::int`,
+        reasons: sql<number>`count(distinct ${attemptTimeExtensions.reason})::int`,
+        reason: sql<string | null>`min(${attemptTimeExtensions.reason})`,
+      })
       .from(attemptTimeExtensions)
       .innerJoin(attempts, eq(attempts.id, attemptTimeExtensions.attemptId))
       .where(and(eq(attempts.sessionId, sessionId), eq(attemptTimeExtensions.batchId, batchId)));
-    if ((done?.n ?? 0) > 0) return { extended: done?.n ?? 0, skipped: 0, replayed: true };
+    if (done && done.n > 0) {
+      // Cùng mã lô nhưng yêu cầu khác: lỗi của giao diện dùng lại mã, báo chứ không nuốt im lặng.
+      if (
+        done.minMinutes !== minutes ||
+        done.maxMinutes !== minutes ||
+        done.reasons !== 1 ||
+        done.reason !== input.reason
+      ) {
+        throw new ApiError('INVALID_STATE', { reason: 'BATCH_REUSED' });
+      }
+      return { extended: done.n, skipped: 0, replayed: true, attemptIds: [] };
+    }
 
-    const chosen = input.attemptIds ? [...new Set(input.attemptIds)] : null;
+    const chosen = uniqueIds(input.attemptIds);
     if (chosen) await this.requireInSession(tx, sessionId, chosen);
     // Khóa theo thứ tự id như `closeInProgress`; Nộp bài xen vào thì chờ rồi bị loại vì không còn đang làm.
     const targets = await tx
@@ -190,16 +207,22 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       .orderBy(attempts.id)
       .for('update');
     const skipped = chosen ? chosen.length - targets.length : 0;
-    if (targets.length === 0) return { extended: 0, skipped, replayed: false };
+    if (targets.length === 0) return { extended: 0, skipped, replayed: false, attemptIds: [] };
     const ids = targets.map((row) => row.id);
 
     const sums = await tx
-      .select({ total: sql<number>`coalesce(sum(${attemptTimeExtensions.minutes}), 0)::int` })
+      .select({
+        attemptId: attemptTimeExtensions.attemptId,
+        total: sql<number>`sum(${attemptTimeExtensions.minutes})::int`,
+      })
       .from(attemptTimeExtensions)
       .where(inArray(attemptTimeExtensions.attemptId, ids))
       .groupBy(attemptTimeExtensions.attemptId);
-    if (sums.some((row) => row.total + minutes > EXTEND_TOTAL_MINUTES_MAX)) {
-      throw new ApiError('INVALID_STATE', { reason: 'EXTENSION_LIMIT' });
+    const overLimit = sums
+      .filter((row) => !extensionWithinCap(row.total, minutes))
+      .map((row) => row.attemptId);
+    if (overLimit.length > 0) {
+      throw new ApiError('INVALID_STATE', { reason: 'EXTENSION_LIMIT', attemptIds: overLimit });
     }
 
     await tx
@@ -219,7 +242,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
         at: input.now,
       })),
     );
-    return { extended: ids.length, skipped, replayed: false };
+    return { extended: ids.length, skipped, replayed: false, attemptIds: ids };
   }
 
   async monitorAttempts(sessionId: string, examId: string) {
@@ -237,6 +260,8 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       }>(sql`
         select distinct on (user_id) id, user_id, attempt_no, status, submit_reason, started_at, deadline, submitted_at
         from attempts where session_id = ${sessionId} order by user_id, attempt_no desc`),
+      // "Đã trả lời" = có giá trị khác rỗng. Các dạng rỗng ({optionIds:[]}, {answers:{}}, {text:""}) phải khớp
+      // `responseSchemaFor` (packages/shared/src/attempt.ts): thêm Loại câu mới thì sửa cả hai nơi.
       this.db.execute<{ attempt_id: string; n: number }>(sql`
         select r.attempt_id, count(*)::int n
         from responses r join attempts a on a.id = r.attempt_id
@@ -279,18 +304,21 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
   }
 
   async forceSubmit(tx: Transaction, input: ForceSubmitInput): Promise<ForceSubmitResult> {
-    const chosen = input.attemptIds ? [...new Set(input.attemptIds)] : null;
+    const chosen = uniqueIds(input.attemptIds);
     if (chosen) await this.requireInSession(tx, input.sessionId, chosen);
     const closed = await closeInProgress(
       tx,
-      and(
-        eq(attempts.sessionId, input.sessionId),
-        chosen ? inArray(attempts.id, chosen) : undefined,
-      ) as SQL,
+      chosen
+        ? (and(eq(attempts.sessionId, input.sessionId), inArray(attempts.id, chosen)) ?? sql`false`)
+        : eq(attempts.sessionId, input.sessionId),
       'examiner',
       input.now,
     );
-    return { closed: closed.length, skipped: chosen ? chosen.length - closed.length : 0 };
+    return {
+      closed: closed.length,
+      skipped: chosen ? chosen.length - closed.length : 0,
+      closedIds: closed,
+    };
   }
 
   async recordViolation(tx: Transaction, input: ViolationInput) {
@@ -329,3 +357,6 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
     if ((known?.n ?? 0) !== ids.length) throw new ApiError('NOT_FOUND');
   }
 }
+
+/** Bỏ id trùng; `null` (cả phòng) giữ nguyên. */
+const uniqueIds = (ids: string[] | null): string[] | null => (ids ? [...new Set(ids)] : null);

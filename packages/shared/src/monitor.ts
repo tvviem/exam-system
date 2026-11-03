@@ -34,6 +34,25 @@ export function isDisconnected(lastSeenAt: Date | null, startedAt: Date, now: Da
   return now.getTime() - (lastSeenAt ?? startedAt).getTime() > ATTENTION_OFFLINE_SECONDS * 1000;
 }
 
+export type MonitorState = 'not_started' | 'working' | 'disconnected' | 'submitted' | 'suspended';
+
+/** Trạng thái một người trên màn Theo dõi, từ Lượt mới nhất của họ (`null` là chưa có Lượt). */
+export function monitorStateOf(
+  attempt: {
+    status: 'in_progress' | 'submitted';
+    submitReason: string | null;
+    startedAt: Date;
+    lastSeenAt: Date | null;
+  } | null,
+  now: Date,
+): MonitorState {
+  if (!attempt) return 'not_started';
+  if (attempt.status === 'in_progress') {
+    return isDisconnected(attempt.lastSeenAt, attempt.startedAt, now) ? 'disconnected' : 'working';
+  }
+  return attempt.submitReason === 'disqualified' ? 'suspended' : 'submitted';
+}
+
 export type DeviceState = 'none' | 'ok' | 'new' | 'revoked';
 
 /**
@@ -107,11 +126,6 @@ export type ExtensionScope = 'one' | 'group' | 'all';
 export function extensionScopeOf(attemptIds: readonly string[] | null): ExtensionScope {
   if (attemptIds === null) return 'all';
   return attemptIds.length === 1 ? 'one' : 'group';
-}
-
-/** Hạn mới sau Cộng giờ. Cắt cứng không chặn Cộng giờ (GLOSSARY). */
-export function extendedDeadline(deadline: Date, minutes: number): Date {
-  return new Date(deadline.getTime() + minutes * 60_000);
 }
 
 /** Phần đã cộng cộng với lần này có còn trong trần không (Q256). */

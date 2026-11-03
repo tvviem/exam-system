@@ -4,7 +4,7 @@ import {
   type ExtendTimeRequest,
   extensionScopeOf,
   type ForceSubmitRequest,
-  isDisconnected,
+  monitorStateOf,
   type ViolationRequest,
 } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
@@ -14,7 +14,7 @@ import { ApiError } from '../../common/api-error';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
-import { type Database, DB } from '../../db/db.module';
+import { type Database, DB, type Transaction } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
 import { sessionRoster, sessions } from './session.schema';
 import { findOwnedSession, lockOwnedSession, requireNotOver } from './session-access';
@@ -72,10 +72,9 @@ export class SessionMonitorService {
     const people = profiles.items.map((profile) => {
       const attempt = live.byUser.get(profile.id);
       const device = deviceStateOf(devices.get(profile.id) ?? [], attempt?.startedAt ?? null);
-      const inProgress = attempt?.status === 'in_progress';
       const reasons = attempt
         ? attentionReasonsOf({
-            inProgress,
+            inProgress: attempt.status === 'in_progress',
             startedAt: attempt.startedAt,
             deadline: attempt.deadline,
             now,
@@ -85,15 +84,7 @@ export class SessionMonitorService {
             answeredFraction: live.totalItems > 0 ? attempt.answered / live.totalItems : 0,
           })
         : [];
-      const state = !attempt
-        ? ('not_started' as const)
-        : inProgress
-          ? isDisconnected(attempt.lastSeenAt, attempt.startedAt, now)
-            ? ('disconnected' as const)
-            : ('working' as const)
-          : attempt.submitReason === 'disqualified'
-            ? ('suspended' as const)
-            : ('submitted' as const);
+      const state = monitorStateOf(attempt ?? null, now);
       summary.total += 1;
       summary[counter[state]] += 1;
       if (reasons.length > 0) summary.attention += 1;
@@ -122,9 +113,8 @@ export class SessionMonitorService {
   /** Cộng giờ cho một Lượt, một nhóm hoặc cả phòng (Q254). Phiên thi đã đóng Khung giờ vẫn Cộng giờ được. */
   async extendTime(actor: Actor, sessionId: string, request: ExtendTimeRequest) {
     return this.db.transaction(async (tx) => {
-      const session = await lockOwnedSession(tx, actor.id, sessionId);
-      if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
-      const { replayed, ...result } = await this.attempts.extendTime(tx, {
+      await this.lockLiveSession(tx, actor, sessionId);
+      const { replayed, attemptIds, ...result } = await this.attempts.extendTime(tx, {
         sessionId,
         attemptIds: request.attemptIds ?? null,
         minutes: request.minutes,
@@ -145,7 +135,7 @@ export class SessionMonitorService {
               minutes: request.minutes,
               reason: request.reason,
               batchId: request.batchId,
-              attempts: result.extended,
+              attemptIds,
             },
           },
           tx,
@@ -158,9 +148,8 @@ export class SessionMonitorService {
   /** Buộc nộp một Lượt, một nhóm hoặc cả phòng (Q254). Làm lại cùng yêu cầu không đổi gì thêm. */
   async forceSubmit(actor: Actor, sessionId: string, request: ForceSubmitRequest) {
     return this.db.transaction(async (tx) => {
-      const session = await lockOwnedSession(tx, actor.id, sessionId);
-      if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
-      const result = await this.attempts.forceSubmit(tx, {
+      await this.lockLiveSession(tx, actor, sessionId);
+      const { closedIds, ...result } = await this.attempts.forceSubmit(tx, {
         sessionId,
         attemptIds: request.attemptIds ?? null,
         now: this.clock.now(),
@@ -172,7 +161,7 @@ export class SessionMonitorService {
             action: 'session.force_submitted',
             entityType: 'session',
             entityId: sessionId,
-            after: { scope: extensionScopeOf(request.attemptIds ?? null), attempts: result.closed },
+            after: { scope: extensionScopeOf(request.attemptIds ?? null), attemptIds: closedIds },
           },
           tx,
         );
@@ -189,8 +178,7 @@ export class SessionMonitorService {
     request: ViolationRequest,
   ) {
     return this.db.transaction(async (tx) => {
-      const session = await lockOwnedSession(tx, actor.id, sessionId);
-      if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
+      await this.lockLiveSession(tx, actor, sessionId);
       const { id, userId } = await this.attempts.recordViolation(tx, {
         sessionId,
         attemptId,
@@ -221,6 +209,13 @@ export class SessionMonitorService {
   /** Mở lại cửa vào thi (Q258) khi Khung giờ chưa đóng. */
   async reopenEntry(actor: Actor, sessionId: string) {
     return this.setEntryClosed(actor, sessionId, false);
+  }
+
+  /** Khóa Phiên thi của Người ra đề; Phiên thi đã hủy thì không thao tác được nữa. */
+  private async lockLiveSession(tx: Transaction, actor: Actor, sessionId: string) {
+    const session = await lockOwnedSession(tx, actor.id, sessionId);
+    if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
+    return session;
   }
 
   private async setEntryClosed(actor: Actor, sessionId: string, closed: boolean) {

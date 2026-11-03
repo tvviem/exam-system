@@ -2,10 +2,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
 import { minutes } from './support/fake-clock';
+import { login } from './support/http';
 import { leaks } from './support/leaks';
 import { openLiveSession } from './support/live-session';
 import { resetState } from './support/reset';
 import { Taker } from './support/take';
+import { DEFAULT_PASSWORD } from './support/users';
 
 // S2/S8 (Q252, Q253, Q261): GET /sessions/:id/monitor qua HTTP + PostgreSQL + Redis thật.
 
@@ -277,6 +279,16 @@ describe('quyền và bất biến', () => {
     await live.api('POST', `/sessions/${live.sessionId}/cancel`, {});
     const body = await monitor();
     expect(body.summary).toMatchObject({ submitted: 3 });
+  });
+
+  it('Người ra đề mất máy: đăng nhập thiết bị khác vẫn thấy đủ trạng thái; Người dự thi không bị ảnh hưởng', async () => {
+    await beat('an', { events: [{ id: crypto.randomUUID(), type: 'tab_hidden' }] });
+    const before = await monitor();
+    const second = (await login(t.app, 'gv1', DEFAULT_PASSWORD)).cookie as string;
+    expect(second).not.toBe(live.examiner);
+    expect(await monitor(second)).toEqual(before);
+    // Máy cũ của Người ra đề bị đăng xuất hoặc mất mạng: Người dự thi vẫn nhịp và lưu được.
+    expect((await beat('binh'))?.statusCode).toBe(200);
   });
 
   it('không mang đáp án hay quy tắc chấm (S8)', async () => {

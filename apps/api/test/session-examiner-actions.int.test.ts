@@ -144,6 +144,16 @@ describe('Buộc nộp (Q254)', () => {
     expect(res.json().reason).toBe('SESSION_CANCELLED');
   });
 
+  it('nhật ký thao tác ghi rõ Lượt nào bị nộp', async () => {
+    await forceSubmit({ attemptIds: [live.attemptIds.an, live.attemptIds.binh] });
+    const [row] = await sql<{ after: { attemptIds: string[] } }>(
+      `select after from audit_logs where action = 'session.force_submitted'`,
+    );
+    expect([...(row?.after.attemptIds ?? [])].sort()).toEqual(
+      [live.attemptIds.an, live.attemptIds.binh].sort(),
+    );
+  });
+
   it('thiếu hoặc thừa cách chọn thì báo lỗi dữ liệu', async () => {
     expect((await forceSubmit({})).statusCode).toBe(400);
     expect((await forceSubmit({ scope: 'all', attemptIds: [live.attemptIds.an] })).statusCode).toBe(

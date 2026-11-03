@@ -232,3 +232,67 @@ describe('job quét tự nộp tôn trọng hạn đã kéo dài (S5)', () => {
     expect(await sql(`select 1 from attempts where submit_reason = 'timeout'`)).toHaveLength(3);
   });
 });
+
+describe('tranh chấp, dùng lại mã lô và Lượt chạm trần', () => {
+  it('Cộng giờ xen Nộp bài: Lượt đã nộp không bị cộng và không có dòng nhật ký thừa (S4)', async () => {
+    const before = await deadlineOf('an');
+    const [submit, ext] = await Promise.all([
+      takers.an?.call('POST', `/take/attempts/${attemptIds.an}/submit`),
+      extend({ attemptIds: [attemptIds.an], minutes: 15, reason: 'x', batchId: batch() }),
+    ]);
+    expect(submit?.statusCode).toBe(200);
+    expect(ext.statusCode).toBe(200);
+    const rows = await sql(`select 1 from attempt_time_extensions`);
+    // Hoặc Cộng giờ thắng (hạn đổi, 1 dòng), hoặc Nộp bài thắng (hạn giữ nguyên, không dòng nào, skipped=1).
+    if (rows.length === 1) expect(await deadlineOf('an')).toBe(before + 15 * 60_000);
+    else {
+      expect(rows).toHaveLength(0);
+      expect(ext.json()).toEqual({ extended: 0, skipped: 1 });
+      expect(await deadlineOf('an')).toBe(before);
+    }
+  });
+
+  it('dùng lại mã lô cho yêu cầu khác (số phút hay lý do khác) bị từ chối, không cộng gì', async () => {
+    const id = batch();
+    await extend({ attemptIds: [attemptIds.an], minutes: 15, reason: 'x', batchId: id });
+    const after = await deadlineOf('an');
+    const res = await extend({
+      attemptIds: [attemptIds.an],
+      minutes: 30,
+      reason: 'x',
+      batchId: id,
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().reason).toBe('BATCH_REUSED');
+    expect(await deadlineOf('an')).toBe(after);
+  });
+
+  it('vượt trần thì báo Lượt nào chạm trần để Người ra đề bỏ riêng Lượt đó', async () => {
+    for (let i = 0; i < 4; i++) {
+      await extend({
+        attemptIds: [attemptIds.an],
+        minutes: i < 3 ? 180 : 60,
+        reason: 'x',
+        batchId: batch(),
+      });
+    }
+    const res = await extend({ scope: 'all', minutes: 1, reason: 'x', batchId: batch() });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ reason: 'EXTENSION_LIMIT', attemptIds: [attemptIds.an] });
+  });
+
+  it('nhật ký thao tác ghi rõ Lượt nào được cộng giờ', async () => {
+    await extend({
+      attemptIds: [attemptIds.an, attemptIds.binh],
+      minutes: 5,
+      reason: 'x',
+      batchId: batch(),
+    });
+    const [row] = await sql<{ after: { attemptIds: string[] } }>(
+      `select after from audit_logs where action = 'session.time_extended'`,
+    );
+    expect([...(row?.after.attemptIds ?? [])].sort()).toEqual(
+      [attemptIds.an, attemptIds.binh].sort(),
+    );
+  });
+});

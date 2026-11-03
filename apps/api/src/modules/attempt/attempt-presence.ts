@@ -1,6 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { REDIS } from '../../redis/redis.module';
+
+const log = new Logger('AttemptPresence');
 
 /** Presence tự hết hạn nếu cả Phiên thi im lặng quá lâu (Phiên thi dài nhất là một ngày). */
 const PRESENCE_TTL_MS = 24 * 3_600_000;
@@ -18,18 +20,30 @@ export class AttemptPresence {
     return `presence:${sessionId}`;
   }
 
+  /** Ghi lần báo mới nhất. Redis lỗi thì bỏ qua (chỉ mất trạng thái trực tuyến, ADR-0002), không làm hỏng heartbeat. */
   async touch(sessionId: string, attemptId: string, now: Date): Promise<void> {
     const key = this.key(sessionId);
-    await this.redis
-      .multi()
-      .hset(key, attemptId, String(now.getTime()))
-      .pexpire(key, PRESENCE_TTL_MS)
-      .exec();
+    try {
+      await this.redis
+        .multi()
+        .hset(key, attemptId, String(now.getTime()))
+        .pexpire(key, PRESENCE_TTL_MS)
+        .exec();
+    } catch (error) {
+      log.warn(`Không ghi được presence: ${String(error)}`);
+    }
   }
 
-  /** Giờ báo gần nhất của từng Lượt trong Phiên thi (Lượt chưa từng báo vắng). */
+  /** Giờ báo gần nhất của từng Lượt trong Phiên thi (Lượt chưa từng báo vắng). Redis lỗi thì coi như chưa ai báo. */
   async lastSeenOf(sessionId: string): Promise<Map<string, Date>> {
-    const all = await this.redis.hgetall(this.key(sessionId));
-    return new Map(Object.entries(all).map(([attemptId, ms]) => [attemptId, new Date(Number(ms))]));
+    try {
+      const all = await this.redis.hgetall(this.key(sessionId));
+      return new Map(
+        Object.entries(all).map(([attemptId, ms]) => [attemptId, new Date(Number(ms))]),
+      );
+    } catch (error) {
+      log.warn(`Không đọc được presence: ${String(error)}`);
+      return new Map();
+    }
   }
 }
