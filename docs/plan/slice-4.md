@@ -545,6 +545,8 @@ Chỗ cần anh nhận xét: chữ và vị trí dải "Đang mở đề đã l�
 **Ghi chú triển khai**
 
 - **Đường dẫn giao diện là `/examiner/sessions/:id/try`**, không phải `/take/try/...` như Q250 viết: khu `/take` chỉ cho Người dự thi (`beforeLoad` kiểm vai trò), còn Xem thử là việc của Người ra đề. Nút "Xem thử" nằm ở đầu trang chi tiết Phiên thi.
+- **Không đặt `@RequireTag('examiner')`** trên hai đường Xem thử, khác các controller Người ra đề còn lại: Q251 đã duyệt "Người dự thi nhận 404" (thẻ vai trò sẽ trả 403 và cho biết đường dẫn có tồn tại). Quyền chặt đã do `gateForOwner` quyết định ở truy vấn; hệ quả là một người còn sở hữu Phiên thi nhưng đã mất thẻ `examiner` vẫn Xem thử được.
+- **Kiểm thử bổ sung sau review:** trộn câu và trộn Phương án theo thiết lập của Phiên thi (nhiều lần mở cho thứ tự khác nhau, giữ đủ câu), `showScoringRules`, quản trị viên không Xem thử Phiên thi của người khác. Đột biến (bỏ trộn, ép `showScoringRules` tắt) làm các test này đỏ.
 - **`AttemptRunner` được tách** thành `useAttemptSession` (mọi thứ gắn server: lưu, đồng hồ, nộp, mất mạng, giữ nguyên logic 4c-2), `AttemptScreen` (giao diện) và `PreviewRunner`. Hai bên đưa vào màn một `RunnerSession`; `clock`, `saving`, `submit` là `null` khi xem thử, nên không phải rải điều kiện `preview` khắp hook.
 - `previewQuery` đặt `gcTime: 0`, không tự làm mới khi đổi tab hay có mạng lại (nếu không đề sẽ đổi chỗ giữa chừng), `retry: false` (404 báo ngay).
 - Đường ảnh Xem thử qua cổng `CANDIDATE_MEDIA.canPreview`; `question-bank` vẫn không biết Phiên thi. Đường ảnh này nằm dưới `/api/sessions/…` nên service worker của 4c-2 không lưu đệm.

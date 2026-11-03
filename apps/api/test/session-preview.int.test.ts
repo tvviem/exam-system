@@ -15,6 +15,7 @@ let t: TestApp;
 let owner: string;
 let other: string;
 let sessionId: string;
+let examId: string;
 let imageId: string;
 let otherImageId: string;
 
@@ -96,6 +97,7 @@ beforeEach(async () => {
     ],
   });
   await asOwner('POST', `/exams/${exam.id}/publish`, { version: saved.json().version });
+  examId = exam.id;
   const created = await asOwner('POST', '/sessions', { ...SESSION, examId: exam.id });
   expect(created.statusCode, created.body).toBe(201);
   sessionId = created.json().id;
@@ -167,6 +169,66 @@ describe('Xem thử qua Phiên thi: nội dung', () => {
     const res = await tryView(an.cookie);
     expect(res.statusCode).toBe(404);
     expect(res.body).not.toContain('Đề xem thử');
+  });
+});
+
+type Item = { type: string; payload: { options?: { id: string }[]; scoringRule?: string } };
+const itemsOf = (view: { sections: { items: Item[] }[] }) => view.sections.flatMap((s) => s.items);
+const orderOf = (items: Item[]) => items.map((item) => item.type).join();
+const optionsOf = (items: Item[]) =>
+  (items.find((item) => item.type === 'single_choice')?.payload.options ?? [])
+    .map((option) => option.id)
+    .join();
+
+async function sessionWith(over: Record<string, unknown>) {
+  const created = await asOwner('POST', '/sessions', {
+    ...SESSION,
+    examId,
+    accessCode: 'ZK4M7P',
+    ...over,
+  });
+  expect(created.statusCode, created.body).toBe(201);
+  return created.json().id as string;
+}
+
+describe('Xem thử qua Phiên thi: theo thiết lập của Phiên thi', () => {
+  it('không bật trộn thì đúng thứ tự gốc của Bộ đề ở mọi lần mở', async () => {
+    for (let i = 0; i < 5; i++) {
+      const items = itemsOf((await tryView()).json());
+      expect(orderOf(items)).toBe('single_choice,multiple_choice,true_false_cluster,essay');
+      expect(optionsOf(items)).toBe('o1,o2,o3');
+    }
+  });
+
+  it('bật trộn câu và trộn Phương án thì mỗi lần mở một thứ tự khác', async () => {
+    const id = await sessionWith({ shuffleItems: true, shuffleOptions: true });
+    const orders = new Set<string>();
+    const options = new Set<string>();
+    for (let i = 0; i < 15; i++) {
+      const items = itemsOf((await tryView(owner, id)).json());
+      expect(items).toHaveLength(4); // trộn không làm mất câu
+      orders.add(orderOf(items));
+      options.add(optionsOf(items));
+    }
+    expect(orders.size).toBeGreaterThan(1);
+    expect(options.size).toBeGreaterThan(1);
+    expect([...options].every((o) => o.split(',').sort().join() === 'o1,o2,o3')).toBe(true);
+  });
+
+  it('chỉ hiện quy tắc tính điểm khi Phiên thi bật `showScoringRules`', async () => {
+    const hidden = itemsOf((await tryView()).json()).find((i) => i.type === 'multiple_choice');
+    expect(hidden?.payload.scoringRule).toBeUndefined();
+    const id = await sessionWith({ showScoringRules: true });
+    const shown = itemsOf((await tryView(owner, id)).json()).find(
+      (i) => i.type === 'multiple_choice',
+    );
+    expect(shown?.payload.scoringRule).toBe('proportional');
+  });
+
+  it('quản trị viên không Xem thử được Phiên thi của người khác', async () => {
+    await seedUser({ username: 'qt', isAdmin: true, roleTags: ['examiner'] });
+    const admin = (await login(t.app, 'qt', DEFAULT_PASSWORD)).cookie as string;
+    expect((await tryView(admin)).statusCode).toBe(404);
   });
 });
 

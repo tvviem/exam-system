@@ -30,7 +30,7 @@ import {
   UnsavedError,
 } from '../take';
 import { type AnswerState, answerStateOf, progressOf } from '../take/answers';
-import { formatClock } from '../take/clock';
+import { formatClock, type Warning } from '../take/clock';
 import { forgetAttemptLocally } from '../take/local-data';
 import type { SaveStatus } from '../take/save-queue';
 import { useCountdown } from '../take/use-countdown';
@@ -53,6 +53,15 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type Answers = Record<string, { value: unknown; flagged: boolean }>;
 
+const withValue = (answers: Answers, itemId: string, value: unknown): Answers => ({
+  ...answers,
+  [itemId]: { value, flagged: answers[itemId]?.flagged ?? false },
+});
+const withFlag = (answers: Answers, itemId: string, flagged: boolean): Answers => ({
+  ...answers,
+  [itemId]: { value: answers[itemId]?.value, flagged },
+});
+
 /**
  * Những gì màn làm bài cần từ bên dưới: Lượt thật (`useAttemptSession`) hay Xem thử (`PreviewRunner`) cùng đưa vào đây.
  * `null` ở `clock`, `saving`, `submit` nghĩa là không có (xem thử không có giờ, không lưu, không nộp).
@@ -62,7 +71,7 @@ interface RunnerSession {
   setValue: (itemId: string, value: unknown, kind?: 'choice' | 'text') => void;
   setFlag: (itemId: string, flagged: boolean) => void;
   blurText: () => void;
-  clock: { remaining: number; warning: ReturnType<typeof useCountdown>['warning'] } | null;
+  clock: { remaining: number; warning: Warning } | null;
   saving: { status: SaveStatus; unsaved: number; rejected: { itemId: string }[] } | null;
   connected: boolean;
   timedOut: boolean;
@@ -253,17 +262,11 @@ function useAttemptSession(view: AttemptView): RunnerSession {
   }, [countdown.warning, expire]);
 
   const setValue = (itemId: string, value: unknown, kind: 'choice' | 'text' = 'choice') => {
-    setAnswers((previous) => ({
-      ...previous,
-      [itemId]: { value, flagged: previous[itemId]?.flagged ?? false },
-    }));
+    setAnswers((previous) => withValue(previous, itemId, value));
     change({ itemId, value }, kind);
   };
   const setFlag = (itemId: string, flagged: boolean) => {
-    setAnswers((previous) => ({
-      ...previous,
-      [itemId]: { value: previous[itemId]?.value, flagged },
-    }));
+    setAnswers((previous) => withFlag(previous, itemId, flagged));
     change({ itemId, flagged });
   };
 
@@ -300,16 +303,8 @@ export function PreviewRunner({ view, onExit }: { view: PreviewView; onExit: () 
   const [answers, setAnswers] = useState<Answers>({});
   const session: RunnerSession = {
     answers,
-    setValue: (itemId, value) =>
-      setAnswers((previous) => ({
-        ...previous,
-        [itemId]: { value, flagged: previous[itemId]?.flagged ?? false },
-      })),
-    setFlag: (itemId, flagged) =>
-      setAnswers((previous) => ({
-        ...previous,
-        [itemId]: { value: previous[itemId]?.value, flagged },
-      })),
+    setValue: (itemId, value) => setAnswers((previous) => withValue(previous, itemId, value)),
+    setFlag: (itemId, flagged) => setAnswers((previous) => withFlag(previous, itemId, flagged)),
     blurText: () => {},
     clock: null,
     saving: null,
