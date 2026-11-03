@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  bigserial,
   boolean,
   check,
   foreignKey,
@@ -8,6 +9,7 @@ import {
   inet,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -138,5 +140,115 @@ export const responses = pgTable(
   (t) => [
     primaryKey({ columns: [t.attemptId, t.itemId] }),
     check('responses_seq_check', sql`${t.clientSeq} >= 0`),
+  ],
+);
+
+export const sessionEventTypeEnum = pgEnum('session_event_type', [
+  'tab_hidden',
+  'tab_visible',
+  'went_offline',
+  'back_online',
+  'device_rejected',
+]);
+export const timeExtensionScopeEnum = pgEnum('time_extension_scope', ['one', 'group', 'all']);
+export const violationActionEnum = pgEnum('violation_action', ['warning', 'disqualify']);
+export const violationPenaltyTypeEnum = pgEnum('violation_penalty_type', [
+  'none',
+  'percent',
+  'void',
+]);
+
+/**
+ * Sự kiện bất thường trong Phiên thi (Q198): chỉ ghi nhận, không sửa, không xóa (trigger). `at` là giờ server nhận.
+ * `attempt_id` rỗng khi người bị từ chối thiết bị chưa có Lượt.
+ */
+export const sessionEvents = pgTable(
+  'session_events',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'restrict' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'restrict' }),
+    type: sessionEventTypeEnum('type').notNull(),
+    data: jsonb('data'),
+    /** Mã sự kiện do trình duyệt sinh: gửi lại heartbeat không ghi trùng sự kiện. */
+    clientEventId: uuid('client_event_id'),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('session_events_client_event_unique')
+      .on(t.attemptId, t.clientEventId)
+      .where(sql`${t.clientEventId} IS NOT NULL`),
+    index('session_events_attempt_idx').on(t.attemptId, t.type),
+    index('session_events_session_idx').on(t.sessionId, t.at),
+  ],
+);
+
+/**
+ * Nhật ký Cộng giờ (Q254, Q256, Q262): một dòng cho mỗi Lượt được cộng. `batch_id` do giao diện sinh nên thử lại cùng
+ * yêu cầu không cộng hai lần. Chỉ ghi thêm (trigger).
+ */
+export const attemptTimeExtensions = pgTable(
+  'attempt_time_extensions',
+  {
+    id: idColumn(),
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => attempts.id, { onDelete: 'restrict' }),
+    minutes: integer('minutes').notNull(),
+    scope: timeExtensionScopeEnum('scope').notNull(),
+    reason: text('reason').notNull(),
+    batchId: uuid('batch_id').notNull(),
+    extendedBy: uuid('extended_by')
+      .notNull()
+      .references(() => users.id),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('attempt_time_extensions_batch_unique').on(t.attemptId, t.batchId),
+    check('attempt_time_extensions_minutes_check', sql`${t.minutes} BETWEEN 1 AND 180`),
+    check('attempt_time_extensions_reason_check', sql`char_length(${t.reason}) BETWEEN 1 AND 200`),
+  ],
+);
+
+/**
+ * Vi phạm (Q259): Cảnh cáo hoặc Đình chỉ, bắt buộc lý do. Các cột hình phạt để lát cắt 5 quyết định (mặc định không
+ * phạt); hành động, lý do và Lượt không đổi sau khi ghi (trigger).
+ */
+export const violations = pgTable(
+  'violations',
+  {
+    id: idColumn(),
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => attempts.id, { onDelete: 'restrict' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'restrict' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    action: violationActionEnum('action').notNull(),
+    reason: text('reason').notNull(),
+    penaltyType: violationPenaltyTypeEnum('penalty_type').notNull().default('none'),
+    penaltyPercent: numeric('penalty_percent', { precision: 5, scale: 2 }),
+    recordedBy: uuid('recorded_by')
+      .notNull()
+      .references(() => users.id),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+    penaltyDecidedAt: timestamp('penalty_decided_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('violations_attempt_idx').on(t.attemptId),
+    index('violations_session_idx').on(t.sessionId),
+    check('violations_reason_check', sql`char_length(${t.reason}) BETWEEN 1 AND 500`),
+    check(
+      'violations_penalty_check',
+      sql`(${t.penaltyType} = 'percent') = (${t.penaltyPercent} IS NOT NULL) AND (${t.penaltyPercent} IS NULL OR ${t.penaltyPercent} BETWEEN 0 AND 100)`,
+    ),
   ],
 );

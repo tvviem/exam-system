@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto';
 import {
   deadlineOf,
   HARD_CLOSE_MIN_SECONDS,
+  type HeartbeatRequest,
   isPastGrace,
   layoutOf,
   normalizeAccessCode,
@@ -10,7 +11,7 @@ import {
   type SessionPhase,
 } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
 import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
@@ -18,13 +19,28 @@ import { uniqueViolationOf } from '../../common/pg-error';
 import type { SubmitReason } from '../../common/session-attempts';
 import { type EntryGate, SESSION_ENTRY, type SessionEntry } from '../../common/session-entry';
 import { type Database, DB, type Transaction } from '../../db/db.module';
-import { attempts, responses, sessionDevices } from './attempt.schema';
+import {
+  attempts,
+  attemptTimeExtensions,
+  responses,
+  sessionDevices,
+  sessionEvents,
+  violations,
+} from './attempt.schema';
 import { closeInProgress } from './attempt-close';
+import { AttemptPresence } from './attempt-presence';
 import { buildAttemptSections, layoutInputOf, type SavedResponse } from './attempt-view';
 import { generateDeviceKey, hashDeviceKey } from './device-key';
 import { JoinRateLimiter } from './join-rate-limiter';
 
 type Executor = Database | Transaction;
+
+/** Hai nhịp liền nhau chồng lên nhau chừng này để không lỡ thông báo của giao dịch xác nhận chậm. */
+const HEARTBEAT_CURSOR_OVERLAP_MS = 5000;
+
+export type Notice =
+  | { id: string; kind: 'time_extended'; minutes: number; reason: string; at: string }
+  | { id: string; kind: 'warning'; reason: string; at: string };
 type AttemptRow = typeof attempts.$inferSelect;
 
 export interface ClientMeta {
@@ -78,6 +94,7 @@ export class AttemptsService {
     @Inject(SESSION_ENTRY) private readonly entry: SessionEntry,
     @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
     private readonly joinLimiter: JoinRateLimiter,
+    private readonly presence: AttemptPresence,
   ) {}
 
   // --- Vào thi (Q229) -----------------------------------------------------------------------------------------------
@@ -138,6 +155,7 @@ export class AttemptsService {
           deviceHash: hash,
           ip: meta.ip,
           userAgent: meta.userAgent,
+          boundAt: this.clock.now(),
         })
         .onConflictDoNothing()
         .returning({ id: sessionDevices.id });
@@ -152,13 +170,123 @@ export class AttemptsService {
       .from(sessionDevices)
       .where(and(eq(sessionDevices.sessionId, sessionId), eq(sessionDevices.userId, userId)))
       .for('share');
-    const hash = key ? hashDeviceKey(key) : undefined;
-    const mine = rows.find((row) => row.deviceHash === hash);
-    if (mine?.status === 'active') return;
-    if (mine?.status === 'revoked') throw invalidState('DEVICE_REVOKED');
-    throw invalidState(
-      rows.some((row) => row.status === 'active') ? 'DEVICE_BOUND_ELSEWHERE' : 'NOT_JOINED',
-    );
+    const problem = deviceProblem(rows, key);
+    if (problem) throw invalidState(problem);
+  }
+
+  // --- Heartbeat (Q213) -------------------------------------------------------------------------------------------------
+
+  /**
+   * Nhịp báo còn làm bài mỗi 15 giây: ghi presence và các sự kiện rời màn hình, mất mạng, rồi trả hạn hiện tại, trạng
+   * thái, thiết bị còn hợp lệ không và thông báo mới (Cộng giờ, Cảnh cáo) từ mốc `since` (Q257). Thiết bị bị Thu hồi
+   * không phải lỗi ở đây: trả `deviceOk: false` để màn hình báo ngay trong tối đa một nhịp.
+   */
+  async heartbeat(
+    userId: string,
+    deviceKey: string | undefined,
+    attemptId: string,
+    request: HeartbeatRequest,
+  ) {
+    let attempt = await this.ownAttempt(this.db, userId, attemptId);
+    const now = this.clock.now();
+    // Mốc cho nhịp sau lùi 5 giây: giao dịch Cộng giờ chưa kịp xác nhận lúc này vẫn được thấy ở nhịp sau (trình duyệt bỏ trùng theo id).
+    const cursor = new Date(now.getTime() - HEARTBEAT_CURSOR_OVERLAP_MS).toISOString();
+    if (attempt.status === 'in_progress' && this.pastGrace(attempt, now)) {
+      await this.closeOne(this.db, attempt.id, 'timeout', now);
+      attempt = await this.ownAttempt(this.db, userId, attemptId);
+    }
+    const base = { serverNow: now.toISOString(), cursor, notices: [] as Notice[] };
+    if (attempt.status === 'submitted') {
+      return {
+        ...base,
+        status: 'submitted' as const,
+        submitReason: attempt.submitReason,
+        deviceOk: true,
+      };
+    }
+    const deviceOk = await this.deviceOk(attempt.sessionId, userId, deviceKey);
+    const inProgress = {
+      ...base,
+      status: 'in_progress' as const,
+      deadline: attempt.deadline,
+      deviceOk,
+    };
+    if (!deviceOk) return inProgress;
+    const [notices] = await Promise.all([
+      request.since ? this.noticesSince(attempt.id, new Date(request.since)) : [],
+      this.presence.touch(attempt.sessionId, attempt.id, now),
+      this.recordEvents(attempt, request.events, now),
+    ]);
+    return { ...inProgress, notices };
+  }
+
+  private async deviceOk(sessionId: string, userId: string, key?: string) {
+    const rows = await this.db
+      .select({ status: sessionDevices.status, deviceHash: sessionDevices.deviceHash })
+      .from(sessionDevices)
+      .where(and(eq(sessionDevices.sessionId, sessionId), eq(sessionDevices.userId, userId)));
+    return deviceProblem(rows, key) === null;
+  }
+
+  private async recordEvents(attempt: AttemptRow, events: HeartbeatRequest['events'], now: Date) {
+    if (events.length === 0) return;
+    await this.db
+      .insert(sessionEvents)
+      .values(
+        events.map((event) => ({
+          sessionId: attempt.sessionId,
+          userId: attempt.userId,
+          attemptId: attempt.id,
+          type: event.type,
+          clientEventId: event.id,
+          at: now,
+        })),
+      )
+      .onConflictDoNothing();
+  }
+
+  private async noticesSince(attemptId: string, since: Date): Promise<Notice[]> {
+    const [extensions, warnings] = await Promise.all([
+      this.db
+        .select({
+          id: attemptTimeExtensions.id,
+          minutes: attemptTimeExtensions.minutes,
+          reason: attemptTimeExtensions.reason,
+          at: attemptTimeExtensions.at,
+        })
+        .from(attemptTimeExtensions)
+        .where(
+          and(eq(attemptTimeExtensions.attemptId, attemptId), gt(attemptTimeExtensions.at, since)),
+        ),
+      this.db
+        .select({ id: violations.id, reason: violations.reason, at: violations.recordedAt })
+        .from(violations)
+        .where(
+          and(
+            eq(violations.attemptId, attemptId),
+            eq(violations.action, 'warning'),
+            gt(violations.recordedAt, since),
+          ),
+        ),
+    ]);
+    const notices: (Notice & { time: number })[] = [
+      ...extensions.map((row) => ({
+        id: row.id,
+        kind: 'time_extended' as const,
+        minutes: row.minutes,
+        reason: row.reason,
+        at: row.at.toISOString(),
+        time: row.at.getTime(),
+      })),
+      ...warnings.map((row) => ({
+        id: row.id,
+        kind: 'warning' as const,
+        reason: row.reason,
+        at: row.at.toISOString(),
+        time: row.at.getTime(),
+      })),
+    ];
+    return notices.sort((a, b) => a.time - b.time).map(({ time: _time, ...notice }) => notice);
   }
 
   // --- Phiên thi của tôi ---------------------------------------------------------------------------------------------
@@ -502,4 +630,16 @@ function deviceStatusOf(
   const mine = rows.find((row) => row.deviceHash === hash);
   if (mine) return mine.status;
   return rows.some((row) => row.status === 'active') ? 'other' : 'none';
+}
+
+/** Lý do thiết bị không dùng được cho Phiên thi này, hoặc `null` nếu thiết bị đang gắn đúng (ADR-0007). */
+function deviceProblem(
+  rows: { status: 'active' | 'revoked'; deviceHash: string }[],
+  key: string | undefined,
+): 'DEVICE_REVOKED' | 'DEVICE_BOUND_ELSEWHERE' | 'NOT_JOINED' | null {
+  const hash = key ? hashDeviceKey(key) : undefined;
+  const mine = rows.find((row) => row.deviceHash === hash);
+  if (mine?.status === 'active') return null;
+  if (mine?.status === 'revoked') return 'DEVICE_REVOKED';
+  return rows.some((row) => row.status === 'active') ? 'DEVICE_BOUND_ELSEWHERE' : 'NOT_JOINED';
 }

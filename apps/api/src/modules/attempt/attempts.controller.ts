@@ -1,3 +1,4 @@
+import { heartbeatSchema } from '@exam/shared';
 import {
   Body,
   Controller,
@@ -110,6 +111,22 @@ export class AttemptsController {
   ) {
     const { items } = saveSchema.parse(body ?? {});
     return this.attempts.saveResponses(user.id, deviceKeyOf(req), id, items);
+  }
+
+  @Post('attempts/:id/heartbeat')
+  @HttpCode(200)
+  heartbeat(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.attempts.heartbeat(
+      user.id,
+      deviceKeyOf(req),
+      id,
+      heartbeatSchema.parse(body ?? {}),
+    );
   }
 
   @Post('attempts/:id/submit')

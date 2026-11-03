@@ -4,6 +4,7 @@ import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
 import { minutes } from './support/fake-clock';
 import { call, login } from './support/http';
+import { leaks } from './support/leaks';
 import { resetState } from './support/reset';
 import { fullExam, Taker } from './support/take';
 import { DEFAULT_PASSWORD, seedUser } from './support/users';
@@ -316,19 +317,6 @@ describe('bắt đầu và xem đề (Q230, Q232)', () => {
     expect((await binh.call('GET', `/take/attempts/${view.attempt.id}`)).statusCode).toBe(404);
   });
 });
-
-/** Quét mọi khóa và mọi chuỗi của JSON (S8). */
-function leaks(value: unknown, path = '$'): string[] {
-  if (Array.isArray(value)) return value.flatMap((v, i) => leaks(v, `${path}[${i}]`));
-  if (value && typeof value === 'object') {
-    return Object.entries(value).flatMap(([k, v]) => [
-      ...(['key', 'rubric', 'scoringRule', 'ladder'].includes(k) ? [`${path}.${k}`] : []),
-      ...leaks(v, `${path}.${k}`),
-    ]);
-  }
-  if (typeof value === 'string' && value.includes('ε-δ')) return [`${path} (rubric)`];
-  return [];
-}
 
 describe('Đáp án không lọt vào response của khu làm bài (S8)', () => {
   it('không response nào mang key, rubric, scoringRule hay ladder khi Phiên thi tắt hiện quy tắc chấm', async () => {
