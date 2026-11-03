@@ -1,3 +1,8 @@
+// Chữ có chân cho nội dung đề (Q101): chỉ nạp cùng khu làm bài, các màn khác không tải. Hai bộ ký tự, mỗi bộ hai độ đậm.
+import '@fontsource/noto-serif/latin-400.css';
+import '@fontsource/noto-serif/vietnamese-400.css';
+import '@fontsource/noto-serif/latin-600.css';
+import '@fontsource/noto-serif/vietnamese-600.css';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCheck,

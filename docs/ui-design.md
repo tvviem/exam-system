@@ -41,7 +41,7 @@ Tài liệu này chưa có phần hợp nhất giao diện Người dự thi (đ
 | Cỡ chữ | Chữ thường 16 px, dòng 1,5. Phần dẫn và Phương án khi làm bài 17 px, dòng 1,6. Không dùng chữ nhỏ hơn 14 px, trừ chú thích phụ (13 px) |
 | Số | Đồng hồ, điểm, số câu dùng `tabular-nums` để chữ số không nhảy khi đổi giá trị |
 | Độ dài dòng | Tối đa khoảng 70 ký tự (`max-w-prose`) ở trang làm bài trên màn hình rộng |
-| Chữ nội dung đề (Q101) | **Noto Serif** (có chân, hợp đọc đoạn dài và công thức) cho phần dẫn, Phương án và Mệnh đề của câu hỏi ở khu làm bài và Xem thử; phần còn lại của giao diện vẫn là Be Vietnam Pro. Tự host `@fontsource/noto-serif`, bộ `latin` + `vietnamese`, độ đậm 400 và 600; **cài cùng lát cắt 4** khi khu làm bài và Xem thử dùng nó lần đầu (chưa màn hình nào hiện có dùng chữ có chân). Người dự thi đổi được sang chữ không chân và đổi cỡ chữ (mục 3.1) |
+| Chữ nội dung đề (Q101) | **Noto Serif** (có chân, hợp đọc đoạn dài và công thức) cho phần dẫn, Phương án và Mệnh đề của câu hỏi ở khu làm bài và Xem thử; phần còn lại của giao diện vẫn là Be Vietnam Pro. Tự host `@fontsource/noto-serif`, bộ `latin` + `vietnamese`, độ đậm 400 và 600; đã cài ở lát cắt 4 (PR "Cài Noto Serif"), CSS chỉ nạp ở khu làm bài; Xem thử (4c-3) dùng lại. Người dự thi đổi được sang chữ không chân và đổi cỡ chữ (mục 3.1) |
 
 ## 3. Màu và token (Q100)
 

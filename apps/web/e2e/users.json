@@ -210,6 +210,26 @@
     "roleTags": ["candidate"]
   },
   {
+    "username": "e2e-lb-ft-desktop",
+    "fullName": "Phạm Thị Chữ Có Chân (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK9-D-001",
+    "classLabel": "LOP-TK9-D"
+  },
+  {
+    "username": "e2e-lb-ft-mobile",
+    "fullName": "Phạm Thị Chữ Có Chân (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TK9-M-001",
+    "classLabel": "LOP-TK9-M"
+  },
+  {
     "username": "e2e-ch-anh-desktop",
     "fullName": "Giảng viên Hình minh họa desktop",
     "password": "mat-khau-on-dinh",

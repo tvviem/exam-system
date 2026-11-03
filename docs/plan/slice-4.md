@@ -465,7 +465,7 @@ Làm đúng Q237–Q242 và Q244, Q246, Q247 (phần trực tuyến), kèm các 
 
 - **API:** `view` trả thêm `clientSeq` đã lưu của từng Câu trả lời (Q241), để máy khác tiếp tục đếm đúng.
 - **Giao diện sáng/tối** dùng chung công tắc của cả ứng dụng (`exam:theme`); bảng "Hiển thị" (nút Aa) nhúng công tắc đó, chỉ cỡ chữ, kiểu chữ và chế độ xem lưu ở `exam:prefs`. Không có hai nơi lưu cùng một thiết lập.
-- **Chữ có chân:** dùng `font-serif` với danh sách "Noto Serif", Georgia…; **chưa thêm gói `@fontsource/noto-serif`** vì việc đó sửa `pnpm-lock.yaml` ở gốc, đang có thay đổi chưa commit của chủ dự án. Máy có Noto Serif (Android) hiện đúng; máy khác dùng chữ có chân hệ thống. Thêm gói là một commit nhỏ riêng khi chủ dự án cho phép.
+- **Chữ có chân:** `font-serif` dùng Noto Serif tự host (`@fontsource/noto-serif` 5.3.0, giấy phép OFL-1.1): bộ `latin` + `vietnamese`, độ đậm 400 và 600, tổng khoảng 41 KB woff2. CSS chỉ nạp ở chunk khu làm bài (`take-attempt.tsx`), trang khác không tải; Be Vietnam Pro vẫn cho phần giao diện. Có E2E dò phông thật của lời dẫn (Chromium, `CSS.getPlatformFontsForNode`), nên máy nào cũng thấy cùng một phông kể cả máy không cài sẵn.
 - **Ô chọn Phương án** là `<input>` thật phủ kín cả dòng, trong suốt: chạm chỗ nào trên dòng cũng chọn, trình đọc màn hình vẫn đọc đúng.
 - **Khung riêng:** màn làm bài khai báo `staticData: { bare: true }` nên bỏ khung chung; ảnh trong đề lấy qua `/api/take-media/<lượt>/...` nhờ `MediaSourceContext`.
 - **Đo gói (B1):** JS riêng của khu làm bài **10,2 KB gzip** (ngưỡng 40 KB); không tải trình soạn, KaTeX, MathLive khi đề không có công thức.
