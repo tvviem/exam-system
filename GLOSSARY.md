@@ -192,7 +192,7 @@ Thiết lập của Phiên thi: Lượt làm bài kết thúc đúng lúc đóng
 _Avoid_: khóa cứng, hết giờ cứng
 
 **Đóng cửa vào thi** (`CloseEntry`):
-Hành động của Người ra đề chặn việc bắt đầu Lượt làm bài mới trong Phiên thi, dù Khung giờ chưa đóng. Người đang làm bài vẫn làm tiếp đến hết hạn của mình; Người dự thi chưa vào được báo rằng Phiên thi đã đóng cửa vào thi.
+Hành động của Người ra đề chặn việc bắt đầu Lượt làm bài mới trong Phiên thi, dù Khung giờ chưa đóng. Người đang làm bài vẫn làm tiếp đến hết hạn của mình; Người dự thi chưa vào được báo rằng Phiên thi đã đóng cửa vào thi. Người ra đề có thể Mở lại cửa vào thi khi Khung giờ chưa đóng.
 _Avoid_: khóa phòng, đóng Phiên thi
 
 **Cộng giờ** (`ExtendTime`):
@@ -232,7 +232,7 @@ Gợi ý trên màn Theo dõi rằng một Người dự thi đang làm bài có
 _Avoid_: nghi vấn, đáng ngờ, nghi gian lận
 
 **Vi phạm** (`Violation`):
-Ghi nhận của Người ra đề, kèm lý do, về hành vi sai quy định của Người dự thi trong một Lượt làm bài. Hành động đi kèm là *Cảnh cáo* (vẫn làm tiếp) hoặc *Đình chỉ*.
+Ghi nhận của Người ra đề, kèm lý do, về hành vi sai quy định của Người dự thi trong một Lượt làm bài. Hành động đi kèm là *Cảnh cáo* (vẫn làm tiếp, nội dung hiện trên màn hình của Người dự thi) hoặc *Đình chỉ*.
 _Avoid_: gian lận, sự cố
 
 **Đình chỉ** (`Disqualify`):

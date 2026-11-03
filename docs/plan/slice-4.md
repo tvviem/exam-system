@@ -343,7 +343,7 @@ Mã lỗi mới: `INVALID_ACCESS_CODE` (một mã chung, Q201), `INVALID_STATE` 
 | **4a** Phiên thi và Danh sách dự thi | `session`: tạo theo các bước, danh sách và lọc trạng thái, chi tiết, sửa theo trạng thái (Q202), thiết lập, Mã vào thi, thêm theo người hoặc Lớp, Cấp lại mật khẩu tạm, Nhân bản, Hủy, Xóa, thông báo "được thêm vào" và "bị Hủy" và "đổi giờ"; `ExamUsage` hiện số Phiên thi trên Bộ đề; ràng buộc loại trừ mã | 0012 | S1, S2, S3, S6 |
 | **4b** Vào thi và Lượt làm bài (API), chia 4b-1 và 4b-2 (Q226) | `attempt`: `join`, Gắn thiết bị, `start`, `view`, `saveResponses`, `submit`, `close`, job quét tự nộp, hook Khóa đăng nhập (Q218), ảnh cho Người dự thi (Q219), cookie `exam_did` | 0013 | S1, S2, S3, S4, S5, S8 |
 | **4c** Khu làm bài `/take` | giao diện điện thoại theo prototype đã duyệt: Phiên thi của tôi, nhập mã, màn xác nhận (Q210), hai chế độ, lưới số câu, đồng hồ có cảnh báo 5 và 1 phút, hàng đợi IndexedDB tự xả, hộp thoại xác nhận Nộp bài, báo thiết bị bị thu hồi, menu chuyển khu (Q143), Xem thử qua Phiên thi (Q220), PWA | không | S6 |
-| **4d** Theo dõi phòng thi | prototype trước (Q207), rồi: Socket.IO, presence, `session_events`, Cộng giờ, Thu hồi thiết bị và Hoàn tác Thu hồi, Đóng cửa vào thi, Buộc nộp, Vi phạm và Đình chỉ (Q221) | 0014 | S2, S4, S6, S7 |
+| **4d** Theo dõi phòng thi, chia 4d-1 (API), 4d-2 (giao diện), 4d-3 (Socket.IO) (Q255) | prototype trước (Q207, xong), rồi: presence, `session_events`, Cộng giờ, Thu hồi thiết bị và Hoàn tác Thu hồi, Đóng cửa vào thi, Buộc nộp, Vi phạm và Đình chỉ (Q221), cuối cùng Socket.IO | 0014 | S1–S8 (xem "PR 4d: thiết kế chi tiết") |
 | **4e** Hoàn thiện | Phiên thi trong Chuyển giao và Xóa người dùng (Q205), k6 500 người (Q214), hướng dẫn dùng thử trong README | không | S2, S6, S9 |
 
 Quy trình mỗi PR: thiết kế chi tiết và seam test cho riêng PR đó chốt với chủ dự án trước; làm theo từng lát dọc đỏ-xanh; chạy `code-review` (Standards và Spec); mở PR bằng skill `pr`; chờ CI xanh; chỉ merge khi chủ dự án ra lệnh.
@@ -570,6 +570,67 @@ Chỗ cần anh nhận xét: chữ và vị trí dải "Đang mở đề đã l�
 | Q250 kết thúc | Bấm "Kết thúc xem thử" | Về trang Phiên thi, không có hộp thoại nộp |
 | Q248 quyền | Đăng nhập Người ra đề khác, mở thẳng đường dẫn `/examiner/sessions/<id>/try` của Phiên thi này | Chỉ thấy thông báo lỗi và nút "Về Phiên thi" |
 | Q248 Danh sách dự thi | Vào Danh sách dự thi của Phiên thi sau khi Xem thử | Không có Lượt làm bài nào mới |
+
+## PR 4d: thiết kế chi tiết (đã duyệt 4/11/2026)
+
+Chủ dự án đồng ý cả tám điểm Q255–Q262 (cộng với Q252–Q254 ở trên). Thuật ngữ mới: không; hai câu bổ sung vào GLOSSARY (Mở lại cửa vào thi, Cảnh cáo hiện cho Người dự thi).
+
+| # | Quyết định |
+|---|---|
+| Q255 | Chia 4d thành **4d-1** (API và migration 0014), **4d-2** (giao diện: heartbeat phía `/take`, màn Theo dõi, giao diện thiết bị, cập nhật bằng hỏi lại mỗi 5 giây), **4d-3** (Socket.IO). Hệ thống vẫn đúng khi chỉ có heartbeat và hỏi lại (Q213), nên Socket.IO chỉ là phần tăng tốc và làm cuối |
+| Q256 | Cộng giờ: mỗi lần 1–180 phút, bắt buộc lý do (tối đa 200 ký tự), tổng phần cộng thêm của một Lượt không quá 600 phút (cùng trần với giờ cộng sẵn). Thao tác nhóm ghi **một dòng cho mỗi Lượt**, cùng một mã lô |
+| Q257 | Thông báo cho Người dự thi (Cộng giờ, Cảnh cáo) lấy từ `attempt_time_extensions` và `violations` qua con trỏ `since` trong heartbeat, không giữ trong Redis; mất Redis không mất thông báo |
+| Q258 | **Mở lại cửa vào thi** được phép, ghi nhật ký, đối xứng với Đóng. Chỉ xóa `entry_closed_at`; không mở lại khi Khung giờ đã đóng (`phaseOf` vẫn trả đã đóng) |
+| Q259 | Vi phạm: Cảnh cáo và Đình chỉ đều bắt buộc lý do (tối đa 500 ký tự). Người dự thi thấy nội dung Cảnh cáo trên màn hình của mình. Đình chỉ nộp Lượt ngay với lý do `disqualified` |
+| Q260 | Thu hồi thiết bị và Hoàn tác Thu hồi đều hỏi xác nhận (có hiệu lực ngay trên máy của Người dự thi); Thu hồi có ô lý do tùy chọn |
+| Q261 | Ngưỡng Cần chú ý là hằng số trong `packages/shared`: mất kết nối quá 45 giây; rời màn hình từ 3 lần; thiết bị mới hoặc bị Thu hồi; đã qua 25% thời gian và tỉ lệ đã trả lời thấp hơn tỉ lệ thời gian đã trôi quá 30 điểm phần trăm. Chưa cho Người ra đề chỉnh |
+| Q262 | Chống cộng giờ hai lần khi thử lại: giao diện sinh mã yêu cầu (UUID) mỗi lần mở hộp Cộng giờ và gửi kèm; server lưu làm mã lô, ràng buộc duy nhất (Lượt, mã lô). Gửi lại cùng mã thì không cộng thêm mà trả kết quả lần đầu. Giao diện giữ mã đến khi hộp đóng hoặc nhận được kết quả |
+
+### Máy của Người ra đề không nằm trong đường găng
+
+Hạn, job quét tự nộp, lưu Câu trả lời, nộp bài, đóng cửa vào thi theo `closesAt`, ghi trạng thái trực tuyến và sự kiện rời tab đều chạy ở server từ phía Người dự thi; không thứ nào cần máy của Người ra đề. Mất mạng hay thoát đột ngột chỉ làm mất cửa sổ xem và nơi gửi lệnh. Mỗi lệnh là một yêu cầu đã ghi vào PostgreSQL nên có hiệu lực dù máy gửi mất mạng ngay sau đó. Đăng nhập nhiều thiết bị cùng lúc được (Q51), nên Người ra đề vào lại bằng thiết bị khác và nhận ngay ảnh chụp từ `GET /sessions/:id/monitor`. Quy tắc cho 4d-3: **khi Socket.IO kết nối lại, tải lại ảnh chụp trước rồi mới nhận tin đẩy**, không bù lại tin lỡ. Chưa có người trông thay giữa chừng (Chuyển giao ở 4e); chấp nhận ở bản đầu.
+
+### API (4d-1)
+
+```text
+POST /take/attempts/:id/heartbeat          {events[], since} → {deadline, status, serverNow, deviceOk, notices[]}
+GET  /sessions/:id/monitor                 → {summary, people[] kèm state, answered, deadline, hiddenCount, warnings, device, reasons[]}
+POST /sessions/:id/extend-time             {attemptIds[] | scope:'all', minutes, reason, batchId}
+POST /sessions/:id/force-submit            {attemptIds[] | scope:'all'}
+POST /sessions/:id/attempts/:attemptId/violations   {action:'warning'|'disqualify', reason}
+POST /sessions/:id/close-entry   và   /reopen-entry
+```
+
+- Mọi endpoint của Người ra đề chỉ chủ Phiên thi gọi được; người khác nhận 404 như các endpoint hiện có. Mọi thao tác ghi vào `audit_logs` kèm người thực hiện.
+- Heartbeat chỉ ghi trạng thái trực tuyến vào Redis; PostgreSQL nhận sự kiện rời tab và mất mạng, không lưu từng nhịp.
+- Cộng giờ: `UPDATE attempts SET deadline = deadline + interval` cho các Lượt còn đang làm và chèn `attempt_time_extensions` trong một giao dịch (trigger `attempts_guard` chỉ cho kéo dài), khóa theo thứ tự `id`. Buộc nộp và Đình chỉ dùng lại `closeInProgress` với lý do `examiner` và `disqualified`.
+- `attentionReasonsOf` là hàm thuần ở `packages/shared`; server trả sẵn `reasons[]`, giao diện không tự tính lại.
+- Migration 0014: `session_events`, `attempt_time_extensions` (`scope` gồm `one`, `group`, `all`; cột `batch_id`), `violations`. Cả ba chỉ ghi thêm, có trigger chặn sửa và xóa như Q172.
+
+### Ngân sách phản hồi
+
+| Việc | Mục tiêu |
+|---|---|
+| `GET monitor` cho 500 người | p95 ≤ 100 ms |
+| Heartbeat | p95 ≤ 30 ms |
+| Cộng giờ hoặc Buộc nộp cho nhóm 500 người | ≤ 300 ms |
+
+Đo bằng test tích hợp trên dữ liệu 500 người; k6 để 4e.
+
+### Seam test
+
+| # | Seam | Bắt được | Không bắt được |
+|---|---|---|---|
+| S1 | Hàm thuần: `attentionReasonsOf` (các ngưỡng), hạn sau Cộng giờ (kể cả Cắt cứng), kiểm số phút | luật Q252, Q208 | SQL, nối dây |
+| S2 | HTTP + PostgreSQL + Redis thật: Cộng giờ (một, nhóm, cả phòng), Buộc nộp giữ Câu trả lời, Vi phạm, Đóng cửa vào thi chặn `start` nhưng không cắt người đang làm, người khác nhận 404, `monitor` đúng số liệu và vẫn đủ khi gọi bằng phiên đăng nhập khác của cùng Người ra đề | luồng đầy đủ, quyền, vào lại từ thiết bị khác | giao diện |
+| S3 | SQL trực tiếp: trigger của ba bảng mới | lớp bảo vệ ở DB | hành vi service |
+| S4 | Đồng thời: Cộng giờ xen Nộp bài (Lượt đã nộp không bị cộng, không dòng thừa); Buộc nộp xen lưu; hai lần Buộc nộp; Đóng cửa xen `join`; **cùng một yêu cầu Cộng giờ gửi hai lần, kể cả đồng thời, thì hạn tăng một lần** | điều kiện tranh chấp, thử lại | mạng thật |
+| S5 | Worker với `CLOCK` giả: job quét tôn trọng hạn đã kéo dài | không nộp sớm sau Cộng giờ | Redis và BullMQ thật |
+| S6 | Playwright (điện thoại và máy tính): Cộng giờ, Buộc nộp, Thu hồi và Hoàn tác Thu hồi; Người dự thi ở ngữ cảnh khác thấy hạn mới; màn Theo dõi kèm kiểm thời gian | toàn tuyến | tải lớn |
+| S7 | `socket.io-client` (chỉ 4d-3), gồm kết nối lại rồi tải lại ảnh chụp | sự kiện đến đúng phòng | trình duyệt thật |
+| S8 | Quét JSON: `heartbeat` và `monitor` không có `key`, `rubric` | bất biến đáp án | |
+
+Thứ tự 4d-1 (đỏ-xanh): S1 (hàm thuần), migration 0014 và S3, Cộng giờ (S2 rồi S4), Buộc nộp và Đình chỉ, Đóng và Mở lại cửa vào thi, heartbeat và presence, `monitor` (kèm S8 và số đo), S5.
 
 ## Thuật ngữ mới (đã vào GLOSSARY)
 
