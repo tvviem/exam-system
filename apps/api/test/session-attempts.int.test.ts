@@ -236,6 +236,7 @@ describe('Thu hồi thiết bị và Cho vào lại (ADR-0007, Q194, Q234)', () 
   it('Cho thiết bị vào lại: thiết bị cũ được kích hoạt, thiết bị mới bị thu hồi trong một thao tác', async () => {
     const view = await startFor(an);
     await revoke(anId);
+    t.clock.advance(60_000); // máy mới vào sau, để thứ tự theo giờ gắn thiết bị rõ ràng
     const phone = await Taker.signIn(t, 'an');
     await phone.join('AB3K9X');
     const devices = (await api('GET', `/sessions/${sessionId}/roster`))
