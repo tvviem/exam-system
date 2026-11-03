@@ -120,7 +120,13 @@ describe('createRealtime', () => {
       order.push('join');
       emit(event, payload, ack);
     };
-    realtime.subscribe({ join: 'j', payload: {}, event: 'e', onEvent: vi.fn(), onConnected: () => order.push('reload') });
+    realtime.subscribe({
+      join: 'j',
+      payload: {},
+      event: 'e',
+      onEvent: vi.fn(),
+      onConnected: () => order.push('reload'),
+    });
     await tick();
     socket.connect();
     expect(order).toEqual(['join', 'reload']);
@@ -135,7 +141,13 @@ describe('createRealtime', () => {
       return socket;
     });
     const live = vi.fn();
-    const first = realtime.subscribe({ join: 'j', payload: {}, event: 'e', onEvent: vi.fn(), onLive: live });
+    const first = realtime.subscribe({
+      join: 'j',
+      payload: {},
+      event: 'e',
+      onEvent: vi.fn(),
+      onLive: live,
+    });
     await tick();
     expect(live).toHaveBeenLastCalledWith(false);
     first();
