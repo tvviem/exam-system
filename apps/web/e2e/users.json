@@ -776,5 +776,61 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-mon-gv-desktop",
+    "fullName": "Người ra đề Theo dõi (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-mon-sv1-desktop",
+    "fullName": "Thí sinh Theo dõi 1 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MON-D-001",
+    "classLabel": "LOP-MON-D"
+  },
+  {
+    "username": "e2e-lb-mon-sv2-desktop",
+    "fullName": "Thí sinh Theo dõi 2 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MON-D-002",
+    "classLabel": "LOP-MON-D"
+  },
+  {
+    "username": "e2e-lb-mon-gv-mobile",
+    "fullName": "Người ra đề Theo dõi (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-mon-sv1-mobile",
+    "fullName": "Thí sinh Theo dõi 1 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MON-M-001",
+    "classLabel": "LOP-MON-M"
+  },
+  {
+    "username": "e2e-lb-mon-sv2-mobile",
+    "fullName": "Thí sinh Theo dõi 2 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MON-M-002",
+    "classLabel": "LOP-MON-M"
   }
 ]

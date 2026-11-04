@@ -2,6 +2,7 @@ import type { RichText } from '@exam/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { ApiError, apiFetch } from './api';
 import type { SessionRow } from './take/entry';
+import type { HeartbeatBody, HeartbeatReply } from './take/heartbeat-queue';
 import { takeStore } from './take/idb-store';
 import { forgetAttemptLocally } from './take/local-data';
 import { loadAttempt, rememberView } from './take/offline-attempt';
@@ -186,6 +187,10 @@ export const saveResponses = (attemptId: string, items: SaveItem[]) =>
     method: 'PUT',
     body: { items },
   });
+
+/** Nhịp báo còn làm bài (Q213): trả hạn hiện tại, thiết bị còn hợp lệ không và thông báo mới. */
+export const sendHeartbeat = (attemptId: string, body: HeartbeatBody) =>
+  apiFetch<HeartbeatReply>(`/take/attempts/${attemptId}/heartbeat`, { method: 'POST', body });
 
 export const submitAttempt = (attemptId: string) =>
   apiFetch<SubmittedState>(`/take/attempts/${attemptId}/submit`, { method: 'POST' });

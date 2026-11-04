@@ -31,9 +31,11 @@ import {
 } from '../take';
 import { type AnswerState, answerStateOf, progressOf } from '../take/answers';
 import { formatClock, type Warning } from '../take/clock';
+import type { Notice } from '../take/heartbeat-queue';
 import { forgetAttemptLocally } from '../take/local-data';
 import type { SaveStatus } from '../take/save-queue';
 import { useCountdown } from '../take/use-countdown';
+import { useHeartbeat } from '../take/use-heartbeat';
 import { usePrefs } from '../take/use-prefs';
 import { type StopReason, stopReasonOf, useSaver } from '../take/use-saver';
 import { warmMedia } from '../take/warm-media';
@@ -74,6 +76,9 @@ interface RunnerSession {
   clock: { remaining: number; warning: Warning } | null;
   saving: { status: SaveStatus; unsaved: number; rejected: { itemId: string }[] } | null;
   connected: boolean;
+  /** Thông báo của Người ra đề (Cộng giờ, Cảnh cáo) chưa được Người dự thi đóng. */
+  notices: Notice[];
+  dismissNotice: (id: string) => void;
   timedOut: boolean;
   submit: { pending: boolean; failed: boolean; error: unknown; run: () => void } | null;
   stop: StopReason | null;
@@ -151,6 +156,24 @@ function useAttemptSession(view: AttemptView): RunnerSession {
       countdown.resync(time);
     },
     onStop: setStop,
+  });
+
+  // Nhịp báo còn làm bài (Q213): Cộng giờ, Cảnh cáo, Buộc nộp và Thu hồi thiết bị đến đây trong tối đa 15 giây.
+  const [notices, setNotices] = useState<Notice[]>([]);
+  useHeartbeat({
+    attemptId,
+    since: view.attempt.startedAt,
+    active: stop === null,
+    onServerTime: (time) => {
+      setConnected(true);
+      countdown.resync(time);
+    },
+    onStop: setStop,
+    onNotices: (fresh) => {
+      setNotices((previous) => [...previous, ...fresh]);
+      // Báo bằng rung nhẹ như cảnh báo giờ, để Người dự thi đang tập trung vào đề không bỏ lỡ.
+      navigator.vibrate?.([200, 100, 200]);
+    },
   });
 
   // Còn mạng thì tải trước ảnh và KaTeX, để tải lại lúc mất mạng vẫn thấy đủ (Q243).
@@ -278,6 +301,9 @@ function useAttemptSession(view: AttemptView): RunnerSession {
     clock: { remaining: countdown.remaining, warning: countdown.warning },
     saving: { status: saver.status, unsaved: saver.unsaved, rejected: saver.rejected },
     connected,
+    notices,
+    dismissNotice: (id: string) =>
+      setNotices((previous) => previous.filter((notice) => notice.id !== id)),
     timedOut,
     submit: {
       pending: submit.isPending,
@@ -309,6 +335,8 @@ export function PreviewRunner({ view, onExit }: { view: PreviewView; onExit: () 
     clock: null,
     saving: null,
     connected: true,
+    notices: [],
+    dismissNotice: () => {},
     timedOut: false,
     submit: null,
     stop: null,
@@ -455,6 +483,13 @@ function AttemptScreen({
       >
         {banner}
         {!session.connected && <OfflineNotice />}
+        {session.notices.map((notice) => (
+          <ExaminerNotice
+            key={notice.id}
+            notice={notice}
+            onDismiss={() => session.dismissNotice(notice.id)}
+          />
+        ))}
         {session.timedOut && (
           <BusyNotice title={t('take.timedOut')} hint={t('take.timedOutHint')} />
         )}
@@ -671,6 +706,41 @@ function AttemptScreen({
         <ThemeSwitcher />
       </TakePrefsDialog>
     </MediaSourceContext.Provider>
+  );
+}
+
+/** Thông báo của Người ra đề giữa giờ thi: Người dự thi phải thấy rõ và tự đóng (Q257, Q259). */
+function ExaminerNotice({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {
+  const { t } = useTranslation();
+  const warning = notice.kind === 'warning';
+  return (
+    <div
+      role={warning ? 'alert' : 'status'}
+      className={`flex items-start gap-2 rounded-lg border p-3 font-sans text-sm ${
+        warning
+          ? 'border-danger bg-danger-soft text-danger'
+          : 'border-primary bg-primary-soft text-on-primary-soft'
+      }`}
+    >
+      {warning ? (
+        <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />
+      ) : (
+        <Timer aria-hidden className="mt-0.5 size-5 shrink-0" />
+      )}
+      <span className="flex-1">
+        <strong className="block">{t(`take.notice.${notice.kind}.title`)}</strong>
+        {notice.kind === 'time_extended'
+          ? t('take.notice.time_extended.body', { minutes: notice.minutes, reason: notice.reason })
+          : notice.reason}
+      </span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="min-h-12 shrink-0 rounded-md px-3 font-medium underline"
+      >
+        {t('take.notice.dismiss')}
+      </button>
+    </div>
   );
 }
 

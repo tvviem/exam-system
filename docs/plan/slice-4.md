@@ -659,3 +659,40 @@ Làm đúng phần "PR 4d: thiết kế chi tiết (đã duyệt 4/11/2026)": mi
 - **Kiểm thử**: S1 (`monitor.test.ts`, 33 test), S3 (`attempt-monitor-schema`, 19), S2/S4/S5 (`session-extend-time`, `session-examiner-actions`, `attempt-heartbeat`, `session-monitor`), S8 (quét JSON `key`, `rubric` cho heartbeat và monitor). S6 (Playwright) và S7 (Socket.IO) thuộc 4d-2 và 4d-3.
 - **Cách xem thử**: PR này chưa có giao diện nên chưa có hướng dẫn thử bằng màn hình (4d-2 sẽ có). Chạy `pnpm -C apps/api exec vitest run --project integration test/session-monitor.int.test.ts --silent=false` để xem các con số đo.
 
+## PR 4d-2: giao diện theo dõi (4/11/2026)
+
+Làm phần giao diện của "PR 4d: thiết kế chi tiết" trên API của 4d-1: heartbeat phía `/take`, tab **Theo dõi** ở trang Phiên thi, giao diện Thu hồi và Hoàn tác Thu hồi thiết bị. Chưa có Socket.IO (4d-3): số liệu cập nhật bằng cách hỏi lại mỗi 5 giây.
+
+**Ghi chú triển khai**
+
+- **Người dự thi** (`apps/web/src/lib/take/`): `heartbeat-queue.ts` (hàm thuần: gom sự kiện rời màn hình, mất mạng; tối đa 20 sự kiện một nhịp; mốc `since`; bỏ trùng thông báo) và `use-heartbeat.ts` (nhịp 15 giây, gửi ngay khi hiện lại tab hoặc có mạng lại). Nhịp mang về hạn mới (đồng hồ chỉnh lại như mỗi lần lưu), `deviceOk: false` (màn "Thiết bị đã bị thu hồi"), `submitted` (đóng Lượt) và thông báo Cộng giờ, Cảnh cáo hiện thành dải ở đầu màn làm bài, Người dự thi tự đóng ("Đã hiểu"); có rung nhẹ như cảnh báo giờ. Gửi lỗi thì giữ nguyên sự kiện, nhịp sau gửi lại cùng mã.
+- **Màn Theo dõi** (`lib/ui/monitor/`: `screen`, `views`, `panel`, `dialogs`, `parts`; dữ liệu `lib/monitor.ts`, hàm thuần `lib/monitor-view.ts`): bản chuyển từ prototype đã duyệt (nhánh `prototype/theo-doi`) sang dữ liệu thật. Ba chế độ xem Thẻ, Bảng, Lưới (mặc định theo số người, Q253); chip Cần chú ý; chọn một, nhóm hoặc cả phòng (Q254); mọi thao tác nặng qua hộp xác nhận nêu số người. Cộng giờ giữ mã lô (UUID) từ lúc mở hộp đến khi đóng (Q262). Thu hồi có ô lý do tùy chọn, Hoàn tác Thu hồi và Cảnh cáo/Đình chỉ (lý do bắt buộc) đều hỏi lại (Q259, Q260).
+- **"Còn lại" trôi theo đồng hồ đơn điệu** giữa hai lần hỏi lại, dùng một bộ đếm 1 giây chung mà chỉ các ô "Còn lại" đăng ký, nên mỗi giây không vẽ lại cả danh sách.
+- **Điện thoại:** ô tìm và Lớp nằm trong bottom sheet "Bộ lọc" (thanh công cụ gọn, một dòng chip); ô Lưới tối thiểu 48 px (điều còn mở ở phần prototype). Ngăn chi tiết là bottom sheet, ở máy tính từ 1024 px là ngăn kéo bên phải.
+- **Thêm ở API** (cho giao diện): `monitor` trả `entryClosed` (hiện đúng nút Đóng hoặc Mở lại cửa vào thi) và `revokedDeviceId` (đích của Hoàn tác Thu hồi, khỏi đọc cả Danh sách dự thi).
+- **Bỏ so với prototype:** nhật ký sự kiện từng người trong ngăn chi tiết (chưa có API, để sau) và nút tạm dừng mô phỏng. **Bảng và Thẻ vẽ từng đợt 100 người** kèm nút "Hiện thêm" (Q253 yêu cầu phân trang hoặc cuộn ảo trên ~100 dòng); Lưới vẽ cả phòng vì ô nhẹ và chân ô là thành phần duy nhất đăng ký đồng hồ 1 giây.
+- **Trang Phiên thi rộng 1600 px** (`staticData: { wide: true }`) cho cả ba tab; tab Theo dõi chỉ dựng khi đang xem nên tab ẩn không hỏi lại số liệu.
+- **Sau review hai trục (4/11/2026):** (1) nhịp gửi ngay cả khi ẩn tab (trình duyệt giãn bộ đếm tab nền, chờ nhịp sau thì Người ra đề thấy muộn hoặc nhầm là mất kết nối); (2) mốc `since` giữ theo từng Lượt trong `sessionStorage`, nên Người dự thi tải lại trang vẫn nhận Cảnh cáo và Cộng giờ phát sinh lúc trang đóng (mốc đầu của Lượt mới là giờ bắt đầu); (3) heartbeat dừng khi màn làm bài đã dừng và bỏ qua trả lời đến sau khi gỡ màn; (4) hộp Cộng giờ có ô "Số phút khác (1–180)" ngoài bốn nút chọn sẵn (Q256); (5) `newId()` dự phòng khi không có `crypto.randomUUID` (mở bằng `http://<IP LAN>`); (6) nhãn đọc được của ô Lưới mang đủ dấu hiệu (chậm, thiết bị, Cảnh cáo), nhãn biểu đồ phân bố mang số liệu từng cột; (7) cỡ chữ tối thiểu 13 px, vùng chạm ≥ 48 px (nút tên trong Thẻ, nút đóng ngăn kéo); (8) Esc không đóng ngăn kéo khi đang có hộp thoại; (9) tách `screen.tsx` thành `use-actions.ts` (các thao tác) và `dialogs-host.tsx` (hộp thoại); chuỗi ghép từ mảnh thành một khóa i18n có nội suy; hằng `EXTEND_REASON_MAX`, `VIOLATION_REASON_MAX`, `ATTENTION_HIDDEN_COUNT` dùng chung từ `packages/shared`. **Để ngỏ:** các bảng ánh xạ trạng thái và dấu hiệu còn nằm ở vài chỗ (`parts.tsx`, `views.tsx`); số người trên hộp xác nhận lấy từ ảnh chụp tối đa 5 giây trước nên có thể lệch với server; đóng rồi mở lại hộp Cộng giờ sau khi lần đầu đã thành công thì cộng lần nữa (mã lô chỉ giữ trong một lần mở hộp).
+- **Test:** hàm thuần `heartbeat-queue` (8) và `monitor-view` (7); E2E `monitor.spec.ts` (S6, 4 test × desktop và mobile, mỗi test ~6 giây, gồm đo Cộng giờ cả phòng 160–200 ms từ bấm đến thông báo, Cần chú ý khi rời tab, câu đã lưu còn sau Buộc nộp, Cảnh cáo hiện sau khi tải lại, đồng hồ trang Người dự thi được tua để không chờ 15 giây thật). `take-clock.spec.ts` chặn heartbeat vì heartbeat trả giờ thật của server và đặt lại đồng hồ giả (đúng ngoài đời).
+
+#### Hướng dẫn thử 4d-2 (cho chủ dự án)
+
+Chuẩn bị: `podman pod start dev-exam`, `pnpm dev`, mở `http://localhost:5173`. Cần hai cửa sổ ẩn danh hoặc hai trình duyệt khác nhau cho hai Người dự thi, và một cửa sổ cho Người ra đề. Tạo Phiên thi mở từ bây giờ (Thời lượng 30 phút), thêm 2 Người dự thi vào Danh sách. Mỗi Người dự thi nhập Mã vào thi, bắt đầu làm bài. Người ra đề mở Phiên thi, tab **Theo dõi**.
+
+| Điểm thiết kế | Cách thử | Mong đợi |
+|---|---|---|
+| Q252 Cần chú ý | Một Người dự thi chuyển tab khác 3 lần (hoặc tắt mạng hơn 45 giây) | Sau tối đa ~20 giây chip "Cần chú ý (1)" tăng, huy hiệu "Rời màn hình 3 lần" hoặc "Mất kết nối" hiện ở người đó |
+| Q253 Ba chế độ xem | Bấm Thẻ, Bảng, Lưới | Cả ba hiện đủ người; ít người thì mặc định là Thẻ |
+| Q254 Cộng giờ một người | Chạm tên một người, "Cộng giờ…", +10 phút, nhập lý do | Hộp nêu "1 người"; nút bị khóa khi chưa có lý do; sau tối đa 15 giây đồng hồ của Người dự thi nhảy lên và có dải "Người ra đề đã cộng giờ" kèm lý do |
+| Q254 Cộng giờ nhóm, cả phòng | "Chọn nhiều", chọn cả hai, "Cộng giờ…"; rồi menu "Thao tác cả phòng" > "Cộng giờ cả phòng…" | Hộp luôn nêu số người sẽ được cộng |
+| Q262 Chống cộng hai lần | Cộng giờ, ngắt mạng của Người ra đề ngay lúc bấm, bấm lại khi có mạng (hoặc bấm hai lần liên tiếp thật nhanh) | Người dự thi chỉ được cộng một lần |
+| Q254 Buộc nộp | Chọn nhóm hoặc "Buộc nộp cả phòng…" | Hộp nêu số người; Người dự thi sang màn "Đã nộp: Người ra đề đã Buộc nộp Lượt làm bài này" trong một nhịp; câu đã lưu vẫn còn |
+| Q259 Cảnh cáo | Chi tiết một người > "Cảnh cáo…", để trống lý do | Nút bị khóa; nhập lý do thì Người dự thi thấy dải đỏ với nội dung cảnh cáo và vẫn làm bài tiếp |
+| Q259 Đình chỉ | Chi tiết > "Đình chỉ…" kèm lý do | Lượt đóng, người đó hiện "Đình chỉ" ở màn Theo dõi, ô "Vi phạm" tăng |
+| Q260 Thu hồi và Hoàn tác | "Thu hồi thiết bị…" > Thu hồi; rồi "Hoàn tác Thu hồi…" | Máy Người dự thi báo "Thiết bị này đã bị thu hồi" trong một nhịp; sau Hoàn tác, tải lại trang là làm tiếp được đúng Lượt cũ |
+| Cửa vào thi (Q258) | "Thao tác cả phòng" > "Đóng cửa vào thi…" rồi "Mở lại cửa vào thi…" | Người chưa vào bị chặn khi đóng, vào được khi mở lại; người đang làm không bị ảnh hưởng |
+| Máy Người ra đề mất mạng | Đóng hẳn tab Người ra đề, mở lại trên trình duyệt khác | Màn Theo dõi hiện đủ trạng thái; Người dự thi không bị ảnh hưởng |
+| Điện thoại | Chế độ giả lập 360 × 780: mở tab Theo dõi, "Bộ lọc", chế độ Lưới, chạm một ô | Không cuộn ngang; "Bộ lọc" mở bottom sheet; ô Lưới đủ lớn để chạm; chi tiết là bottom sheet |
+
+Chỗ cần anh nhận xét: chữ ở các hộp xác nhận; vị trí và màu dải thông báo trên màn của Người dự thi; thứ tự các nút trong ngăn chi tiết; chế độ mặc định theo số người.
+

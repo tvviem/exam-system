@@ -36,6 +36,7 @@ interface Person {
   hiddenCount: number;
   warnings: number;
   device: string;
+  revokedDeviceId: string | null;
   reasons: string[];
   submitReason: string | null;
   deadline: string | null;
@@ -45,6 +46,7 @@ const monitor = async (who = live.examiner) => {
   expect(res.statusCode, res.body).toBe(200);
   return res.json() as {
     serverNow: string;
+    entryClosed: boolean;
     totalItems: number;
     summary: Record<string, number>;
     people: Person[];
@@ -236,10 +238,10 @@ describe('thiết bị', () => {
       {},
     );
     expect(await person('an')).toMatchObject({ device: 'revoked', reasons: ['device'] });
-    const roster = (await live.api('GET', `/sessions/${live.sessionId}/roster`)).json() as {
-      items: { userId: string; revokedDevices: { id: string }[] }[];
-    };
-    const deviceId = roster.items.find((i) => i.userId === live.userIds.an)?.revokedDevices[0]?.id;
+    // Màn Theo dõi cho biết thiết bị nào để Hoàn tác Thu hồi, không phải đọc cả Danh sách dự thi.
+    const deviceId = (await person('an')).revokedDeviceId;
+    expect(deviceId).toEqual(expect.any(String));
+    expect((await person('binh')).revokedDeviceId).toBeNull();
     await live.api('POST', `/sessions/${live.sessionId}/roster/${live.userIds.an}/pardon-device`, {
       deviceId,
     });
@@ -279,6 +281,14 @@ describe('quyền và bất biến', () => {
     await live.api('POST', `/sessions/${live.sessionId}/cancel`, {});
     const body = await monitor();
     expect(body.summary).toMatchObject({ submitted: 3 });
+  });
+
+  it('cho biết cửa vào thi đã đóng hay chưa để màn Theo dõi hiện đúng nút Đóng hoặc Mở lại', async () => {
+    expect((await monitor()).entryClosed).toBe(false);
+    await live.api('POST', `/sessions/${live.sessionId}/close-entry`, {});
+    expect((await monitor()).entryClosed).toBe(true);
+    await live.api('POST', `/sessions/${live.sessionId}/reopen-entry`, {});
+    expect((await monitor()).entryClosed).toBe(false);
   });
 
   it('Người ra đề mất máy: đăng nhập thiết bị khác vẫn thấy đủ trạng thái; Người dự thi không bị ảnh hưởng', async () => {

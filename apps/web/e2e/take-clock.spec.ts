@@ -11,6 +11,9 @@ test('Đồng hồ: cảnh báo còn 5 phút và 1 phút, hết giờ tự nộp
   const examiner = await examinerPage(browser, `e2e-lb-gv-${p}`);
   await seedOpenSession(examiner, `${p}-ck`, code, `TK2-${tag}-001`);
 
+  // Test này kiểm đồng hồ phía trình duyệt khi giờ giả tua nhanh. Heartbeat trả giờ thật của server và đặt lại đồng hồ
+  // (đúng ngoài đời), nên chặn nó ở đây để giờ giả không bị kéo về giờ thật; heartbeat có test riêng ở monitor.spec.ts.
+  await page.route('**/api/take/attempts/*/heartbeat', (route) => route.abort());
   await page.clock.install();
   await page.clock.resume(); // thời gian chạy thật; chỉ tua khi test yêu cầu
   await signIn(page, `e2e-lb-ck-${p}`);

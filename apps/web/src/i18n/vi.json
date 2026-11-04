@@ -174,7 +174,9 @@
     "INVALID_STATE_DEVICE_BOUND_ELSEWHERE": "Bạn đã vào Phiên thi này trên một thiết bị khác. Hãy nhờ Người ra đề thu hồi thiết bị cũ nếu cần đổi máy.",
     "INVALID_STATE_DEVICE_REVOKED": "Thiết bị này đã bị thu hồi khỏi Phiên thi. Hãy nhờ Người ra đề hoặc dùng thiết bị đang được gắn.",
     "INVALID_STATE_ROSTER_FULL": "Danh sách dự thi tối đa 500 người. Hãy bớt người hoặc chia thành nhiều Phiên thi.",
-    "INVALID_STATE_ASK_ADMIN": "Chỉ cấp lại được cho tài khoản do chính bạn xin cấp và chủ tài khoản chưa đổi mật khẩu tạm. Trường hợp khác, hãy nhờ Quản trị viên."
+    "INVALID_STATE_ASK_ADMIN": "Chỉ cấp lại được cho tài khoản do chính bạn xin cấp và chủ tài khoản chưa đổi mật khẩu tạm. Trường hợp khác, hãy nhờ Quản trị viên.",
+    "INVALID_STATE_EXTENSION_LIMIT": "Có người đã được cộng đủ giờ tối đa (600 phút). Bỏ họ ra khỏi nhóm rồi thử lại.",
+    "INVALID_STATE_BATCH_REUSED": "Yêu cầu này trùng mã với một yêu cầu khác. Đóng hộp thoại và mở lại."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -230,8 +232,15 @@
     "position": "Câu {{current}}/{{total}}",
     "timedOut": "Hết giờ. Đang nộp bài…",
     "timedOutHint": "Các câu đã lưu được giữ nguyên. Nếu mất kết nối, hệ thống sẽ thử nộp lại.",
-    "mode": { "label": "Chế độ xem", "one": "Từng câu", "all": "Cả đề" },
-    "warn": { "five": "Còn 5 phút.", "one": "Còn 1 phút!" },
+    "mode": {
+      "label": "Chế độ xem",
+      "one": "Từng câu",
+      "all": "Cả đề"
+    },
+    "warn": {
+      "five": "Còn 5 phút.",
+      "one": "Còn 1 phút!"
+    },
     "save": {
       "label": "Trạng thái lưu",
       "saved": "Đã lưu",
@@ -253,7 +262,10 @@
       "cell": "Câu {{no}}, {{state}}",
       "cellFlagged": "Câu {{no}}, {{state}}, đánh dấu"
     },
-    "session": { "questionCount": "{{count}} câu", "minutes": "{{count}} phút" },
+    "session": {
+      "questionCount": "{{count}} câu",
+      "minutes": "{{count}} phút"
+    },
     "confirm": {
       "title": "Nộp bài?",
       "allDone": "Bạn đã làm hết {{count}} câu.",
@@ -318,6 +330,16 @@
         "session_cancelled": "Lượt làm bài kết thúc vì Phiên thi đã bị Hủy."
       },
       "note": "Kết quả (nếu có) chỉ hiện sau khi Người ra đề công bố."
+    },
+    "notice": {
+      "dismiss": "Đã hiểu",
+      "time_extended": {
+        "title": "Người ra đề đã cộng giờ",
+        "body": "Bạn được cộng thêm {{minutes}} phút. Lý do: {{reason}}"
+      },
+      "warning": {
+        "title": "Cảnh cáo từ Người ra đề"
+      }
     },
     "stop": {
       "DEVICE_REVOKED": {
@@ -1256,7 +1278,8 @@
     "tabs": {
       "label": "Phiên thi",
       "overview": "Tổng quan",
-      "roster": "Danh sách dự thi"
+      "roster": "Danh sách dự thi",
+      "monitor": "Theo dõi"
     },
     "crumb": {
       "list": "Phiên thi",
@@ -1373,5 +1396,167 @@
       "closesAt": "Giờ đóng phải sau giờ mở.",
       "accessCode": "Mã gồm 4 đến 12 ký tự chữ và số."
     }
+  },
+  "monitor": {
+    "title": "Theo dõi phòng thi",
+    "roomActions": "Thao tác cả phòng",
+    "summary": "Tóm tắt phòng thi, {{count}} người",
+    "stale": "Không tải được số liệu mới. Đang hiện số liệu lần trước; sẽ thử lại sau vài giây.",
+    "state": {
+      "not_started": "Chưa vào",
+      "working": "Đang làm",
+      "disconnected": "Mất kết nối",
+      "submitted": "Đã nộp",
+      "suspended": "Đình chỉ"
+    },
+    "tile": {
+      "violations": "Vi phạm"
+    },
+    "deviceState": {
+      "none": "Chưa gắn",
+      "ok": "Bình thường",
+      "new": "Thiết bị mới",
+      "revoked": "Bị thu hồi"
+    },
+    "device": {
+      "revoked": "Thiết bị bị thu hồi",
+      "new": "Thiết bị mới"
+    },
+    "reason": {
+      "hidden": "Rời màn hình {{count}} lần",
+      "slow": "Chậm: {{answered}}/{{total}} câu"
+    },
+    "almostOver": "Sắp hết giờ",
+    "attention": "Cần chú ý",
+    "search": "Tìm người dự thi",
+    "class": "Lớp",
+    "allClasses": "Tất cả lớp",
+    "noClass": "Chưa có lớp",
+    "classSection": "Lớp {{name}}",
+    "filters": "Bộ lọc",
+    "clearFilters": "Bỏ lọc",
+    "shown": "{{shown}} / {{total}} người",
+    "people": "{{count}} người",
+    "emptyFilter": "Không có ai khớp bộ lọc.",
+    "emptyRoster": "Danh sách dự thi chưa có ai.",
+    "view": {
+      "label": "Chế độ xem",
+      "cards": "Thẻ",
+      "table": "Bảng",
+      "grid": "Lưới"
+    },
+    "col": {
+      "name": "Họ tên",
+      "state": "Trạng thái",
+      "answered": "Đã trả lời",
+      "remaining": "Còn lại",
+      "signs": "Dấu hiệu"
+    },
+    "pick": "Chọn {{name}}",
+    "pickAllShown": "Chọn tất cả người đang hiện",
+    "picked": "đã chọn",
+    "seatProgress": "{{answered}}/{{total}} câu",
+    "legend": {
+      "label": "Chú giải",
+      "how": "Chữ cái: tên gọi · số: câu đã làm · ô đầy dần: tiến độ",
+      "hidden": "rời màn hình từ {{count}} lần",
+      "slow": "chậm"
+    },
+    "select": {
+      "start": "Chọn nhiều",
+      "done": "Xong chọn",
+      "startShort": "Chọn",
+      "doneShort": "Xong",
+      "summary": "Đã chọn {{count}} người, trong đó {{live}} đang làm",
+      "allShown": "Chọn cả {{count}} người đang hiện",
+      "none": "Bỏ chọn"
+    },
+    "scope": {
+      "one": "Một người",
+      "group": "Nhóm đã chọn",
+      "all": "Cả phòng"
+    },
+    "action": {
+      "extend": "Cộng giờ…",
+      "force": "Buộc nộp…",
+      "details": "Chi tiết",
+      "extendRoom": "Cộng giờ cả phòng…",
+      "forceRoom": "Buộc nộp cả phòng…",
+      "closeEntry": "Đóng cửa vào thi…",
+      "reopenEntry": "Mở lại cửa vào thi…",
+      "revoke": "Thu hồi thiết bị…",
+      "pardon": "Hoàn tác Thu hồi…",
+      "warn": "Cảnh cáo…",
+      "suspend": "Đình chỉ…"
+    },
+    "panel": {
+      "label": "Chi tiết {{name}}",
+      "warnings": "Cảnh cáo {{count}}",
+      "hidden": "Rời màn hình",
+      "times": "{{count}} lần",
+      "device": "Thiết bị"
+    },
+    "reasonRequired": "Lý do (bắt buộc)",
+    "reasonOptional": "Lý do (không bắt buộc)",
+    "extend": {
+      "title": "Cộng giờ",
+      "note": "{{scope}}: {{count}} người đang làm sẽ được cộng giờ và thấy ngay trên màn hình của họ.",
+      "minutes": "Số phút",
+      "plus": "+{{minutes}} phút",
+      "reasonHint": "Ví dụ: mất điện phòng máy",
+      "confirm": "Cộng {{minutes}} phút cho {{count}} người",
+      "custom": "Số phút khác (1–180)"
+    },
+    "force": {
+      "title": "Buộc nộp",
+      "confirm": "Buộc nộp {{count}} người",
+      "body": "{{scope}}: {{count}} người đang làm sẽ nộp bài ngay. Các câu đã lưu được giữ và chấm như bình thường. Không hoàn tác được."
+    },
+    "warn": {
+      "title": "Cảnh cáo",
+      "body": "Ghi Vi phạm cho {{name}}. Người dự thi thấy nội dung cảnh cáo trên màn hình và làm bài tiếp.",
+      "confirm": "Cảnh cáo"
+    },
+    "suspend": {
+      "title": "Đình chỉ",
+      "body": "Dừng ngay bài của {{name}} và ghi Vi phạm. Các câu đã lưu được giữ. Đình chỉ chỉ áp dụng cho từng người.",
+      "confirm": "Đình chỉ"
+    },
+    "revoke": {
+      "title": "Thu hồi thiết bị",
+      "body": "Máy {{name}} đang dùng bị chặn ngay. Máy mới nhập Mã vào thi sẽ làm tiếp đúng Lượt này; các câu đã lưu được giữ.",
+      "confirm": "Thu hồi"
+    },
+    "pardon": {
+      "title": "Hoàn tác Thu hồi",
+      "body": "Cho máy cũ của {{name}} vào lại. Máy đang gắn (nếu có) sẽ bị thu hồi thay.",
+      "confirm": "Hoàn tác"
+    },
+    "entry": {
+      "closeTitle": "Đóng cửa vào thi",
+      "reopenTitle": "Mở lại cửa vào thi",
+      "close": "Đóng cửa",
+      "reopen": "Mở lại",
+      "closeBody": "Từ giờ không ai mới vào được. {{count}} người chưa vào sẽ không thi được; người đang làm không bị ảnh hưởng.",
+      "reopenBody": "Người chưa vào sẽ vào được trở lại."
+    },
+    "distribution": {
+      "title": "Phân bố tiến độ của người đang làm",
+      "label": "Số câu đã làm của người đang làm, mỗi cột một nhóm câu: {{buckets}}"
+    },
+    "toast": {
+      "extended": "Đã cộng {{minutes}} phút cho {{count}} người",
+      "forced": "Đã Buộc nộp {{count}} người",
+      "warned": "Đã Cảnh cáo",
+      "suspended": "Đã Đình chỉ",
+      "revoked": "Đã Thu hồi thiết bị",
+      "pardoned": "Đã Hoàn tác Thu hồi",
+      "closed": "Đã đóng cửa vào thi",
+      "reopened": "Đã mở lại cửa vào thi"
+    },
+    "minutesShort": "{{count}}′",
+    "bucket": "{{from}}+",
+    "more": "Hiện thêm {{count}} người",
+    "showing": "Đang hiện {{shown}} / {{total}} người"
   }
 }
