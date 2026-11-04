@@ -38,6 +38,7 @@ import {
   TextField,
 } from '../../../../lib/ui';
 import { StatusBadge, TemporaryPasswordDialog } from '../../../../lib/ui/admin';
+import { LiveSessionsNotice } from '../../../../lib/ui/live-sessions-notice';
 import { useToast } from '../../../../lib/ui/toast';
 import { TransferDialog } from '../../../../lib/ui/transfer-dialog';
 
@@ -78,6 +79,8 @@ function UserDetailPage() {
           })}
         </p>
       )}
+
+      <LiveSessionsNotice sessions={user.liveSessions} id="live-sessions" />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="flex flex-col gap-5">
@@ -422,6 +425,9 @@ type PendingAction = 'lock' | 'unlock' | 'password' | 'remove' | null;
 
 function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: () => void }) {
   const { t } = useTranslation();
+  // Đang trong Phiên thi đang diễn ra: Khóa và Xóa bị vô hiệu kèm lý do (Q264). Mở khóa và Cấp lại mật khẩu không bị chặn.
+  const inLiveSession = user.liveSessions.length > 0;
+  const queryClient = useQueryClient();
   const [pending, setPending] = useState<PendingAction>(null);
   const [reason, setReason] = useState('');
   const [password, setPassword] = useState<(TemporaryPassword & { title: string }) | null>(null);
@@ -447,6 +453,10 @@ function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: (
         if (error instanceof ApiError && error.code === 'HAS_CONTENT') {
           close();
           onHasContent();
+        }
+        // Vừa có Phiên thi bắt đầu giữa lúc mở hộp thoại: tải lại để dải cảnh báo và nút vô hiệu hiện ra.
+        if (error instanceof ApiError && error.code === 'USER_IN_LIVE_SESSION') {
+          void queryClient.invalidateQueries({ queryKey: userQuery(user.id).queryKey });
         }
       },
     });
@@ -488,7 +498,11 @@ function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: (
             {t('admin.users.unlock')}
           </Button>
         ) : (
-          <Button onClick={() => setPending('lock')}>
+          <Button
+            disabled={inLiveSession}
+            aria-describedby={inLiveSession ? 'live-sessions' : undefined}
+            onClick={() => setPending('lock')}
+          >
             <Lock aria-hidden className="size-5" />
             {t('admin.users.lock')}
           </Button>
@@ -497,10 +511,16 @@ function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: (
           <KeyRound aria-hidden className="size-5" />
           {t('admin.users.reissue')}
         </Button>
-        <Button variant="danger-ghost" onClick={() => setPending('remove')}>
+        <Button
+          variant="danger-ghost"
+          disabled={inLiveSession}
+          aria-describedby={inLiveSession ? 'live-sessions' : undefined}
+          onClick={() => setPending('remove')}
+        >
           <Trash2 aria-hidden className="size-5" />
           {t('admin.users.remove')}
         </Button>
+        {inLiveSession && <p className="text-sm text-fg-muted">{t('admin.users.liveDisabled')}</p>}
       </div>
 
       <Dialog open={current !== null} onClose={close} title={current?.title ?? ''}>

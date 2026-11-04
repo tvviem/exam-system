@@ -67,6 +67,8 @@ const contentQuerySchema = z.object({
     .optional()
     .transform((value) => (value ? value.split(',') : undefined))
     .pipe(z.array(z.uuid()).max(500).optional()),
+  // `?recipientId=`: cho hộp xác nhận Xóa biết người nhận đang có tên trong Danh sách của Phiên thi nào (Q263).
+  recipientId: z.uuid().optional(),
 });
 const removeQuerySchema = z.object({ recipientId: z.uuid().optional() });
 const lockSchema = z.object({ reason: z.string().trim().min(1).max(500) }).strict();
@@ -133,7 +135,8 @@ export class UserManagementController {
 
   @Get(':id/content')
   content(@Param('id', ParseUUIDPipe) id: string, @Query() query: unknown) {
-    return this.users.contentOf(id, contentQuerySchema.parse(query ?? {}).topicIds);
+    const { topicIds, recipientId } = contentQuerySchema.parse(query ?? {});
+    return this.users.contentOf(id, topicIds, recipientId);
   }
 
   @Post(':id/transfer')

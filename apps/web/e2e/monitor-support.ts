@@ -13,7 +13,7 @@ export async function room(
   browser: Browser,
   project: string,
   tag: string,
-  options: { prefix?: 'mon' | 'live'; fakeClock?: boolean } = {},
+  options: { prefix?: 'mon' | 'live' | 'xd'; fakeClock?: boolean } = {},
 ) {
   const prefix = options.prefix ?? 'mon';
   const fakeClock = options.fakeClock ?? true;

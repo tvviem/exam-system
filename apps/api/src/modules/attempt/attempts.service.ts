@@ -14,6 +14,7 @@ import {
 import { Inject, Injectable } from '@nestjs/common';
 import { and, count, desc, eq, gt, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
+import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
 import { uniqueViolationOf } from '../../common/pg-error';
@@ -99,6 +100,7 @@ export class AttemptsService {
     private readonly joinLimiter: JoinRateLimiter,
     private readonly presence: AttemptPresence,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
+    @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
   ) {}
 
   // --- Vào thi (Q229) -----------------------------------------------------------------------------------------------
@@ -362,6 +364,8 @@ export class AttemptsService {
     const attemptId = await this.db.transaction(async (tx) => {
       // Khóa Phiên thi `FOR SHARE` ngay câu đầu (cùng thứ tự khóa với Hủy, Thu hồi, Bớt người): không bế tắc, và nếu vừa bị
       // Hủy thì thấy đã Hủy chứ không tạo Lượt mồ côi.
+      // Giữ chỗ tài khoản trước Phiên thi (cùng thứ tự khóa với Khóa, Xóa người dùng): người vừa bị Khóa không mở Lượt mới.
+      if (!(await this.directory.holdActive(tx, userId))) throw new ApiError('UNAUTHENTICATED');
       const gate = await this.entry.gateFor(sessionId, userId, tx, { lock: true });
       if (!gate) throw new ApiError('NOT_FOUND');
       await this.requireDevice(tx, sessionId, userId, deviceKey);
@@ -369,6 +373,20 @@ export class AttemptsService {
 
       const running = await this.inProgressOf(tx, sessionId, userId);
       if (running && !isPastGrace(running.deadline, now)) return running.id;
+
+      // Đình chỉ chặn Lượt mới trong Phiên thi đó, kể cả khi còn lượt (Q272); Buộc nộp chỉ đóng Lượt nên không chặn.
+      const [suspended] = await tx
+        .select({ id: violations.id })
+        .from(violations)
+        .where(
+          and(
+            eq(violations.sessionId, sessionId),
+            eq(violations.userId, userId),
+            eq(violations.action, 'disqualify'),
+          ),
+        )
+        .limit(1);
+      if (suspended) throw invalidState('DISQUALIFIED');
 
       const problem = entryProblem(phaseOf(gate, now), false);
       if (problem) throw invalidState(problem);

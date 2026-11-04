@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCESS_CODE_ALPHABET,
+  countSessionActivities,
   generateAccessCode,
   normalizeAccessCode,
   parseCodeList,
   phaseOf,
+  sessionActivityOf,
   sessionChangeProblems,
   sessionEditableFields,
   sessionSettingsSchema,
@@ -277,5 +279,77 @@ describe('sessionEditableFields: giao diện khóa ô nào (Q202)', () => {
   it('Đã đóng và Đã hủy: không ô nào', () => {
     expect(sessionEditableFields('closed')).toEqual({});
     expect(sessionEditableFields('cancelled')).toEqual({});
+  });
+});
+
+describe('sessionActivityOf: Phiên thi có đang diễn ra không (Q271)', () => {
+  const inWindow = at('2026-12-01T02:00:00Z');
+
+  it('trong Khung giờ là đang diễn ra dù chưa ai vào', () => {
+    expect(sessionActivityOf(base, inWindow, false)).toBe('live');
+  });
+
+  it('ranh giới: đúng giờ mở và đúng giờ đóng vẫn đang diễn ra', () => {
+    expect(sessionActivityOf(base, at('2026-12-01T01:00:00Z'), false)).toBe('live');
+    expect(sessionActivityOf(base, at('2026-12-01T03:00:00Z'), false)).toBe('live');
+  });
+
+  it('trước giờ mở là sắp mở, sau giờ đóng là đã xong', () => {
+    expect(sessionActivityOf(base, at('2026-12-01T00:59:59.999Z'), false)).toBe('upcoming');
+    expect(sessionActivityOf(base, at('2026-12-01T03:00:00.001Z'), false)).toBe('done');
+  });
+
+  it('Lượt còn đang làm sau giờ đóng vẫn là đang diễn ra (được đủ Thời lượng)', () => {
+    expect(sessionActivityOf(base, at('2026-12-01T03:40:00Z'), true)).toBe('live');
+  });
+
+  it('Đóng cửa vào thi không làm Phiên thi hết đang diễn ra', () => {
+    const closedEntry = { ...base, entryClosedAt: at('2026-12-01T01:30:00Z') };
+    expect(sessionActivityOf(closedEntry, inWindow, false)).toBe('live');
+  });
+
+  it('đã Hủy thắng tất cả, kể cả khi còn Lượt', () => {
+    const cancelled = { ...base, cancelledAt: at('2026-12-01T01:45:00Z') };
+    expect(sessionActivityOf(cancelled, inWindow, true)).toBe('cancelled');
+    expect(sessionActivityOf(cancelled, at('2026-11-30T00:00:00Z'), false)).toBe('cancelled');
+  });
+});
+
+describe('countSessionActivities', () => {
+  it('đếm đủ bốn trạng thái và tổng', () => {
+    const now = at('2026-12-01T02:00:00Z');
+    const later = {
+      ...base,
+      opensAt: at('2026-12-02T01:00:00Z'),
+      closesAt: at('2026-12-02T03:00:00Z'),
+    };
+    const earlier = {
+      ...base,
+      opensAt: at('2026-11-30T01:00:00Z'),
+      closesAt: at('2026-11-30T03:00:00Z'),
+    };
+    const cancelled = { ...base, cancelledAt: at('2026-11-30T00:00:00Z') };
+    const counts = countSessionActivities(
+      [
+        { ...base, hasInProgress: false },
+        { ...earlier, hasInProgress: true },
+        { ...later, hasInProgress: false },
+        { ...earlier, hasInProgress: false },
+        { ...earlier, hasInProgress: false },
+        { ...cancelled, hasInProgress: false },
+      ],
+      now,
+    );
+    expect(counts).toEqual({ live: 2, upcoming: 1, done: 2, cancelled: 1, total: 6 });
+  });
+
+  it('danh sách rỗng ra toàn số 0', () => {
+    expect(countSessionActivities([], at('2026-12-01T02:00:00Z'))).toEqual({
+      live: 0,
+      upcoming: 0,
+      done: 0,
+      cancelled: 0,
+      total: 0,
+    });
   });
 });

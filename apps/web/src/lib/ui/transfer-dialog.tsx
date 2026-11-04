@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,8 +31,15 @@ export function TransferDialog({
   const [done, setDone] = useState<{ counts: OwnedCounts; name: string } | null>(null);
 
   const scope = mode === 'transfer' ? topicIds : undefined;
-  const content = useQuery({ ...userContentQuery(user.id, scope), enabled: open });
+  // Khi Xóa: hỏi kèm người nhận để biết họ đang có tên trong Danh sách của Phiên thi nào (cảnh báo, không chặn, Q263).
+  const recipientId = mode === 'remove' ? recipient?.id : undefined;
+  const content = useQuery({
+    ...userContentQuery(user.id, scope, recipientId),
+    enabled: open,
+    placeholderData: keepPreviousData,
+  });
   const counts = content.data?.selected ?? content.data?.totals;
+  const sessions = mode === 'remove' ? content.data?.sessions : undefined;
 
   const run = useMutation({
     mutationFn: async (recipientId: string): Promise<OwnedCounts> => {
@@ -43,6 +50,7 @@ export function TransferDialog({
         illustrations: 0,
         exams: 0,
         detachedItems: 0,
+        sessions: 0,
       };
       await removeUser(user.id, recipientId);
       return totals;
@@ -85,6 +93,11 @@ export function TransferDialog({
           {done.counts.exams > 0 && (
             <p className="text-sm">{t('admin.transfer.doneExams', { exams: done.counts.exams })}</p>
           )}
+          {done.counts.sessions > 0 && (
+            <p className="text-sm">
+              {t('admin.transfer.doneSessions', { sessions: done.counts.sessions })}
+            </p>
+          )}
           <Button onClick={close}>{t('admin.transfer.close')}</Button>
         </div>
       ) : (
@@ -114,11 +127,26 @@ export function TransferDialog({
                 ` ${t('admin.transfer.detached', { items: counts.detachedItems })}`}
             </p>
           )}
+          {sessions && sessions.total > 0 && (
+            <p className="text-sm" aria-live="polite">
+              {t('admin.transfer.sessionsAll', {
+                total: sessions.total,
+                upcoming: sessions.upcoming,
+                done: sessions.done,
+                cancelled: sessions.cancelled,
+              })}
+            </p>
+          )}
           <RecipientPicker
             donorId={user.id}
             value={recipient?.id ?? null}
             onChange={(id, name) => setRecipient({ id, name })}
           />
+          {(content.data?.recipientInRoster ?? 0) > 0 && (
+            <p role="status" className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-fg">
+              {t('admin.transfer.recipientInRoster', { count: content.data?.recipientInRoster })}
+            </p>
+          )}
           <p className="text-sm text-fg-muted">
             {t('admin.transfer.renameNote', { name: user.fullName })}
           </p>

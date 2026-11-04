@@ -1,3 +1,4 @@
+import type { SessionActivityCounts } from '@exam/shared';
 import type { Transaction } from '../db/db.module';
 
 /**
@@ -25,6 +26,8 @@ export interface ContentCounts {
 /** Cộng thêm Bộ đề (Q182, Q183): Bộ đề nháp đổi chủ theo Chủ đề, hoặc mọi Bộ đề khi Xóa người dùng. */
 export interface OwnedCounts extends ContentCounts {
   exams: number;
+  /** Phiên thi đổi chủ (chỉ khi Xóa người dùng; Chuyển giao Chủ đề không đụng Phiên thi, Q263). */
+  sessions: number;
   /** Câu bị gỡ khỏi các Bộ đề nháp đi cùng vì không thuộc Chủ đề được chuyển. */
   detachedItems: number;
 }
@@ -33,6 +36,10 @@ export interface OwnedContentSummary {
   topics: OwnedTopicSummary[];
   /** Mọi thứ người này sở hữu (Xóa người dùng chuyển hết). */
   totals: OwnedCounts;
+  /** Phiên thi của người này theo trạng thái (đang diễn ra, sắp mở, đã xong, đã Hủy). */
+  sessions: SessionActivityCounts;
+  /** Chỉ có khi hỏi theo `recipientId`: số Phiên thi của người này mà người nhận đang có tên trong Danh sách dự thi. */
+  recipientInRoster?: number;
   /** Chỉ có khi hỏi theo `topicIds`: số liệu đúng của các Chủ đề được chọn (ảnh dùng chung chỉ đếm một lần). */
   selected?: OwnedCounts;
 }
@@ -47,7 +54,10 @@ export interface PreparedTransfer {
 }
 
 export interface OwnedContent {
-  summaryOf(userId: string, options?: { topicIds?: string[] }): Promise<OwnedContentSummary>;
+  summaryOf(
+    userId: string,
+    options?: { topicIds?: string[]; recipientId?: string },
+  ): Promise<OwnedContentSummary>;
   /** `topicIds` là 'all' khi Xóa người dùng (toàn bộ Chủ đề, kể cả đã Lưu trữ). Chủ đề không thuộc `fromId` là lỗi. */
   prepareTransfer(input: {
     fromId: string;

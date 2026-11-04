@@ -22,6 +22,8 @@ export const API_ERROR_STATUS = {
   SLIP_EXPIRED: HttpStatus.GONE,
   INVALID_STATE: HttpStatus.CONFLICT,
   HAS_CONTENT: HttpStatus.CONFLICT,
+  /** Khóa hay Xóa người đang trong Phiên thi đang diễn ra (Q264). */
+  USER_IN_LIVE_SESSION: HttpStatus.CONFLICT,
 } as const;
 
 export type ApiErrorCode = keyof typeof API_ERROR_STATUS;

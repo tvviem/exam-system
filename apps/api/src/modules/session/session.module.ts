@@ -4,8 +4,10 @@ import { IdentityModule } from '../identity/identity.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SessionEntryService } from './session-entry.service';
 import { SessionLifecycleService } from './session-lifecycle.service';
+import { SessionLiveGuardService } from './session-live-guard.service';
 import { SessionMonitorController } from './session-monitor.controller';
 import { SessionMonitorService } from './session-monitor.service';
+import { SessionOwnedContent } from './session-owned-content';
 import { SessionRosterController } from './session-roster.controller';
 import { SessionRosterService } from './session-roster.service';
 import { SessionUsageService } from './session-usage.service';
@@ -23,7 +25,15 @@ import { SessionsService } from './sessions.service';
     SessionRosterService,
     SessionUsageService,
     SessionEntryService,
+    SessionOwnedContent,
+    SessionLiveGuardService,
   ],
-  exports: [SessionUsageService, SessionEntryService, SessionMonitorService],
+  exports: [
+    SessionUsageService,
+    SessionEntryService,
+    SessionMonitorService,
+    SessionOwnedContent,
+    SessionLiveGuardService,
+  ],
 })
 export class SessionModule {}

@@ -1,4 +1,4 @@
-import type { Transaction } from '../db/db.module';
+import type { Database, Transaction } from '../db/db.module';
 
 /**
  * Cổng "Lượt làm bài của Phiên thi" (Q228): `session` cần biết ai đã có Lượt, đóng các Lượt khi Hủy Phiên thi và thao
@@ -131,4 +131,17 @@ export interface SessionAttempts {
   ): Promise<{ totalItems: number; byUser: Map<string, MonitorAttempt> }>;
   /** Mã các Lượt đang làm trong Phiên thi (của những người này nếu có `userIds`), cho tin đẩy. */
   liveAttemptIds(sessionId: string, userIds?: string[]): Promise<string[]>;
+  /**
+   * Số Lượt đang làm của từng Phiên thi (Phiên thi không có Lượt vắng). "Đang làm" là chưa nộp và chưa quá hạn cộng ân
+   * hạn: Lượt quá hạn mà job quét chưa kịp nộp không tính (Q271).
+   */
+  inProgressCounts(
+    sessionIds: string[],
+    executor?: Pick<Database, 'select'>,
+  ): Promise<Map<string, number>>;
+  /** Mã các Phiên thi mà người này đang có Lượt đang làm (cùng nghĩa "đang làm" như trên). */
+  sessionIdsWithInProgressOf(
+    userId: string,
+    executor?: Pick<Database, 'select'>,
+  ): Promise<string[]>;
 }

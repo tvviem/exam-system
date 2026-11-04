@@ -344,7 +344,7 @@ Mã lỗi mới: `INVALID_ACCESS_CODE` (một mã chung, Q201), `INVALID_STATE` 
 | **4b** Vào thi và Lượt làm bài (API), chia 4b-1 và 4b-2 (Q226) | `attempt`: `join`, Gắn thiết bị, `start`, `view`, `saveResponses`, `submit`, `close`, job quét tự nộp, hook Khóa đăng nhập (Q218), ảnh cho Người dự thi (Q219), cookie `exam_did` | 0013 | S1, S2, S3, S4, S5, S8 |
 | **4c** Khu làm bài `/take` | giao diện điện thoại theo prototype đã duyệt: Phiên thi của tôi, nhập mã, màn xác nhận (Q210), hai chế độ, lưới số câu, đồng hồ có cảnh báo 5 và 1 phút, hàng đợi IndexedDB tự xả, hộp thoại xác nhận Nộp bài, báo thiết bị bị thu hồi, menu chuyển khu (Q143), Xem thử qua Phiên thi (Q220), PWA | không | S6 |
 | **4d** Theo dõi phòng thi, chia 4d-1 (API), 4d-2 (giao diện), 4d-3 (Socket.IO) (Q255) | prototype trước (Q207, xong), rồi: presence, `session_events`, Cộng giờ, Thu hồi thiết bị và Hoàn tác Thu hồi, Đóng cửa vào thi, Buộc nộp, Vi phạm và Đình chỉ (Q221), cuối cùng Socket.IO | 0014 | S1–S8 (xem "PR 4d: thiết kế chi tiết") |
-| **4e** Hoàn thiện (xem "PR 4e: thiết kế chi tiết") | Phiên thi trong Xóa người dùng và chặn Khóa, Xóa khi Phiên thi đang diễn ra (Q263, Q264, Q271), Đình chỉ chặn Lượt mới (Q272), đo tải 500 người phần 4d (Q266–Q268), `demo:room` và README lát cắt 4 (Q269, Q270) | không | S1, S2, S4, S6, S9 |
+| **4e** **Xong 4/11/2026** — Hoàn thiện (xem "PR 4e: thiết kế chi tiết") | Phiên thi trong Xóa người dùng và chặn Khóa, Xóa khi Phiên thi đang diễn ra (Q263, Q264, Q271), Đình chỉ chặn Lượt mới (Q272), đo tải 500 người phần 4d (Q266–Q268), `demo:room` và README lát cắt 4 (Q269, Q270) | không | S1, S2, S4, S6, S9 |
 
 Quy trình mỗi PR: thiết kế chi tiết và seam test cho riêng PR đó chốt với chủ dự án trước; làm theo từng lát dọc đỏ-xanh; chạy `code-review` (Standards và Spec); mở PR bằng skill `pr`; chờ CI xanh; chỉ merge khi chủ dự án ra lệnh.
 
@@ -766,3 +766,27 @@ Chuẩn bị như 4d-2 (hai Người dự thi đang làm bài, một Người ra
 | Quyền | Thử mở màn Theo dõi của Phiên thi người khác (đường dẫn trực tiếp) | Không thấy dữ liệu (404); không có tin đẩy |
 | Quản trị viên | Mở các trang quản trị | Hiện tức thì; không có kết nối `/ws/` nào |
 
+## PR 4e: ghi chú triển khai (4/11/2026)
+
+Làm đúng "PR 4e: thiết kế chi tiết (đã duyệt 4/11/2026)"; không migration.
+
+**4e-1 Xóa Người ra đề, chặn Khóa và Xóa, Đình chỉ**
+
+- **Hàm thuần** `sessionActivityOf` và `countSessionActivities` ở `packages/shared/src/session.ts` (S1): đang diễn ra = chưa Hủy và (đang trong Khung giờ hoặc còn Lượt đang làm); ranh giới đúng giờ mở và đóng vẫn đang diễn ra; Đóng cửa vào thi không đổi trạng thái.
+- **Cổng** `LIVE_SESSION_GUARD` (`common/live-session-guard.ts`, `session` cài đặt bằng `SessionLiveGuardService`) và `OWNED_CONTENT` có nguồn thứ ba `SessionOwnedContent` (`UPDATE sessions SET owner_id, version = version + 1`, mọi trạng thái kể cả Hủy; khóa dòng `FOR NO KEY UPDATE` theo `id` để Bắt đầu Lượt, vốn giữ `FOR SHARE` trên Phiên thi, không bị chặn lâu). Cổng `SESSION_ATTEMPTS` thêm `inProgressCounts` và `sessionIdsWithInProgressOf`. "Lượt đang làm" là chưa nộp **và chưa quá hạn cộng ân hạn**: Lượt quá hạn mà job quét chưa kịp nộp không giữ Quản trị viên lại.
+- **Chuyển giao Chủ đề không đụng Phiên thi** (chỉ `topicIds = 'all'` của Xóa người dùng mới chuyển). Nhật ký `session.transfer` và thông báo `sessions.transferred` riêng cho người nhận.
+- `409 USER_IN_LIVE_SESSION` kèm danh sách Phiên thi (tên, giờ, chủ, số người đang làm, `relation` owner hoặc candidate) ở Khóa và Xóa; kiểm lại sau khi đã khóa dòng người dùng. `GET /admin/users/:id` trả sẵn `liveSessions`; `GET .../content?recipientId=` trả thêm `sessions` theo trạng thái và `recipientInRoster`. Cấp lại mật khẩu tạm không bị chặn. `HAS_CONTENT` có thêm `sessions`; người chỉ có Phiên thi vẫn phải chọn người nhận.
+- **Giữ chỗ tài khoản khi Bắt đầu Lượt** (thêm so với thiết kế, do test đồng thời S4 tìm ra): không có khóa nào nối Khóa đăng nhập với `start` đang chạy, nên người vừa bị Khóa có thể còn một Lượt mới mở. `start` gọi `CANDIDATE_DIRECTORY.holdActive` (`SELECT … FOR SHARE` dòng người dùng) **trước** khi khóa Phiên thi, cùng thứ tự khóa (người dùng rồi Phiên thi) với Khóa và Xóa, nên hai việc nối đuôi nhau: Khóa thắng thì `start` bị từ chối, `start` thắng thì Khóa thấy Lượt và trả 409. Hook `account_locked` (Q218) giữ làm lớp phòng thủ.
+- **Đình chỉ chặn `start`** (Q272): có Vi phạm `disqualify` của người đó trong Phiên thi thì `INVALID_STATE` `DISQUALIFIED`, kể cả khi còn lượt; Buộc nộp và Cảnh cáo không chặn.
+- **Giao diện:** dải cảnh báo `LiveSessionsNotice` ở trang chi tiết người dùng; nút Khóa và Xóa vô hiệu kèm lý do (`aria-describedby`); hộp Xóa nêu số Phiên thi theo trạng thái và cảnh báo (không chặn) khi người nhận đang có tên trong Danh sách của Phiên thi sắp nhận; chuông thông báo dẫn tới `/examiner/sessions`.
+- **Test:** `session-owner-removal.int.test.ts` (S2 và S4, 25 test, gồm Xóa 51 Phiên thi 56 ms, Khóa xen `start`, hai lần Xóa cùng lúc); `attempt-deactivation.int.test.ts` đổi sang giả lập cổng cảnh báo để còn kiểm hook; E2E `admin-live-session.spec.ts` (S6, desktop và mobile). Toàn bộ integration 706/706.
+
+**4e-2 Đo tải**
+
+`pnpm -C apps/api load:exam` mở rộng theo Q266: heartbeat 15 giây, Socket.IO cho từng Người dự thi, ba Người ra đề xem Theo dõi, một Cộng giờ cả phòng giữa chừng (đo tin đẩy và thời điểm Người dự thi thấy thông báo), một đợt ngắt rồi nối lại đồng loạt. **Đã chạy 100 người, đạt ngưỡng, 0 lỗi** (số đo ở `architecture.md` mục 11). **Bản 500 người chưa chạy** (Q267: chờ chủ dự án báo thời điểm; lệnh `LOAD_USERS=500 nice -n 19 pnpm -C apps/api load:exam`). Q268 (cache nội dung Bộ đề): chưa có lý do làm ở 100 người; chốt sau bản 500.
+
+**4e-3 Dùng thử**
+
+`pnpm -C apps/api demo:room` (Q269): dựng Người ra đề `demo-gv`, Bộ đề 20 câu, Phiên thi mở và N (mặc định 120) Người dự thi giả đi qua API thật; cứ 20 người có 1 hay rời tab, 1 mất mạng 3 phút, 2 làm rất chậm, còn lại nộp sau 70–95% Thời lượng. `--clean` đi theo khóa ngoại từ tài khoản `demo-*` và xóa mọi dòng phụ thuộc (kể cả nhật ký chỉ ghi thêm, trong một giao dịch với `session_replication_role = replica`, cần quyền siêu người dùng của pod dev); từ chối xóa nếu lẫn tài khoản không phải demo. Cần `LOGIN_MAX_PER_IP=100000` trong `apps/api/.env` vì mô phỏng đăng nhập hàng trăm lần từ một địa chỉ. README có mục "Dùng thử lát cắt 4".
+
+**Giới hạn đã biết:** đo 500 người chưa chạy; WebSocket qua Cloudflare tunnel chưa kiểm; phiên Socket.IO đã mở không bị đá khi người dùng bị Khóa sau đó (kênh chỉ mang tín hiệu); `demo:room` đã chạy thử 40 người trên api và DB tạm (vào thi, heartbeat, rời tab, mất mạng đều hiện; `--clean` xóa sạch 502 dòng của 41 tài khoản), chưa chạy 120 người trên dev server của chủ dự án.

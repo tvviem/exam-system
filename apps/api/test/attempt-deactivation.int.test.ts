@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LIVE_SESSION_GUARD } from '../src/common/live-session-guard';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
 import { call, login } from './support/http';
@@ -6,7 +7,9 @@ import { resetState } from './support/reset';
 import { fullExam, Taker } from './support/take';
 import { DEFAULT_PASSWORD, seedUser } from './support/users';
 
-// Q218: Khóa đăng nhập hoặc Xóa người dùng giữa lúc đang thi thì Lượt đang làm được nộp (account_locked).
+// Q218: Khóa đăng nhập hoặc Xóa người dùng thì Lượt đang làm được nộp (account_locked). Từ Q264, Quản trị viên không Khóa hay
+// Xóa được người đang trong Phiên thi đang diễn ra (xem session-owner-removal); hook này là lớp phòng thủ cho lúc hai việc gần
+// như đồng thời, nên test giả lập cổng cảnh báo trả "không có Phiên thi nào" để đi tới hook.
 
 let t: TestApp;
 let admin: string;
@@ -17,6 +20,9 @@ let an: Taker;
 
 beforeAll(async () => {
   t = await createTestApp();
+});
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 afterAll(async () => {
   await t.app.close();
@@ -54,6 +60,7 @@ beforeEach(async () => {
   an = await Taker.signIn(t, 'an');
   await an.join('AB3K9X');
   await an.call('POST', `/take/sessions/${sessionId}/start`);
+  vi.spyOn(t.app.get(LIVE_SESSION_GUARD), 'liveSessionsOf').mockResolvedValue([]);
 });
 
 const attempts = () =>

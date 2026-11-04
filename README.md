@@ -2,7 +2,7 @@
 
 Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên điện thoại. Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi tại lớp hoặc phòng máy. Người dự thi đăng nhập, nhập Mã vào thi và làm bài ngay trên điện thoại hoặc máy tính.
 
-> **Trạng thái:** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án) **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi: Chủ đề, 4 Loại câu hỏi, công thức, Hình minh họa, Nhập Excel, Chuyển giao). Lát cắt tiếp theo là 3 (Bộ đề). Muốn tự dùng thử những gì đã làm thì xem [Dùng thử lát cắt 1](#dùng-thử-lát-cắt-1) và [Dùng thử lát cắt 2](#dùng-thử-lát-cắt-2).
+> **Trạng thái:** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án) **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi), **lát cắt 3** (Bộ đề) và **lát cắt 4** (Phiên thi: Danh sách dự thi, Mã vào thi, làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ). Lát cắt tiếp theo là 5 (Chấm, Công bố kết quả, Phúc khảo). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 4](#dùng-thử-lát-cắt-4).
 
 ## Tính năng giai đoạn 1
 
@@ -10,7 +10,8 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
 - Tạo Quản trị viên đầu tiên khi triển khai; chỉ định thêm Quản trị viên khác.
 - Tạo link Lời mời để một người trở thành Người ra đề; duyệt Yêu cầu cấp tài khoản và xuất Phiếu tài khoản có mật khẩu tạm.
 - Gắn Nhãn vai trò (Người ra đề, Người dự thi); Khóa đăng nhập, Xóa người dùng, xem lịch sử đăng nhập và nhật ký thao tác.
-- Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Bộ đề nháp có câu của Chủ đề đó và mọi Bộ đề của người bị xóa đi theo.
+- Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Bộ đề nháp có câu của Chủ đề đó đi theo. Xóa Người ra đề chuyển luôn mọi Bộ đề và Phiên thi của họ cho người nhận.
+- Không Khóa đăng nhập hay Xóa được người đang trong Phiên thi đang diễn ra (trang người dùng báo rõ Phiên thi nào và vô hiệu hai nút).
 
 **Người ra đề**
 - Quản lý Chủ đề và Câu hỏi thuộc sở hữu riêng.
@@ -215,6 +216,38 @@ Cần như lát cắt 2 (không cần worker cho lát cắt này). Sau khi lấy
 - Quản trị viên không đọc được Bộ đề của Người ra đề; chỉ chủ sở hữu thấy.
 - Khi Xóa người dùng, ảnh chỉ còn nằm trong bản chụp (không còn ở Câu hỏi nào) vẫn thuộc người đã xóa; chủ Bộ đề vẫn xem được ảnh đó. Hộp "Bộ lọc" trên điện thoại ở danh sách Câu hỏi dùng chung `id` với thanh lọc (lỗi có từ trước, chưa sửa).
 
+## Dùng thử lát cắt 4
+
+Cần như lát cắt 3 và `pnpm db:migrate` (migration `0012`–`0014`: Phiên thi, Lượt làm bài, theo dõi). Chạy `podman pod start dev-exam` nếu pod đang dừng, rồi `pnpm dev`. Từng tính năng có bảng "Cách thử, mong đợi" trong [docs/plan/slice-4.md](docs/plan/slice-4.md) (các mục Hướng dẫn thử 4c-1, 4c-2, 4c-3, 4d-2, 4d-3).
+
+**Cách nhanh nhất: phòng thi thử có sẵn người dự thi giả.** Dựng một Phiên thi thử và cho N người dự thi giả (mặc định 120) đi qua API thật, nên màn Theo dõi hiện như một kỳ thi thật mà không cần mở nhiều trình duyệt. Thêm dòng `LOGIN_MAX_PER_IP=100000` vào `apps/api/.env` (mô phỏng đăng nhập hàng trăm lần từ một máy), chạy lại `pnpm dev`, rồi:
+
+```bash
+pnpm -C apps/api build
+pnpm -C apps/api demo:room                      # 120 người, Thời lượng 30 phút
+pnpm -C apps/api demo:room --users 300 --minutes 45
+pnpm -C apps/api demo:room --clean              # xóa mọi dữ liệu demo-*
+```
+
+Lệnh in địa chỉ màn Theo dõi và tài khoản `demo-gv`; đăng nhập tài khoản đó ở một cửa sổ ẩn danh. Cứ 20 người giả có 1 hay rời tab, 1 mất mạng 3 phút, 2 làm rất chậm; số còn lại nộp bài sau khoảng 70–95% Thời lượng. Dừng mô phỏng bằng Ctrl-C (dữ liệu còn nguyên); `--clean` chỉ xóa dữ liệu `demo-*`.
+
+**Người ra đề** (đăng nhập `demo-gv`, hoặc tự tạo Phiên thi ở menu **Phiên thi**)
+1. Tạo Phiên thi: chọn Bộ đề đã Phát hành, Khung giờ, Thời lượng, Mã vào thi; lập **Danh sách dự thi** theo Lớp hoặc từng người. **Xem thử** để thấy đề như Người dự thi mà không ghi gì.
+2. Tab **Theo dõi**: ba chế độ Thẻ, Bảng, Lưới (30, 120, 300 người); chip **Cần chú ý** (mất kết nối, rời màn hình nhiều lần, thiết bị lạ, làm chậm); dòng "Cập nhật trực tiếp" khi kênh đẩy đang nối.
+3. Thao tác: chọn một người, nhóm hoặc cả phòng rồi **Cộng giờ**, **Buộc nộp**; trên một người: **Cảnh cáo**, **Đình chỉ**, **Thu hồi thiết bị** (và Hoàn tác Thu hồi); cả phòng: **Đóng cửa vào thi**. Mọi thao tác nặng đều qua hộp xác nhận nêu số người.
+4. Đóng tab Theo dõi rồi mở lại (hoặc mở trên máy khác): Người dự thi không bị ảnh hưởng, màn hình quản lý hiện lại đủ.
+
+**Người dự thi** (điện thoại, hoặc Chrome giả lập 360 × 780; chỉ chạy trên `localhost` hoặc HTTPS)
+1. Vào **Làm bài**, nhập Mã vào thi, xác nhận, **Bắt đầu làm bài**. Hai chế độ **Từng câu** và **Cả đề**; đánh dấu câu; lưới câu; nút **Aa** đổi cỡ chữ, kiểu chữ, sáng/tối.
+2. Bài tự lưu; bật Offline vẫn làm tiếp, có mạng lại tự gửi (thử ở bản dựng thật: `pnpm -C apps/web build && pnpm -C apps/web preview`, cổng 4173).
+3. Khi Người ra đề Cộng giờ, Cảnh cáo, Buộc nộp hoặc Thu hồi thiết bị, màn hình đổi trong chưa đến 1 giây.
+
+**Quản trị viên**
+1. Mở một Người ra đề hay Người dự thi đang trong Phiên thi đang diễn ra: có dải cảnh báo nêu Phiên thi, và nút **Khóa đăng nhập**, **Xóa người dùng** bị vô hiệu kèm lý do. Hết Phiên thi, hoặc Người ra đề đã Buộc nộp hay Đình chỉ người đó, thì làm được.
+2. **Xóa Người ra đề**: hộp xác nhận nêu số Phiên thi (sắp mở, đã xong, đã Hủy) sẽ chuyển cùng Chủ đề và Bộ đề; cảnh báo nếu người nhận đang có tên trong Danh sách của Phiên thi sắp nhận. Người nhận có thông báo và mở được Theo dõi của Phiên thi vừa nhận.
+
+**Đo tải:** `LOAD_USERS=100 nice -n 19 pnpm -C apps/api load:exam` (khoảng 2 phút). Bản 500 người chỉ chạy khi máy rảnh (máy này còn chạy production). Số đo ở [docs/architecture.md](docs/architecture.md) mục 11.
+
 ## Vận hành
 
 **Các tiến trình**
@@ -272,6 +305,7 @@ Pipeline không deploy khi đang có Phiên thi diễn ra. Khi hệ thống ổn
 | [docs/ui-design.md](docs/ui-design.md) | Thiết kế giao diện: màu, chữ, chế độ sáng/tối, thành phần, danh sách kiểm |
 | [docs/plan/slice-1.md](docs/plan/slice-1.md) | Kế hoạch và các quyết định (Q43–Q99) của lát cắt 1 |
 | [docs/plan/slice-3.md](docs/plan/slice-3.md) | Kế hoạch và các quyết định (Q159–Q191) của lát cắt 3: Bộ đề |
+| [docs/plan/slice-4.md](docs/plan/slice-4.md) | Kế hoạch, quyết định (Q192–Q272), ghi chú triển khai và hướng dẫn thử của lát cắt 4: Phiên thi |
 | [docs/adr](docs/adr) | Các quyết định kiến trúc đã duyệt |
 | [AGENTS.md](AGENTS.md) | Hướng dẫn cho AI agent làm việc trên repo |
 
@@ -283,7 +317,7 @@ Pipeline không deploy khi đang có Phiên thi diễn ra. Khi hệ thống ổn
 | 1 | **Xong.** Tạo Quản trị viên đầu tiên, đăng nhập, quản lý Người dùng, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản, giao diện sáng/tối |
 | 2 | **Xong.** Chủ đề, Câu hỏi, Hình minh họa, soạn công thức, nhập Excel |
 | 3 | **Xong.** Bộ đề, Phần, Đặt điểm nhanh, Xem thử, Phát hành, Lưu trữ Câu hỏi và Bộ đề, Nhân bản, Chuyển giao kèm Bộ đề |
-| 4 | Phiên thi, Mã vào thi, làm bài trên điện thoại, theo dõi phòng thi |
+| 4 | **Xong.** Phiên thi, Danh sách dự thi, Mã vào thi, làm bài trên điện thoại (chịu mất mạng), theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ, kênh đẩy Socket.IO, Xóa Người ra đề chuyển Phiên thi |
 | 5 | Chấm, Công bố kết quả, Phúc khảo, Đính chính đáp án, xuất Excel |
 | 6 | Triển khai production lên pod `prod-exam` |
 

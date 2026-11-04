@@ -25,6 +25,41 @@ export function phaseOf(session: SessionTimes, now: Date): SessionPhase {
   return 'open';
 }
 
+export const SESSION_ACTIVITIES = ['live', 'upcoming', 'done', 'cancelled'] as const;
+/** Đang diễn ra, sắp mở, đã xong, đã Hủy: cách đếm Phiên thi khi Xóa hay Khóa người dùng (Q263, Q271). */
+export type SessionActivity = (typeof SESSION_ACTIVITIES)[number];
+
+/**
+ * Phiên thi "đang diễn ra" (Q271): chưa Hủy và (đang trong Khung giờ hoặc còn Lượt đang làm, vì Lượt có thể chạy quá
+ * giờ đóng để đủ Thời lượng). Đóng cửa vào thi không làm Phiên thi hết đang diễn ra.
+ */
+export function sessionActivityOf(
+  session: SessionTimes,
+  now: Date,
+  hasInProgress: boolean,
+): SessionActivity {
+  if (session.cancelledAt) return 'cancelled';
+  if (now < session.opensAt) return 'upcoming';
+  if (now <= session.closesAt || hasInProgress) return 'live';
+  return 'done';
+}
+
+export interface SessionActivityCounts extends Record<SessionActivity, number> {
+  total: number;
+}
+
+export function countSessionActivities(
+  sessions: (SessionTimes & { hasInProgress: boolean })[],
+  now: Date,
+): SessionActivityCounts {
+  const counts: SessionActivityCounts = { live: 0, upcoming: 0, done: 0, cancelled: 0, total: 0 };
+  for (const session of sessions) {
+    counts[sessionActivityOf(session, now, session.hasInProgress)] += 1;
+    counts.total += 1;
+  }
+  return counts;
+}
+
 /** Bảng ký tự của Mã vào thi sinh tự động: chữ hoa và số, bỏ 0, O, 1, I, L dễ nhầm khi đọc (Q201). */
 export const ACCESS_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const ACCESS_CODE_LENGTH = 6;

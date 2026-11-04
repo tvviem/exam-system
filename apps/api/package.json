@@ -20,7 +20,8 @@
     "db:migrate": "node dist/db/migrate.js",
     "cli": "node dist/cli/main.js",
     "load:exam": "node scripts/load-exam.cjs",
-    "demo:data": "node scripts/demo-data.cjs"
+    "demo:data": "node scripts/demo-data.cjs",
+    "demo:room": "node scripts/demo-room.cjs"
   },
   "dependencies": {
     "@exam/shared": "workspace:*",

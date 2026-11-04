@@ -1,4 +1,4 @@
-import { extensionScopeOf, extensionWithinCap } from '@exam/shared';
+import { ATTEMPT_GRACE_SECONDS, extensionScopeOf, extensionWithinCap } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, count, eq, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
@@ -285,6 +285,35 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
         ),
       );
     return rows.map((row) => row.id);
+  }
+
+  /** Lượt chưa nộp và chưa quá hạn cộng ân hạn (Lượt quá hạn là việc của job quét, không còn "đang làm"). */
+  private inProgressNow(now: Date) {
+    return and(
+      eq(attempts.status, 'in_progress'),
+      sql`${attempts.deadline} + make_interval(secs => ${ATTEMPT_GRACE_SECONDS}) >= ${now}`,
+    );
+  }
+
+  async inProgressCounts(sessionIds: string[], executor: Pick<Database, 'select'> = this.db) {
+    const counts = new Map<string, number>();
+    if (sessionIds.length === 0) return counts;
+    const rows = await executor
+      .select({ sessionId: attempts.sessionId, n: count() })
+      .from(attempts)
+      .where(and(inArray(attempts.sessionId, sessionIds), this.inProgressNow(this.clock.now())))
+      .groupBy(attempts.sessionId);
+    for (const row of rows) counts.set(row.sessionId, row.n);
+    return counts;
+  }
+
+  async sessionIdsWithInProgressOf(userId: string, executor: Pick<Database, 'select'> = this.db) {
+    const rows = await executor
+      .select({ sessionId: attempts.sessionId })
+      .from(attempts)
+      .where(and(eq(attempts.userId, userId), this.inProgressNow(this.clock.now())))
+      .groupBy(attempts.sessionId);
+    return rows.map((row) => row.sessionId);
   }
 
   async monitorAttempts(sessionId: string, examId: string) {
