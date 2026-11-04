@@ -389,6 +389,23 @@ describe('đồng thời (S4, Q265)', () => {
     expect(rows.every((s) => s.owner_id === gv2Id)).toBe(true);
   });
 
+  it('Xóa chủ cũ xen Cộng giờ và Buộc nộp của chủ cũ: không bế tắc, một chủ duy nhất', async () => {
+    await finishSession();
+    const [removed, extended, forced] = await Promise.all([
+      adminApi('DELETE', `/admin/users/${gv1Id}?recipientId=${gv2Id}`),
+      live.api('POST', `/sessions/${live.sessionId}/extend-time`, {
+        scope: 'all',
+        minutes: 10,
+        reason: 'Mạng chậm',
+        batchId: '00000000-0000-4000-8000-000000000003',
+      }),
+      live.api('POST', `/sessions/${live.sessionId}/force-submit`, { scope: 'all' }),
+    ]);
+    expect(removed.statusCode, removed.body).toBe(200);
+    for (const res of [extended, forced]) expect([200, 401, 404, 409]).toContain(res.statusCode);
+    expect((await sessionRows())[0]?.owner_id).toBe(gv2Id);
+  });
+
   it('hai lần Xóa cùng lúc: một lần thành công, lần kia báo đã Xóa; Phiên thi chuyển đúng một lần', async () => {
     await finishSession();
     const [a, b] = await Promise.all([
