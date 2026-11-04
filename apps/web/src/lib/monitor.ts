@@ -1,9 +1,10 @@
-import type {
-  AttentionReason,
-  DeviceState,
-  ExtendTimeRequest,
-  MonitorState,
-  ViolationRequest,
+import {
+  type AttentionReason,
+  type DeviceState,
+  type ExtendTimeRequest,
+  MONITOR_SAFETY_POLL_MS,
+  type MonitorState,
+  type ViolationRequest,
 } from '@exam/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { apiFetch } from './api';
@@ -47,16 +48,20 @@ export interface MonitorSnapshot {
   people: MonitorPerson[];
 }
 
-/** Hỏi lại mỗi 5 giây (Q213, Q255); Socket.IO ở 4d-3 chỉ làm nhanh hơn. Ẩn tab thì ngừng hỏi. */
+/** Hỏi lại mỗi 5 giây khi không có kênh đẩy (Q213, Q255). Ẩn tab thì ngừng hỏi. */
 export const MONITOR_POLL_MS = 5000;
 
 export const monitorQueryKey = (sessionId: string) => ['sessions', sessionId, 'monitor'] as const;
 
-export const monitorQuery = (sessionId: string) =>
+/**
+ * `live`: kênh đẩy đang nối và đã vào phòng, nên tin đẩy (`monitor.changed`) làm tải lại gần tức thì và chỉ còn hỏi lại an
+ * toàn 30 giây một lần phòng khi lỡ tin; kênh đứt thì về 5 giây.
+ */
+export const monitorQuery = (sessionId: string, live = false) =>
   queryOptions({
     queryKey: monitorQueryKey(sessionId),
     queryFn: () => apiFetch<MonitorSnapshot>(`/sessions/${sessionId}/monitor`),
-    refetchInterval: MONITOR_POLL_MS,
+    refetchInterval: live ? MONITOR_SAFETY_POLL_MS : MONITOR_POLL_MS,
     refetchOnWindowFocus: true,
     // Giữ ảnh chụp cũ khi một lần hỏi lỗi (mất mạng thoáng qua) để màn hình không trắng.
     staleTime: 0,

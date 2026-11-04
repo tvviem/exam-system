@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { LayoutGrid, ListFilter, Rows3, Table2, UserCheck } from 'lucide-react';
+import { REALTIME_EVENT, REALTIME_JOIN } from '@exam/shared';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { LayoutGrid, ListFilter, Radio, Rows3, Table2, UserCheck } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../errors';
-import { type MonitorSnapshot, monitorQuery } from '../../monitor';
+import { type MonitorSnapshot, monitorQuery, monitorQueryKey } from '../../monitor';
 import {
   countsOf,
   defaultViewFor,
@@ -13,6 +14,7 @@ import {
   type MonitorView,
   matchesFilter,
 } from '../../monitor-view';
+import { realtime } from '../../realtime';
 import { Button, Dialog, ErrorMessage, SearchField, SelectField } from '..';
 import { ListSkeleton } from '../admin';
 import { Chip } from '../chips';
@@ -39,20 +41,54 @@ const PAGE_SIZE = 100;
  */
 export function MonitorScreen({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation();
-  const snapshot = useQuery(monitorQuery(sessionId));
+  const queryClient = useQueryClient();
+  const [live, setLive] = useState(false);
+  const snapshot = useQuery(monitorQuery(sessionId, live));
+
+  // Kênh đẩy (PR 4d-3): nhận `monitor.changed` thì tải lại ngay; nối lại sau khi đứt thì tải lại để bù tin đã lỡ.
+  useEffect(() => {
+    const reload = () =>
+      void queryClient.invalidateQueries({ queryKey: monitorQueryKey(sessionId) });
+    let connectedBefore = false;
+    const stop = realtime.subscribe({
+      join: REALTIME_JOIN.monitor,
+      payload: { sessionId },
+      event: REALTIME_EVENT.monitorChanged,
+      onEvent: reload,
+      onConnected: () => {
+        if (connectedBefore) reload(); // lần nối đầu đã có ảnh chụp mới tải
+        connectedBefore = true;
+      },
+      onLive: setLive,
+    });
+    return () => {
+      stop();
+      setLive(false);
+    };
+  }, [sessionId, queryClient]);
+
   if (snapshot.isPending) return <ListSkeleton rows={4} />;
   if (!snapshot.data) return <ErrorMessage>{errorMessage(t, snapshot.error)}</ErrorMessage>;
-  return <MonitorBody sessionId={sessionId} data={snapshot.data} offline={snapshot.isError} />;
+  return (
+    <MonitorBody
+      sessionId={sessionId}
+      data={snapshot.data}
+      offline={snapshot.isError}
+      live={live}
+    />
+  );
 }
 
 function MonitorBody({
   sessionId,
   data,
   offline,
+  live,
 }: {
   sessionId: string;
   data: MonitorSnapshot;
   offline: boolean;
+  live: boolean;
 }) {
   const { t } = useTranslation();
   const { people, totalItems } = data;
@@ -175,7 +211,17 @@ function MonitorBody({
     <SnapshotClock.Provider value={clock}>
       <div className={`flex flex-col gap-4 ${openId !== null ? 'lg:pr-96' : ''}`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">{t('monitor.title')}</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-semibold">{t('monitor.title')}</h2>
+            {/* Chữ kèm biểu tượng, không chỉ màu: Người ra đề biết số liệu đến tức thì hay đang hỏi lại 5 giây một lần. */}
+            <span
+              className={`inline-flex items-center gap-1 text-[13px] ${live ? 'text-success' : 'text-fg-muted'}`}
+              aria-live="polite"
+            >
+              <Radio aria-hidden className="size-3.5" />
+              {t(live ? 'monitor.live' : 'monitor.polling')}
+            </span>
+          </div>
           <RowMenu
             label={t('monitor.roomActions')}
             items={[

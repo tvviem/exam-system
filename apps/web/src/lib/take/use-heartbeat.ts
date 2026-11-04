@@ -1,4 +1,6 @@
+import { NUDGE_JITTER_MAX_MS, REALTIME_EVENT, REALTIME_JOIN } from '@exam/shared';
 import { useEffect, useRef } from 'react';
+import { realtime } from '../realtime';
 import { sendHeartbeat } from '../take';
 import { newId } from '../uuid';
 import {
@@ -54,11 +56,18 @@ export function useHeartbeat(options: {
     let stopped = false;
     let disposed = false;
     let sending = false;
+    // Tin đẩy (hay sự kiện) đến lúc một nhịp đang bay: nhịp đó có thể đã đọc dữ liệu trước thay đổi, nên gửi lại ngay sau đó.
+    let again = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const beat = async () => {
-      if (stopped || sending) return;
+      if (stopped) return;
+      if (sending) {
+        again = true;
+        return;
+      }
       sending = true;
+      again = false;
       clearTimeout(timer);
       const { body, sentIds } = nextBeat(state);
       let succeeded = false;
@@ -95,7 +104,7 @@ export function useHeartbeat(options: {
         sending = false;
         // Sự kiện xảy ra lúc nhịp đang bay thì gửi tiếp ngay (chỉ khi nhịp vừa rồi thành công, để lỗi mạng không thành
         // vòng lặp dồn dập); còn lại chờ nhịp 15 giây.
-        const next = succeeded && state.pending.length > 0 ? 0 : HEARTBEAT_INTERVAL_MS;
+        const next = again || (succeeded && state.pending.length > 0) ? 0 : HEARTBEAT_INTERVAL_MS;
         if (!stopped) timer = setTimeout(() => void beat(), next);
       }
     };
@@ -119,7 +128,29 @@ export function useHeartbeat(options: {
     window.addEventListener('offline', onOffline);
     window.addEventListener('online', onOnline);
     void beat();
+
+    // Kênh đẩy (PR 4d-3): Người ra đề vừa Cộng giờ, Buộc nộp, Cảnh cáo hay Thu hồi thì gửi heartbeat ngay thay vì chờ nhịp
+    // 15 giây. Chờ ngẫu nhiên chút ít để Cộng giờ cả phòng không dồn 500 yêu cầu một lúc. Mất kênh thì nhịp 15 giây vẫn
+    // chạy như cũ; nối lại thì gửi ngay để bù tin có thể đã lỡ.
+    let nudgeTimer: ReturnType<typeof setTimeout> | undefined;
+    let joinedBefore = false;
+    const unsubscribe = realtime.subscribe({
+      join: REALTIME_JOIN.attempt,
+      payload: { attemptId },
+      event: REALTIME_EVENT.attemptNudge,
+      onEvent: () => {
+        clearTimeout(nudgeTimer);
+        nudgeTimer = setTimeout(() => void beat(), Math.random() * NUDGE_JITTER_MAX_MS);
+      },
+      // Lần vào phòng đầu đã có nhịp lúc mở màn; chỉ nối lại sau khi đứt mới gửi bù (tin có thể đã lỡ).
+      onConnected: () => {
+        if (joinedBefore) void beat();
+        joinedBefore = true;
+      },
+    });
     return () => {
+      unsubscribe();
+      clearTimeout(nudgeTimer);
       disposed = true;
       stopped = true;
       clearTimeout(timer);

@@ -115,6 +115,10 @@ test('Thiết bị bị thu hồi: màn chiếm toàn bộ, câu chưa gửi v�
   const examiner = await examinerPage(browser, `e2e-lb-gv-${p}`);
   const sessionId = await seedOpenSession(examiner, `${p}-th`, code, `TK7-${tag}-001`);
 
+  // Test này kiểm đường "lần lưu kế tiếp bị từ chối". Có kênh đẩy thì Thu hồi đến máy ngay (nhanh hơn, đúng thiết kế, có
+  // test riêng ở monitor-live.spec.ts), nên chặn kênh đẩy ở đây để màn thu hồi đến từ chính lần lưu bị từ chối.
+  await page.routeWebSocket(/\/ws\//, (ws) => ws.close());
+  await page.route(/\/ws\//, (route) => route.abort());
   await startAttempt(page, `e2e-lb-th-${p}`, code);
   const status = page.getByRole('status', { name: 'Trạng thái lưu' });
   await page.getByRole('radio', { name: 'Hà Nội' }).check();

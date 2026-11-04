@@ -22,6 +22,7 @@ import { type Database, DB, type Transaction } from '../../db/db.module';
 import { attempts, attemptTimeExtensions, sessionDevices, violations } from './attempt.schema';
 import { closeInProgress } from './attempt-close';
 import { AttemptPresence } from './attempt-presence';
+import { deviceProblem } from './device-problem';
 
 /** Lý do ghi khi thiết bị đang gắn bị thu hồi để nhường chỗ cho thiết bị được Hoàn tác Thu hồi (Q234). */
 const PARDON_SWAP_REASON = 'pardon_swap';
@@ -243,6 +244,47 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       })),
     );
     return { extended: ids.length, skipped, replayed: false, attemptIds: ids };
+  }
+
+  /** Lượt này của chính người này, đang làm bài và `deviceKey` là thiết bị đang gắn: được nhận tin đẩy của Lượt (ADR-0007). */
+  async canFollow(
+    userId: string,
+    attemptId: string,
+    deviceKey: string | undefined,
+  ): Promise<boolean> {
+    const [attempt] = await this.db
+      .select({ sessionId: attempts.sessionId })
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.id, attemptId),
+          eq(attempts.userId, userId),
+          eq(attempts.status, 'in_progress'),
+        ),
+      );
+    if (!attempt || !deviceKey) return false;
+    const devices = await this.db
+      .select({ status: sessionDevices.status, deviceHash: sessionDevices.deviceHash })
+      .from(sessionDevices)
+      .where(
+        and(eq(sessionDevices.sessionId, attempt.sessionId), eq(sessionDevices.userId, userId)),
+      );
+    return deviceProblem(devices, deviceKey) === null;
+  }
+
+  async liveAttemptIds(sessionId: string, userIds?: string[]) {
+    if (userIds?.length === 0) return [];
+    const rows = await this.db
+      .select({ id: attempts.id })
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.sessionId, sessionId),
+          eq(attempts.status, 'in_progress'),
+          userIds ? inArray(attempts.userId, userIds) : undefined,
+        ),
+      );
+    return rows.map((row) => row.id);
   }
 
   async monitorAttempts(sessionId: string, examId: string) {

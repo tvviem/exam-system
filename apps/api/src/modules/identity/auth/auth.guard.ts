@@ -2,7 +2,6 @@ import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/com
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 import { ApiError } from '../../../common/api-error';
-import { UsersRepository } from '../users.repository';
 import {
   ADMIN_ONLY,
   ALLOW_PENDING_PASSWORD_CHANGE,
@@ -11,24 +10,26 @@ import {
   REQUIRED_TAG,
 } from './auth.decorators';
 import { AUTH_SESSION_COOKIE, type RoleTag } from './auth.types';
-import { AuthSessionStore } from './auth-session-store';
+import { TokenAuthenticator } from './token-authenticator';
 
 /** Guard toàn cục: mọi route cần phiên hợp lệ, trừ route gắn @Public(); kiểm tra @AdminOnly(), @RequireTag(). */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly authSessions: AuthSessionStore,
-    private readonly usersRepo: UsersRepository,
+    private readonly authenticator: TokenAuthenticator,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Cổng Socket.IO tự xác thực lúc bắt tay (cùng TokenAuthenticator); guard này chỉ dành cho HTTP. CẢNH BÁO: ngữ cảnh
+    // không phải HTTP đi qua không kiểm gì, nên mọi handler WS mới phải dựa vào `socket.data` do bắt tay đặt và tự kiểm quyền.
+    if (context.getType() !== 'http') return true;
     const targets = [context.getHandler(), context.getClass()];
     const request = context.switchToHttp().getRequest<FastifyRequest & { auth?: unknown }>();
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, targets);
     if (isPublic && !this.reflector.getAllAndOverride<boolean>(OPTIONAL_AUTH, targets)) return true;
 
-    const auth = await this.authenticate(request);
+    const auth = await this.authenticator.authenticate(request.cookies?.[AUTH_SESSION_COOKIE]);
     if (isPublic) {
       if (auth) request.auth = auth;
       return true;
@@ -49,20 +50,5 @@ export class AuthGuard implements CanActivate {
     const requiredTag = this.reflector.getAllAndOverride<RoleTag>(REQUIRED_TAG, targets);
     if (requiredTag && !user.roleTags.includes(requiredTag)) throw new ApiError('FORBIDDEN');
     return true;
-  }
-
-  /** Người dùng của phiên hợp lệ (chưa Khóa, chưa Xóa), hoặc null. Phiên của người đã Khóa/Xóa bị thu hồi. */
-  private async authenticate(request: FastifyRequest) {
-    const token = request.cookies?.[AUTH_SESSION_COOKIE];
-    const session = token ? await this.authSessions.resolve(token) : null;
-    if (!token || !session) return null;
-
-    const row = await this.usersRepo.findById(session.userId);
-    if (!row || row.removedAt || row.status === 'locked') {
-      await this.authSessions.revokeToken(token, row?.removedAt ? 'user_removed' : 'user_locked');
-      return null;
-    }
-    const user = await this.usersRepo.toAuthenticated(row);
-    return { user, authSessionId: session.authSessionId, token };
   }
 }

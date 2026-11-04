@@ -129,4 +129,6 @@ export interface SessionAttempts {
     sessionId: string,
     examId: string,
   ): Promise<{ totalItems: number; byUser: Map<string, MonitorAttempt> }>;
+  /** Mã các Lượt đang làm trong Phiên thi (của những người này nếu có `userIds`), cho tin đẩy. */
+  liveAttemptIds(sessionId: string, userIds?: string[]): Promise<string[]>;
 }

@@ -3,6 +3,7 @@ import {
   deadlineOf,
   HARD_CLOSE_MIN_SECONDS,
   type HeartbeatRequest,
+  isDisconnected,
   isPastGrace,
   layoutOf,
   normalizeAccessCode,
@@ -16,6 +17,7 @@ import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
 import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
 import { uniqueViolationOf } from '../../common/pg-error';
+import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import type { SubmitReason } from '../../common/session-attempts';
 import { type EntryGate, SESSION_ENTRY, type SessionEntry } from '../../common/session-entry';
 import { type Database, DB, type Transaction } from '../../db/db.module';
@@ -31,6 +33,7 @@ import { closeInProgress } from './attempt-close';
 import { AttemptPresence } from './attempt-presence';
 import { buildAttemptSections, layoutInputOf, type SavedResponse } from './attempt-view';
 import { generateDeviceKey, hashDeviceKey } from './device-key';
+import { deviceProblem } from './device-problem';
 import { JoinRateLimiter } from './join-rate-limiter';
 
 type Executor = Database | Transaction;
@@ -95,6 +98,7 @@ export class AttemptsService {
     @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
     private readonly joinLimiter: JoinRateLimiter,
     private readonly presence: AttemptPresence,
+    @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
   ) {}
 
   // --- Vào thi (Q229) -----------------------------------------------------------------------------------------------
@@ -117,6 +121,7 @@ export class AttemptsService {
 
     const key = deviceKey ?? generateDeviceKey();
     await this.bindDevice(this.db, gate.sessionId, userId, hashDeviceKey(key), meta);
+    this.realtime.sessionChanged(gate.sessionId);
     return { deviceKey: key, sessionId: gate.sessionId, attemptId: running?.id ?? null };
   }
 
@@ -212,11 +217,20 @@ export class AttemptsService {
       deviceOk,
     };
     if (!deviceOk) return inProgress;
-    const [notices] = await Promise.all([
+    const [notices, previous] = await Promise.all([
       request.since ? this.noticesSince(attempt.id, new Date(request.since)) : [],
       this.presence.touch(attempt.sessionId, attempt.id, now),
       this.recordEvents(attempt, request.events, now),
     ]);
+    // Báo màn Theo dõi khi nhịp mang tin (rời màn hình, mất mạng) hoặc người này mới báo lần đầu hay vừa nối lại sau khi mất kết nối; nhịp thường
+    // không đổi gì nhìn thấy được thì không báo, để 500 nhịp mỗi 15 giây không thành hỏi lại liên tục.
+    if (
+      previous === null ||
+      request.events.length > 0 ||
+      isDisconnected(previous, attempt.startedAt, now)
+    ) {
+      this.realtime.sessionChanged(attempt.sessionId);
+    }
     return { ...inProgress, notices };
   }
 
@@ -410,6 +424,7 @@ export class AttemptsService {
         throw error;
       }
     });
+    this.realtime.sessionChanged(sessionId);
     return this.view(userId, deviceKey, attemptId);
   }
 
@@ -494,7 +509,7 @@ export class AttemptsService {
       if (!seen || item.clientSeq > seen.clientSeq) latest.set(item.itemId, item);
     }
 
-    return this.db.transaction(async (tx) => {
+    const saved = await this.db.transaction(async (tx) => {
       const gate = await this.entry.gateFor(first.sessionId, userId, tx);
       if (!gate) throw new ApiError('NOT_FOUND');
       await this.requireDevice(tx, first.sessionId, userId, deviceKey);
@@ -545,24 +560,36 @@ export class AttemptsService {
         results,
       };
     });
+    this.realtime.sessionChanged(first.sessionId);
+    return saved;
   }
 
   /** Nộp bài; nộp lần hai trả lại trạng thái đã nộp (an toàn khi mạng chập chờn gửi lặp). */
   async submit(userId: string, deviceKey: string | undefined, attemptId: string) {
-    return this.db.transaction(async (tx) => {
+    const state = await this.db.transaction(async (tx) => {
       const [attempt] = await tx
         .select()
         .from(attempts)
         .where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId)))
         .for('update');
       if (!attempt) throw new ApiError('NOT_FOUND');
-      if (attempt.status === 'submitted') return this.submittedState(attempt, this.clock.now());
+      if (attempt.status === 'submitted') {
+        return {
+          sessionId: attempt.sessionId,
+          view: this.submittedState(attempt, this.clock.now()),
+        };
+      }
       await this.requireDevice(tx, attempt.sessionId, userId, deviceKey);
       const now = this.clock.now();
       const reason: SubmitReason = this.pastGrace(attempt, now) ? 'timeout' : 'candidate';
       await this.closeOne(tx, attemptId, reason, now);
-      return this.submittedState(await this.ownAttempt(tx, userId, attemptId), now);
+      return {
+        sessionId: attempt.sessionId,
+        view: this.submittedState(await this.ownAttempt(tx, userId, attemptId), now),
+      };
     });
+    this.realtime.sessionChanged(state.sessionId);
+    return state.view;
   }
 
   // --- Đóng Lượt ------------------------------------------------------------------------------------------------------
@@ -630,16 +657,4 @@ function deviceStatusOf(
   const mine = rows.find((row) => row.deviceHash === hash);
   if (mine) return mine.status;
   return rows.some((row) => row.status === 'active') ? 'other' : 'none';
-}
-
-/** Lý do thiết bị không dùng được cho Phiên thi này, hoặc `null` nếu thiết bị đang gắn đúng (ADR-0007). */
-function deviceProblem(
-  rows: { status: 'active' | 'revoked'; deviceHash: string }[],
-  key: string | undefined,
-): 'DEVICE_REVOKED' | 'DEVICE_BOUND_ELSEWHERE' | 'NOT_JOINED' | null {
-  const hash = key ? hashDeviceKey(key) : undefined;
-  const mine = rows.find((row) => row.deviceHash === hash);
-  if (mine?.status === 'active') return null;
-  if (mine?.status === 'revoked') return 'DEVICE_REVOKED';
-  return rows.some((row) => row.status === 'active') ? 'DEVICE_BOUND_ELSEWHERE' : 'NOT_JOINED';
 }

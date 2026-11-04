@@ -11,9 +11,12 @@ import { AuditModule } from './modules/audit/audit.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { QuestionBankModule } from './modules/question-bank/question-bank.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
+import { RealtimeNotifierModule } from './modules/realtime/realtime-notifier.module';
 import { SessionModule } from './modules/session/session.module';
 import { OwnedContentWiringModule } from './owned-content-wiring.module';
 import { QueueModule } from './queue/job-queue';
+import { RealtimeWiringModule } from './realtime-wiring.module';
 import { RedisModule } from './redis/redis.module';
 import { SessionPortsWiringModule } from './session-ports-wiring.module';
 import { SessionUsageWiringModule } from './session-usage-wiring.module';
@@ -25,6 +28,7 @@ import { SessionUsageWiringModule } from './session-usage-wiring.module';
     PinoLoggerModule,
     DbModule,
     RedisModule,
+    RealtimeNotifierModule,
     MediaModule,
     QueueModule,
     AuditModule,
@@ -37,6 +41,8 @@ import { SessionUsageWiringModule } from './session-usage-wiring.module';
     SessionUsageWiringModule,
     SessionPortsWiringModule,
     AttemptPortsWiringModule,
+    RealtimeWiringModule,
+    RealtimeModule,
     HealthModule,
   ],
 })

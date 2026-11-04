@@ -7,7 +7,7 @@ import { AttemptPresence } from './attempt-presence';
 const broken = () => {
   const fail = () => Promise.reject(new Error('Redis down'));
   return {
-    multi: () => ({ hset: () => ({ pexpire: () => ({ exec: fail }) }) }),
+    multi: () => ({ hget: () => ({ hset: () => ({ pexpire: () => ({ exec: fail }) }) }) }),
     hgetall: fail,
   } as unknown as Redis;
 };
@@ -16,7 +16,7 @@ describe('AttemptPresence khi Redis lỗi', () => {
   it('ghi presence không ném lỗi', async () => {
     const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     const presence = new AttemptPresence(broken());
-    await expect(presence.touch('s', 'a', new Date())).resolves.toBeUndefined();
+    await expect(presence.touch('s', 'a', new Date())).resolves.toBeNull();
     expect(warn).toHaveBeenCalledOnce();
     warn.mockRestore();
   });

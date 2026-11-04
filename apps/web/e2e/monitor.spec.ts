@@ -1,53 +1,10 @@
-import { type Browser, expect, type Page, test } from '@playwright/test';
-import { examinerPage, ORIGIN, overflow, seedOpenSession, signIn } from './take-support';
+import { expect, test } from '@playwright/test';
+import { beat, openMonitor, openPerson, room } from './monitor-support';
+import { overflow } from './take-support';
 
 // S6 (Q252–Q254, Q256, Q259, Q260, Q262): Người ra đề theo dõi, Cộng giờ, Buộc nộp, Cảnh cáo, Đình chỉ, Thu hồi và Hoàn tác
 // Thu hồi; Người dự thi ở ngữ cảnh trình duyệt khác nhận thay đổi qua heartbeat. Đồng hồ của trang Người dự thi được tua để
 // không phải chờ 15 giây thật.
-
-const BEAT_MS = 15_000;
-
-async function room(browser: Browser, project: string, tag: string) {
-  const letter = project === 'desktop' ? 'D' : 'M';
-  const code = `MON${tag}${letter}`;
-  const examiner = await examinerPage(browser, `e2e-lb-mon-gv-${project}`);
-  const sessionId = await seedOpenSession(examiner, `${project}-${tag}`, code, `MON-${letter}-001`);
-  const added = await examiner.request.post(`/api/sessions/${sessionId}/roster`, {
-    headers: { origin: ORIGIN },
-    data: { codes: [`MON-${letter}-002`] },
-  });
-  expect(added.ok(), await added.text()).toBe(true);
-
-  const candidate = async (n: 1 | 2) => {
-    const context = await browser.newContext({ baseURL: ORIGIN });
-    const page = await context.newPage();
-    await page.clock.install(); // tua được nhịp heartbeat
-    await signIn(page, `e2e-lb-mon-sv${n}-${project}`);
-    await page.goto('/take');
-    await page.getByLabel('Mã vào thi').fill(code);
-    await page.getByRole('button', { name: 'Vào thi' }).click();
-    await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
-    await page.waitForURL(/\/take\/attempts\//);
-    await expect(page.getByRole('timer', { name: 'Thời gian còn lại' })).toBeVisible();
-    return page;
-  };
-  return { examiner, sessionId, code, letter, candidate };
-}
-
-/** Cho trang Người dự thi gửi nhịp kế tiếp ngay (tua 15 giây của đồng hồ giả). */
-const beat = (page: Page) => page.clock.fastForward(BEAT_MS + 100);
-
-const openMonitor = async (examiner: Page, sessionId: string) => {
-  const started = Date.now();
-  await examiner.goto(`/examiner/sessions/${sessionId}?tab=monitor`);
-  await expect(examiner.getByRole('heading', { name: 'Theo dõi phòng thi' })).toBeVisible();
-  return Date.now() - started;
-};
-
-/** Mở ngăn chi tiết của một người (ngăn kéo ở máy tính, bottom sheet ở điện thoại). */
-async function openPerson(examiner: Page, name: RegExp) {
-  await examiner.getByRole('button', { name }).first().click();
-}
 
 test('Theo dõi: thấy cả phòng, Cộng giờ cho một người, Người dự thi nhận giờ mới và thông báo trong một nhịp', async ({
   browser,
@@ -207,10 +164,10 @@ test('Theo dõi: chọn nhóm, Buộc nộp cả nhóm; Đóng cửa vào thi; b
   await expect(all).toContainText('Cả phòng: 2 người');
   await all.getByLabel('Số phút khác (1–180)').fill('7');
   await all.getByLabel('Lý do (bắt buộc)').fill('Mạng phòng máy chập chờn');
-  const asked = Date.now();
+  const asked = performance.now();
   await all.getByRole('button', { name: 'Cộng 7 phút cho 2 người' }).click();
   await expect(examiner.getByText('Đã cộng 7 phút cho 2 người')).toBeVisible();
-  const took = Date.now() - asked;
+  const took = performance.now() - asked;
   console.info(`[${project}] Cộng giờ cả phòng: ${took} ms`);
   expect(took, 'Cộng giờ cả phòng phải tức thì').toBeLessThan(1000);
   await beat(sv2);

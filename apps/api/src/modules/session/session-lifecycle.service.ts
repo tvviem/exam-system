@@ -4,6 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
+import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -24,10 +25,13 @@ export class SessionLifecycleService {
     @Inject(SESSION_ATTEMPTS) private readonly attempts: SessionAttempts,
     private readonly sessions: SessionsService,
     private readonly notifications: NotificationsService,
+    @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
   ) {}
 
   /** Hủy không hoàn tác (Q203); các Lượt đang làm được nộp ngay với lý do `session_cancelled`. */
   async cancel(ownerId: string, id: string, reason: string | undefined) {
+    // Lấy các Lượt đang làm trước khi bị đóng, để báo Người dự thi ngay thay vì chờ heartbeat kế tiếp.
+    const live = await this.attempts.liveAttemptIds(id);
     await this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, id);
       if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
@@ -48,6 +52,7 @@ export class SessionLifecycleService {
         reason: reason || null,
       });
     });
+    this.realtime.affected(id, live);
     return this.sessions.get(ownerId, id);
   }
 

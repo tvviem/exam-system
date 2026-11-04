@@ -1557,6 +1557,8 @@
     "minutesShort": "{{count}}′",
     "bucket": "{{from}}+",
     "more": "Hiện thêm {{count}} người",
-    "showing": "Đang hiện {{shown}} / {{total}} người"
+    "showing": "Đang hiện {{shown}} / {{total}} người",
+    "live": "Cập nhật trực tiếp",
+    "polling": "Cập nhật mỗi 5 giây"
   }
 }
