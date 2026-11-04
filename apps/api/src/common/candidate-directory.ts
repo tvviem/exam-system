@@ -59,6 +59,13 @@ export interface CandidateDirectory {
     executor?: Executor,
   ): Promise<{ people: CandidateRecord[]; notFound: string[] }>;
 
+  /**
+   * Giữ chỗ tài khoản `FOR SHARE` đến hết giao dịch và cho biết người này còn hoạt động (chưa Khóa, chưa Xóa). Bắt đầu Lượt
+   * gọi trước khi khóa Phiên thi: Khóa hay Xóa người dùng (khóa dòng người dùng `FOR UPDATE`) và Bắt đầu Lượt nhờ đó nối
+   * đuôi nhau, nên không có Lượt mới của người vừa bị Khóa (Q264). Thứ tự khóa luôn là người dùng rồi Phiên thi.
+   */
+  holdActive(executor: Executor, userId: string): Promise<boolean>;
+
   /** Những người trong `ids` còn đủ điều kiện dự thi (chưa Xóa, chưa Khóa, còn Nhãn), khác `excludeUserId`. */
   eligibleAmong(
     ids: string[],

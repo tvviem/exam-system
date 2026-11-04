@@ -16,6 +16,7 @@ import {
 import type { Actor } from '../../../common/actor';
 import { ApiError, validationFailed } from '../../../common/api-error';
 import { CLOCK, type Clock } from '../../../common/clock';
+import { LIVE_SESSION_GUARD, type LiveSessionGuard } from '../../../common/live-session-guard';
 import {
   OWNED_CONTENT,
   type OwnedContent,
@@ -77,11 +78,16 @@ const UNIQUE_FIELDS: Record<string, string> = {
   users_code_active_key: 'code',
 };
 
-/** `409 HAS_CONTENT`: người này còn Chủ đề, Quản trị viên phải chọn người nhận (Q150). */
-const hasContent = (topics: { id: string; name: string; questionCount: number }[], exams = 0) =>
+/** `409 HAS_CONTENT`: người này còn Chủ đề, Bộ đề hay Phiên thi, Quản trị viên phải chọn người nhận (Q150, Q263). */
+const hasContent = (
+  topics: { id: string; name: string; questionCount: number }[],
+  exams = 0,
+  sessions = 0,
+) =>
   new ApiError('HAS_CONTENT', {
     topics: topics.map(({ id, name, questionCount }) => ({ id, name, questionCount })),
     exams,
+    sessions,
   });
 
 const isUniqueViolation = (error: unknown) =>
@@ -110,6 +116,7 @@ export class UserManagementService {
     private readonly notifications: NotificationsService,
     @Inject(OWNED_CONTENT) private readonly ownedContent: OwnedContent,
     @Inject(USER_DEACTIVATION_HOOKS) private readonly deactivation: UserDeactivationHooks,
+    @Inject(LIVE_SESSION_GUARD) private readonly liveGuard: LiveSessionGuard,
   ) {}
 
   async list({ page, pageSize, ...filter }: Page & UserFilter) {
@@ -159,7 +166,10 @@ export class UserManagementService {
       .from(examinerProfiles)
       .leftJoin(units, eq(units.id, examinerProfiles.unitId))
       .where(eq(examinerProfiles.userId, id));
+    // Cảnh báo "Đang trong Phiên thi X" và vô hiệu nút Khóa, Xóa ở trang chi tiết (Q264).
+    const liveSessions = user.removedAt ? [] : await this.liveSessionsOf(this.db, id);
     return {
+      liveSessions,
       id: user.id,
       fullName: user.fullName,
       username: user.username,
@@ -247,6 +257,7 @@ export class UserManagementService {
     await this.db.transaction(async (tx) => {
       const user = await this.lockTargetOrThrow(tx, actor, id);
       if (user.status === 'locked') throw new ApiError('INVALID_STATE');
+      await this.assertNotInLiveSession(tx, id);
       await tx
         .update(users)
         .set({
@@ -301,9 +312,9 @@ export class UserManagementService {
   }
 
   /** Chủ đề của một người dùng (kể cả đã bị Xóa) để Quản trị viên chọn Chuyển giao (Q148). */
-  async contentOf(id: string, topicIds?: string[]) {
+  async contentOf(id: string, topicIds?: string[], recipientId?: string) {
     await this.findOrThrow(id);
-    return this.ownedContent.summaryOf(id, { topicIds });
+    return this.ownedContent.summaryOf(id, { topicIds, recipientId });
   }
 
   /**
@@ -337,10 +348,13 @@ export class UserManagementService {
     // Kiểm tra trạng thái trước khi tốn công xem nội dung hay chép file ảnh.
     if (actor.id === id) throw new ApiError('CANNOT_TARGET_SELF');
     this.assertTarget(actor, await this.findOrThrow(id));
+    await this.assertNotInLiveSession(this.db, id);
     const { topics, totals } = await this.ownedContent.summaryOf(id);
-    // Bộ đề cũng là nội dung (Q183): người chỉ có Bộ đề rỗng, chưa có Chủ đề nào, vẫn phải chọn người nhận.
-    if (totals.topics === 0 && totals.exams === 0) return this.removeWithoutContent(actor, id);
-    if (!recipientId) throw hasContent(topics, totals.exams);
+    // Bộ đề và Phiên thi cũng là nội dung (Q183, Q263): người chỉ có Bộ đề rỗng hay Phiên thi vẫn phải chọn người nhận.
+    if (totals.topics === 0 && totals.exams === 0 && totals.sessions === 0) {
+      return this.removeWithoutContent(actor, id);
+    }
+    if (!recipientId) throw hasContent(topics, totals.exams, totals.sessions);
 
     await this.assertRecipient(this.db, id, recipientId);
     const prepared = await this.ownedContent.prepareTransfer({
@@ -353,6 +367,7 @@ export class UserManagementService {
       const donor = locked.get(id);
       if (!donor) throw new ApiError('NOT_FOUND');
       this.assertTarget(actor, donor);
+      await this.assertNotInLiveSession(tx, id);
       await this.assertRecipient(tx, id, recipientId, locked.get(recipientId));
       await this.applyTransfer(tx, actor, donor, recipientId, prepared);
       await this.softDelete(tx, actor, id);
@@ -362,9 +377,12 @@ export class UserManagementService {
   private async removeWithoutContent(actor: Actor, id: string): Promise<void> {
     await this.db.transaction(async (tx) => {
       await this.lockTargetOrThrow(tx, actor, id);
+      await this.assertNotInLiveSession(tx, id);
       // Chủ đề có thể vừa được tạo giữa lúc kiểm tra và lúc khóa dòng.
       const { topics, totals } = await this.ownedContent.summaryOf(id);
-      if (totals.topics > 0 || totals.exams > 0) throw hasContent(topics, totals.exams);
+      if (totals.topics > 0 || totals.exams > 0 || totals.sessions > 0) {
+        throw hasContent(topics, totals.exams, totals.sessions);
+      }
       await this.softDelete(tx, actor, id);
     });
   }
@@ -396,25 +414,47 @@ export class UserManagementService {
     prepared: PreparedTransfer,
   ): Promise<OwnedCounts> {
     const counts = await prepared.apply(tx, donor.fullName);
-    if (counts.topics === 0 && counts.exams === 0) return counts;
-    await this.audit.record(
-      {
-        actor,
-        action: 'topic.transfer',
-        entityType: 'user',
-        entityId: donor.id,
-        after: { from: donor.id, to: recipientId, ...counts },
-      },
-      tx,
-    );
-    await this.notifications.notify(
-      {
-        userIds: [recipientId],
-        type: 'topics.transferred',
-        data: { topics: counts.topics, exams: counts.exams },
-      },
-      tx,
-    );
+    if (counts.topics > 0 || counts.exams > 0) {
+      await this.audit.record(
+        {
+          actor,
+          action: 'topic.transfer',
+          entityType: 'user',
+          entityId: donor.id,
+          after: { from: donor.id, to: recipientId, ...counts },
+        },
+        tx,
+      );
+      await this.notifications.notify(
+        {
+          userIds: [recipientId],
+          type: 'topics.transferred',
+          data: { topics: counts.topics, exams: counts.exams },
+        },
+        tx,
+      );
+    }
+    if (counts.sessions > 0) {
+      // Phiên thi nhận qua Xóa người dùng (Q263): nhật ký và thông báo riêng để người nhận biết mình có thêm Phiên thi.
+      await this.audit.record(
+        {
+          actor,
+          action: 'session.transfer',
+          entityType: 'user',
+          entityId: donor.id,
+          after: { from: donor.id, to: recipientId, sessions: counts.sessions },
+        },
+        tx,
+      );
+      await this.notifications.notify(
+        {
+          userIds: [recipientId],
+          type: 'sessions.transferred',
+          data: { sessions: counts.sessions },
+        },
+        tx,
+      );
+    }
     return counts;
   }
 
@@ -460,6 +500,24 @@ export class UserManagementService {
     ) {
       throw validationFailed('recipientId', 'invalid_recipient');
     }
+  }
+
+  /** Phiên thi đang diễn ra mà người này là chủ hoặc đang làm bài, kèm tên chủ để Quản trị viên biết hỏi ai (Q264). */
+  private async liveSessionsOf(db: Executor, userId: string) {
+    const sessions = await this.liveGuard.liveSessionsOf(userId, db);
+    if (sessions.length === 0) return [];
+    const owners = await db
+      .select({ id: users.id, fullName: users.fullName })
+      .from(users)
+      .where(inArray(users.id, [...new Set(sessions.map((s) => s.ownerId))]));
+    const names = new Map(owners.map((o) => [o.id, o.fullName]));
+    return sessions.map((s) => ({ ...s, ownerName: names.get(s.ownerId) ?? null }));
+  }
+
+  /** `409 USER_IN_LIVE_SESSION` (Q264): không Khóa hay Xóa người đang trong Phiên thi đang diễn ra, không có lối tắt ở MVP. */
+  private async assertNotInLiveSession(db: Executor, userId: string): Promise<void> {
+    const sessions = await this.liveSessionsOf(db, userId);
+    if (sessions.length > 0) throw new ApiError('USER_IN_LIVE_SESSION', { sessions });
   }
 
   /** Khóa dòng nhiều người dùng theo thứ tự `id`, để hai Chuyển giao ngược chiều không bế tắc nhau. */

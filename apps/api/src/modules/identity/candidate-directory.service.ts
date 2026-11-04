@@ -148,6 +148,15 @@ export class CandidateDirectoryService implements CandidateDirectory {
     return { people, notFound };
   }
 
+  async holdActive(executor: Executor, userId: string) {
+    const [row] = await executor
+      .select({ status: users.status, removedAt: users.removedAt })
+      .from(users)
+      .where(eq(users.id, userId))
+      .for('share');
+    return row !== undefined && row.removedAt === null && row.status === 'active';
+  }
+
   async eligibleAmong(ids: string[], excludeUserId: string, executor: Executor = this.db) {
     if (ids.length === 0) return [];
     return executor

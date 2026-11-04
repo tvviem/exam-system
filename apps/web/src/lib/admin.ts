@@ -40,7 +40,21 @@ export interface UserListItem {
   createdAt: string;
 }
 
+/** Phiên thi đang diễn ra mà người này là chủ hoặc đang làm bài: không Khóa hay Xóa được (Q264). */
+export interface LiveSession {
+  id: string;
+  title: string;
+  opensAt: string;
+  closesAt: string;
+  ownerId: string;
+  ownerName: string | null;
+  /** Số Lượt đang làm trong Phiên thi (cả phòng). */
+  inProgress: number;
+  relation: 'owner' | 'candidate';
+}
+
 export interface UserDetail extends UserListItem {
+  liveSessions: LiveSession[];
   dateOfBirth: string | null;
   gender: Gender | null;
   lockedAt: string | null;
@@ -171,7 +185,7 @@ export const unlockUser = (id: string, reason: string) =>
     body: reason ? { reason } : {},
   });
 
-/** `recipientId`: người nhận Chủ đề còn lại của người bị Xóa; thiếu mà còn Chủ đề thì api trả `HAS_CONTENT` (Q150). */
+/** `recipientId`: người nhận Chủ đề, Bộ đề và Phiên thi còn lại của người bị Xóa; thiếu mà còn thì api trả `HAS_CONTENT` (Q150, Q263). */
 export const removeUser = (id: string, recipientId?: string) =>
   apiFetch<UserDetail>(`/admin/users/${id}${queryString({ recipientId })}`, { method: 'DELETE' });
 
@@ -191,21 +205,35 @@ export interface OwnedCounts {
   exams: number;
   /** Câu bị gỡ khỏi các Bộ đề nháp đi cùng vì không thuộc Chủ đề được chuyển. */
   detachedItems: number;
+  /** Phiên thi chuyển theo khi Xóa người dùng (mọi trạng thái); Chuyển giao Chủ đề không đụng Phiên thi (Q263). */
+  sessions: number;
+}
+
+export interface SessionCounts {
+  live: number;
+  upcoming: number;
+  done: number;
+  cancelled: number;
+  total: number;
 }
 
 export interface UserContent {
   topics: OwnedTopic[];
   totals: OwnedCounts;
+  /** Phiên thi của người này theo trạng thái. */
+  sessions: SessionCounts;
+  /** Có khi hỏi theo `recipientId`: số Phiên thi mà người nhận đang có tên trong Danh sách dự thi. */
+  recipientInRoster?: number;
   /** Có khi hỏi theo các Chủ đề đang chọn: số liệu đúng, ảnh dùng chung chỉ đếm một lần. */
   selected?: OwnedCounts;
 }
 
-export const userContentQuery = (id: string, topicIds?: string[]) =>
+export const userContentQuery = (id: string, topicIds?: string[], recipientId?: string) =>
   queryOptions({
-    queryKey: ['admin', 'users', id, 'content', topicIds?.join(',') ?? 'all'],
+    queryKey: ['admin', 'users', id, 'content', topicIds?.join(',') ?? 'all', recipientId ?? ''],
     queryFn: () =>
       apiFetch<UserContent>(
-        `/admin/users/${id}/content${queryString({ topicIds: topicIds?.join(',') })}`,
+        `/admin/users/${id}/content${queryString({ topicIds: topicIds?.join(','), recipientId })}`,
       ),
   });
 

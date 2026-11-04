@@ -119,7 +119,15 @@ describe('xem nội dung của người dùng (Q148)', () => {
         { id: b, name: 'Đại số', archived: true, questionCount: 1, illustrationCount: 1 },
         { id: a, name: 'Giải tích', archived: false, questionCount: 2, illustrationCount: 0 },
       ],
-      totals: { topics: 2, questions: 3, illustrations: 1, exams: 0, detachedItems: 0 },
+      totals: {
+        topics: 2,
+        questions: 3,
+        illustrations: 1,
+        exams: 0,
+        detachedItems: 0,
+        sessions: 0,
+      },
+      sessions: { live: 0, upcoming: 0, done: 0, cancelled: 0, total: 0 },
     });
     expect(res.body).not.toContain('Đạo hàm');
   });
@@ -137,6 +145,7 @@ describe('xem nội dung của người dùng (Q148)', () => {
       illustrations: 1,
       exams: 0,
       detachedItems: 0,
+      sessions: 0,
     });
     expect((await content(donor.id, `?topicIds=${a}`)).json().selected).toEqual({
       topics: 1,
@@ -144,6 +153,7 @@ describe('xem nội dung của người dùng (Q148)', () => {
       illustrations: 1,
       exams: 0,
       detachedItems: 0,
+      sessions: 0,
     });
   });
 
@@ -167,6 +177,7 @@ describe('Chuyển giao Chủ đề (Q148)', () => {
       illustrations: 0,
       exams: 0,
       detachedItems: 0,
+      sessions: 0,
     });
 
     expect(await ownerOfTopic(a)).toBe(recipient.id);
@@ -348,6 +359,7 @@ describe('Hình minh họa khi Chuyển giao (Q149)', () => {
       illustrations: 1,
       exams: 0,
       detachedItems: 0,
+      sessions: 0,
     });
 
     expect((await illustrationsOf(donorCookie)).map((i) => i.id)).toEqual([]);
@@ -377,6 +389,7 @@ describe('Hình minh họa khi Chuyển giao (Q149)', () => {
       illustrations: 1,
       exams: 0,
       detachedItems: 0,
+      sessions: 0,
     });
 
     const moved = await getQuestion(q, recipientCookie);
@@ -402,6 +415,7 @@ describe('Hình minh họa khi Chuyển giao (Q149)', () => {
       illustrations: 1,
       exams: 0,
       detachedItems: 0,
+      sessions: 0,
     });
 
     const [copy] = await illustrationsOf(recipientCookie);
@@ -440,6 +454,7 @@ describe('Hình minh họa khi Chuyển giao (Q149)', () => {
       illustrations: 1,
       exams: 0,
       detachedItems: 0,
+      sessions: 0,
     });
   });
 

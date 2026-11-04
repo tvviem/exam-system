@@ -36,6 +36,10 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
       await navigate({ to: '/examiner/questions' });
       return;
     }
+    if (n.type === 'sessions.transferred') {
+      await navigate({ to: '/examiner/sessions' });
+      return;
+    }
     const requestId = typeof n.data.requestId === 'string' ? n.data.requestId : null;
     if (
       (n.type.startsWith('account_request.') || n.type.startsWith('credential_slip.')) &&

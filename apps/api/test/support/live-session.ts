@@ -10,7 +10,11 @@ import { DEFAULT_PASSWORD, seedUser } from './users';
  * (an, binh, chi, dung) trong Danh sách, trong đó `started` đã vào và đang làm bài. Gọi sau `resetState()` và đặt giờ
  * giả (mặc định 2/11/2026 08:00 GMT+7; Phiên thi mở 07:00, đóng 10:00, Thời lượng 45 phút).
  */
-export async function openLiveSession(t: TestApp, started: string[] = ['an', 'binh', 'chi']) {
+export async function openLiveSession(
+  t: TestApp,
+  started: string[] = ['an', 'binh', 'chi'],
+  sessionOverrides: Record<string, unknown> = {},
+) {
   t.clock.set(new Date('2026-11-02T08:00:00+07:00'));
   await seedUser({ username: 'gv1', roleTags: ['examiner'] });
   await seedUser({ username: 'gv2', roleTags: ['examiner'] });
@@ -35,6 +39,7 @@ export async function openLiveSession(t: TestApp, started: string[] = ['an', 'bi
     closesAt: '2026-11-02T10:00:00+07:00',
     durationMinutes: 45,
     accessCode: 'AB3K9X',
+    ...sessionOverrides,
   });
   expect(created.statusCode, created.body).toBe(201);
   const sessionId = created.json().id as string;

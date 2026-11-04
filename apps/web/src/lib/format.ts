@@ -9,6 +9,11 @@ const dateTime = new Intl.DateTimeFormat('vi-VN', {
   minute: '2-digit',
   timeZone: TIME_ZONE,
 });
+const time = new Intl.DateTimeFormat('vi-VN', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: TIME_ZONE,
+});
 const date = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short' });
 
 /** Dung lượng file cho người dùng đọc, dấu phẩy thập phân kiểu Việt Nam: 1536 → "1,5 KB". */
@@ -22,6 +27,9 @@ export function formatFileSize(bytes: number): string {
 
 export const formatDateTime = (value: string | null) =>
   value ? dateTime.format(new Date(value)) : '';
+
+/** Giờ trong ngày theo giờ Việt Nam, ví dụ "10:00". */
+export const formatTime = (value: string | null) => (value ? time.format(new Date(value)) : '');
 
 /** Ngày dạng `YYYY-MM-DD` (không có múi giờ) hiển thị theo kiểu Việt Nam. */
 export const formatDate = (value: string | null) =>

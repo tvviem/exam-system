@@ -902,5 +902,107 @@
     "roleTags": ["candidate"],
     "code": "LIVE-M-002",
     "classLabel": "LOP-LIVE-M"
+  },
+  {
+    "username": "e2e-lb-xd-gv-desktop",
+    "fullName": "Người ra đề Xóa 1 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-xd-gv2-desktop",
+    "fullName": "Người ra đề Xóa 2 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-xd-nhan-desktop",
+    "fullName": "Người nhận Xóa (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-xd-qt-desktop",
+    "fullName": "Quản trị Xóa (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-lb-xd-sv1-desktop",
+    "fullName": "Thí sinh Xóa 1 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "XD-D-001",
+    "classLabel": "LOP-XD-D"
+  },
+  {
+    "username": "e2e-lb-xd-sv2-desktop",
+    "fullName": "Thí sinh Xóa 2 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "XD-D-002",
+    "classLabel": "LOP-XD-D"
+  },
+  {
+    "username": "e2e-lb-xd-gv-mobile",
+    "fullName": "Người ra đề Xóa 1 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-xd-gv2-mobile",
+    "fullName": "Người ra đề Xóa 2 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-xd-nhan-mobile",
+    "fullName": "Người nhận Xóa (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-xd-qt-mobile",
+    "fullName": "Quản trị Xóa (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-lb-xd-sv1-mobile",
+    "fullName": "Thí sinh Xóa 1 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "XD-M-001",
+    "classLabel": "LOP-XD-M"
+  },
+  {
+    "username": "e2e-lb-xd-sv2-mobile",
+    "fullName": "Thí sinh Xóa 2 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "XD-M-002",
+    "classLabel": "LOP-XD-M"
   }
 ]
