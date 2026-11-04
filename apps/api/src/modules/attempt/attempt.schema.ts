@@ -244,7 +244,7 @@ export const violations = pgTable(
   },
   (t) => [
     index('violations_attempt_idx').on(t.attemptId),
-    index('violations_session_idx').on(t.sessionId),
+    index('violations_session_user_idx').on(t.sessionId, t.userId),
     check('violations_reason_check', sql`char_length(${t.reason}) BETWEEN 1 AND 500`),
     check(
       'violations_penalty_check',

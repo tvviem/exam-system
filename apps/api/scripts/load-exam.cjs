@@ -23,8 +23,11 @@ const POOL_MAX = process.env.LOAD_DB_POOL_MAX ?? '10';
 const DB = 'exam_load_tmp';
 const BASE = process.env.LOAD_PG_BASE ?? 'postgres://exam:exam@127.0.0.1:5434';
 const REDIS = process.env.LOAD_REDIS_URL ?? 'redis://127.0.0.1:6381/13';
-const PORT = 3101;
-const api = `http://127.0.0.1:${PORT}/api`;
+// LOAD_API_INSTANCES=2 chạy hai bản api cùng Redis và cơ sở dữ liệu (tin đẩy đi qua Redis nên đúng ở mọi bản); người dự thi chia đều.
+const INSTANCES = Number(process.env.LOAD_API_INSTANCES ?? 1);
+const PORTS = Array.from({ length: INSTANCES }, (_, k) => 3101 + k);
+const baseOf = (index) => `http://127.0.0.1:${PORTS[Math.abs(index) % INSTANCES]}`;
+const api = `${baseOf(0)}/api`;
 const ORIGIN = 'http://localhost:4173';
 const PASSWORD = 'MatKhau-Thu-123';
 const ACCESS_CODE = 'LOAD01';
@@ -32,10 +35,10 @@ const MONITORS = 3;
 const HEARTBEAT_MS = 15_000;
 const JITTER_MS = 300; // NUDGE_JITTER_MAX_MS của trình duyệt
 // Ngưỡng đã duyệt (Q236, Q266), mili giây (p99).
-const LIMITS = { save: 100, start: 1000, view: 500, heartbeat: 100, burst: 300, nudge: 1000, visible: 1000, extend: 300 };
+const LIMITS = { save: 100, start: 1000, view: 500, heartbeat: 100, burst: 300, nudge: 1000, visible: 3000, // cả phòng thấy Cộng giờ trong 3 giây (khoảng trải 2 giây của tin đẩy); trước đây tối đa 15 giây
+    extend: 300 };
 const MONITOR_P95_LIMIT = 100;
 const STORM_LIMIT = 10_000; // 500 kết nối Socket.IO nối lại xong trong 10 giây
-const WS_ORIGIN = `http://127.0.0.1:${PORT}`;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const pct = (list, p) => {
@@ -61,9 +64,13 @@ const samples = {
 /** Mốc bắt đầu lần Cộng giờ cả phòng (performance.now()); trước đó là 0 nên tin đẩy chưa được đo. */
 let extendStartedAt = 0;
 const sockets = [];
+const slow = [];
+const loopLag = require('node:perf_hooks').monitorEventLoopDelay({ resolution: 10 });
+loopLag.enable();
+const T0 = performance.now();
 let finished = false;
 const errors = [];
-let child;
+const children = [];
 const resource = [];
 
 function readProc(pid) {
@@ -75,6 +82,7 @@ function readProc(pid) {
 class Candidate {
   constructor(i) {
     this.i = i;
+    this.base = baseOf(i);
     this.cookies = new Map();
   }
   async call(label, method, url, body) {
@@ -83,7 +91,7 @@ class Candidate {
     if (body) headers['content-type'] = 'application/json';
     if (this.cookies.size) headers.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
     try {
-      const res = await fetch(`${api}${url}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      const res = await fetch(`${this.base}/api${url}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
       for (const line of res.headers.getSetCookie?.() ?? []) {
         const [pair] = line.split(';');
         const [k, ...v] = pair.split('=');
@@ -91,6 +99,7 @@ class Candidate {
       }
       const elapsed = performance.now() - started;
       const text = await res.text();
+      if (elapsed > 500) slow.push([label, Math.round((performance.now() - T0) / 1000)]);
       if (res.ok) samples[label].push(elapsed);
       else errors.push(`${label} ${res.status} ${text.slice(0, 120)}`);
       return res.ok ? JSON.parse(text) : null;
@@ -146,7 +155,7 @@ const cookieHeader = (c) => [...c.cookies].map(([k, v]) => `${k}=${v}`).join('; 
 
 /** Nối Socket.IO của một Người dự thi: vào phòng `attempt:{id}`, nhận nudge thì gửi heartbeat sau độ trễ ngẫu nhiên (như trình duyệt). */
 async function openAttemptChannel(c, attemptId) {
-  const socket = io(WS_ORIGIN, {
+  const socket = io(c.base, {
     path: '/ws',
     transports: ['websocket'],
     extraHeaders: { cookie: cookieHeader(c), origin: ORIGIN },
@@ -167,9 +176,10 @@ async function openAttemptChannel(c, attemptId) {
     await new Promise((resolve) => socket.once('connect', resolve));
     await join();
   };
-  socket.on('attempt.nudge', () => {
+  socket.on('attempt.nudge', (payload) => {
     if (extendStartedAt) samples.nudge.push(performance.now() - extendStartedAt);
-    setTimeout(() => c.beat?.('burst'), Math.random() * JITTER_MS);
+    // Như trình duyệt: trải theo gợi ý của server (cả phòng thì rộng hơn).
+    setTimeout(() => c.beat?.('burst'), Math.random() * Math.min(payload?.spread ?? JITTER_MS, 2000));
   });
   socket.on('connect_error', (error) => errors.push(`socket ${error.message}`));
   const started = performance.now();
@@ -185,7 +195,7 @@ async function monitorClient(sessionId, index) {
   if (!(await m.call('login', 'POST', '/auth/login', { identifier: 'gv-load', password: PASSWORD }))) return;
   const refresh = () => m.call('monitor', 'GET', `/sessions/${sessionId}/monitor`);
   await refresh();
-  const socket = io(WS_ORIGIN, {
+  const socket = io(m.base, {
     path: '/ws',
     transports: ['websocket'],
     extraHeaders: { cookie: cookieHeader(m), origin: ORIGIN },
@@ -239,12 +249,13 @@ async function main() {
   await redis.flushdb();
   await redis.quit();
 
-  child = spawn('node', ['dist/main.js'], {
+  for (const port of PORTS) {
+  children.push(spawn('node', [...(process.env.LOAD_NODE_ARGS ? process.env.LOAD_NODE_ARGS.split(' ') : []), 'dist/main.js'], {
     cwd: path.resolve(__dirname, '..'),
     env: {
       ...process.env,
       NODE_ENV: 'production',
-      PORT: String(PORT),
+      PORT: String(port),
       LOG_LEVEL: 'warn',
       DATABASE_URL: `${BASE}/${DB}`,
       REDIS_URL: REDIS,
@@ -255,12 +266,15 @@ async function main() {
       MEDIA_DIR: '/tmp/exam-load-media',
     },
     stdio: ['ignore', 'inherit', 'inherit'],
-  });
-  for (let i = 0; i < 60; i++) {
-    try {
-      if ((await fetch(`${api}/health`)).ok) break;
-    } catch {}
-    await sleep(500);
+  }));
+  }
+  for (const port of PORTS) {
+    for (let i = 0; i < 60; i++) {
+      try {
+        if ((await fetch(`http://127.0.0.1:${port}/api/health`)).ok) break;
+      } catch {}
+      await sleep(500);
+    }
   }
 
   // Người ra đề dựng Bộ đề 20 câu chọn một, Phát hành, tạo Phiên thi đang mở và thêm cả lớp.
@@ -311,11 +325,12 @@ async function main() {
   for (const key of Object.keys(samples)) samples[key].length = 0;
   errors.length = 0;
 
-  console.log(`Bắt đầu: ${N} người vào rải ${RAMP_MS / 1000} giây, làm bài ${WORK_MS / 1000} giây, DB_POOL_MAX=${POOL_MAX}`);
-  let last = readProc(child.pid);
+  console.log(`Bắt đầu: ${N} người vào rải ${RAMP_MS / 1000} giây, làm bài ${WORK_MS / 1000} giây, DB_POOL_MAX=${POOL_MAX}, ${INSTANCES} bản api`);
+  const sumProc = () => children.map((c) => readProc(c.pid)).reduce((a, b) => ({ cpu: a.cpu + b.cpu, rss: a.rss + b.rss }));
+  let last = sumProc();
   let lastAt = Date.now();
   const timer = setInterval(() => {
-    const cur = readProc(child.pid);
+    const cur = sumProc();
     const at = Date.now();
     resource.push({ cpuPct: ((cur.cpu - last.cpu) / ((at - lastAt) / 1000)) * 100, rss: cur.rss });
     last = cur;
@@ -346,6 +361,10 @@ async function main() {
     const list = samples[name];
     return `${name.padEnd(7)} ${String(list.length).padStart(6)} lần  p50=${pct(list, 0.5).toFixed(0)}ms  p95=${pct(list, 0.95).toFixed(0)}ms  p99=${pct(list, 0.99).toFixed(0)}ms  max=${Math.max(...list, 0).toFixed(0)}ms`;
   };
+  const bySecond = {};
+  for (const [label, sec] of slow) bySecond[sec] = (bySecond[sec] ?? 0) + 1;
+  console.log(`Độ trễ vòng lặp của chính script đo: p99 ${(loopLag.percentile(99) / 1e6).toFixed(0)} ms, tối đa ${(loopLag.max / 1e6).toFixed(0)} ms (cao thì số đo phía trên bị phóng đại)`);
+  console.log('Yêu cầu > 500 ms theo giây:', JSON.stringify(bySecond));
   console.log('\n' + Object.keys(samples).map(row).join('\n'));
   const avgCpu = resource.reduce((a, s) => a + s.cpuPct, 0) / Math.max(1, resource.length);
   if (storm) console.log(`Nối lại đồng loạt: ${storm.count} kết nối vào lại phòng trong ${storm.ms.toFixed(0)} ms`);
@@ -368,7 +387,7 @@ async function main() {
 
 main()
   .then(async (code) => {
-    child?.kill('SIGTERM');
+    for (const c of children) c.kill('SIGTERM');
     await sleep(1500);
     const admin = new Client({ connectionString: `${BASE}/postgres` });
     await admin.connect();
@@ -378,6 +397,6 @@ main()
   })
   .catch(async (error) => {
     console.error(error);
-    child?.kill('SIGTERM');
+    for (const c of children) c.kill('SIGTERM');
     process.exit(2);
   });

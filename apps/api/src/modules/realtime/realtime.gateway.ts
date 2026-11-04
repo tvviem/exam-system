@@ -37,7 +37,11 @@ const monitorJoin = z.strictObject({ sessionId: z.uuid() });
 const attemptJoin = z.strictObject({ attemptId: z.uuid() });
 const realtimeMessageSchema = z.discriminatedUnion('t', [
   z.strictObject({ t: z.literal('session'), id: z.uuid() }),
-  z.strictObject({ t: z.literal('attempt'), id: z.uuid() }),
+  z.strictObject({
+    t: z.literal('attempt'),
+    id: z.uuid(),
+    spread: z.number().int().min(0).max(10_000).optional(),
+  }),
 ]);
 
 interface SocketData {
@@ -171,6 +175,9 @@ export class RealtimeGateway implements OnGatewayInit, OnApplicationShutdown {
       return; // tin hỏng bị bỏ qua, không làm sập cổng
     }
     if (parsed.t === 'session') this.coalescer.trigger(parsed.id);
-    else this.server.to(attemptRoom(parsed.id)).emit(REALTIME_EVENT.attemptNudge);
+    else
+      this.server
+        .to(attemptRoom(parsed.id))
+        .emit(REALTIME_EVENT.attemptNudge, { spread: parsed.spread });
   }
 }
