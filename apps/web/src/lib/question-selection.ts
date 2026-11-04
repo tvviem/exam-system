@@ -31,11 +31,15 @@ export function selectRange(
   const next = new Map(chosen);
   if (items.length === 0) return next;
   const [start, end] = from <= to ? [from, to] : [to, from];
-  for (const item of items.slice(start, end + 1)) {
-    if (existing.has(item.id)) continue;
-    if (!select) next.delete(item.id);
-    else if (next.size < room) next.set(item.id, item);
+  const span = items.slice(start, end + 1).filter((item) => !existing.has(item.id));
+  if (!select) {
+    for (const item of span) next.delete(item.id);
+    return next;
   }
+  // Còn chỗ cho bao nhiêu câu thì lấy từ câu mốc ra xa (kéo xuôi hay ngược đều vậy), nhưng thêm vào Map theo thứ tự trong danh sách.
+  const fresh = (from > to ? [...span].reverse() : span).filter((item) => !next.has(item.id));
+  const take = new Set(fresh.slice(0, Math.max(0, room - next.size)).map((item) => item.id));
+  for (const item of span) if (take.has(item.id)) next.set(item.id, item);
   return next;
 }
 
@@ -65,6 +69,8 @@ export function togglePage(
   existing: ReadonlySet<string>,
   room: number,
 ): Map<string, PickedQuestion> {
-  const { state } = pageState(items, chosen, existing);
-  return selectRange(items, 0, items.length - 1, state !== 'all', chosen, existing, room);
+  const { state, chosen: onPage } = pageState(items, chosen, existing);
+  // Hết chỗ mà trang còn câu đã chọn: không thể chọn thêm nên bấm là bỏ chọn phần của trang (không kẹt ở "một phần").
+  const unselect = state === 'all' || (chosen.size >= room && onPage > 0);
+  return selectRange(items, 0, items.length - 1, !unselect, chosen, existing, room);
 }

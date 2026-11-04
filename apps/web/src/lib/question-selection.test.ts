@@ -55,6 +55,11 @@ describe('selectRange: Shift + tick một dải liên tiếp', () => {
     const result = selectRange(items, 0, 4, true, chosenOf('z'), NONE, 3);
     expect(idsOf(result)).toEqual(['z', 'a', 'b']);
   });
+
+  it('dải kéo ngược mà hết chỗ thì cắt các câu xa mốc, giữ các câu gần mốc', () => {
+    const result = selectRange(items, 4, 0, true, new Map(), NONE, 2);
+    expect(idsOf(result)).toEqual(['d', 'e']); // giữ thứ tự danh sách
+  });
 });
 
 describe('pageState / togglePage: chọn tất cả trên trang hiện tại', () => {
@@ -89,6 +94,13 @@ describe('pageState / togglePage: chọn tất cả trên trang hiện tại', (
 
   it('đã chọn hết trang thì bỏ chọn cả trang nhưng giữ trang khác', () => {
     const result = togglePage(items, chosenOf('z', 'a', 'b', 'c', 'd'), NONE, 10);
+    expect(idsOf(result)).toEqual(['z']);
+  });
+
+  it('hết chỗ mà trang còn câu đã chọn thì bấm lại bỏ chọn được cả trang (không kẹt ở trạng thái một phần)', () => {
+    const start = chosenOf('z', 'a');
+    // Trang 4 câu, chỉ còn chỗ cho 2 câu: đã chọn z, a nên đầy; bấm là bỏ chọn phần của trang.
+    const result = togglePage(items, start, NONE, 2);
     expect(idsOf(result)).toEqual(['z']);
   });
 

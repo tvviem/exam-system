@@ -39,6 +39,12 @@ export function QuestionPicker({
   const anchor = useRef<{ id: string; selected: boolean } | null>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
+  // Đổi trang hay bộ lọc: danh sách khác nên câu mốc của Shift + tick không còn nghĩa.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ để đặt lại mốc khi các giá trị này đổi
+  useEffect(() => {
+    anchor.current = null;
+  }, [page, q, topicId, type, tag]);
+
   // Chờ gõ xong một nhịp rồi mới hỏi api.
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -190,7 +196,7 @@ export function QuestionPicker({
           <>
             {/* Chọn nhanh: cả trang, và số câu đã chọn (giữ qua các trang, đổi bộ lọc) */}
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-              <label className="flex min-h-12 cursor-pointer items-center gap-3">
+              <label className="flex min-h-12 cursor-pointer select-none items-center gap-3">
                 <input
                   ref={selectAllRef}
                   type="checkbox"
@@ -199,22 +205,24 @@ export function QuestionPicker({
                   disabled={
                     onPage.selectable === 0 || (onPage.state === 'none' && room <= chosen.size)
                   }
-                  onChange={() => setChosen((prev) => togglePage(items, prev, existing, room))}
+                  onChange={() => {
+                    anchor.current = null;
+                    setChosen((prev) => togglePage(items, prev, existing, room));
+                  }}
                 />
                 <span className="text-sm font-medium">
                   {t('exam.picker.selectPage', { count: onPage.selectable })}
                 </span>
               </label>
-              <p className="flex items-center gap-2 text-sm text-fg-muted" aria-live="polite">
-                {t('exam.picker.chosen', { count: chosen.size })}
-                {chosen.size > 0 && (
-                  <Button className="min-h-9 px-2 py-1 text-sm" onClick={clear}>
-                    {t('exam.picker.clear')}
-                  </Button>
-                )}
-              </p>
+              <div className="flex items-center gap-2 text-sm text-fg-muted">
+                <span aria-live="polite">{t('exam.picker.chosen', { count: chosen.size })}</span>
+                {chosen.size > 0 && <Button onClick={clear}>{t('exam.picker.clear')}</Button>}
+              </div>
             </div>
-            <p className="hidden text-xs text-fg-muted sm:block">{t('exam.picker.shiftHint')}</p>
+            <p className="text-xs text-fg-muted">
+              {t('exam.picker.keepHint')}
+              <span className="hidden sm:inline"> {t('exam.picker.shiftHint')}</span>
+            </p>
             <ul className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
               {(list.data?.items ?? []).map((item, index) => {
                 const already = existing.has(item.id);
@@ -222,7 +230,7 @@ export function QuestionPicker({
                 return (
                   <li key={item.id}>
                     <label
-                      className={`flex min-h-12 items-start gap-3 rounded-lg border p-3 ${
+                      className={`flex min-h-12 select-none items-start gap-3 rounded-lg border p-3 ${
                         already
                           ? 'border-border bg-bg opacity-70'
                           : checked
