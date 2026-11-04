@@ -2,7 +2,7 @@
 
 Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên điện thoại. Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi tại lớp hoặc phòng máy. Người dự thi đăng nhập, nhập Mã vào thi và làm bài ngay trên điện thoại hoặc máy tính.
 
-> **Trạng thái:** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án) **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi), **lát cắt 3** (Bộ đề) và **lát cắt 4** (Phiên thi: Danh sách dự thi, Mã vào thi, làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ). Lát cắt tiếp theo là 5 (Chấm, Công bố kết quả, Phúc khảo). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 4](#dùng-thử-lát-cắt-4).
+> **Trạng thái (4/11/2026):** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án), **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi), **lát cắt 3** (Bộ đề) và **lát cắt 4** (Phiên thi: Danh sách dự thi, Mã vào thi, làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ). Lát cắt tiếp theo là 5 (Chấm, Công bố kết quả, Phúc khảo). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 4](#dùng-thử-lát-cắt-4).
 
 ## Tính năng giai đoạn 1
 
@@ -24,14 +24,14 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
 - Tổ chức Phiên thi.
   - Thiết lập: Khung giờ, Thời lượng, Mã vào thi, số lượt làm bài, xáo trộn câu và phương án.
   - Lập Danh sách dự thi: tìm theo Lớp hoặc từng người.
-- Theo dõi phòng thi trực tiếp: cộng giờ, cho phép đổi thiết bị, ghi nhận Vi phạm, Đình chỉ.
-- Chấm Câu tự luận theo từng câu (có thể ẩn tên), Công bố kết quả, xử lý Phúc khảo, Đính chính đáp án, xuất Kết quả ra Excel.
+- Theo dõi phòng thi trực tiếp (đã xong, lát cắt 4): Cộng giờ, Buộc nộp, Thu hồi thiết bị cho đổi máy, Cảnh cáo, Đình chỉ, Đóng cửa vào thi; số liệu cập nhật qua Socket.IO.
+- *Chưa làm (lát cắt 5):* chấm Câu tự luận theo từng câu (có thể ẩn tên), Công bố kết quả, xử lý Phúc khảo, Đính chính đáp án, xuất Kết quả ra Excel.
 
 **Người dự thi**
-- Làm bài trên điện thoại với hai chế độ xem chuyển qua lại được: **1 câu** và **Cả đề**.
-- Bài tự lưu, chịu được mạng chập chờn, đồng hồ do server quyết định, cảnh báo khi còn 5 phút và 1 phút.
-- Xem Kết quả sau khi được Công bố: điểm từng câu và câu nào chưa đúng hoàn toàn, không lộ Đáp án đúng.
-- Gửi Phúc khảo trong 72 giờ.
+- Vào thi bằng Mã vào thi; mỗi Phiên thi gắn với một thiết bị (Người ra đề cho đổi máy khi có sự cố).
+- Làm bài trên điện thoại với hai chế độ xem chuyển qua lại được: **Từng câu** và **Cả đề**; cài như ứng dụng (PWA).
+- Bài tự lưu, chịu được mạng chập chờn và tải lại trang khi mất mạng, đồng hồ do server quyết định, cảnh báo khi còn 5 phút và 1 phút; nhận ngay thông báo Cộng giờ, Cảnh cáo, Buộc nộp từ Người ra đề.
+- *Chưa làm (lát cắt 5):* xem Kết quả sau khi được Công bố (điểm từng câu, không lộ Đáp án đúng) và gửi Phúc khảo trong 72 giờ.
 
 Định nghĩa đầy đủ của mọi thuật ngữ in hoa nằm trong [GLOSSARY.md](GLOSSARY.md).
 
@@ -65,12 +65,12 @@ Lý do của từng lựa chọn nằm trong các ADR ở [docs/adr](docs/adr).
 Cloudflare Tunnel ──► Podman pod `prod-exam`
                         ├─ web     nginx: SPA tĩnh, proxy /api và /ws, phục vụ ảnh
                         ├─ api     NestJS modular monolith (HTTP + WebSocket)
-                        ├─ worker  BullMQ: tự nộp bài, xử lý ảnh, Excel, Phiếu tài khoản, chốt kết quả
+                        ├─ worker  BullMQ: tự nộp bài quá hạn, xử lý ảnh, Excel, Phiếu tài khoản (chốt kết quả: lát cắt 5)
                         ├─ postgres  nơi lưu trữ gốc
-                        └─ redis     phiên đăng nhập, hàng đợi, trạng thái online, cache
+                        └─ redis     phiên đăng nhập, hàng đợi, trạng thái online, kênh tin đẩy
 ```
 
-Backend chia module theo nghiệp vụ: `identity`, `audit`, `question-bank`, `exam`, `session`, `attempt`, `grading`, `realtime`. Chi tiết luồng nghiệp vụ, bảo mật và ước tính tải nằm trong [docs/architecture.md](docs/architecture.md).
+Backend chia module theo nghiệp vụ: `identity`, `audit`, `notifications`, `question-bank`, `exam`, `session`, `attempt`, `realtime` (và `grading` ở lát cắt 5). Module không đọc bảng của nhau mà nói chuyện qua các cổng trong `apps/api/src/common` (test kiến trúc `architecture.test.ts` giữ ranh giới này). Kênh đẩy Socket.IO (`/ws`) chỉ là phần tăng tốc: tin đẩy không mang dữ liệu, mất kênh thì heartbeat 15 giây và hỏi lại vẫn giữ mọi thứ đúng. Chi tiết luồng nghiệp vụ, bảo mật và ước tính tải nằm trong [docs/architecture.md](docs/architecture.md).
 
 ## Cấu trúc monorepo
 
@@ -78,16 +78,18 @@ Backend chia module theo nghiệp vụ: `identity`, `audit`, `question-bank`, `e
 exam-system/
   apps/
     api/          NestJS (HTTP + WebSocket); worker BullMQ ở src/worker, cùng mã và cùng image
-    web/          React PWA: /admin, /examiner, /take
+      drizzle/    migration SQL (0000–0015)
+      scripts/    load-exam (đo tải), demo-room (phòng thi thử), demo-data (file Excel mẫu)
+    web/          React PWA: /admin, /examiner, /take; e2e/ là Playwright
   packages/
-    shared/       schema Zod dùng chung: Câu hỏi, Câu trả lời, Quy tắc chấm, DTO
+    shared/       schema Zod và luật thuần dùng chung (Câu hỏi, Phiên thi, Lượt, theo dõi, tin đẩy)
     scoring/      hàm chấm điểm thuần (pure functions)
   infra/
-    Makefile      dev-up, ci-up, prod-bootstrap (Podman pod)
-    containers/   Containerfile cho api, web
-    scripts/      bootstrap, backup, restore
-  docs/           kiến trúc, mô hình dữ liệu, ADR
-  .github/workflows/
+    Makefile      dev-up, dev-down, ci-up, ci-down (Podman pod)
+    containers/   Containerfile cho api và web, nginx.conf
+  demo-data/      file Excel dữ liệu demo (xem demo-data/README.md)
+  docs/           kiến trúc, mô hình dữ liệu, ADR, kế hoạch từng lát cắt (plan/), vận hành (ops/)
+  .github/workflows/ci.yml
 ```
 
 ## Yêu cầu môi trường
@@ -148,6 +150,9 @@ Mở http://localhost:5173 và đăng nhập bằng tài khoản vừa tạo; l�
 | `pnpm test:e2e` | Playwright (desktop + mobile), tự dựng api và worker riêng trên database `exam_e2e` và Redis DB 14; cần `pnpm -C apps/api build` trước |
 | `pnpm db:generate` | Sinh migration từ `apps/api/src/db/schema.ts` |
 | `pnpm db:migrate` | Áp migration vào database trong `DATABASE_URL` |
+| `pnpm -C apps/api demo:room` | Phòng thi thử có người dự thi giả (xem Dùng thử lát cắt 4); `--clean` để dọn |
+| `pnpm -C apps/api load:exam` | Đo tải (100 hoặc 500 người); không chạy trong CI |
+| `pnpm -C apps/api demo:data` | Sinh lại file Excel dữ liệu demo ở `demo-data/` |
 | `pnpm cli bootstrap-admin` | Tạo Quản trị viên đầu tiên (đọc biến `BOOTSTRAP_ADMIN_*`) |
 | `pnpm cli recover-admin --username <tên>` | Mất quyền quản trị: mở khóa, in mật khẩu tạm mới (7 ngày), thu hồi mọi phiên |
 
@@ -218,7 +223,7 @@ Cần như lát cắt 2 (không cần worker cho lát cắt này). Sau khi lấy
 
 ## Dùng thử lát cắt 4
 
-Cần như lát cắt 3 và `pnpm db:migrate` (migration `0012`–`0014`: Phiên thi, Lượt làm bài, theo dõi). Chạy `podman pod start dev-exam` nếu pod đang dừng, rồi `pnpm dev`. Từng tính năng có bảng "Cách thử, mong đợi" trong [docs/plan/slice-4.md](docs/plan/slice-4.md) (các mục Hướng dẫn thử 4c-1, 4c-2, 4c-3, 4d-2, 4d-3).
+Cần như lát cắt 3 và `pnpm db:migrate` (migration `0012`–`0015`: Phiên thi, Lượt làm bài, theo dõi, chỉ mục Đình chỉ). Chạy `podman pod start dev-exam` nếu pod đang dừng, rồi `pnpm dev`. Từng tính năng có bảng "Cách thử, mong đợi" trong [docs/plan/slice-4.md](docs/plan/slice-4.md) (các mục Hướng dẫn thử 4c-1, 4c-2, 4c-3, 4d-2, 4d-3).
 
 **Cách nhanh nhất: phòng thi thử có sẵn người dự thi giả.** Dựng một Phiên thi thử và cho N người dự thi giả (mặc định 120) đi qua API thật, nên màn Theo dõi hiện như một kỳ thi thật mà không cần mở nhiều trình duyệt. Thêm dòng `LOGIN_MAX_PER_IP=100000` vào `apps/api/.env` (mô phỏng đăng nhập hàng trăm lần từ một máy), chạy lại `pnpm dev`, rồi:
 
@@ -267,7 +272,11 @@ Lệnh in địa chỉ màn Theo dõi và tài khoản `demo-gv`; đăng nhập 
 | `SLIP_ENCRYPTION_KEY` | có | Khóa AES-256-GCM mã hóa Phiếu tài khoản: 32 byte dạng base64, tạo bằng `openssl rand -base64 32`. Mỗi môi trường một khóa riêng; **giữ kín và sao lưu riêng khỏi dữ liệu**. Mất khóa thì không mở lại được các phiếu còn hạn (phiếu chỉ sống 7 ngày; khi đó dùng "Cấp lại mật khẩu tạm") |
 | `APP_ORIGINS` | production | Địa chỉ công khai của hệ thống, cách nhau bằng dấu phẩy; địa chỉ đầu tiên được in thành mã QR trên phiếu. Cũng là danh sách Origin được phép gửi request đổi dữ liệu (chống CSRF) |
 | `MEDIA_DIR` | không | Thư mục lưu file tải lên tạm và Phiếu tài khoản (mặc định `./media-data`). Production: một volume cho cả api lẫn worker |
-| `LOGIN_MAX_PER_IP` | không | Số lần thử đăng nhập tối đa mỗi IP trong 10 phút (mặc định 20) |
+| `LOGIN_MAX_PER_IP` | không | Số lần thử đăng nhập tối đa mỗi IP trong 10 phút (mặc định 20). Nâng cao khi chạy `demo:room` hay đo tải |
+| `DB_POOL_MAX` | không | Số kết nối PostgreSQL tối đa của mỗi tiến trình (mặc định 10); tổng api và worker phải nhỏ hơn `max_connections` |
+| `TRUST_PROXY` | không | Ai được tin khi báo địa chỉ khách qua `X-Forwarded-For` (mặc định `loopback`, nginx cùng pod) |
+| `ILLUSTRATION_QUOTA_BYTES`, `MEDIA_ACCEL_PREFIX` | không | Hạn mức dung lượng Hình minh họa mỗi Người ra đề (mặc định 500 MB); tiền tố để api nhờ nginx trả ảnh (`X-Accel-Redirect`, ví dụ `/_media`) |
+| `REALTIME_THROTTLE_MS`, `REALTIME_MAX_SOCKETS_PER_USER` | không | Khoảng cách tối thiểu giữa hai tin `monitor.changed` (mặc định 2000 ms) và số kết nối Socket.IO tối đa mỗi người (mặc định 20) |
 | `LOG_LEVEL`, `PORT` | không | Mức log và cổng của api |
 
 **Sự cố thường gặp**
@@ -276,24 +285,22 @@ Lệnh in địa chỉ màn Theo dõi và tài khoản `demo-gv`; đăng nhập 
 - *api hoặc worker không khởi động, báo `SLIP_ENCRYPTION_KEY`*: thiếu hoặc sai khóa; xem lệnh `sed` ở Bắt đầu nhanh.
 - *Đăng nhập sai nhiều lần bị chặn 15 phút*: đúng thiết kế (Q47). Quản trị viên mở bằng **Cấp lại mật khẩu tạm**; chính Quản trị viên bị chặn thì dùng `pnpm cli recover-admin`.
 - *Đổi cổng hoặc tên miền*: cập nhật `APP_ORIGINS`, nếu không các thao tác ghi sẽ bị từ chối với lỗi "Yêu cầu bị từ chối. Hãy tải lại trang".
+- *Màn Theo dõi ghi "Cập nhật mỗi 5 giây" thay vì "Cập nhật trực tiếp"*: kênh Socket.IO không nối được (proxy không chuyển `/ws`, Origin không có trong `APP_ORIGINS`, hoặc bị chặn). Hệ thống vẫn đúng, chỉ chậm hơn: Người dự thi nhận thông báo trong tối đa 15 giây.
+- *Phòng thi từ khoảng 300 người trở lên*: chạy hai bản api (đo 4/11/2026: một bản chậm quanh Cộng giờ cả phòng, hai bản đạt mọi ngưỡng với 500 người).
 - *Dữ liệu dev lộn xộn*: `make -C infra dev-down`, `make -C infra dev-up`, rồi `pnpm db:migrate` và tạo lại Quản trị viên.
 
 ## Quy trình phát triển
 
 - **Ngôn ngữ nghiệp vụ:** đặt tên biến, bảng, API và nội dung giao diện theo [GLOSSARY.md](GLOSSARY.md). Gặp khái niệm mới thì thống nhất và bổ sung glossary trước khi code.
 - **Duyệt thiết kế trước khi code:** thay đổi kiến trúc hoặc mô hình dữ liệu được đề xuất bằng tài liệu hoặc ADR ở trạng thái `proposed`, rồi mới triển khai.
-- **Nhánh và PR:** tạo nhánh từ `main`, mở pull request. CI phải xanh (lint, typecheck, unit, integration, e2e) trước khi merge.
-- **Commit:** theo [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, ...).
+- **Nhánh và PR:** tạo nhánh từ `main`, mở pull request theo mẫu Summary / Evidence / Merge Danger. CI có 4 check phải xanh (Lint·typecheck·unit; Integration·e2e·migration drift; Image web; Image api) trước khi merge squash; chỉ merge khi chủ dự án ra lệnh. Quy trình mỗi lát cắt: thiết kế được duyệt, test đỏ rồi xanh theo từng đường cắt, review hai trục (Standards, Spec).
+- **Commit:** thông điệp ngắn bằng tiếng Việt nêu việc đã làm (tiêu đề PR kèm số, ví dụ "4e: … (#51)").
 - **Prototype:** đặt trên nhánh `prototype/*`, không merge vào `main`. Ví dụ: `prototype/exam-taking-ui`.
 - **Agent:** Claude Code, Codex và Copilot cùng đọc [AGENTS.md](AGENTS.md); [CLAUDE.md](CLAUDE.md) nạp file này.
 
 ## Triển khai
 
-Giai đoạn 1 chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, ra Internet qua Cloudflare Tunnel ([ADR-0006](docs/adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)). Mỗi lần push lên `main`, GitHub Actions:
-1. Build image lên GHCR.
-2. Trên runner self-hosted `wsl-exam`: sao lưu DB, chạy migration, thay lần lượt từng container, chạy smoke test.
-
-Pipeline không deploy khi đang có Phiên thi diễn ra. Khi hệ thống ổn định sẽ chuyển sang VPS, dùng lại cùng image và Makefile. Chi tiết ở [docs/architecture.md](docs/architecture.md) mục 8 và 9.
+Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, ra Internet qua Cloudflare Tunnel ([ADR-0006](docs/adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)). **Hiện đã có:** CI (lint, typecheck, unit, audit phụ thuộc, integration, E2E trên pod `ci-exam`, kiểm migration không lệch schema) và build image api, web lên GHCR khi push `main`. **Chưa có (lát cắt 6):** pipeline deploy lên máy chủ, các script `prod-bootstrap`, sao lưu và khôi phục; hướng dẫn triển khai tay lần đầu nằm ở [docs/ops/demo-wsl.md](docs/ops/demo-wsl.md) (bản nháp chưa chạy thử). Socket.IO đã kiểm qua nginx của `infra/`; qua Cloudflare Tunnel thật chưa thử. Chi tiết ở [docs/architecture.md](docs/architecture.md) mục 8, 9 và 11.
 
 ## Tài liệu
 
@@ -302,10 +309,10 @@ Pipeline không deploy khi đang có Phiên thi diễn ra. Khi hệ thống ổn
 | [GLOSSARY.md](GLOSSARY.md) | Thuật ngữ nghiệp vụ và tên dùng trong mã nguồn |
 | [docs/architecture.md](docs/architecture.md) | Kiến trúc, luồng nghiệp vụ, bảo mật, trải nghiệm điện thoại, triển khai, phạm vi |
 | [docs/data-model.md](docs/data-model.md) | Thiết kế bảng PostgreSQL, ràng buộc, công thức tính Kết quả |
-| [docs/ui-design.md](docs/ui-design.md) | Thiết kế giao diện: màu, chữ, chế độ sáng/tối, thành phần, danh sách kiểm |
-| [docs/plan/slice-1.md](docs/plan/slice-1.md) | Kế hoạch và các quyết định (Q43–Q99) của lát cắt 1 |
-| [docs/plan/slice-3.md](docs/plan/slice-3.md) | Kế hoạch và các quyết định (Q159–Q191) của lát cắt 3: Bộ đề |
-| [docs/plan/slice-4.md](docs/plan/slice-4.md) | Kế hoạch, quyết định (Q192–Q272), ghi chú triển khai và hướng dẫn thử của lát cắt 4: Phiên thi |
+| [docs/plan/](docs/plan) | Kế hoạch, quyết định, ghi chú triển khai và hướng dẫn thử từng lát cắt: slice-0 đến slice-4 (slice-1: Q43–Q99, slice-3: Q159–Q191, slice-4: Q192–Q272) |
+| [docs/ops/demo-wsl.md](docs/ops/demo-wsl.md) | Triển khai demo trên laptop WSL (bản nháp) |
+| [docs/ui-design.md](docs/ui-design.md), [docs/ui-review.md](docs/ui-review.md) | Thiết kế giao diện và kết quả rà soát giao diện |
+| [demo-data/README.md](demo-data/README.md) | File Excel dữ liệu demo và kịch bản dùng |
 | [docs/adr](docs/adr) | Các quyết định kiến trúc đã duyệt |
 | [AGENTS.md](AGENTS.md) | Hướng dẫn cho AI agent làm việc trên repo |
 
