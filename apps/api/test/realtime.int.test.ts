@@ -1,4 +1,10 @@
-import { REALTIME_EVENT, REALTIME_JOIN, REALTIME_PATH, REALTIME_REDIS_CHANNEL } from '@exam/shared';
+import {
+  NUDGE_JITTER_MAX_MS,
+  REALTIME_EVENT,
+  REALTIME_JOIN,
+  REALTIME_PATH,
+  REALTIME_REDIS_CHANNEL,
+} from '@exam/shared';
 import { Redis } from 'ioredis';
 import { io, type Socket } from 'socket.io-client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -162,6 +168,16 @@ describe('đẩy sớm cho Người dự thi (attempt.nudge)', () => {
     expect(took as number).toBeLessThan(1000);
     await sleep(200);
     expect(binhGot.n).toBe(0);
+  });
+
+  it('tin đẩy kèm khoảng trải heartbeat: một người trải 300 ms, cả phòng trải rộng hơn', async () => {
+    const an = await candidate('an');
+    await joinAttempt(an, 'an');
+    const payload = new Promise<{ spread?: number }>((resolve) =>
+      an.once(REALTIME_EVENT.attemptNudge, resolve),
+    );
+    expect((await extend(['an'])).statusCode).toBe(200);
+    expect(await payload).toEqual({ spread: NUDGE_JITTER_MAX_MS });
   });
 
   it('Buộc nộp, Cảnh cáo, Đình chỉ, Thu hồi và Hoàn tác Thu hồi đều đẩy tới Lượt bị tác động', async () => {

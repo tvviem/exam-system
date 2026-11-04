@@ -19,7 +19,8 @@ export interface RoomSubscription {
   payload: unknown;
   /** Sự kiện server đẩy xuống phòng này. */
   event: string;
-  onEvent: () => void;
+  /** `payload` là dữ liệu đi kèm tin đẩy nếu có (chỉ gợi ý, không phải dữ liệu nghiệp vụ). */
+  onEvent: (payload?: unknown) => void;
   /** Mỗi lần (nối lại) vào phòng xong, kể cả lần đầu: nơi gọi nên tải lại để bù tin có thể đã lỡ. */
   onConnected?: () => void;
   /** Đã vào phòng và kênh đang nối (true), hay chưa/đã đứt (false). */
@@ -66,7 +67,7 @@ export function createRealtime(loadSocket: () => Promise<SocketLike>) {
         options.onConnected?.();
       });
     };
-    const onEvent = () => options.onEvent();
+    const onEvent = (payload?: unknown) => options.onEvent(payload);
     const onDisconnect = () => options.onLive?.(false);
     const onConnect = () => attached && enter(attached);
 

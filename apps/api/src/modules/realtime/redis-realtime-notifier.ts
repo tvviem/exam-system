@@ -1,4 +1,4 @@
-import { REALTIME_REDIS_CHANNEL, type RealtimeMessage } from '@exam/shared';
+import { nudgeSpreadMs, REALTIME_REDIS_CHANNEL, type RealtimeMessage } from '@exam/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import type { RealtimeNotifier } from '../../common/realtime-notifier';
@@ -20,14 +20,17 @@ export class RedisRealtimeNotifier implements RealtimeNotifier {
   }
 
   attemptNudge(attemptIds: readonly string[]): void {
-    this.publish(attemptIds.map((id) => ({ t: 'attempt' as const, id })));
+    this.publish(this.nudges(attemptIds));
   }
 
   affected(sessionId: string, attemptIds: readonly string[]): void {
-    this.publish([
-      ...attemptIds.map((id) => ({ t: 'attempt' as const, id })),
-      { t: 'session', id: sessionId },
-    ]);
+    this.publish([...this.nudges(attemptIds), { t: 'session', id: sessionId }]);
+  }
+
+  /** Mỗi tin kèm khoảng trải theo số Lượt bị tác động cùng lúc, để trình duyệt không dồn heartbeat. */
+  private nudges(attemptIds: readonly string[]): RealtimeMessage[] {
+    const spread = nudgeSpreadMs(attemptIds.length);
+    return attemptIds.map((id) => ({ t: 'attempt' as const, id, spread }));
   }
 
   private publish(messages: RealtimeMessage[]) {

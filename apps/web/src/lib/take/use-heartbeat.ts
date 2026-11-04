@@ -1,4 +1,9 @@
-import { NUDGE_JITTER_MAX_MS, REALTIME_EVENT, REALTIME_JOIN } from '@exam/shared';
+import {
+  NUDGE_JITTER_MAX_MS,
+  NUDGE_SPREAD_MAX_MS,
+  REALTIME_EVENT,
+  REALTIME_JOIN,
+} from '@exam/shared';
 import { useEffect, useRef } from 'react';
 import { realtime } from '../realtime';
 import { sendHeartbeat } from '../take';
@@ -138,9 +143,15 @@ export function useHeartbeat(options: {
       join: REALTIME_JOIN.attempt,
       payload: { attemptId },
       event: REALTIME_EVENT.attemptNudge,
-      onEvent: () => {
+      onEvent: (payload) => {
         clearTimeout(nudgeTimer);
-        nudgeTimer = setTimeout(() => void beat(), Math.random() * NUDGE_JITTER_MAX_MS);
+        // Server gợi ý khoảng trải theo số người bị tác động cùng lúc (cả phòng thì rộng hơn); chặn trên để tin lạ không hoãn vô hạn.
+        const hint = (payload as { spread?: unknown } | undefined)?.spread;
+        const spread =
+          typeof hint === 'number' && hint >= 0
+            ? Math.min(hint, NUDGE_SPREAD_MAX_MS)
+            : NUDGE_JITTER_MAX_MS;
+        nudgeTimer = setTimeout(() => void beat(), Math.random() * spread);
       },
       // Lần vào phòng đầu đã có nhịp lúc mở màn; chỉ nối lại sau khi đứt mới gửi bù (tin có thể đã lỡ).
       onConnected: () => {

@@ -334,6 +334,7 @@ violations (                              -- Vi phạm (Q259, migration 0014)
   penalty_type enum('none','percent','void') DEFAULT 'none',
   penalty_percent numeric(5,2) NULL,      -- CHECK: có số phần trăm (0..100) khi và chỉ khi penalty_type = 'percent'
   recorded_by → users, recorded_at, penalty_decided_at
+  -- Chỉ mục (session_id, user_id): kiểm Đình chỉ khi bắt đầu Lượt (Q272, migration 0015).
   -- Trigger violations_guard: session_id và user_id phải khớp Lượt; sau khi ghi chỉ ba cột hình phạt được quyết
   --   (lát cắt 5); không xóa.
 )

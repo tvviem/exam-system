@@ -31,7 +31,24 @@ export const NUDGE_JITTER_MAX_MS = 300;
 /** Kênh Redis các tiến trình (api, worker) dùng để báo cho cổng Socket.IO. */
 export const REALTIME_REDIS_CHANNEL = 'realtime:events';
 
-export type RealtimeMessage = { t: 'session'; id: string } | { t: 'attempt'; id: string };
+/**
+ * Mỗi Lượt bị tác động thêm chừng này mili giây vào khoảng trải heartbeat, để Cộng giờ cả phòng không dồn hàng trăm yêu cầu một
+ * lúc (đo 500 người: 500 heartbeat trong 300 ms mất trung vị 1,8 giây để xử lý hết; trải 2 giây thì 250 yêu cầu mỗi giây). Một
+ * người thì vẫn chỉ trải NUDGE_JITTER_MAX_MS.
+ */
+export const NUDGE_SPREAD_PER_ATTEMPT_MS = 4;
+export const NUDGE_SPREAD_MAX_MS = 2000;
+
+/** Khoảng trải ngẫu nhiên (ms) mà trình duyệt chờ trước khi gửi heartbeat vì tin đẩy, theo số Lượt bị tác động cùng lúc. */
+export const nudgeSpreadMs = (affected: number): number =>
+  Math.min(
+    NUDGE_SPREAD_MAX_MS,
+    Math.max(NUDGE_JITTER_MAX_MS, affected * NUDGE_SPREAD_PER_ATTEMPT_MS),
+  );
+
+export type RealtimeMessage =
+  | { t: 'session'; id: string }
+  | { t: 'attempt'; id: string; spread?: number };
 
 export const sessionRoom = (sessionId: string) => `session:${sessionId}`;
 export const attemptRoom = (attemptId: string) => `attempt:${attemptId}`;

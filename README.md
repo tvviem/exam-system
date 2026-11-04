@@ -246,7 +246,7 @@ Lệnh in địa chỉ màn Theo dõi và tài khoản `demo-gv`; đăng nhập 
 1. Mở một Người ra đề hay Người dự thi đang trong Phiên thi đang diễn ra: có dải cảnh báo nêu Phiên thi, và nút **Khóa đăng nhập**, **Xóa người dùng** bị vô hiệu kèm lý do. Hết Phiên thi, hoặc Người ra đề đã Buộc nộp hay Đình chỉ người đó, thì làm được.
 2. **Xóa Người ra đề**: hộp xác nhận nêu số Phiên thi (sắp mở, đã xong, đã Hủy) sẽ chuyển cùng Chủ đề và Bộ đề; cảnh báo nếu người nhận đang có tên trong Danh sách của Phiên thi sắp nhận. Người nhận có thông báo và mở được Theo dõi của Phiên thi vừa nhận.
 
-**Đo tải:** `LOAD_USERS=100 nice -n 19 pnpm -C apps/api load:exam` (khoảng 2 phút). Bản 500 người chỉ chạy khi máy rảnh (máy này còn chạy production). Số đo ở [docs/architecture.md](docs/architecture.md) mục 11.
+**Đo tải:** `LOAD_USERS=100 nice -n 19 pnpm -C apps/api load:exam` (khoảng 2 phút); 500 người: `LOAD_API_INSTANCES=2 LOAD_USERS=500 nice -n 19 pnpm -C apps/api load:exam` (khoảng 5 phút; một bản api không đủ cho 500 người cùng Cộng giờ). Số đo ở [docs/architecture.md](docs/architecture.md) mục 11.
 
 ## Vận hành
 
