@@ -12,3 +12,6 @@ test-results/
 *.tsbuildinfo
 apps/web/src/routeTree.gen.ts
 media-data/
+
+# Cấu hình MCP riêng của từng máy
+.mcp.json
