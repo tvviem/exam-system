@@ -15,6 +15,9 @@ const OUT = path.resolve(__dirname, '../../../demo-data');
 const QUESTION_FILES = [
   { file: 'cau-hoi-tin-hoc-can-ban.xlsx', rows: require('./demo-data/cau-hoi-tin-hoc-can-ban.cjs') },
   { file: 'cau-hoi-kien-truc-phan-mem.xlsx', rows: require('./demo-data/cau-hoi-kien-truc-phan-mem.cjs') },
+  // Kịch bản nhiều Người ra đề: mỗi người nhập cả hai file (10 + 10 = 20 câu Chọn một, 10 điểm).
+  { file: 'cau-hoi-cau-truc-du-lieu.xlsx', rows: require('./demo-data/cau-hoi-cau-truc-du-lieu.cjs') },
+  { file: 'cau-hoi-giai-thuat.xlsx', rows: require('./demo-data/cau-hoi-giai-thuat.cjs') },
 ];
 
 // Họ tên, Mã định danh, Email, Lớp, Ngày sinh, Giới tính. Mã định danh làm tên đăng nhập.
@@ -51,12 +54,24 @@ async function buildQuestionFile({ file, rows }) {
   return { file, buffer };
 }
 
-async function buildCandidateFile() {
-  const file = 'danh-sach-nguoi-du-thi.xlsx';
+// 30 người, 3 lớp (CNTT-K26A, B, C) mỗi lớp 10 người, Mã định danh SV26101 đến SV26130.
+const LAST = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Đặng', 'Bùi'];
+const MIDDLE = ['Văn', 'Thị', 'Minh', 'Quốc', 'Thu', 'Hoàng', 'Ngọc', 'Gia', 'Anh', 'Đức'];
+const FIRST = ['An', 'Bình', 'Chi', 'Dũng', 'Hà', 'Hạnh', 'Khoa', 'Lan', 'Minh', 'Nam', 'Oanh', 'Phúc', 'Quân', 'Sơn', 'Trang', 'Uyên', 'Vinh', 'Yến', 'Giang', 'Hiếu', 'Khánh', 'Linh', 'Mai', 'Nhân', 'Phương', 'Quỳnh', 'Tâm', 'Thảo', 'Việt', 'Xuân'];
+const CANDIDATES_30 = Array.from({ length: 30 }, (_, i) => [
+  `${LAST[i % LAST.length]} ${MIDDLE[(i * 3) % MIDDLE.length]} ${FIRST[i]}`,
+  `SV26${String(101 + i)}`,
+  '',
+  `CNTT-K26${'ABC'[Math.floor(i / 10)]}`,
+  '',
+  i % 2 === 0 ? 'Nam' : 'Nữ',
+]);
+
+async function buildCandidateFile(file = 'danh-sach-nguoi-du-thi.xlsx', list = CANDIDATES) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await buildAccountRequestTemplate());
   const sheet = workbook.getWorksheet('Danh sách');
-  CANDIDATES.forEach((person, index) => {
+  list.forEach((person, index) => {
     const row = sheet.getRow(index + 2);
     person.forEach((value, col) => {
       const cell = row.getCell(col + 1);
@@ -90,12 +105,14 @@ async function main() {
     report(`${file}: ${rows.length} dòng đọc được ${JSON.stringify(counts)}`);
   }
 
-  const { file, buffer } = await buildCandidateFile();
-  const parsed = await parseAccountRequestFile(buffer);
-  const bad = parsed.rows.filter((row) => row.error);
-  for (const row of bad) report(`LỖI ${file} (dòng ${row.rowNumber}): ${row.error}`);
-  if (bad.length > 0) failed = true;
-  report(`${file}: ${parsed.rows.length} dòng đọc được`);
+  for (const spec of [[], ['danh-sach-nguoi-du-thi-30-nguoi.xlsx', CANDIDATES_30]]) {
+    const { file, buffer } = await buildCandidateFile(...spec);
+    const parsed = await parseAccountRequestFile(buffer);
+    const bad = parsed.rows.filter((row) => row.error);
+    for (const row of bad) report(`LỖI ${file} (dòng ${row.rowNumber}): ${row.error}`);
+    if (bad.length > 0) failed = true;
+    report(`${file}: ${parsed.rows.length} dòng đọc được`);
+  }
 
   if (failed) process.exit(1);
 }
