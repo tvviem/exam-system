@@ -49,7 +49,7 @@ Khoảng thời gian một Người dùng đăng nhập trên một thiết bị
 _Avoid_: session (đứng một mình, dễ nhầm với Phiên thi), phiên
 
 **Khóa đăng nhập** (`Lock`):
-Trạng thái tạm thời không cho Người dùng đăng nhập; Quản trị viên có thể mở lại.
+Trạng thái tạm thời không cho Người dùng đăng nhập; chỉ Quản trị viên đặt và mở lại được. Không đặt được khi Người dùng đang tham gia một Phiên thi đang diễn ra (chủ của Phiên thi đó, hoặc Người dự thi đang có Lượt làm bài đang làm); Quản trị viên được cảnh báo kèm danh sách Phiên thi.
 _Avoid_: cấm, ban, vô hiệu hóa
 
 **Phiếu tài khoản** (`CredentialSlip`):
@@ -57,7 +57,7 @@ Phiếu in cho từng Người dự thi, ghi tên đăng nhập và mật khẩu
 _Avoid_: phiếu mật khẩu, thẻ dự thi
 
 **Xóa người dùng** (`Remove`):
-Đưa Người dùng ra khỏi sử dụng vĩnh viễn nhưng vẫn giữ toàn bộ lịch sử và kết quả liên quan. Người ra đề còn Chủ đề hoặc Bộ đề thì phải Chuyển giao cho người nhận ngay trong lúc Xóa; mọi Bộ đề của họ (nháp, đã Phát hành, đã Lưu trữ) sang người nhận cùng Chủ đề.
+Đưa Người dùng ra khỏi sử dụng vĩnh viễn nhưng vẫn giữ toàn bộ lịch sử và kết quả liên quan. Người ra đề còn Chủ đề, Bộ đề hoặc Phiên thi thì phải Chuyển giao cho người nhận ngay trong lúc Xóa; mọi Bộ đề của họ (nháp, đã Phát hành, đã Lưu trữ) và mọi Phiên thi (kể cả đã Hủy; Danh sách dự thi, Lượt làm bài và Câu trả lời giữ nguyên) sang người nhận cùng Chủ đề. Không Xóa được khi Người dùng đang tham gia một Phiên thi đang diễn ra (như Khóa đăng nhập).
 _Avoid_: hủy tài khoản
 
 ## Ngân hàng câu hỏi
@@ -74,7 +74,7 @@ Một đơn vị nội dung kiểm tra thuộc một Chủ đề, có một Lo�
 _Avoid_: xóa mềm câu hỏi
 
 **Chuyển giao** (`Transfer`):
-Hành động của Quản trị viên chuyển quyền sở hữu một Chủ đề, cùng mọi Câu hỏi trong đó, từ Người ra đề này sang Người ra đề khác. Tại mọi thời điểm, mỗi Chủ đề chỉ có một chủ. Chủ đề trùng tên với Chủ đề của người nhận được thêm "(từ <tên người cho>)"; Hình minh họa đi theo Câu hỏi (đổi chủ, dùng ảnh sẵn có của người nhận, hoặc sao chép khi còn dùng chung với Câu hỏi ở lại); Lô nhập gắn với Chủ đề đó bị xóa. Bộ đề nháp có câu thuộc Chủ đề được chuyển cũng sang người nhận, còn các câu của Chủ đề không chuyển bị gỡ khỏi Bộ đề đó (hộp thoại báo trước số Bộ đề và số câu bị gỡ); Bộ đề đã Phát hành ở lại người cho.
+Hành động của Quản trị viên chuyển quyền sở hữu một Chủ đề, cùng mọi Câu hỏi trong đó, từ Người ra đề này sang Người ra đề khác. Tại mọi thời điểm, mỗi Chủ đề chỉ có một chủ. Chủ đề trùng tên với Chủ đề của người nhận được thêm "(từ <tên người cho>)"; Hình minh họa đi theo Câu hỏi (đổi chủ, dùng ảnh sẵn có của người nhận, hoặc sao chép khi còn dùng chung với Câu hỏi ở lại); Lô nhập gắn với Chủ đề đó bị xóa. Bộ đề nháp có câu thuộc Chủ đề được chuyển cũng sang người nhận, còn các câu của Chủ đề không chuyển bị gỡ khỏi Bộ đề đó (hộp thoại báo trước số Bộ đề và số câu bị gỡ); Bộ đề đã Phát hành ở lại người cho. Chuyển giao không đụng Phiên thi (Phiên thi chỉ chuyển khi Xóa người dùng).
 _Avoid_: chia sẻ, bàn giao
 
 **Phần dẫn** (`Stem`):
@@ -236,7 +236,7 @@ Ghi nhận của Người ra đề, kèm lý do, về hành vi sai quy định c
 _Avoid_: gian lận, sự cố
 
 **Đình chỉ** (`Disqualify`):
-Hành động dừng ngay một Lượt làm bài vì Vi phạm nặng. Các Câu trả lời đã lưu đến thời điểm đó vẫn được giữ và Chấm như bình thường.
+Hành động dừng ngay một Lượt làm bài vì Vi phạm nặng. Các Câu trả lời đã lưu đến thời điểm đó vẫn được giữ và Chấm như bình thường. Người bị Đình chỉ không bắt đầu được Lượt làm bài mới trong Phiên thi đó, kể cả khi còn lượt (khác Buộc nộp, chỉ đóng Lượt).
 _Avoid_: hủy bài, cấm thi
 
 **Mức xử lý** (`Penalty`):
