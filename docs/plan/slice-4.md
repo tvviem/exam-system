@@ -31,7 +31,7 @@ Bất biến vẫn giữ: Đáp án đúng không bao giờ có trong response g
 | Q202 | Trạng thái hiện cho Người ra đề: **Sắp mở, Đang mở, Đóng cửa vào thi, Đã đóng, Đã hủy** (lát cắt 5 thêm Đã Công bố, Đã Chốt). Sắp mở: sửa mọi thứ. Đã mở: chỉ kéo dài Khung giờ hoặc Thời lượng, đổi mã, thêm người; **không** đổi hai công tắc xáo trộn và Bộ đề. Xóa chỉ khi chưa từng có Lượt làm bài, còn lại **Hủy** | đã duyệt |
 | Q203 | **Hủy Phiên thi** (không hoàn tác): nộp mọi Lượt đang làm với lý do `session_cancelled`, không ai vào nữa, không tính Kết quả, vẫn xem lại. Muốn thi lại: Nhân bản Bộ đề, Phát hành, tạo Phiên thi mới (Q173). Q178 giữ nguyên: Bộ đề đã Phát hành không xóa, chỉ Lưu trữ; Bộ đề Lưu trữ không chọn được cho Phiên thi mới, Phiên thi đã tạo vẫn chạy. **Nhân bản Phiên thi** (thiết lập và Danh sách; mã, giờ mới) có | đã duyệt |
 | Q204 | Chia PR 4a–4e (xem mục "Chia PR"); mỗi PR có thiết kế chi tiết và seam test duyệt riêng | đã duyệt |
-| Q205 | Xóa người dùng là Người ra đề: mọi Phiên thi (kể cả đang diễn ra) sang người nhận cùng Bộ đề; Chuyển giao Chủ đề không đụng Phiên thi; Xóa người dùng là Người dự thi đang có Lượt: Lượt nộp tự động (Q76) | đã duyệt |
+| Q205 | Xóa người dùng là Người ra đề: mọi Phiên thi (kể cả đang diễn ra) sang người nhận cùng Bộ đề; Chuyển giao Chủ đề không đụng Phiên thi; Xóa người dùng là Người dự thi đang có Lượt: Lượt nộp tự động (Q76) | đã duyệt; **sửa ở Q263–Q264 (4/11/2026)**: Xóa Người ra đề chỉ làm được khi không có Phiên thi đang diễn ra, và Xóa hay Khóa người dự thi có Lượt đang làm bị chặn thay vì nộp tự động |
 | Q206 | `/take`: ô Nhập Mã vào thi ở đầu, dưới là **Phiên thi của tôi** (Đang mở / Sắp mở / Đã xong); menu chuyển khu "Soạn đề" ↔ "Làm bài" cho người mang cả hai Nhãn (Q143); chưa Công bố thì chỉ thấy "Đã nộp" | đã duyệt |
 | Q207 | Trước PR 4d, dựng 2–3 **prototype màn Theo dõi** trên nhánh `prototype/theo-doi` để chủ dự án chọn (Q110) | đã duyệt; **xong 3/11/2026**, chủ dự án duyệt bản gộp (xem Q252–Q254) |
 | Q208 | Khung giờ chỉ giới hạn việc **bắt đầu** (đúng GLOSSARY); mỗi Lượt được đủ Thời lượng. Công tắc Phiên thi **"Cắt cứng khi đóng Khung giờ"** (mặc định tắt): Lượt kết thúc lúc đóng. Sửa mâu thuẫn giữa GLOSSARY và kiến trúc 5.1 | đã duyệt |
@@ -344,7 +344,7 @@ Mã lỗi mới: `INVALID_ACCESS_CODE` (một mã chung, Q201), `INVALID_STATE` 
 | **4b** Vào thi và Lượt làm bài (API), chia 4b-1 và 4b-2 (Q226) | `attempt`: `join`, Gắn thiết bị, `start`, `view`, `saveResponses`, `submit`, `close`, job quét tự nộp, hook Khóa đăng nhập (Q218), ảnh cho Người dự thi (Q219), cookie `exam_did` | 0013 | S1, S2, S3, S4, S5, S8 |
 | **4c** Khu làm bài `/take` | giao diện điện thoại theo prototype đã duyệt: Phiên thi của tôi, nhập mã, màn xác nhận (Q210), hai chế độ, lưới số câu, đồng hồ có cảnh báo 5 và 1 phút, hàng đợi IndexedDB tự xả, hộp thoại xác nhận Nộp bài, báo thiết bị bị thu hồi, menu chuyển khu (Q143), Xem thử qua Phiên thi (Q220), PWA | không | S6 |
 | **4d** Theo dõi phòng thi, chia 4d-1 (API), 4d-2 (giao diện), 4d-3 (Socket.IO) (Q255) | prototype trước (Q207, xong), rồi: presence, `session_events`, Cộng giờ, Thu hồi thiết bị và Hoàn tác Thu hồi, Đóng cửa vào thi, Buộc nộp, Vi phạm và Đình chỉ (Q221), cuối cùng Socket.IO | 0014 | S1–S8 (xem "PR 4d: thiết kế chi tiết") |
-| **4e** Hoàn thiện | Phiên thi trong Chuyển giao và Xóa người dùng (Q205), k6 500 người (Q214), hướng dẫn dùng thử trong README | không | S2, S6, S9 |
+| **4e** Hoàn thiện (xem "PR 4e: thiết kế chi tiết") | Phiên thi trong Xóa người dùng và chặn Khóa, Xóa khi Phiên thi đang diễn ra (Q263, Q264, Q271), Đình chỉ chặn Lượt mới (Q272), đo tải 500 người phần 4d (Q266–Q268), `demo:room` và README lát cắt 4 (Q269, Q270) | không | S1, S2, S4, S6, S9 |
 
 Quy trình mỗi PR: thiết kế chi tiết và seam test cho riêng PR đó chốt với chủ dự án trước; làm theo từng lát dọc đỏ-xanh; chạy `code-review` (Standards và Spec); mở PR bằng skill `pr`; chờ CI xanh; chỉ merge khi chủ dự án ra lệnh.
 
@@ -631,6 +631,43 @@ POST /sessions/:id/close-entry   và   /reopen-entry
 | S8 | Quét JSON: `heartbeat` và `monitor` không có `key`, `rubric` | bất biến đáp án | |
 
 Thứ tự 4d-1 (đỏ-xanh): S1 (hàm thuần), migration 0014 và S3, Cộng giờ (S2 rồi S4), Buộc nộp và Đình chỉ, Đóng và Mở lại cửa vào thi, heartbeat và presence, `monitor` (kèm S8 và số đo), S5.
+
+## PR 4e: thiết kế chi tiết (đã duyệt 4/11/2026)
+
+Chủ dự án đồng ý cả mười điểm Q263–Q272 (kèm các sửa của chính chủ dự án ở Q263, Q264, Q271). Không có thuật ngữ mới; bốn mục GLOSSARY được sửa câu chữ (Khóa đăng nhập, Xóa người dùng, Chuyển giao, Đình chỉ). Chủ dự án sẽ tự thử hệ thống sau khi hết lát cắt 4, nên 4e kèm công cụ dùng thử và README.
+
+| # | Quyết định |
+|---|---|
+| Q263 | **Xóa Người ra đề** chuyển mọi Phiên thi của họ (mọi trạng thái, kể cả đã Hủy) sang người nhận cùng Bộ đề; Danh sách dự thi, Lượt, Câu trả lời giữ nguyên. Còn Phiên thi thì bắt buộc chọn người nhận (như khi còn Bộ đề). Chỉ làm được khi không có Phiên thi nào của họ đang diễn ra (Q264). Hộp xác nhận nêu số Phiên thi và cảnh báo (không chặn) nếu người nhận đang nằm trong Danh sách dự thi của Phiên thi sắp nhận (`OWNER_CANNOT_SIT`); người nhận được thông báo trong ứng dụng, có nhật ký thao tác. Xóa **Người dự thi** không chuyển gì |
+| Q264 | **Không Khóa đăng nhập hay Xóa người dùng đang tham gia Phiên thi đang diễn ra**, và cảnh báo Quản trị viên: lệnh bị từ chối `409 USER_IN_LIVE_SESSION` kèm danh sách Phiên thi (tên, giờ, chủ, số người đang làm); trang chi tiết người dùng hiện sẵn dải cảnh báo "Đang trong Phiên thi X đến hh:mm" và vô hiệu nút kèm lý do. **Không có lối tắt khẩn cấp ở bản MVP**: sự cố khẩn thì Người ra đề Đình chỉ hoặc Buộc nộp người đó, hoặc Hủy Phiên thi, rồi Quản trị viên mới Khóa. Hook `account_locked` (Q218) vẫn giữ làm lớp phòng thủ khi hai việc gần như đồng thời. Quy tắc này thay phần "Xóa Người dự thi đang có Lượt: nộp tự động" của Q205 |
+| Q265 | Thứ tự giữ chỗ các dòng trong cơ sở dữ liệu khi chuyển Phiên thi: Bộ đề, rồi Câu hỏi, rồi Phiên thi (theo `id`); kèm test đồng thời với Cộng giờ, Buộc nộp, `start`. Đây là khóa dòng của cơ sở dữ liệu, không liên quan Khóa đăng nhập |
+| Q266 | Đo tải bằng cách **mở rộng `pnpm load:exam`** (Node) thay vì k6 (đổi điều Q236 ghi "k6 ở 4e vẫn làm"): heartbeat 15 giây, 500 kết nối Socket.IO, ba Người ra đề xem Theo dõi, một lần Cộng giờ cả phòng giữa chừng. Ngưỡng: 0 lỗi; heartbeat p99 dưới 100 ms; `monitor` p95 dưới 100 ms; tin đẩy tới Người dự thi dưới 1 giây; Cộng giờ cả phòng dưới 300 ms; 500 kết nối Socket.IO xong trong 10 giây. k6 (báo cáo, tải nhiều máy) nếu cần thì làm ở PR riêng sau |
+| Q267 | An toàn cho hệ thống production cùng máy (`plo-tracker-bluni`): cơ sở dữ liệu tạm và cổng riêng, chạy `nice -n 19`, bắt đầu 100 người rồi mới 500, và **chỉ chạy bản 500 người khi chủ dự án báo thời điểm phù hợp**; không chạy trong CI |
+| Q268 | Cache nội dung Bộ đề (Q214): **không làm** nếu ở 500 người `start` p99 dưới 1 giây và heartbeat, `monitor` đạt ngưỡng (lần đo HTTP trước đã ra 75 ms); ghi quyết định vào `architecture.md` mục 11 |
+| Q269 | `pnpm demo:room`: dựng Phiên thi thử N người (mặc định 120) trong cơ sở dữ liệu dev; "người dự thi giả" vào thi, làm bài, gửi heartbeat, thỉnh thoảng rời tab, mất mạng hoặc làm chậm, để chủ dự án đăng nhập Người ra đề thật xem Thẻ, Bảng, Lưới ở 30, 120, 300 người và thử Cộng giờ, Buộc nộp, Thu hồi mà không cần mở nhiều trình duyệt. Có `--clean` để dọn |
+| Q270 | README có mục "Dùng thử lát cắt 4" theo từng vai (Quản trị viên, Người ra đề, Người dự thi trên điện thoại, cách dùng `demo:room`) và cập nhật "Lộ trình", làm cơ sở cho tài liệu hướng dẫn sử dụng sau khi xong MVP. Sửa GLOSSARY bốn mục nêu trên |
+| Q271 | "Đang diễn ra" = Phiên thi chưa Hủy và (đang trong Khung giờ **hoặc** còn Lượt đang làm; Lượt có thể chạy quá giờ đóng vì được đủ Thời lượng). **Người ra đề** bị chặn nếu là chủ của Phiên thi như vậy. **Người dự thi** bị chặn nếu đang có Lượt đang làm; người chỉ có tên trong Danh sách của Phiên thi đang mở nhưng chưa vào thì vẫn Khóa được. Cấp lại mật khẩu tạm không bị chặn (Lượt và thiết bị không đổi nên người đó đăng nhập lại làm tiếp) |
+| Q272 | **Đình chỉ chặn bắt đầu Lượt mới** trong Phiên thi đó (báo "đã bị Đình chỉ", kể cả khi còn lượt); Buộc nộp chỉ đóng Lượt, người đó có thể làm lại nếu còn lượt (dùng cho sự cố). Lỗ hổng tìm thấy khi rà: trước đây `start` chỉ kiểm số Lượt đã dùng nên người bị Đình chỉ ở Phiên thi nhiều lượt vẫn bắt đầu được Lượt mới |
+
+**Công cụ hiện có cho Người ra đề trong Phiên thi** (đã rà): Đình chỉ (dừng ngay một Lượt và ghi Vi phạm, lý do bắt buộc), Buộc nộp (một, nhóm hoặc cả phòng), Thu hồi thiết bị và Hoàn tác Thu hồi (chặn và mở lại một máy), Đóng cửa vào thi, Cảnh cáo, Hủy Phiên thi. Không có "chặn tạm một người rồi cho làm tiếp" (Q197: không Tạm dừng) và không Khóa tài khoản (chỉ Quản trị viên, `@AdminOnly`).
+
+**Việc làm** (không migration; trigger `sessions_guard` đã cho đổi `owner_id`):
+
+- **4e-1 (API và giao diện):** `SessionOwnedContent` là nguồn thứ ba của `OWNED_CONTENT` (`UPDATE sessions SET owner_id`, tăng `version`, đếm theo trạng thái); cổng `LiveSessionGuard` để `identity` hỏi `session` và `attempt` ai đang trong Phiên thi đang diễn ra; `409 USER_IN_LIVE_SESSION`; dải cảnh báo và nút vô hiệu ở trang chi tiết người dùng; hộp xác nhận Xóa nêu số Phiên thi và cảnh báo người nhận trong Danh sách; Đình chỉ chặn `start`; sửa GLOSSARY.
+- **4e-2 (đo tải):** mở rộng `load:exam`, ghi số đo vào `architecture.md` mục 11 và chốt Q214.
+- **4e-3 (tài liệu và công cụ):** `demo:room`, README lát cắt 4, cập nhật `slice-4.md` thành hoàn tất.
+
+**Seam test:**
+
+| # | Seam | Bắt được |
+|---|---|---|
+| S1 | Hàm thuần đếm Phiên thi theo trạng thái (đang diễn ra, sắp mở, đã xong, đã Hủy) và hàm "đang diễn ra" | cách đếm hiển thị, ranh giới Khung giờ và Lượt chạy quá giờ |
+| S2 | HTTP + PostgreSQL thật: Xóa Người ra đề chuyển hết Phiên thi, Danh sách, Lượt, Câu trả lời nguyên vẹn; người nhận thấy và Theo dõi được; người cũ nhận 404; bắt buộc có người nhận khi còn Phiên thi; Chuyển giao Chủ đề không đụng Phiên thi; Khóa hoặc Xóa bị từ chối khi chủ Phiên thi đang diễn ra hoặc khi Người dự thi có Lượt đang làm (kèm danh sách Phiên thi); vẫn Khóa được người chỉ có tên trong Danh sách; Đình chỉ rồi `start` bị từ chối, Buộc nộp rồi `start` vẫn được | luồng đầy đủ, quyền |
+| S4 | Đồng thời: Xóa người dùng xen Cộng giờ, Buộc nộp, `start` của chủ cũ; Khóa xen `start` (kết quả nhất quán, hook bắt kịp) | không bế tắc, không lệch chủ |
+| S6 | Playwright: Quản trị viên thấy dải cảnh báo và nút bị vô hiệu khi người dùng đang trong Phiên thi; Xóa Người ra đề (hộp nêu số Phiên thi), người nhận mở Theo dõi của Phiên thi vừa nhận | toàn tuyến |
+| S9 | Đo tải 500 người phần 4d (Node, không chạy trong CI) | điểm nghẽn, chốt cache |
+
+**Ngân sách thời gian cho từng vai:** Quản trị viên: trang chi tiết người dùng (kèm dải cảnh báo) hiện dưới 500 ms, Xóa người dùng chuyển 50 Phiên thi dưới 1 giây (một câu `UPDATE`), preview và mở hộp thoại dưới 300 ms. Người ra đề: người nhận mở Theo dõi của Phiên thi vừa nhận như bình thường (dưới 1 giây). Người dự thi: `start` thêm một truy vấn có chỉ mục để kiểm Đình chỉ, vẫn trong ngưỡng `start` p99 dưới 1 giây.
 
 ## Thuật ngữ mới (đã vào GLOSSARY)
 
