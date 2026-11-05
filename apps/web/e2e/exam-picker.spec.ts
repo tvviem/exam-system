@@ -52,7 +52,7 @@ test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang
 }, testInfo) => {
   const p = testInfo.project.name;
   await signIn(page, `e2e-cn-${p}`);
-  await seed(page, `Chọn nhiều ${p}`);
+  await seed(page, `Chọn nhiều ${p} ${Date.now()}`);
 
   await page.goto('/examiner/exams');
   await page.getByRole('button', { name: 'Tạo Bộ đề' }).click();
@@ -62,12 +62,14 @@ test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang
   await page.getByRole('button', { name: 'Thêm câu hỏi' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
   const count = (n: number) => dialog.getByText(new RegExp(`^Đã chọn ${n} câu`));
-  const box = (n: number) =>
-    dialog.getByRole('checkbox', { name: `Chọn câu: Câu CN ${String(n).padStart(2, '0')}` });
-  await expect(dialog.getByRole('checkbox', { name: /^Chọn câu:/ })).toHaveCount(20);
+  const boxes = dialog.getByRole('checkbox', { name: /^Chọn câu:/ });
+  await expect(boxes).toHaveCount(20);
   await expect(count(0)).toBeVisible();
+  // Thứ tự danh sách không phải điều cần kiểm: chỉ dùng vị trí và nhãn của từng hàng.
+  const label = (n: number) => boxes.nth(n).getAttribute('aria-label');
 
   // Chọn cả trang hiện tại: 20 câu, đo thời gian phản hồi.
+  const first = await label(0);
   const selectPage = dialog.getByRole('checkbox', { name: 'Chọn cả 20 câu trên trang này' });
   const started = performance.now();
   await selectPage.check();
@@ -76,41 +78,44 @@ test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang
   console.log(`[đo] chọn cả trang 20 câu: ${pageMs.toFixed(0)} ms`);
   expect(pageMs).toBeLessThan(500);
 
-  // Danh sách xếp mới nhất trước: trang 1 là câu 25 đến 06, trang 2 là câu 05 đến 01.
-  // Sang trang 2 vẫn nhớ; chọn cả trang 2 (5 câu).
+  // Sang trang 2 (5 câu) vẫn nhớ 20 câu; chọn cả trang 2.
   await dialog.getByRole('button', { name: 'Trang sau' }).click();
-  await expect(box(1)).toBeVisible();
+  await expect(boxes).toHaveCount(5);
   await expect(count(20)).toBeVisible();
   await dialog.getByRole('checkbox', { name: 'Chọn cả 5 câu trên trang này' }).check();
   await expect(count(25)).toBeVisible();
 
   // Quay lại trang 1: các câu vẫn được tick.
   await dialog.getByRole('button', { name: 'Trang trước' }).click();
-  await expect(box(25)).toBeChecked();
+  await expect(boxes).toHaveCount(20);
+  await expect(dialog.getByRole('checkbox', { name: first ?? '' })).toBeChecked();
 
-  // Bỏ chọn tất cả, rồi Shift + tick chọn dải câu 20 đến 16.
+  // Bỏ chọn tất cả, rồi Shift + tick chọn dải từ hàng thứ 3 đến hàng thứ 7.
   await dialog.getByRole('button', { name: 'Bỏ chọn tất cả' }).click();
   await expect(count(0)).toBeVisible();
-  await box(20).click();
-  await box(16).click({ modifiers: ['Shift'] });
+  const third = await label(2);
+  await boxes.nth(2).click();
+  await boxes.nth(6).click({ modifiers: ['Shift'] });
   await expect(count(5)).toBeVisible();
-  for (const n of [20, 19, 18, 17, 16]) await expect(box(n)).toBeChecked();
-  await expect(box(21)).not.toBeChecked();
-  await expect(box(15)).not.toBeChecked();
+  for (const n of [2, 3, 4, 5, 6]) await expect(boxes.nth(n)).toBeChecked();
+  await expect(boxes.nth(1)).not.toBeChecked();
+  await expect(boxes.nth(7)).not.toBeChecked();
 
   // Đổi bộ lọc (tìm kiếm) rồi xóa bộ lọc: lựa chọn không mất.
-  await dialog.getByLabel('Tìm câu hỏi').fill('CN 21');
-  await expect(dialog.getByRole('checkbox', { name: /^Chọn câu:/ })).toHaveCount(1);
+  const stem = (await label(10))?.replace('Chọn câu: ', '') ?? '';
+  await dialog.getByLabel('Tìm câu hỏi').fill(stem);
+  await expect(boxes).toHaveCount(1);
   await expect(count(5)).toBeVisible();
   await dialog.getByLabel('Tìm câu hỏi').fill('');
-  await expect(box(18)).toBeChecked();
+  await expect(boxes).toHaveCount(20);
+  await expect(dialog.getByRole('checkbox', { name: third ?? '' })).toBeChecked();
   await expect(count(5)).toBeVisible();
 
-  // Thêm vào Bộ đề: 5 câu, đúng các câu đã chọn.
+  // Thêm vào Bộ đề: 5 câu.
   await dialog.getByRole('button', { name: 'Thêm 5 câu vào Phần 1' }).click();
   await expect(page.getByText('5 câu · 5 điểm')).toBeVisible();
 
-  // Mở lại: 5 câu đã có hiện "Đã có", cả trang 1 chỉ còn 15 câu chọn được.
+  // Mở lại: 5 câu đã có không chọn lại được, trang 1 còn 15 câu chọn được.
   await page.getByRole('button', { name: 'Thêm câu hỏi' }).first().click();
   await expect(
     dialog.getByRole('checkbox', { name: 'Chọn cả 15 câu trên trang này' }),
