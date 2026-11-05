@@ -24,6 +24,7 @@ async function openUser(admin: Page, fullName: string) {
 test('Quản trị viên thấy dải cảnh báo và nút Khóa, Xóa bị vô hiệu khi người dùng đang trong Phiên thi', async ({
   browser,
 }, testInfo) => {
+  test.setTimeout(90_000); // luồng dài (dựng phòng, hai Người dự thi, nhiều lần mở trang quản trị)
   const project = testInfo.project.name;
   const { examiner, sessionId, candidate } = await room(browser, project, 'A', {
     prefix: 'xd',
