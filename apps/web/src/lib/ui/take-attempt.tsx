@@ -731,7 +731,9 @@ function ExaminerNotice({ notice, onDismiss }: { notice: Notice; onDismiss: () =
         <strong className="block">{t(`take.notice.${notice.kind}.title`)}</strong>
         {notice.kind === 'time_extended'
           ? t('take.notice.time_extended.body', { minutes: notice.minutes, reason: notice.reason })
-          : notice.reason}
+          : notice.kind === 'reopened'
+            ? t('take.notice.reopened.body')
+            : notice.reason}
       </span>
       <button
         type="button"

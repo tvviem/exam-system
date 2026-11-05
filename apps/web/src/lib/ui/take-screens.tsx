@@ -3,6 +3,7 @@ import { CheckCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../format';
 import type { SubmitReason } from '../take';
+import { useReopenWatch } from '../take/use-reopen-watch';
 import type { StopReason } from '../take/use-saver';
 import { buttonClass } from '.';
 
@@ -24,15 +25,22 @@ export function StopScreen({ reason }: { reason: Exclude<StopReason, 'ATTEMPT_CL
 
 /** Lượt đã nộp: chỉ còn giờ nộp, không có nội dung đề và không có điểm (Q206). */
 export function SubmittedScreen({
+  attemptId,
   submittedAt,
   reason,
+  serverNow,
   lostAnswers = 0,
 }: {
+  attemptId: string;
   submittedAt: string | null;
   reason: SubmitReason | null;
+  /** Giờ server lúc nhận trạng thái này (tính thời gian còn chờ được Hoàn tác Buộc nộp). */
+  serverNow: string;
   lostAnswers?: number;
 }) {
   const { t } = useTranslation();
+  // Bị Buộc nộp nhầm thì Người ra đề Hoàn tác được trong 10 phút: màn này tự về đề khi được mở lại (Q279).
+  useReopenWatch({ attemptId, submittedAt, reason, serverNow });
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-4 p-6">
       <CheckCheck aria-hidden className="size-12 text-success" />
@@ -42,6 +50,11 @@ export function SubmittedScreen({
       {lostAnswers > 0 && (
         <p role="alert" className="text-warning">
           {t('take.submitted.lost', { count: lostAnswers })}
+        </p>
+      )}
+      {reason === 'examiner' && (
+        <p className="text-fg-muted" role="status">
+          {t('take.submitted.undoHint')}
         </p>
       )}
       <p className="text-fg-muted">{t('take.submitted.note')}</p>

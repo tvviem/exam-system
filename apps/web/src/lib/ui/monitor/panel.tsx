@@ -4,11 +4,20 @@ import { useTranslation } from 'react-i18next';
 import type { MonitorPerson } from '../../monitor';
 import { isLive } from '../../monitor-view';
 import { Badge, Button, Dialog } from '..';
-import { ProgressBar, ReasonBadges, Remaining, StateBadge, useMedia } from './parts';
+import {
+  clockText,
+  ProgressBar,
+  ReasonBadges,
+  Remaining,
+  StateBadge,
+  useMedia,
+  useUndoLeft,
+} from './parts';
 
 export interface PanelHandlers {
   onExtend: (userId: string) => void;
   onForce: (userId: string) => void;
+  onUndo: (userId: string) => void;
   onRevoke: (userId: string) => void;
   onPardon: (userId: string) => void;
   onWarn: (userId: string) => void;
@@ -118,6 +127,8 @@ function PanelBody({
         <Stat label={t('monitor.panel.device')} value={t(`monitor.deviceState.${person.device}`)} />
       </dl>
 
+      {person.undoUntil && <UndoBanner person={person} onUndo={() => handlers.onUndo(id)} />}
+
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-2 gap-2">
           <Button disabled={!live} onClick={() => handlers.onExtend(id)}>
@@ -153,6 +164,28 @@ function Stat({ label, value }: { label: string; value: ReactNode }) {
     <div className="flex flex-col gap-0.5">
       <dt className="text-fg-muted">{label}</dt>
       <dd>{value}</dd>
+    </div>
+  );
+}
+
+/** Tầng bảo vệ thứ hai của Buộc nộp (Q278): Người ra đề thấy ngay mình còn bao lâu để mở lại bài của người này. */
+function UndoBanner({ person, onUndo }: { person: MonitorPerson; onUndo: () => void }) {
+  const { t } = useTranslation();
+  const left = useUndoLeft(person.undoUntil);
+  return (
+    <div
+      role="status"
+      className="flex flex-col gap-2 rounded-lg border border-warning bg-warning-soft p-3 text-sm"
+    >
+      <p>
+        <strong>{t('monitor.undo.bannerTitle')}</strong>{' '}
+        {left !== null && left > 0
+          ? t('monitor.undo.bannerLeft', { time: clockText(left) })
+          : t('monitor.undo.bannerOver')}
+      </p>
+      <Button variant="primary" disabled={left === 0} onClick={onUndo}>
+        {t('monitor.action.undo')}
+      </Button>
     </div>
   );
 }

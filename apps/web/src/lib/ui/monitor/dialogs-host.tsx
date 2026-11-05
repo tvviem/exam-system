@@ -1,12 +1,15 @@
 import { VIOLATION_REASON_MAX } from '@exam/shared';
 import { useTranslation } from 'react-i18next';
+import { undoUntilOfEarliest } from '../../force-confirm';
 import type { MonitorPerson } from '../../monitor';
-import { ConfirmDialog, ExtendDialog, ReasonDialog } from './dialogs';
+import { ConfirmDialog, ExtendDialog, ForceDialog, ReasonDialog, UndoDialog } from './dialogs';
+import { useUndoLeft } from './parts';
 import type { MonitorActions, Scope } from './use-actions';
 
 export type DialogState =
   | { kind: 'extend'; ids: string[]; scope: Scope }
   | { kind: 'force'; ids: string[]; scope: Scope }
+  | { kind: 'undo'; ids: string[] }
   | { kind: 'revoke' | 'pardon' | 'warn' | 'suspend'; userId: string }
   | { kind: 'entry' };
 
@@ -18,6 +21,7 @@ export function MonitorDialogs({
   actions,
   byId,
   liveAttempts,
+  totalItems,
   entryClosed,
   notStarted,
   onClose,
@@ -27,11 +31,21 @@ export function MonitorDialogs({
   byId: ReadonlyMap<string, MonitorPerson>;
   /** Mã Lượt đang làm của những người trong `userIds`. */
   liveAttempts: (userIds: string[]) => string[];
+  totalItems: number;
   entryClosed: boolean;
   notStarted: number;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  // Người còn Hoàn tác được trong hộp Hoàn tác; hook gọi trước khi thoát sớm để thứ tự hook không đổi.
+  const undoPeople =
+    dialog?.kind === 'undo'
+      ? dialog.ids.flatMap((id) => {
+          const person = byId.get(id);
+          return person?.undoUntil ? [person] : [];
+        })
+      : [];
+  const undoLeft = useUndoLeft(undoUntilOfEarliest(undoPeople));
   if (!dialog) return null;
   const target = 'userId' in dialog ? byId.get(dialog.userId) : undefined;
 
@@ -49,22 +63,39 @@ export function MonitorDialogs({
         />
       );
     case 'force': {
-      const count = liveAttempts(dialog.ids).length;
+      // Chỉ những người đang làm mới Buộc nộp được; hộp nêu đúng những người này.
+      const people = dialog.ids.flatMap((id) => {
+        const person = byId.get(id);
+        return person && liveAttempts([id]).length > 0 ? [person] : [];
+      });
       return (
-        <ConfirmDialog
-          title={t('monitor.force.title')}
-          danger
+        <ForceDialog
+          people={people}
+          scope={dialog.scope}
+          scopeLabel={t(`monitor.scope.${dialog.scope}`)}
+          totalItems={totalItems}
           busy={actions.force.isPending}
-          confirmLabel={t('monitor.force.confirm', { count })}
           onClose={onClose}
           onConfirm={() =>
             actions.force.mutate({ ids: liveAttempts(dialog.ids), scope: dialog.scope })
           }
-        >
-          {t('monitor.force.body', { scope: t(`monitor.scope.${dialog.scope}`), count })}
-        </ConfirmDialog>
+        />
       );
     }
+    case 'undo':
+      return (
+        <UndoDialog
+          people={undoPeople}
+          secondsLeft={undoLeft}
+          busy={actions.undo.isPending || actions.undoAll.isPending}
+          onClose={onClose}
+          onConfirm={() =>
+            undoPeople.length === 1 && undoPeople[0]
+              ? actions.undo.mutate(undoPeople[0].userId)
+              : actions.undoAll.mutate()
+          }
+        />
+      );
     case 'warn':
     case 'suspend': {
       if (!target) return null;

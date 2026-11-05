@@ -70,6 +70,7 @@ describe('trạng thái từng người và tổng hợp', () => {
       submitted: 0,
       suspended: 0,
       attention: 0,
+      undoable: 0,
     });
     const dung = body.people.find((p) => p.userId === live.userIds.dung);
     expect(dung).toMatchObject({

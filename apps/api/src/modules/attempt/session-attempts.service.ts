@@ -1,6 +1,15 @@
-import { ATTEMPT_GRACE_SECONDS, extensionScopeOf, extensionWithinCap } from '@exam/shared';
+import {
+  ATTEMPT_GRACE_SECONDS,
+  extensionScopeOf,
+  extensionWithinCap,
+  UNDO_FORCE_SUBMIT_WINDOW_MS,
+  UNDO_WATCH_MS,
+  type UndoProblem,
+  undoDeadlineOf,
+  undoProblemOf,
+} from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, eq, inArray, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
@@ -15,11 +24,19 @@ import type {
   MonitorAttempt,
   SessionAttempts,
   SubmitReason,
+  UndoForceSubmitInput,
+  UndoForceSubmitResult,
   ViolationInput,
 } from '../../common/session-attempts';
 import type { UserDeactivationHooks } from '../../common/user-deactivation';
 import { type Database, DB, type Transaction } from '../../db/db.module';
-import { attempts, attemptTimeExtensions, sessionDevices, violations } from './attempt.schema';
+import {
+  attemptReopenings,
+  attempts,
+  attemptTimeExtensions,
+  sessionDevices,
+  violations,
+} from './attempt.schema';
 import { closeInProgress } from './attempt-close';
 import { AttemptPresence } from './attempt-presence';
 import { deviceProblem } from './device-problem';
@@ -246,22 +263,30 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
     return { extended: ids.length, skipped, replayed: false, attemptIds: ids };
   }
 
-  /** Lượt này của chính người này, đang làm bài và `deviceKey` là thiết bị đang gắn: được nhận tin đẩy của Lượt (ADR-0007). */
+  /**
+   * Lượt này của chính người này và `deviceKey` là thiết bị đang gắn: được nhận tin đẩy của Lượt (ADR-0007) khi đang làm bài,
+   * hoặc vừa bị Buộc nộp trong `UNDO_WATCH_MS` để biết ngay khi Người ra đề Hoàn tác (Q279).
+   */
   async canFollow(
     userId: string,
     attemptId: string,
     deviceKey: string | undefined,
   ): Promise<boolean> {
     const [attempt] = await this.db
-      .select({ sessionId: attempts.sessionId })
+      .select({
+        sessionId: attempts.sessionId,
+        status: attempts.status,
+        submitReason: attempts.submitReason,
+        submittedAt: attempts.submittedAt,
+      })
       .from(attempts)
-      .where(
-        and(
-          eq(attempts.id, attemptId),
-          eq(attempts.userId, userId),
-          eq(attempts.status, 'in_progress'),
-        ),
-      );
+      .where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId)));
+    const watching =
+      attempt?.status === 'submitted' &&
+      attempt.submitReason === 'examiner' &&
+      attempt.submittedAt !== null &&
+      this.clock.now().getTime() - attempt.submittedAt.getTime() <= UNDO_WATCH_MS;
+    if (!attempt || (attempt.status !== 'in_progress' && !watching)) return false;
     if (!attempt || !deviceKey) return false;
     const devices = await this.db
       .select({ status: sessionDevices.status, deviceHash: sessionDevices.deviceHash })
@@ -390,6 +415,106 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       skipped: chosen ? chosen.length - closed.length : 0,
       closedIds: closed,
     };
+  }
+
+  async undoForceSubmit(
+    tx: Transaction,
+    input: UndoForceSubmitInput,
+  ): Promise<UndoForceSubmitResult> {
+    const chosen = uniqueIds(input.attemptIds);
+    if (chosen) await this.requireInSession(tx, input.sessionId, chosen);
+    const windowStart = new Date(input.now.getTime() - UNDO_FORCE_SUBMIT_WINDOW_MS);
+    // Khóa các Lượt theo `id`. Người gọi đã khóa Phiên thi `FOR UPDATE` nên Bắt đầu Lượt (giữ `FOR SHARE` trên Phiên thi) chờ.
+    const rows = await tx
+      .select()
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.sessionId, input.sessionId),
+          chosen
+            ? inArray(attempts.id, chosen)
+            : and(
+                eq(attempts.status, 'submitted'),
+                eq(attempts.submitReason, 'examiner'),
+                gte(attempts.submittedAt, windowStart),
+              ),
+        ),
+      )
+      .orderBy(attempts.id)
+      .for('update');
+    if (rows.length === 0) return { reopened: [], skipped: [] };
+
+    const latest = await tx
+      .select({ userId: attempts.userId, latestNo: sql<number>`max(${attempts.attemptNo})::int` })
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.sessionId, input.sessionId),
+          inArray(attempts.userId, [...new Set(rows.map((row) => row.userId))]),
+        ),
+      )
+      .groupBy(attempts.userId);
+    const latestNo = new Map(latest.map((row) => [row.userId, row.latestNo]));
+
+    const reopened: UndoForceSubmitResult['reopened'] = [];
+    const skipped: UndoForceSubmitResult['skipped'] = [];
+    for (const row of rows) {
+      const problem: UndoProblem | null =
+        undoProblemOf({
+          status: row.status,
+          submitReason: row.submitReason,
+          submittedAt: row.submittedAt,
+          deadline: row.deadline,
+          now: input.now,
+          sessionCancelled: input.sessionCancelled,
+          hasNewerAttempt: (latestNo.get(row.userId) ?? row.attemptNo) > row.attemptNo,
+        }) ?? null;
+      const deadline =
+        problem === null && row.submittedAt
+          ? undoDeadlineOf({
+              submittedAt: row.submittedAt,
+              deadline: row.deadline,
+              now: input.now,
+              hardClose: input.hardClose,
+              closesAt: input.closesAt,
+            })
+          : null;
+      if (problem) skipped.push({ attemptId: row.id, problem });
+      else if (!deadline) skipped.push({ attemptId: row.id, problem: 'ATTEMPT_EXPIRED' });
+      else reopened.push({ attemptId: row.id, userId: row.userId, deadline });
+    }
+    if (reopened.length === 0) return { reopened, skipped };
+
+    // Nhật ký trước (trigger `attempts_guard` đòi dòng khớp lần nộp và hạn mới), rồi mở lại cả lô bằng một câu lệnh.
+    const submittedAt = new Map(rows.map((row) => [row.id, row.submittedAt as Date]));
+    try {
+      await tx.insert(attemptReopenings).values(
+        reopened.map((item) => ({
+          attemptId: item.attemptId,
+          reopenedBy: input.by,
+          reopenedAt: input.now,
+          previousSubmittedAt: submittedAt.get(item.attemptId) as Date,
+          newDeadline: item.deadline,
+        })),
+      );
+      await tx.execute(sql`
+        update attempts a
+        set status = 'in_progress', submitted_at = null, submit_reason = null, deadline = v.deadline
+        from (values ${sql.join(
+          reopened.map(
+            (item) => sql`(${item.attemptId}::uuid, ${item.deadline.toISOString()}::timestamptz)`,
+          ),
+          sql`, `,
+        )}) as v(id, deadline)
+        where a.id = v.id`);
+    } catch (error) {
+      // Người này vừa bắt đầu Lượt mới: chỉ mục một Lượt đang làm chặn, báo như một lý do từ chối.
+      if (uniqueViolationOf(error) === 'attempts_one_in_progress') {
+        throw new ApiError('INVALID_STATE', { reason: 'NEW_ATTEMPT_STARTED' });
+      }
+      throw error;
+    }
+    return { reopened, skipped };
   }
 
   async recordViolation(tx: Transaction, input: ViolationInput) {

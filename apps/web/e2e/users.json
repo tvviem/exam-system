@@ -1020,5 +1020,61 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-ud-gv-desktop",
+    "fullName": "Người ra đề Hoàn tác (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-ud-sv1-desktop",
+    "fullName": "Thí sinh Hoàn tác 1 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "UD-D-001",
+    "classLabel": "LOP-UD-D"
+  },
+  {
+    "username": "e2e-lb-ud-sv2-desktop",
+    "fullName": "Thí sinh Hoàn tác 2 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "UD-D-002",
+    "classLabel": "LOP-UD-D"
+  },
+  {
+    "username": "e2e-lb-ud-gv-mobile",
+    "fullName": "Người ra đề Hoàn tác (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-ud-sv1-mobile",
+    "fullName": "Thí sinh Hoàn tác 1 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "UD-M-001",
+    "classLabel": "LOP-UD-M"
+  },
+  {
+    "username": "e2e-lb-ud-sv2-mobile",
+    "fullName": "Thí sinh Hoàn tác 2 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "UD-M-002",
+    "classLabel": "LOP-UD-M"
   }
 ]

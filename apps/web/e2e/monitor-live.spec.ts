@@ -62,11 +62,11 @@ test('Người dự thi: Cộng giờ, Thu hồi và Buộc nộp của Người
   await examiner.keyboard.press('Escape');
   await openPerson(examiner, /Thí sinh Trực tiếp 2/);
   await panel.getByRole('button', { name: 'Buộc nộp…' }).click();
+  // Tầng bảo vệ Buộc nộp (Q277): gõ lại Mã định danh của đúng người đó mới bấm được.
+  const forceDialog = examiner.getByRole('dialog', { name: 'Buộc nộp' });
+  await forceDialog.getByLabel(/Gõ lại/).fill(`LIVE-${project === 'desktop' ? 'D' : 'M'}-002`);
   const forceAsked = performance.now();
-  await examiner
-    .getByRole('dialog', { name: 'Buộc nộp' })
-    .getByRole('button', { name: /^Buộc nộp 1 người/ })
-    .click();
+  await forceDialog.getByRole('button', { name: /^Buộc nộp 1 người/ }).click();
   await expect(sv2.getByRole('heading', { name: 'Đã nộp' })).toBeVisible({
     timeout: PUSH_BUDGET_MS,
   });

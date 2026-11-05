@@ -181,7 +181,13 @@ test('Theo dõi: chọn nhóm, Buộc nộp cả nhóm; Đóng cửa vào thi; b
   await examiner.getByRole('button', { name: 'Buộc nộp…' }).click();
   const dialog = examiner.getByRole('dialog', { name: 'Buộc nộp' });
   await expect(dialog).toContainText('2 người');
-  await dialog.getByRole('button', { name: 'Buộc nộp 2 người' }).click();
+  // Nhóm: gõ lại số người; chưa gõ hay gõ sai thì nút còn khóa (Q277).
+  const confirmForce = dialog.getByRole('button', { name: 'Buộc nộp 2 người' });
+  await expect(confirmForce).toBeDisabled();
+  await dialog.getByLabel(/Gõ lại/).fill('3');
+  await expect(confirmForce).toBeDisabled();
+  await dialog.getByLabel(/Gõ lại/).fill('2');
+  await confirmForce.click();
   await expect(examiner.getByText('Đã Buộc nộp 2 người')).toBeVisible();
 
   // Câu đã lưu vẫn còn sau khi bị Buộc nộp (màn Theo dõi đếm từ dữ liệu đã ghi)

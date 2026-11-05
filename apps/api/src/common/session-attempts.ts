@@ -1,3 +1,4 @@
+import type { UndoProblem } from '@exam/shared';
 import type { Database, Transaction } from '../db/db.module';
 
 /**
@@ -62,6 +63,24 @@ export interface ForceSubmitResult {
   closedIds: string[];
 }
 
+export interface UndoForceSubmitInput {
+  sessionId: string;
+  /** Các Lượt được chọn; `null` là mọi Lượt bị Buộc nộp trong 10 phút qua (Q278). */
+  attemptIds: string[] | null;
+  by: string;
+  now: Date;
+  hardClose: boolean;
+  closesAt: Date;
+  sessionCancelled: boolean;
+}
+
+export interface UndoForceSubmitResult {
+  /** Các Lượt vừa được mở lại, kèm hạn mới. */
+  reopened: { attemptId: string; userId: string; deadline: Date }[];
+  /** Các Lượt trong phạm vi nhưng không mở lại được, kèm lý do đầu tiên (Q276). */
+  skipped: { attemptId: string; problem: UndoProblem }[];
+}
+
 export interface ViolationInput {
   sessionId: string;
   attemptId: string;
@@ -119,6 +138,11 @@ export interface SessionAttempts {
    * được chọn không thuộc Phiên thi. Làm lại không đổi gì thêm.
    */
   forceSubmit(tx: Transaction, input: ForceSubmitInput): Promise<ForceSubmitResult>;
+  /**
+   * Hoàn tác Buộc nộp (Q273–Q280): mở lại các Lượt bị Buộc nộp nhầm trong 10 phút, giữ Câu trả lời, hạn mới theo `undoDeadlineOf`.
+   * Ném `NOT_FOUND` nếu một Lượt được chọn không thuộc Phiên thi. Lượt không đủ điều kiện nằm ở `skipped`, không phải lỗi.
+   */
+  undoForceSubmit(tx: Transaction, input: UndoForceSubmitInput): Promise<UndoForceSubmitResult>;
   /**
    * Ghi Vi phạm của một Lượt đang làm (Q259); Đình chỉ nộp Lượt ngay với lý do `disqualified`. Ném `NOT_FOUND` nếu Lượt
    * không thuộc Phiên thi, `INVALID_STATE` (`ATTEMPT_CLOSED`) nếu Lượt đã nộp. Trả id Vi phạm và người bị ghi.

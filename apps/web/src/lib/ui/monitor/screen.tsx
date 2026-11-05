@@ -1,9 +1,10 @@
 import { REALTIME_EVENT, REALTIME_JOIN } from '@exam/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LayoutGrid, ListFilter, Radio, Rows3, Table2, UserCheck } from 'lucide-react';
+import { LayoutGrid, ListFilter, Radio, Rows3, Table2, Undo2, UserCheck } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../errors';
+import { undoUntilOfEarliest } from '../../force-confirm';
 import { type MonitorSnapshot, monitorQuery, monitorQueryKey } from '../../monitor';
 import {
   countsOf,
@@ -22,7 +23,7 @@ import { RowMenu } from '../row-menu';
 import { StickyActionBar } from '../sticky-action-bar';
 import { type DialogState, MonitorDialogs } from './dialogs-host';
 import { PersonPanel } from './panel';
-import { SnapshotClock, SummaryBar, useMedia } from './parts';
+import { clockText, SnapshotClock, SummaryBar, useMedia, useUndoLeft } from './parts';
 import { useMonitorActions } from './use-actions';
 import { CardsView, GridView, TableView, type ViewProps } from './views';
 
@@ -142,6 +143,8 @@ function MonitorBody({
       return person && isLive(person) && person.attemptId ? [person.attemptId] : [];
     });
   const allLive = people.filter(isLive);
+  /** Người vừa bị Buộc nộp và còn Hoàn tác được (Q278). */
+  const undoable = people.filter((p) => p.undoUntil !== null);
 
   const leaveSelect = () => {
     setSelectMode(false);
@@ -238,6 +241,11 @@ function MonitorBody({
                 onSelect: () => setDialog({ kind: 'entry' }),
               },
               {
+                label: t('monitor.action.undoAll', { count: undoable.length }),
+                disabled: undoable.length === 0,
+                onSelect: () => setDialog({ kind: 'undo', ids: undoable.map((p) => p.userId) }),
+              },
+              {
                 label: t('monitor.action.forceRoom'),
                 danger: true,
                 disabled: allLive.length === 0,
@@ -249,6 +257,14 @@ function MonitorBody({
         </div>
 
         {offline && <ErrorMessage>{t('monitor.stale')}</ErrorMessage>}
+
+        {undoable.length > 0 && (
+          <UndoBar
+            count={undoable.length}
+            until={undoUntilOfEarliest(undoable)}
+            onUndo={() => setDialog({ kind: 'undo', ids: undoable.map((p) => p.userId) })}
+          />
+        )}
 
         <SummaryBar
           counts={counts}
@@ -395,6 +411,7 @@ function MonitorBody({
           handlers={{
             onExtend: extendOne,
             onForce: (userId) => setDialog({ kind: 'force', ids: [userId], scope: 'one' }),
+            onUndo: (userId) => setDialog({ kind: 'undo', ids: [userId] }),
             onRevoke: (userId) => setDialog({ kind: 'revoke', userId }),
             onPardon: (userId) => setDialog({ kind: 'pardon', userId }),
             onWarn: (userId) => setDialog({ kind: 'warn', userId }),
@@ -407,6 +424,7 @@ function MonitorBody({
           actions={actions}
           byId={byId}
           liveAttempts={liveAttempts}
+          totalItems={totalItems}
           entryClosed={data.entryClosed}
           notStarted={counts.not_started}
           onClose={() => setDialog(null)}
@@ -425,6 +443,35 @@ function MonitorBody({
         </Dialog>
       </div>
     </SnapshotClock.Provider>
+  );
+}
+
+/** Dải nhắc ngay trên màn Theo dõi khi có người vừa bị Buộc nộp: còn bao lâu để mở lại bài (Q278). */
+function UndoBar({
+  count,
+  until,
+  onUndo,
+}: {
+  count: number;
+  until: string | null;
+  onUndo: () => void;
+}) {
+  const { t } = useTranslation();
+  const left = useUndoLeft(until);
+  return (
+    <div
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning bg-warning-soft p-3 text-sm"
+    >
+      <p>
+        <Undo2 aria-hidden className="mr-1 inline size-4 align-[-3px]" />
+        {t('monitor.undo.barText', { count })}{' '}
+        {left !== null && t('monitor.undo.barLeft', { time: clockText(left) })}
+      </p>
+      <Button variant="primary" onClick={onUndo}>
+        {t('monitor.action.undoAll', { count })}
+      </Button>
+    </div>
   );
 }
 

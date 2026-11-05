@@ -139,6 +139,10 @@
     "VALIDATION_unknown_item": "Dòng này không thuộc lô nhập.",
     "INVALID_STATE_BATCH_NOT_READY": "Lô nhập không còn ở bước xem trước (đã tạo hoặc đang xử lý).",
     "INVALID_STATE_BATCH_NOT_CANCELLABLE": "Lô đang được xử lý hoặc đã tạo câu hỏi nên không hủy được.",
+    "INVALID_STATE_NOT_FORCE_SUBMITTED": "Chỉ Lượt bị Buộc nộp mới hoàn tác được.",
+    "INVALID_STATE_UNDO_WINDOW_PASSED": "Đã quá 10 phút kể từ lúc Buộc nộp nên không hoàn tác được nữa.",
+    "INVALID_STATE_NEW_ATTEMPT_STARTED": "Người này đã bắt đầu Lượt làm bài mới nên không mở lại Lượt cũ được.",
+    "INVALID_STATE_ATTEMPT_EXPIRED": "Lượt này đã hết giờ lúc bị Buộc nộp nên không mở lại được.",
     "HAS_CONTENT": "Người này còn Chủ đề, Bộ đề hoặc Phiên thi. Hãy chọn người nhận để chuyển giao trước khi xóa.",
     "USER_IN_LIVE_SESSION": "Người này đang trong Phiên thi đang diễn ra nên chưa Khóa đăng nhập hay Xóa được. Hãy tải lại trang để xem chi tiết.",
     "VALIDATION_invalid_recipient": "Người nhận phải là Người ra đề đang hoạt động, khác người cho.",
@@ -331,6 +335,7 @@
         "account_locked": "Lượt làm bài kết thúc vì tài khoản bị khóa.",
         "session_cancelled": "Lượt làm bài kết thúc vì Phiên thi đã bị Hủy."
       },
+      "undoHint": "Nếu bạn bị nộp nhầm, Người ra đề có thể mở lại bài: màn hình này sẽ tự quay về đề, các câu đã lưu còn nguyên. Hãy báo ngay cho Người ra đề và giữ trang này mở.",
       "note": "Kết quả (nếu có) chỉ hiện sau khi Người ra đề công bố."
     },
     "notice": {
@@ -341,6 +346,10 @@
       },
       "warning": {
         "title": "Cảnh cáo từ Người ra đề"
+      },
+      "reopened": {
+        "title": "Người ra đề đã mở lại bài của bạn",
+        "body": "Các câu bạn đã lưu còn nguyên. Hãy làm tiếp; thời gian còn lại bằng lúc bị nộp."
       }
     },
     "stop": {
@@ -1504,7 +1513,9 @@
       "revoke": "Thu hồi thiết bị…",
       "pardon": "Hoàn tác Thu hồi…",
       "warn": "Cảnh cáo…",
-      "suspend": "Đình chỉ…"
+      "suspend": "Đình chỉ…",
+      "undo": "Hoàn tác Buộc nộp",
+      "undoAll": "Hoàn tác Buộc nộp ({{count}} người)…"
     },
     "panel": {
       "label": "Chi tiết {{name}}",
@@ -1527,7 +1538,21 @@
     "force": {
       "title": "Buộc nộp",
       "confirm": "Buộc nộp {{count}} người",
-      "body": "{{scope}}: {{count}} người đang làm sẽ nộp bài ngay. Các câu đã lưu được giữ và chấm như bình thường. Không hoàn tác được."
+      "many": "{{scope}}: {{count}} người đang làm sẽ nộp bài ngay.",
+      "body": "Các câu đã lưu được giữ và chấm như bình thường. Nếu bấm nhầm, bạn hoàn tác được trong {{minutes}} phút; sau đó thì không.",
+      "typeLabel": "Gõ lại “{{phrase}}” để xác nhận"
+    },
+    "undo": {
+      "title": "Hoàn tác Buộc nộp",
+      "bodyOne": "Mở lại bài của {{name}}: các câu đã lưu còn nguyên, thời gian còn lại bằng lúc bị Buộc nộp tính từ bây giờ.",
+      "bodyMany": "Mở lại bài của {{count}} người: các câu đã lưu còn nguyên, thời gian còn lại bằng lúc bị Buộc nộp tính từ bây giờ.",
+      "left": "Còn {{time}} để hoàn tác.",
+      "confirm": "Mở lại bài của {{count}} người",
+      "bannerTitle": "Vừa bị Buộc nộp.",
+      "bannerLeft": "Còn {{time}} để hoàn tác nếu bấm nhầm.",
+      "bannerOver": "Đã hết thời gian hoàn tác.",
+      "barText": "{{count}} người vừa bị Buộc nộp.",
+      "barLeft": "Còn {{time}} để hoàn tác nếu bấm nhầm."
     },
     "warn": {
       "title": "Cảnh cáo",
@@ -1563,7 +1588,9 @@
     },
     "toast": {
       "extended": "Đã cộng {{minutes}} phút cho {{count}} người",
-      "forced": "Đã Buộc nộp {{count}} người",
+      "forced": "Đã Buộc nộp {{count}} người. Bấm nhầm thì Hoàn tác được trong 10 phút.",
+      "undone": "Đã mở lại bài của {{count}} người",
+      "undoneSome": "Đã mở lại bài của {{count}} người; {{skipped}} người không mở lại được",
       "warned": "Đã Cảnh cáo",
       "suspended": "Đã Đình chỉ",
       "revoked": "Đã Thu hồi thiết bị",

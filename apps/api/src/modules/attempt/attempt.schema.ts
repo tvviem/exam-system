@@ -151,6 +151,27 @@ export const sessionEventTypeEnum = pgEnum('session_event_type', [
   'device_rejected',
 ]);
 export const timeExtensionScopeEnum = pgEnum('time_extension_scope', ['one', 'group', 'all']);
+/**
+ * Nhật ký Hoàn tác Buộc nộp (Q273–Q280): mỗi dòng là một lần mở lại Lượt bị Buộc nộp nhầm. Chỉ ghi thêm. Trigger
+ * `attempts_guard` chỉ cho Lượt đã nộp mở lại khi có dòng khớp lần nộp (`previous_submitted_at`) và hạn mới (`new_deadline`).
+ */
+export const attemptReopenings = pgTable(
+  'attempt_reopenings',
+  {
+    id: idColumn(),
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => attempts.id, { onDelete: 'restrict' }),
+    reopenedBy: uuid('reopened_by')
+      .notNull()
+      .references(() => users.id),
+    reopenedAt: timestamp('reopened_at', { withTimezone: true }).notNull().defaultNow(),
+    previousSubmittedAt: timestamp('previous_submitted_at', { withTimezone: true }).notNull(),
+    newDeadline: timestamp('new_deadline', { withTimezone: true }).notNull(),
+  },
+  (t) => [unique('attempt_reopenings_once').on(t.attemptId, t.previousSubmittedAt)],
+);
+
 export const violationActionEnum = pgEnum('violation_action', ['warning', 'disqualify']);
 export const violationPenaltyTypeEnum = pgEnum('violation_penalty_type', [
   'none',
