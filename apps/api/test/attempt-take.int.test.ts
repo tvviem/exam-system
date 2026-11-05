@@ -213,6 +213,42 @@ describe('bắt đầu và xem đề (Q230, Q232)', () => {
     expect(await sql(`select 1 from attempts`)).toHaveLength(1);
   });
 
+  it('vào lúc 9h50 khi giờ đóng là 10h, Thời lượng 20 phút, không Cắt cứng: làm được đến 10h10; đóng trình duyệt rồi vào lại vẫn làm tiếp', async () => {
+    // Phiên thi đang mở không đổi Thời lượng được, nên tạo một Phiên thi riêng với Thời lượng 20 phút.
+    const twenty = await examinerApi(
+      'POST',
+      '/sessions',
+      settings({ durationMinutes: 20, hardClose: false, accessCode: 'ZZ3K9X' }),
+    );
+    expect(twenty.statusCode, twenty.body).toBe(201);
+    const sessionId = twenty.json().id as string;
+    await examinerApi('POST', `/sessions/${sessionId}/roster`, { userIds: [anId] });
+    t.clock.set(new Date('2026-11-02T09:50:00+07:00'));
+    const joined = await an.join('ZZ3K9X');
+    expect(joined.statusCode, joined.body).toBe(200);
+    const started = await an.call('POST', `/take/sessions/${sessionId}/start`);
+    expect(started.statusCode, started.body).toBe(200);
+    const attemptId = started.json().attempt.id;
+    expect(new Date(started.json().attempt.deadline).toISOString()).toBe(
+      new Date('2026-11-02T10:10:00+07:00').toISOString(),
+    );
+
+    // Đóng trình duyệt (cookie thiết bị còn vì có hạn 1 năm), đăng nhập lại cùng trình duyệt ở 10h05, sau giờ đóng.
+    t.clock.set(new Date('2026-11-02T10:05:00+07:00'));
+    const reopened = await Taker.signIn(t, 'an');
+    reopened.device = an.device;
+    const rejoin = await reopened.join('ZZ3K9X');
+    expect(rejoin.statusCode, rejoin.body).toBe(200);
+    expect(rejoin.json().attemptId).toBe(attemptId);
+    expect((await reopened.call('GET', `/take/attempts/${attemptId}`)).statusCode).toBe(200);
+
+    // Trình duyệt khác (không có cookie thiết bị, ví dụ cửa sổ ẩn danh đã đóng) thì bị từ chối: đúng thiết kế Gắn thiết bị.
+    const fresh = await Taker.signIn(t, 'an');
+    const other = await fresh.join('ZZ3K9X');
+    expect(other.statusCode).toBe(409);
+    expect(reasonOf(other)).toBe('DEVICE_BOUND_ELSEWHERE');
+  });
+
   it('hai lần bắt đầu cùng lúc chỉ tạo một Lượt (S4)', async () => {
     await an.join('AB3K9X');
     const [x, y] = await Promise.all([
@@ -568,6 +604,58 @@ describe('lưu Câu trả lời theo lô (Q216, Q231)', () => {
       if (saved.statusCode !== 200) expect(reasonOf(saved)).toBe('ATTEMPT_CLOSED');
     }
     expect([...outcomes].every((code) => code === 200 || code === 409)).toBe(true);
+  });
+});
+
+describe('chặn gửi lưu bài dồn dập (chống làm server chậm)', () => {
+  async function startAttempt(who: Taker, code = 'AB3K9X') {
+    await who.join(code);
+    const view = (await who.call('POST', `/take/sessions/${sessionId}/start`)).json();
+    return {
+      attemptId: view.attempt.id as string,
+      itemId: view.sections[0].items[0].itemId as string,
+    };
+  }
+  const save = (who: Taker, attemptId: string, itemId: string, clientSeq: number) =>
+    who.call('PUT', `/take/attempts/${attemptId}/responses`, {
+      items: [{ itemId, value: { optionId: 'o1' }, clientSeq }],
+    });
+
+  it('cùng một người gửi quá nhiều lần trong 10 giây thì bị 429; sau cửa sổ lại lưu được; người khác không bị ảnh hưởng', async () => {
+    const a = await startAttempt(an);
+    const b = await startAttempt(binh);
+    const codes: number[] = [];
+    for (let i = 1; i <= 110; i++)
+      codes.push((await save(an, a.attemptId, a.itemId, i)).statusCode);
+    expect(codes.slice(0, 100).every((c) => c === 200)).toBe(true);
+    expect(codes.slice(100).every((c) => c === 429)).toBe(true);
+    const limited = await save(an, a.attemptId, a.itemId, 999);
+    expect(limited.json()).toMatchObject({ code: 'RATE_LIMITED' });
+    // Người khác lưu bình thường trong lúc An đang bị giới hạn.
+    expect((await save(binh, b.attemptId, b.itemId, 1)).statusCode).toBe(200);
+    // Câu trả lời cuối cùng được server nhận trước khi bị chặn vẫn còn; sau 10 giây lưu lại được.
+    t.clock.advance(minutes(0.2));
+    expect((await save(an, a.attemptId, a.itemId, 1000)).statusCode).toBe(200);
+  });
+
+  it('nhịp lưu bình thường của giao diện (tối đa ~3 lần mỗi giây) không bao giờ chạm giới hạn', async () => {
+    const a = await startAttempt(an);
+    for (let second = 0; second < 5; second++) {
+      for (let i = 0; i < 3; i++) {
+        const res = await save(an, a.attemptId, a.itemId, second * 3 + i + 1);
+        expect(res.statusCode, res.body).toBe(200);
+      }
+      t.clock.advance(1000);
+    }
+  });
+
+  it('heartbeat dồn dập cũng bị giới hạn (30 lần mỗi 10 giây), heartbeat bình thường thì không', async () => {
+    const a = await startAttempt(an);
+    const codes: number[] = [];
+    for (let i = 0; i < 40; i++)
+      codes.push((await an.call('POST', `/take/attempts/${a.attemptId}/heartbeat`, {})).statusCode);
+    expect(codes.slice(0, 30).every((c) => c === 200)).toBe(true);
+    expect(codes.slice(30).every((c) => c === 429)).toBe(true);
   });
 });
 
