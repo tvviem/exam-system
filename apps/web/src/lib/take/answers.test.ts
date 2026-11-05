@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { answerStateOf, isBlank, progressOf } from './answers';
+import {
+  answerStateOf,
+  indexesOfKind,
+  isBlank,
+  matchesKind,
+  nextOfKind,
+  progressOf,
+  remainingOf,
+} from './answers';
 
 const choice = { type: 'single_choice', payload: { options: [{ id: 'a' }, { id: 'b' }] } } as const;
 const many = { type: 'multiple_choice', payload: { options: [{ id: 'a' }, { id: 'b' }] } } as const;
@@ -42,5 +50,83 @@ describe('progressOf: đếm cho hộp thoại Nộp bài', () => {
       { item: many, response: { value: { optionIds: [] }, flagged: true } },
     ];
     expect(progressOf(items)).toEqual({ done: 1, partial: 1, blank: 2, flagged: 2, total: 4 });
+  });
+});
+
+describe('rà soát trước khi nộp (Q281)', () => {
+  const cell = (state: 'blank' | 'partial' | 'done', flagged = false) => ({ state, flagged });
+  // câu 1..8
+  const cells = [
+    cell('done'),
+    cell('blank'),
+    cell('partial'),
+    cell('done', true),
+    cell('blank', true),
+    cell('done'),
+    cell('blank'),
+    cell('partial', true),
+  ];
+
+  it('matchesKind: chưa làm, làm dở và đánh dấu độc lập nhau (một câu vừa làm dở vừa đánh dấu)', () => {
+    expect(cells.map((c) => matchesKind(c, 'blank'))).toEqual([
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+    ]);
+    expect(cells.map((c) => matchesKind(c, 'partial'))).toEqual([
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+    ]);
+    expect(cells.map((c) => matchesKind(c, 'flagged'))).toEqual([
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+    ]);
+  });
+
+  it('indexesOfKind: danh sách vị trí theo thứ tự đề', () => {
+    expect(indexesOfKind(cells, 'blank')).toEqual([1, 4, 6]);
+    expect(indexesOfKind(cells, 'flagged')).toEqual([3, 4, 7]);
+  });
+
+  it('nextOfKind: câu kế tiếp sau vị trí hiện tại, vòng về đầu khi hết', () => {
+    expect(nextOfKind(cells, 0, 'blank')).toBe(1);
+    expect(nextOfKind(cells, 1, 'blank')).toBe(4);
+    expect(nextOfKind(cells, 6, 'blank')).toBe(1); // vòng lại
+    expect(nextOfKind(cells, 7, 'partial')).toBe(2);
+  });
+
+  it('nextOfKind: chỉ còn đúng câu đang đứng thì quay lại chính nó; không có câu nào thì null', () => {
+    expect(nextOfKind([cell('blank'), cell('done')], 0, 'blank')).toBe(0);
+    expect(nextOfKind([cell('done'), cell('done')], 0, 'blank')).toBeNull();
+    expect(nextOfKind([], 0, 'blank')).toBeNull();
+  });
+
+  it('remainingOf: chỉ những loại còn lại (khác 0), theo thứ tự chưa làm, làm dở, đánh dấu', () => {
+    expect(remainingOf({ done: 3, partial: 2, blank: 3, flagged: 3, total: 8 })).toEqual([
+      { kind: 'blank', count: 3 },
+      { kind: 'partial', count: 2 },
+      { kind: 'flagged', count: 3 },
+    ]);
+    expect(remainingOf({ done: 8, partial: 0, blank: 0, flagged: 0, total: 8 })).toEqual([]);
+    expect(remainingOf({ done: 6, partial: 0, blank: 1, flagged: 0, total: 7 })).toEqual([
+      { kind: 'blank', count: 1 },
+    ]);
   });
 });

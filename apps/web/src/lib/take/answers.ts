@@ -50,3 +50,37 @@ export function progressOf(
   }
   return result;
 }
+
+// Rà soát trước khi nộp (Q281): nhảy tới các câu chưa làm, làm dở hay đánh dấu.
+
+export type ReviewKind = 'blank' | 'partial' | 'flagged';
+export interface ReviewCell {
+  state: AnswerState;
+  flagged: boolean;
+}
+
+/** Một câu có thuộc loại cần rà soát không; "đánh dấu" độc lập với trạng thái làm bài. */
+export const matchesKind = (cell: ReviewCell, kind: ReviewKind) =>
+  kind === 'flagged' ? cell.flagged : cell.state === kind;
+
+/** Vị trí (từ 0) các câu thuộc loại này, theo thứ tự đề. */
+export const indexesOfKind = (cells: readonly ReviewCell[], kind: ReviewKind) =>
+  cells.flatMap((cell, index) => (matchesKind(cell, kind) ? [index] : []));
+
+/** Câu kế tiếp sau `from` thuộc loại này, vòng về đầu khi hết; chỉ còn chính câu đang đứng thì trả về nó; không có thì `null`. */
+export function nextOfKind(cells: readonly ReviewCell[], from: number, kind: ReviewKind) {
+  const all = indexesOfKind(cells, kind);
+  if (all.length === 0) return null;
+  return all.find((index) => index > from) ?? (all[0] as number);
+}
+
+/** Những loại còn lại cho dòng trạng thái ở thanh dưới: chỉ số khác 0, thứ tự chưa làm, làm dở, đánh dấu. */
+export function remainingOf(progress: Progress): { kind: ReviewKind; count: number }[] {
+  return (
+    [
+      { kind: 'blank', count: progress.blank },
+      { kind: 'partial', count: progress.partial },
+      { kind: 'flagged', count: progress.flagged },
+    ] as const
+  ).filter((entry) => entry.count > 0);
+}

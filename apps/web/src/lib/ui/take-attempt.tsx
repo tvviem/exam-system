@@ -8,6 +8,7 @@ import {
   CheckCheck,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CloudOff,
   Eye,
   LayoutGrid,
@@ -29,7 +30,16 @@ import {
   type TakeItem,
   UnsavedError,
 } from '../take';
-import { type AnswerState, answerStateOf, progressOf } from '../take/answers';
+import {
+  type AnswerState,
+  answerStateOf,
+  indexesOfKind,
+  matchesKind,
+  nextOfKind,
+  progressOf,
+  type ReviewKind,
+  remainingOf,
+} from '../take/answers';
 import { formatClock, type Warning } from '../take/clock';
 import type { Notice } from '../take/heartbeat-queue';
 import { forgetAttemptLocally } from '../take/local-data';
@@ -384,6 +394,8 @@ function AttemptScreen({
   const { prefs, update: updatePrefs, mode } = usePrefs();
   const [current, setCurrent] = useState(0);
   const [gridOpen, setGridOpen] = useState(false);
+  // Bộ lọc của bảng chọn câu (Q281): chỉ hiện câu chưa làm, làm dở hay đánh dấu để rà soát nhanh trước khi nộp.
+  const [review, setReview] = useState<ReviewKind | null>(null);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const { answers, clock, saving, submit } = session;
@@ -397,6 +409,28 @@ function AttemptScreen({
     })),
   );
   const stateOf = (item: TakeItem): AnswerState => answerStateOf(item, answers[item.itemId]?.value);
+  const cells = items.map((item) => ({
+    state: stateOf(item),
+    flagged: answers[item.itemId]?.flagged ?? false,
+  }));
+  const remaining = remainingOf(progress);
+
+  // Chiều cao thanh trên (đồng hồ + thông báo ghim) đổi theo nội dung: neo cuộn của từng câu chừa đúng chỗ đó, nên
+  // nhảy tới câu không bị thanh trên che mất tiêu đề (Q282).
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const node = headerRef.current;
+    if (!node) return;
+    const root = document.documentElement;
+    const update = () => root.style.setProperty('--take-header-h', `${node.offsetHeight}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--take-header-h');
+    };
+  }, []);
 
   const goTo = (index: number) => {
     setCurrent(index);
@@ -433,7 +467,7 @@ function AttemptScreen({
 
   return (
     <MediaSourceContext.Provider value={(id, side) => `${content.mediaBase}/${id}/${side}`}>
-      <header className="sticky top-0 z-20 border-b border-border bg-surface">
+      <header ref={headerRef} className="sticky top-0 z-20 border-b border-border bg-surface">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-1 px-3">
           {clock ? (
             <div
@@ -475,6 +509,7 @@ function AttemptScreen({
             {t(warning === 'one' ? 'take.warn.one' : 'take.warn.five')}
           </p>
         )}
+        <NoticeStack notices={session.notices} onDismiss={session.dismissNotice} />
       </header>
 
       <main
@@ -483,13 +518,6 @@ function AttemptScreen({
       >
         {banner}
         {!session.connected && <OfflineNotice />}
-        {session.notices.map((notice) => (
-          <ExaminerNotice
-            key={notice.id}
-            notice={notice}
-            onDismiss={() => session.dismissNotice(notice.id)}
-          />
-        ))}
         {session.timedOut && (
           <BusyNotice title={t('take.timedOut')} hint={t('take.timedOutHint')} />
         )}
@@ -570,11 +598,43 @@ function AttemptScreen({
           <button
             type="button"
             aria-haspopup="dialog"
+            aria-label={t('take.grid.openLabel', {
+              done: progress.done,
+              total: progress.total,
+              status:
+                remaining.length === 0
+                  ? t('take.grid.allDone')
+                  : t('take.grid.remaining', {
+                      parts: remaining
+                        .map(({ kind, count }) => t(`take.review.${kind}`, { count }))
+                        .join(', '),
+                    }),
+            })}
             onClick={() => setGridOpen(true)}
-            className={buttonClass('secondary', 'flex-1 justify-start')}
+            className="relative inline-flex min-h-14 min-w-0 flex-1 cursor-pointer items-center gap-3 overflow-hidden rounded-lg border border-border-strong bg-surface px-3 text-left font-sans hover:bg-primary-soft"
           >
-            <LayoutGrid aria-hidden className="size-5" />
-            {t('take.grid.open', { done: progress.done, total: progress.total })}
+            <LayoutGrid aria-hidden className="size-5 shrink-0 text-primary" />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-semibold tabular-nums">
+                {t('take.grid.open', { done: progress.done, total: progress.total })}
+              </span>
+              <span className="truncate text-[13px] text-fg-muted">
+                {remaining.length === 0
+                  ? t('take.grid.allDone')
+                  : t('take.grid.remaining', {
+                      parts: remaining
+                        .map(({ kind, count }) => t(`take.review.${kind}`, { count }))
+                        .join(' · '),
+                    })}
+              </span>
+            </span>
+            <ChevronUp aria-hidden className="size-5 shrink-0 text-fg-muted" />
+            <span aria-hidden className="absolute inset-x-0 bottom-0 h-1 bg-primary-soft">
+              <span
+                className="block h-full bg-primary"
+                style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
+              />
+            </span>
           </button>
           {mode === 'one' && (
             <>
@@ -601,7 +661,39 @@ function AttemptScreen({
         </div>
       </nav>
 
-      <Dialog open={gridOpen} onClose={() => setGridOpen(false)} title={t('take.grid.title')}>
+      <Dialog
+        open={gridOpen}
+        onClose={() => {
+          setGridOpen(false);
+          setReview(null);
+        }}
+        title={t('take.grid.title')}
+      >
+        <p className="font-sans text-base font-semibold tabular-nums">
+          {t('take.grid.open', { done: progress.done, total: progress.total })}
+        </p>
+        {/* Lọc nhanh để rà soát trước khi nộp: chạm lần nữa để bỏ lọc (Q281) */}
+        <div role="group" aria-label={t('take.review.label')} className="flex flex-wrap gap-2">
+          {(['blank', 'partial', 'flagged'] as const).map((kind) => {
+            const count = indexesOfKind(cells, kind).length;
+            return (
+              <button
+                key={kind}
+                type="button"
+                aria-pressed={review === kind}
+                disabled={count === 0}
+                onClick={() => setReview((current) => (current === kind ? null : kind))}
+                className={`inline-flex min-h-12 cursor-pointer items-center rounded-lg border-2 px-3 font-sans text-sm font-semibold disabled:cursor-default disabled:opacity-50 ${
+                  review === kind
+                    ? 'border-primary bg-primary text-on-primary'
+                    : 'border-border-strong bg-surface text-fg hover:bg-primary-soft'
+                }`}
+              >
+                {t(`take.review.${kind}`, { count })}
+              </button>
+            );
+          })}
+        </div>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 font-sans text-sm text-fg-muted">
           {(['done', 'partial', 'blank'] as const).map((state) => (
             <li key={state} className="inline-flex items-center gap-1.5">
@@ -621,6 +713,7 @@ function AttemptScreen({
           {items.map((item, index) => {
             const state = stateOf(item);
             const flagged = answers[item.itemId]?.flagged ?? false;
+            if (review && !matchesKind({ state, flagged }, review)) return null;
             return (
               <button
                 key={item.itemId}
@@ -630,7 +723,10 @@ function AttemptScreen({
                   state: t(STATE_KEY[state]),
                 })}
                 aria-current={index === current ? 'true' : undefined}
-                onClick={() => goTo(index)}
+                onClick={() => {
+                  setReview(null);
+                  goTo(index);
+                }}
                 className={`inline-flex size-12 cursor-pointer items-center justify-center rounded-lg border-2 font-sans text-sm font-semibold ${CELL_TONE[state]} ${
                   flagged ? 'border-dashed border-warning' : CELL_BORDER[state]
                 } ${index === current ? 'ring-2 ring-ring' : ''}`}
@@ -640,6 +736,17 @@ function AttemptScreen({
             );
           })}
         </div>
+        {review && (
+          <PrimaryButton
+            onClick={() => {
+              const next = nextOfKind(cells, current, review);
+              setReview(null);
+              if (next !== null) goTo(next);
+            }}
+          >
+            {t(`take.review.next.${review}`)}
+          </PrimaryButton>
+        )}
       </Dialog>
 
       {submit && (
@@ -706,6 +813,47 @@ function AttemptScreen({
         <ThemeSwitcher />
       </TakePrefsDialog>
     </MediaSourceContext.Provider>
+  );
+}
+
+/** Thông báo tự đóng sau chừng này nếu không phải Cảnh cáo (Cộng giờ, mở lại bài); Cảnh cáo phải bấm "Đã hiểu" (Q282). */
+const AUTO_DISMISS_MS = 15_000;
+
+/**
+ * Thông báo của Người ra đề ghim ở thanh trên cùng, nên thấy được dù đang cuộn tới đâu ở chế độ "Cả đề" hay "Từng câu".
+ * Hiện một thông báo một lúc (Cảnh cáo trước), kèm số thông báo còn lại; vùng này cao tối đa 30% màn hình và cuộn được
+ * để không che mất đề trên điện thoại.
+ */
+function NoticeStack({
+  notices,
+  onDismiss,
+}: {
+  notices: Notice[];
+  onDismiss: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const ordered = useMemo(
+    () => [...notices].sort((a, b) => Number(b.kind === 'warning') - Number(a.kind === 'warning')),
+    [notices],
+  );
+  const shown = ordered[0];
+  const shownId = shown?.id;
+  const autoClose = shown !== undefined && shown.kind !== 'warning';
+  useEffect(() => {
+    if (!shownId || !autoClose) return;
+    const timer = setTimeout(() => onDismiss(shownId), AUTO_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [shownId, autoClose, onDismiss]);
+  if (!shown) return null;
+  return (
+    <div className="mx-auto flex max-h-[30vh] max-w-3xl flex-col gap-1 overflow-y-auto px-3 py-2">
+      <ExaminerNotice notice={shown} onDismiss={() => onDismiss(shown.id)} />
+      {ordered.length > 1 && (
+        <p className="px-1 font-sans text-[13px] text-fg-muted">
+          {t('take.notice.more', { count: ordered.length - 1 })}
+        </p>
+      )}
+    </div>
   );
 }
 

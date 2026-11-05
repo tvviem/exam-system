@@ -2,6 +2,7 @@ import { Link, useMatches, useRouterState } from '@tanstack/react-router';
 import {
   Building2,
   CalendarClock,
+  ClipboardCheck,
   ClipboardList,
   Ellipsis,
   FileText,
@@ -12,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
+  UserRound,
   Users,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
@@ -89,6 +91,13 @@ export function navFor(me: Me): NavItem[] {
       },
     ];
   }
+  if (me.roleTags.includes('candidate')) {
+    // Người dự thi luôn thấy chỗ quay về Phiên thi, kể cả khi đang xem Tài khoản (Q283): tránh bối rối trước giờ thi.
+    return [
+      { to: '/take', label: 'nav.takeHome', short: 'nav.short.take', icon: ClipboardCheck },
+      { to: '/account', label: 'nav.myAccount', short: 'nav.short.account', icon: UserRound },
+    ];
+  }
   return [];
 }
 
@@ -121,10 +130,13 @@ function useSidebarCollapsed() {
 /** Thanh trên cùng, thanh bên (≥ 1024 px, ẩn được để nới chỗ soạn), thanh tab dưới đáy (< 1024 px). */
 export function AppShell({
   items,
+  variant = 'sidebar',
   actions,
   children,
 }: {
   items: NavItem[];
+  /** `top`: ít mục (Người dự thi) nên không dùng thanh bên, đặt liên kết ngay cạnh logo trên máy tính. */
+  variant?: 'sidebar' | 'top';
   /** Chuông thông báo và menu tài khoản. */
   actions: ReactNode;
   children: ReactNode;
@@ -132,7 +144,8 @@ export function AppShell({
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
-  const sidebar = items.length > 0 && !collapsed;
+  const topNav = variant === 'top' && items.length > 0;
+  const sidebar = items.length > 0 && !collapsed && !topNav;
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   // Thanh tab tối đa 5 mục (Material): nhiều hơn thì mục cuối là "Thêm" mở danh sách còn lại.
   const bottomItems = items.length > 5 ? items.slice(0, 4) : items;
@@ -148,7 +161,7 @@ export function AppShell({
 
   return (
     <>
-      {items.length > 0 && (
+      {items.length > 0 && !topNav && (
         <aside
           id="app-sidebar"
           className={`fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-surface ${sidebar ? 'lg:flex' : ''}`}
@@ -171,7 +184,7 @@ export function AppShell({
       <div className={sidebar ? 'lg:pl-72' : ''}>
         <header className="sticky top-0 z-20 border-b border-border bg-surface">
           <div className="flex h-(--app-header-h) items-center gap-3 px-4 md:px-6 lg:px-8">
-            {items.length > 0 && (
+            {items.length > 0 && !topNav && (
               <button
                 type="button"
                 aria-controls="app-sidebar"
@@ -185,6 +198,16 @@ export function AppShell({
               </button>
             )}
             <Brand className={sidebar ? 'lg:hidden' : ''} />
+            {topNav && (
+              <nav aria-label={t('nav.main')} className="ml-2 hidden items-center gap-1 lg:flex">
+                {items.map(({ to, label, icon: Icon }) => (
+                  <Link key={to} to={to} className={`${linkBase} min-h-12`}>
+                    <Icon aria-hidden className="size-5 shrink-0" />
+                    {t(label)}
+                  </Link>
+                ))}
+              </nav>
+            )}
             <div className="ml-auto flex items-center gap-1">{actions}</div>
           </div>
         </header>

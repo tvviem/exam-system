@@ -838,3 +838,19 @@ Chủ dự án hỏi: người dự thi bấm đổi đáp án liên tục có l
 - **Vào thi lúc 9h50:** server đúng thiết kế, có test (`attempt-take.int.test.ts`): vào được, hạn 10h10, đóng trình duyệt rồi vào lại ở 10h05 (sau giờ đóng) vẫn làm tiếp đúng Lượt cũ. Thông báo "đã vào trên một thiết bị khác" (`DEVICE_BOUND_ELSEWHERE`) chỉ xuất hiện khi trình duyệt không có cookie thiết bị `exam_did` của lần vào trước: dùng cửa sổ ẩn danh đã đóng, xóa cookie, đổi trình duyệt, hoặc mở bằng địa chỉ mạng LAN `http://192.168…` (cookie `Secure` không được lưu). Người ra đề **Thu hồi thiết bị** là cách xử lý theo ADR-0007.
 - **Buộc nộp nhầm:** CSDL không cho mở lại Lượt đã nộp (trigger `attempts_guard`), nên chưa có cách hoàn tác; các phương án đang chờ chủ dự án chọn.
 
+## Giao diện làm bài, điều hướng Người dự thi và Phòng chờ (đã duyệt 5/11/2026)
+
+Chủ dự án góp ý ba điểm khi thử: thanh dưới chỉ ghi "Danh sách câu 12/20" dễ nhầm; Cảnh cáo ở chế độ "Cả đề" nằm đầu trang nên Người dự thi ở câu dưới không thấy; Người dự thi lỡ vào "Tài khoản của tôi" trước giờ thi thì không biết quay về Phiên thi. Duyệt thiết kế Q281–Q284, chia hai PR: PR 1 (Q281–Q283 phần giao diện) và PR 2 (Phòng chờ và giám sát Phòng chờ).
+
+| # | Quyết định |
+|---|---|
+| Q281 | **Thanh dưới:** dòng 1 "Đã làm 12/20 câu"; dòng 2 là trạng thái "Còn 6 chưa làm · 2 làm dở · 3 đánh dấu" (chỉ số khác 0; làm hết: "Đã làm hết · chạm để rà soát"); mũi tên ▲ báo mở bảng; thanh tiến độ mỏng ở đáy; tên truy cập được "Danh sách câu: …". **Bảng chọn câu:** tóm tắt, ba nút lọc **Chưa làm / Làm dở / Đánh dấu** có số đếm (chạm lần nữa để bỏ lọc), nút "Đến câu … kế tiếp" (vòng về đầu khi hết). Hàm thuần `matchesKind`, `indexesOfKind`, `nextOfKind`, `remainingOf` ở `lib/take/answers.ts` |
+| Q282 | **Thông báo của Người ra đề ghim ở thanh trên cùng** (dưới đồng hồ), nên thấy dù cuộn tới đâu ở "Từng câu", "Cả đề". Một thông báo một lúc, Cảnh cáo trước, kèm "và N thông báo khác"; tối đa 30% chiều cao màn hình, cuộn được. Cảnh cáo (`role="alert"`) không tự tắt, phải bấm "Đã hiểu"; Cộng giờ và mở lại bài tự đóng sau 15 giây. Neo cuộn của từng câu chừa đúng chiều cao thanh trên (`--take-header-h`) |
+| Q283 | **Điều hướng Người dự thi (chỉ mang Nhãn Người dự thi):** điện thoại có thanh tab dưới đáy "Phiên thi" và "Tài khoản" (mục đang đứng được tô); máy tính có liên kết "Phiên thi của tôi" và "Tài khoản của tôi" cạnh logo; trang Tài khoản và Phiên đăng nhập có nút "← Về Phiên thi của tôi". Màn đang làm bài vẫn không có thanh này |
+| Q284 | **Phòng chờ** (PR 2): nhập đúng Mã vào thi trong 30 phút trước giờ mở thì vào Phòng chờ (thiết bị được ghi nhận); đếm ngược theo giờ server; tới giờ mở nút "Bắt đầu làm bài" tự bật nhưng **không tự bắt đầu**; đăng nhập lại thấy thẻ "Phòng chờ" ở danh sách, còn Lượt đang làm dở thì vào thẳng bài. Người ra đề thấy "Đã nhập mã 38/50 · đang trực tuyến 35": màn chờ gửi nhịp 15 giây (mất nhịp quá 45 giây là mất kết nối); nhãn Đang chờ / Chờ · mất kết nối / Chưa vào, lọc được. Thuật ngữ mới **Phòng chờ** (`WaitingRoom`) |
+
+### PR 1: ghi chú triển khai
+
+- Test: `answers.test.ts` (thêm 5 test cho rà soát), E2E `take-ui.spec.ts` (3 test × điện thoại và máy tính): thanh dưới đổi tức thì khi chọn đáp án (~70 ms), bộ lọc và nhảy câu kế tiếp, cảnh báo hiện trong màn hình ở chế độ "Cả đề" khi đang cuộn xuống cuối (190–320 ms từ lúc gửi), "và N thông báo khác", Cảnh cáo không tự tắt, thanh tab và liên kết quay về.
+- Các E2E cũ dùng nhãn "Danh sách câu" vẫn đúng nhờ tên truy cập `Danh sách câu: đã làm …`.
+

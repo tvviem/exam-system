@@ -39,7 +39,7 @@ export function TakeQuestion({
     <article
       id={`item-${item.itemId}`}
       aria-labelledby={`item-${item.itemId}-title`}
-      className="flex scroll-mt-24 flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4"
+      className="flex scroll-mt-[calc(var(--take-header-h,6rem)+0.5rem)] flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4"
     >
       <header className="flex items-center justify-between gap-3">
         <h2 id={`item-${item.itemId}-title`} className="font-sans text-base font-semibold">
