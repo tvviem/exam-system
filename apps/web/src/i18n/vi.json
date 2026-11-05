@@ -365,7 +365,7 @@
       "warning": {
         "title": "Cảnh cáo từ Người ra đề"
       },
-      "more": "và {{count}} thông báo khác sau khi bạn bấm Đã hiểu",
+      "more": "và {{count}} thông báo khác",
       "reopened": {
         "title": "Người ra đề đã mở lại bài của bạn",
         "body": "Các câu bạn đã lưu còn nguyên. Hãy làm tiếp; thời gian còn lại bằng lúc bị nộp."

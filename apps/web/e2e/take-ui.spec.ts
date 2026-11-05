@@ -104,13 +104,12 @@ test('Cảnh cáo và Cộng giờ ghim ở thanh trên: thấy ngay dù đang c
   expect((box?.height ?? 0) / (viewport?.height ?? 1)).toBeLessThan(0.3);
 
   // Cảnh cáo không tự tắt; bấm "Đã hiểu" thì tới thông báo Cộng giờ
-  await page.waitForTimeout(1500);
   await expect(warning).toBeVisible();
   await warning.getByRole('button', { name: 'Đã hiểu' }).click();
+  // Cộng giờ tự đóng sau ~15 giây dù trang vẽ lại mỗi giây (đồng hồ): không bấm gì cũng biến mất
   const extended = page.getByRole('status').filter({ hasText: 'Người ra đề đã cộng giờ' });
   await expect(extended).toBeInViewport();
-  await extended.getByRole('button', { name: 'Đã hiểu' }).click();
-  await expect(extended).toHaveCount(0);
+  await expect(extended).toHaveCount(0, { timeout: 25_000 });
 });
 
 test('Người dự thi luôn có chỗ quay về Phiên thi: thanh tab/liên kết đầu trang và nút ở trang Tài khoản', async ({
@@ -138,7 +137,7 @@ test('Người dự thi luôn có chỗ quay về Phiên thi: thanh tab/liên k�
   const back = page.getByRole('link', { name: 'Về Phiên thi của tôi' });
   await expect(back).toBeVisible();
   // Vùng chạm đủ lớn trên màn cảm ứng (con trỏ chuột dùng nút gọn hơn theo ui-design)
-  if (mobile) expect((await back.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  if (mobile) expect((await back.boundingBox())?.height).toBeGreaterThanOrEqual(48);
   expect(await overflow(page), 'trang Tài khoản').toBe(0);
 
   // Trang Phiên đăng nhập cũng có
@@ -148,4 +147,29 @@ test('Người dự thi luôn có chỗ quay về Phiên thi: thanh tab/liên k�
   await expect(page).toHaveURL(/\/take$/);
   await expect(page.getByRole('heading', { name: 'Vào thi' })).toBeVisible();
   await context.close();
+});
+
+test('Cả đề: "Đến câu chưa làm kế tiếp" tính từ câu đang xem, không phải từ câu đầu', async ({
+  browser,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const { candidate } = await room(browser, project, 'K', { prefix: 'gd', fakeClock: false });
+  const page = await candidate(1);
+  await page.getByRole('button', { name: 'Cả đề' }).click();
+  await page.getByRole('radio', { name: 'Hà Nội' }).check(); // câu 1 đã làm
+  // Cuộn tới câu 3 (chùm đúng/sai, chưa làm): câu 2 đã nằm phía trên màn hình
+  await page.getByText(/^Xét hàm số bậc ba/).scrollIntoViewIfNeeded();
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll('article[id^="item-"]')][2];
+    el?.scrollIntoView({ block: 'start' });
+  });
+  await page.getByRole('button', { name: /^Danh sách câu/ }).click();
+  const grid = page.getByRole('dialog', { name: 'Danh sách câu' });
+  await grid
+    .getByRole('button', { name: /chưa làm$/ })
+    .first()
+    .click();
+  await grid.getByRole('button', { name: 'Đến câu chưa làm kế tiếp' }).click();
+  // Từ câu 3 (đang xem) kế tiếp là câu 4 (tự luận); nếu tính từ câu 1 thì sẽ nhảy lên câu 2
+  await expect(page.getByRole('textbox', { name: 'Câu trả lời' })).toBeInViewport();
 });

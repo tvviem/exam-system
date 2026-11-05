@@ -414,6 +414,11 @@ function AttemptScreen({
     flagged: answers[item.itemId]?.flagged ?? false,
   }));
   const remaining = remainingOf(progress);
+  // Bộ lọc không còn câu nào (vừa làm xong, bỏ đánh dấu): tắt lọc để bảng không trống.
+  const reviewEmpty = review !== null && indexesOfKind(cells, review).length === 0;
+  useEffect(() => {
+    if (reviewEmpty) setReview(null);
+  }, [reviewEmpty]);
 
   // Chiều cao thanh trên (đồng hồ + thông báo ghim) đổi theo nội dung: neo cuộn của từng câu chừa đúng chỗ đó, nên
   // nhảy tới câu không bị thanh trên che mất tiêu đề (Q282).
@@ -431,6 +436,20 @@ function AttemptScreen({
       root.style.removeProperty('--take-header-h');
     };
   }, []);
+
+  /** Chế độ "Cả đề": câu đang ở đầu màn hình (dưới thanh trên), để "Đến câu kế tiếp" tính từ chỗ người dự thi đang xem. */
+  const topVisibleIndex = () => {
+    const top = (headerRef.current?.getBoundingClientRect().bottom ?? 0) + 4;
+    const index = items.findIndex(
+      (item) =>
+        (document.getElementById(`item-${item.itemId}`)?.getBoundingClientRect().bottom ?? 0) > top,
+    );
+    return index === -1 ? items.length - 1 : index;
+  };
+  const openGrid = () => {
+    if (mode === 'all') setCurrent(topVisibleIndex());
+    setGridOpen(true);
+  };
 
   const goTo = (index: number) => {
     setCurrent(index);
@@ -610,7 +629,7 @@ function AttemptScreen({
                         .join(', '),
                     }),
             })}
-            onClick={() => setGridOpen(true)}
+            onClick={openGrid}
             className="relative inline-flex min-h-14 min-w-0 flex-1 cursor-pointer items-center gap-3 overflow-hidden rounded-lg border border-border-strong bg-surface px-3 text-left font-sans hover:bg-primary-soft"
           >
             <LayoutGrid aria-hidden className="size-5 shrink-0 text-primary" />
@@ -673,7 +692,8 @@ function AttemptScreen({
           {t('take.grid.open', { done: progress.done, total: progress.total })}
         </p>
         {/* Lọc nhanh để rà soát trước khi nộp: chạm lần nữa để bỏ lọc (Q281) */}
-        <div role="group" aria-label={t('take.review.label')} className="flex flex-wrap gap-2">
+        <fieldset className="m-0 flex flex-wrap gap-2 border-0 p-0">
+          <legend className="sr-only">{t('take.review.label')}</legend>
           {(['blank', 'partial', 'flagged'] as const).map((kind) => {
             const count = indexesOfKind(cells, kind).length;
             return (
@@ -693,7 +713,7 @@ function AttemptScreen({
               </button>
             );
           })}
-        </div>
+        </fieldset>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 font-sans text-sm text-fg-muted">
           {(['done', 'partial', 'blank'] as const).map((state) => (
             <li key={state} className="inline-flex items-center gap-1.5">
@@ -839,15 +859,18 @@ function NoticeStack({
   const shown = ordered[0];
   const shownId = shown?.id;
   const autoClose = shown !== undefined && shown.kind !== 'warning';
+  // `onDismiss` đổi mỗi lần vẽ lại (đồng hồ chạy mỗi giây): giữ trong ref để bộ đếm 15 giây không bị đặt lại.
+  const dismiss = useRef(onDismiss);
+  dismiss.current = onDismiss;
   useEffect(() => {
     if (!shownId || !autoClose) return;
-    const timer = setTimeout(() => onDismiss(shownId), AUTO_DISMISS_MS);
+    const timer = setTimeout(() => dismiss.current(shownId), AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [shownId, autoClose, onDismiss]);
+  }, [shownId, autoClose]);
   if (!shown) return null;
   return (
-    <div className="mx-auto flex max-h-[30vh] max-w-3xl flex-col gap-1 overflow-y-auto px-3 py-2">
-      <ExaminerNotice notice={shown} onDismiss={() => onDismiss(shown.id)} />
+    <div className="mx-auto flex max-h-[30dvh] max-w-3xl flex-col gap-1 overflow-y-auto px-3 py-2">
+      <ExaminerNotice key={shown.id} notice={shown} onDismiss={() => onDismiss(shown.id)} />
       {ordered.length > 1 && (
         <p className="px-1 font-sans text-[13px] text-fg-muted">
           {t('take.notice.more', { count: ordered.length - 1 })}
