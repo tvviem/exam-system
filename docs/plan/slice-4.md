@@ -795,3 +795,13 @@ Làm đúng "PR 4e: thiết kế chi tiết (đã duyệt 4/11/2026)"; không mi
 
 
 **Sau 4e (4/11/2026, theo lệnh "làm nốt các việc còn lại"):** migration `0015_violations_session_user_idx`; đo 500 người (xem trên); khoảng trải của tin đẩy; kiểm Socket.IO qua nginx của `infra/`; ngưỡng "Người dự thi thấy Cộng giờ" của script đặt 3 giây (Q266 chỉ đòi tin đẩy tới dưới 1 giây, đạt 127 ms).
+
+## Sau 4e: chặn gửi lưu bài dồn dập, kiểm vào thi muộn (5/11/2026)
+
+Chủ dự án hỏi: người dự thi bấm đổi đáp án liên tục có làm server chậm không (như tấn công từ chối dịch vụ), và vào thi lúc 9h50 khi giờ đóng 10h, Thời lượng 20 phút, Cắt cứng tắt thì có làm được đến 10h10 không.
+
+- **Giao diện đã tự giới hạn:** `use-saver` gộp thao tác (chờ 300 ms với câu chọn, 800 ms với tự luận), chỉ một lô đang bay và chỉ gửi giá trị mới nhất mỗi câu; bấm một câu liên tục chỉ ra tối đa ~3 yêu cầu mỗi giây, mỗi yêu cầu là một upsert ~15 ms.
+- **Server chưa giới hạn người gọi API trực tiếp (script): đã thêm.** `RequestRateLimiter` (Redis, đếm theo từng người, cửa sổ 10 giây theo đồng hồ ứng dụng): lưu bài tối đa **100** lần, heartbeat tối đa **30** lần; vượt thì `429 RATE_LIMITED` kèm `retryAfterMs`. Mức này cao gấp ~3 lần nhịp thật của giao diện nên người thật không chạm; giao diện đã thử lại có chờ với 429 và không bỏ câu trả lời. Đếm theo người chứ không theo IP vì cả lớp dùng chung IP. Redis hỏng thì không chặn (ADR-0002). Test: 110 lần lưu liên tiếp chỉ 100 lần đầu qua, người khác không bị ảnh hưởng, qua cửa sổ lại lưu được; nhịp thật 3 lần mỗi giây không bị chặn; heartbeat 40 lần thì 10 lần cuối bị chặn.
+- **Vào thi lúc 9h50:** server đúng thiết kế, có test (`attempt-take.int.test.ts`): vào được, hạn 10h10, đóng trình duyệt rồi vào lại ở 10h05 (sau giờ đóng) vẫn làm tiếp đúng Lượt cũ. Thông báo "đã vào trên một thiết bị khác" (`DEVICE_BOUND_ELSEWHERE`) chỉ xuất hiện khi trình duyệt không có cookie thiết bị `exam_did` của lần vào trước: dùng cửa sổ ẩn danh đã đóng, xóa cookie, đổi trình duyệt, hoặc mở bằng địa chỉ mạng LAN `http://192.168…` (cookie `Secure` không được lưu). Người ra đề **Thu hồi thiết bị** là cách xử lý theo ADR-0007.
+- **Buộc nộp nhầm:** CSDL không cho mở lại Lượt đã nộp (trigger `attempts_guard`), nên chưa có cách hoàn tác; các phương án đang chờ chủ dự án chọn.
+

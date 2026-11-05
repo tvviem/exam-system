@@ -5,6 +5,7 @@ import { AttemptsController } from './attempts.controller';
 import { AttemptsService } from './attempts.service';
 import { CandidateMediaService } from './candidate-media.service';
 import { JoinRateLimiter } from './join-rate-limiter';
+import { RequestRateLimiter } from './request-rate-limiter';
 import { SessionAttemptsService } from './session-attempts.service';
 import { SessionPreviewController } from './session-preview.controller';
 import { SessionPreviewService } from './session-preview.service';
@@ -16,6 +17,7 @@ import { SessionPreviewService } from './session-preview.service';
   providers: [
     AttemptsService,
     JoinRateLimiter,
+    RequestRateLimiter,
     AttemptPresence,
     SessionAttemptsService,
     AttemptSweepJob,
