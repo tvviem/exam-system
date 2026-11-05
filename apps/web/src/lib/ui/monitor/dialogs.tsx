@@ -234,6 +234,7 @@ export function ForceDialog({
         <p className="text-sm text-fg-muted">{t('monitor.force.body', { minutes: undoMinutes })}</p>
         <TextField
           id="force-confirm"
+          autoFocus
           label={t('monitor.force.typeLabel', { phrase })}
           value={typed}
           autoComplete="off"
@@ -279,7 +280,11 @@ export function UndoDialog({
       </div>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button onClick={onClose}>{t('common.cancel')}</Button>
-        <Button variant="primary" disabled={busy || people.length === 0} onClick={onConfirm}>
+        <Button
+          variant="primary"
+          disabled={busy || people.length === 0 || secondsLeft === 0}
+          onClick={onConfirm}
+        >
           {t('monitor.undo.confirm', { count: people.length })}
         </Button>
       </div>

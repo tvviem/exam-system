@@ -173,12 +173,10 @@ function UndoBanner({ person, onUndo }: { person: MonitorPerson; onUndo: () => v
   const { t } = useTranslation();
   const left = useUndoLeft(person.undoUntil);
   return (
-    <div
-      role="status"
-      className="flex flex-col gap-2 rounded-lg border border-warning bg-warning-soft p-3 text-sm"
-    >
+    <div className="flex flex-col gap-2 rounded-lg border border-warning bg-warning-soft p-3 text-sm">
+      {/* Chỉ câu mở đầu nằm trong vùng thông báo; đếm lùi đổi mỗi giây nên để ngoài, tránh đọc lại mỗi giây. */}
       <p>
-        <strong>{t('monitor.undo.bannerTitle')}</strong>{' '}
+        <strong role="status">{t('monitor.undo.bannerTitle')}</strong>{' '}
         {left !== null && left > 0
           ? t('monitor.undo.bannerLeft', { time: clockText(left) })
           : t('monitor.undo.bannerOver')}

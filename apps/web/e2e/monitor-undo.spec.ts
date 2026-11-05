@@ -56,7 +56,8 @@ test('Buộc nộp phải gõ lại Mã định danh; Hoàn tác đưa Người 
   await examiner.keyboard.press('Escape');
   const bar = examiner.getByRole('status').filter({ hasText: '1 người vừa bị Buộc nộp' });
   await expect(bar).toBeVisible();
-  await expect(bar).toContainText(/Còn \d+:\d{2} để hoàn tác/);
+  // Đếm lùi nằm ngoài vùng thông báo (đổi mỗi giây): kiểm bằng chữ hiện trên màn hình.
+  await expect(examiner.getByText(/Còn \d+:\d{2} để hoàn tác nếu bấm nhầm/).first()).toBeVisible();
   await openPerson(examiner, /Thí sinh Hoàn tác 1/);
   const undoPanel =
     project === 'mobile' ? examiner.getByRole('dialog') : examiner.getByRole('complementary');
@@ -117,7 +118,7 @@ test('Buộc nộp nhóm gõ lại số người; Hoàn tác cả lô trong 10 p
 
   const bar = examiner.getByRole('status').filter({ hasText: '2 người vừa bị Buộc nộp' });
   await expect(bar).toBeVisible();
-  await bar.getByRole('button', { name: /Hoàn tác Buộc nộp \(2 người\)/ }).click();
+  await examiner.getByRole('button', { name: /Hoàn tác Buộc nộp \(2 người\)/ }).click();
   const undoDialog = examiner.getByRole('dialog', { name: 'Hoàn tác Buộc nộp' });
   await expect(undoDialog).toContainText('2 người');
   const asked = performance.now();

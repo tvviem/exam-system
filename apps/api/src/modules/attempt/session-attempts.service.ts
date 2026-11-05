@@ -509,8 +509,13 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
         where a.id = v.id`);
     } catch (error) {
       // Người này vừa bắt đầu Lượt mới: chỉ mục một Lượt đang làm chặn, báo như một lý do từ chối.
-      if (uniqueViolationOf(error) === 'attempts_one_in_progress') {
+      const violated = uniqueViolationOf(error);
+      if (violated === 'attempts_one_in_progress') {
         throw new ApiError('INVALID_STATE', { reason: 'NEW_ATTEMPT_STARTED' });
+      }
+      // Hai lần hoàn tác cùng một lần nộp xen nhau (Phiên thi đã khóa nên hiếm): lần sau thấy Lượt không còn bị Buộc nộp.
+      if (violated === 'attempt_reopenings_once') {
+        throw new ApiError('INVALID_STATE', { reason: 'NOT_FORCE_SUBMITTED' });
       }
       throw error;
     }

@@ -31,8 +31,18 @@ describe('undoDeadlineOf: hạn mới của Lượt (Q275)', () => {
   });
 
   it('Cắt cứng thì không vượt giờ đóng', () => {
-    const near = { ...base, hardClose: true, closesAt: at('2026-11-02T09:20:00Z') };
-    expect(undoDeadlineOf(near)?.toISOString()).toBe('2026-11-02T09:20:00.000Z');
+    const near = {
+      ...base,
+      deadline: at('2026-11-02T09:10:00Z'), // hạn đúng bằng giờ đóng, còn 10 phút lúc bị nộp
+      hardClose: true,
+      closesAt: at('2026-11-02T09:10:00Z'),
+    };
+    expect(undoDeadlineOf(near)?.toISOString()).toBe('2026-11-02T09:10:00.000Z');
+  });
+
+  it('Cắt cứng mà hạn cũ đã vượt giờ đóng nhờ Cộng giờ: giữ hạn cũ, không rút ngắn', () => {
+    const extended = { ...base, hardClose: true, closesAt: at('2026-11-02T09:20:00Z') }; // hạn cũ 09:25
+    expect(undoDeadlineOf(extended)?.toISOString()).toBe('2026-11-02T09:25:00.000Z');
   });
 
   it('không Cắt cứng thì được vượt giờ đóng (đủ Thời lượng)', () => {
@@ -45,9 +55,14 @@ describe('undoDeadlineOf: hạn mới của Lượt (Q275)', () => {
     expect(undoDeadlineOf({ ...base, deadline: at('2026-11-02T08:59:00Z') })).toBeNull();
   });
 
-  it('Cắt cứng mà giờ đóng đã qua thì không có hạn mới', () => {
-    const closed = { ...base, hardClose: true, closesAt: at('2026-11-02T09:03:00Z') };
-    expect(undoDeadlineOf(closed)).toBeNull();
+  it('Cắt cứng mà hạn cũ cũng đã qua lúc hoàn tác thì không có hạn mới', () => {
+    const gone = {
+      ...base,
+      hardClose: true,
+      closesAt: at('2026-11-02T09:03:00Z'),
+      now: at('2026-11-02T09:26:00Z'),
+    };
+    expect(undoDeadlineOf(gone)).toBeNull();
   });
 });
 

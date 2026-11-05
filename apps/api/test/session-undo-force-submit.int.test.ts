@@ -244,6 +244,51 @@ describe('lý do từ chối (Q276)', () => {
   });
 });
 
+describe('Cắt cứng (Q275)', () => {
+  async function hardCloseRoom() {
+    await resetState();
+    live = await openLiveSession(t, [], { maxAttempts: 2, hardClose: true });
+    const an = await Taker.signIn(t, 'an');
+    t.clock.set(new Date('2026-11-02T09:40:00+07:00'));
+    await an.join('AB3K9X');
+    const view = (await an.call('POST', `/take/sessions/${live.sessionId}/start`)).json();
+    live.attemptIds.an = view.attempt.id; // hạn bị cắt ở giờ đóng 10:00
+    return an;
+  }
+
+  it('hết giờ đóng thì Lượt không còn thời gian: màn Theo dõi không mời hoàn tác, API báo ATTEMPT_EXPIRED', async () => {
+    await hardCloseRoom();
+    t.clock.set(new Date('2026-11-02T09:59:00+07:00'));
+    await forceSubmit({ attemptIds: [live.attemptIds.an as string] });
+    t.clock.set(new Date('2026-11-02T10:03:00+07:00')); // còn trong 10 phút nhưng hạn 10:00 đã qua
+    const m = await monitor();
+    expect(m.summary.undoable).toBe(0);
+    expect(m.people.find((p) => p.userId === live.userIds.an)?.undoUntil).toBeNull();
+    const res = await undo('an');
+    expect(res.statusCode).toBe(409);
+    expect(reasonOf(res)).toBe('ATTEMPT_EXPIRED');
+  });
+
+  it('hạn đã vượt giờ đóng nhờ Cộng giờ: hoàn tác giữ nguyên hạn cũ, không lỗi 500', async () => {
+    await hardCloseRoom();
+    t.clock.set(new Date('2026-11-02T09:50:00+07:00'));
+    await live.api('POST', `/sessions/${live.sessionId}/extend-time`, {
+      scope: 'all',
+      minutes: 60,
+      reason: 'Mạng chậm',
+      batchId: '00000000-0000-4000-8000-0000000000bb',
+    }); // hạn 11:00, vượt giờ đóng 10:00
+    t.clock.set(new Date('2026-11-02T10:02:00+07:00'));
+    await forceSubmit({ attemptIds: [live.attemptIds.an as string] });
+    t.clock.set(new Date('2026-11-02T10:05:00+07:00'));
+    const res = await undo('an');
+    expect(res.statusCode, res.body).toBe(200);
+    expect(new Date(res.json().deadline).toISOString()).toBe(
+      new Date('2026-11-02T11:00:00+07:00').toISOString(),
+    );
+  });
+});
+
 describe('quyền (Q273)', () => {
   it('Người ra đề khác 404, Người dự thi 403, Lượt lạ 404; Lượt không đổi', async () => {
     await forceSubmit({ attemptIds: [live.attemptIds.an] });

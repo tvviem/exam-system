@@ -5,6 +5,7 @@ import {
   extensionScopeOf,
   type ForceSubmitRequest,
   monitorStateOf,
+  undoDeadlineOf,
   undoProblemOf,
   undoUntilOf,
   type ViolationRequest,
@@ -108,8 +109,9 @@ export class SessionMonitorService {
         : [];
       const state = monitorStateOf(attempt ?? null, now);
       // Còn hoàn tác Buộc nộp được đến lúc nào (Q278); Lượt mới nhất của người này là Lượt bị nộp nên không có Lượt mới hơn.
+      // Chỉ mời hoàn tác khi thật sự mở lại được: đủ điều kiện (Q276) và còn thời gian làm (Cắt cứng đã hết giờ thì không).
       const undoUntil =
-        attempt &&
+        attempt?.submittedAt &&
         undoProblemOf({
           status: attempt.status,
           submitReason: attempt.submitReason,
@@ -118,8 +120,15 @@ export class SessionMonitorService {
           now,
           sessionCancelled: session.cancelledAt !== null,
           hasNewerAttempt: false,
-        }) === null
-          ? undoUntilOf(attempt.submittedAt as Date)
+        }) === null &&
+        undoDeadlineOf({
+          submittedAt: attempt.submittedAt,
+          deadline: attempt.deadline,
+          now,
+          hardClose: session.hardClose,
+          closesAt: session.closesAt,
+        }) !== null
+          ? undoUntilOf(attempt.submittedAt)
           : null;
       if (undoUntil) summary.undoable += 1;
       summary.total += 1;
@@ -219,7 +228,6 @@ export class SessionMonitorService {
     return result;
   }
 
-  /** Cảnh cáo (vẫn làm tiếp) hoặc Đình chỉ (nộp ngay) một Lượt đang làm, bắt buộc lý do (Q259). */
   /**
    * Hoàn tác Buộc nộp (Q273–Q280). Một Lượt (`attemptId`): lỗi `409 INVALID_STATE` kèm lý do nếu không mở lại được. Không nêu
    * `attemptId`: mở lại mọi Lượt bị Buộc nộp trong 10 phút qua, Lượt không đủ điều kiện được báo ở `skipped`.
@@ -260,6 +268,7 @@ export class SessionMonitorService {
       : { reopened: result.reopened.length, skipped: result.skipped };
   }
 
+  /** Cảnh cáo (vẫn làm tiếp) hoặc Đình chỉ (nộp ngay) một Lượt đang làm, bắt buộc lý do (Q259). */
   async recordViolation(
     actor: Actor,
     sessionId: string,

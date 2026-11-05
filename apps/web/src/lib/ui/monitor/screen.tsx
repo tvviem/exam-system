@@ -459,16 +459,14 @@ function UndoBar({
   const { t } = useTranslation();
   const left = useUndoLeft(until);
   return (
-    <div
-      role="status"
-      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning bg-warning-soft p-3 text-sm"
-    >
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning bg-warning-soft p-3 text-sm">
+      {/* Số người nằm trong vùng thông báo; đếm lùi đổi mỗi giây nên để ngoài, tránh đọc lại mỗi giây. */}
       <p>
         <Undo2 aria-hidden className="mr-1 inline size-4 align-[-3px]" />
-        {t('monitor.undo.barText', { count })}{' '}
+        <span role="status">{t('monitor.undo.barText', { count })}</span>{' '}
         {left !== null && t('monitor.undo.barLeft', { time: clockText(left) })}
       </p>
-      <Button variant="primary" onClick={onUndo}>
+      <Button variant="primary" disabled={left === 0} onClick={onUndo}>
         {t('monitor.action.undoAll', { count })}
       </Button>
     </div>

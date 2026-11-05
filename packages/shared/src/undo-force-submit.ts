@@ -20,8 +20,8 @@ export const undoUntilOf = (submittedAt: Date): Date =>
   new Date(submittedAt.getTime() + UNDO_FORCE_SUBMIT_WINDOW_MS);
 
 /**
- * Hạn mới của Lượt (Q275): lúc hoàn tác cộng phần thời gian còn lại lúc bị nộp. Phiên thi Cắt cứng thì không vượt giờ đóng.
- * `null` khi Lượt đã quá hạn lúc bị nộp, hoặc Cắt cứng mà giờ đóng đã qua (không còn thời gian để làm).
+ * Hạn mới của Lượt (Q275): lúc hoàn tác cộng phần thời gian còn lại lúc bị nộp. Phiên thi Cắt cứng thì không vượt giờ đóng
+ * (nhưng không thấp hơn hạn cũ). `null` khi Lượt đã quá hạn lúc bị nộp, hoặc hạn mới đã qua (không còn thời gian để làm).
  */
 export function undoDeadlineOf(input: {
   submittedAt: Date;
@@ -33,7 +33,11 @@ export function undoDeadlineOf(input: {
   const remaining = input.deadline.getTime() - input.submittedAt.getTime();
   if (remaining <= 0) return null;
   const wanted = input.now.getTime() + remaining;
-  const capped = input.hardClose ? Math.min(wanted, input.closesAt.getTime()) : wanted;
+  // Cắt cứng: không vượt giờ đóng, nhưng cũng không thấp hơn hạn cũ (hạn cũ có thể đã vượt giờ đóng nhờ Cộng giờ, và
+  // trigger `attempts_guard` không cho rút ngắn hạn).
+  const capped = input.hardClose
+    ? Math.max(Math.min(wanted, input.closesAt.getTime()), input.deadline.getTime())
+    : wanted;
   return capped > input.now.getTime() ? new Date(capped) : null;
 }
 
