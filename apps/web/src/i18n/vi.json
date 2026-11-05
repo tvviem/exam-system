@@ -1217,6 +1217,11 @@
       "addNone": "Chọn câu để thêm",
       "full": "Bộ đề đã đủ 200 câu.",
       "tooMany": "Chỉ thêm được {{count}} câu nữa (tối đa 200 câu).",
+      "selectPage": "Chọn cả {{count}} câu trên trang này",
+      "chosen": "Đã chọn {{count}} câu",
+      "clear": "Bỏ chọn tất cả",
+      "keepHint": "Các câu đã chọn được giữ khi đổi trang hoặc bộ lọc.",
+      "shiftHint": "Mẹo: tick một câu rồi giữ Shift và tick câu khác để chọn cả dải ở giữa.",
       "tag": "Tag"
     },
     "collapse": "Thu gọn Phần",

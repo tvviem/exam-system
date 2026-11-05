@@ -1004,5 +1004,21 @@
     "roleTags": ["candidate"],
     "code": "XD-M-002",
     "classLabel": "LOP-XD-M"
+  },
+  {
+    "username": "e2e-cn-desktop",
+    "fullName": "Người ra đề Chọn nhiều (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-cn-mobile",
+    "fullName": "Người ra đề Chọn nhiều (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]
