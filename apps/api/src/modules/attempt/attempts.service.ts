@@ -23,6 +23,7 @@ import type { SubmitReason } from '../../common/session-attempts';
 import { type EntryGate, SESSION_ENTRY, type SessionEntry } from '../../common/session-entry';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import {
+  attemptReopenings,
   attempts,
   attemptTimeExtensions,
   responses,
@@ -45,7 +46,9 @@ const HEARTBEAT_CURSOR_OVERLAP_MS = 5000;
 
 export type Notice =
   | { id: string; kind: 'time_extended'; minutes: number; reason: string; at: string }
-  | { id: string; kind: 'warning'; reason: string; at: string };
+  | { id: string; kind: 'warning'; reason: string; at: string }
+  /** Người ra đề vừa Hoàn tác Buộc nộp: Lượt được mở lại (Q279). */
+  | { id: string; kind: 'reopened'; at: string };
 type AttemptRow = typeof attempts.$inferSelect;
 
 export interface ClientMeta {
@@ -265,7 +268,7 @@ export class AttemptsService {
   }
 
   private async noticesSince(attemptId: string, since: Date): Promise<Notice[]> {
-    const [extensions, warnings] = await Promise.all([
+    const [extensions, warnings, reopenings] = await Promise.all([
       this.db
         .select({
           id: attemptTimeExtensions.id,
@@ -287,6 +290,12 @@ export class AttemptsService {
             gt(violations.recordedAt, since),
           ),
         ),
+      this.db
+        .select({ id: attemptReopenings.id, at: attemptReopenings.reopenedAt })
+        .from(attemptReopenings)
+        .where(
+          and(eq(attemptReopenings.attemptId, attemptId), gt(attemptReopenings.reopenedAt, since)),
+        ),
     ]);
     const notices: (Notice & { time: number })[] = [
       ...extensions.map((row) => ({
@@ -294,6 +303,12 @@ export class AttemptsService {
         kind: 'time_extended' as const,
         minutes: row.minutes,
         reason: row.reason,
+        at: row.at.toISOString(),
+        time: row.at.getTime(),
+      })),
+      ...reopenings.map((row) => ({
+        id: row.id,
+        kind: 'reopened' as const,
         at: row.at.toISOString(),
         time: row.at.getTime(),
       })),

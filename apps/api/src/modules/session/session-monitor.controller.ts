@@ -39,6 +39,23 @@ export class SessionMonitorController {
     return this.monitor.forceSubmit(actor, sessionId, forceSubmitSchema.parse(body ?? {}));
   }
 
+  @Post('attempts/:attemptId/undo-force-submit')
+  @HttpCode(200)
+  undoOne(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Param('attemptId', ParseUUIDPipe) attemptId: string,
+    @CurrentActor() actor: Actor,
+  ) {
+    return this.monitor.undoForceSubmit(actor, sessionId, attemptId);
+  }
+
+  /** Hoàn tác mọi Lượt bị Buộc nộp trong 10 phút qua (Q278). */
+  @Post('undo-force-submit')
+  @HttpCode(200)
+  undoBatch(@Param('sessionId', ParseUUIDPipe) sessionId: string, @CurrentActor() actor: Actor) {
+    return this.monitor.undoForceSubmit(actor, sessionId, null);
+  }
+
   @Post('attempts/:attemptId/violations')
   recordViolation(
     @Param('sessionId', ParseUUIDPipe) sessionId: string,

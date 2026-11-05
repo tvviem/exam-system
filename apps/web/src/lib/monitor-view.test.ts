@@ -20,6 +20,7 @@ const person = (over: Partial<MonitorPerson> = {}): MonitorPerson => ({
   deadline: '2026-12-01T01:45:00.000Z',
   submittedAt: null,
   submitReason: null,
+  undoUntil: null,
   answered: 5,
   hiddenCount: 0,
   warnings: 0,

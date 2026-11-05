@@ -145,6 +145,38 @@ describe('vào phòng chỉ khi có quyền', () => {
   });
 });
 
+describe('Lượt bị Buộc nộp vẫn nhận tin đẩy để biết khi được Hoàn tác (Q279)', () => {
+  it('vào được phòng của Lượt bị Buộc nộp trong 15 phút; Lượt tự nộp thì không; Hoàn tác thì tin đẩy tới nơi', async () => {
+    await live.api('POST', `/sessions/${live.sessionId}/force-submit`, {
+      attemptIds: [live.attemptIds.an],
+    });
+    await live.takers.binh?.call('POST', `/take/attempts/${live.attemptIds.binh}/submit`);
+    const an = await candidate('an');
+    expect(await joinAttempt(an, 'an')).toEqual({ ok: true });
+    expect(await joinAttempt(await candidate('binh'), 'binh')).toEqual({ ok: false });
+
+    const got = waitFor(an, REALTIME_EVENT.attemptNudge);
+    const undone = await live.api(
+      'POST',
+      `/sessions/${live.sessionId}/attempts/${live.attemptIds.an}/undo-force-submit`,
+      {},
+    );
+    expect(undone.statusCode, undone.body).toBe(200);
+    const took = await got;
+    console.info(`Hoàn tác → Người dự thi nhận tin: ${took?.toFixed(0)} ms`);
+    expect(took, 'Người dự thi phải nhận được tin đẩy').not.toBeNull();
+    expect(took as number).toBeLessThan(1000);
+  });
+
+  it('quá 15 phút sau khi bị Buộc nộp thì không vào phòng nữa', async () => {
+    await live.api('POST', `/sessions/${live.sessionId}/force-submit`, {
+      attemptIds: [live.attemptIds.an],
+    });
+    t.clock.advance(15 * 60_000 + 1000);
+    expect(await joinAttempt(await candidate('an'), 'an')).toEqual({ ok: false });
+  });
+});
+
 describe('đẩy sớm cho Người dự thi (attempt.nudge)', () => {
   const extend = (names: string[]) =>
     live.api('POST', `/sessions/${live.sessionId}/extend-time`, {

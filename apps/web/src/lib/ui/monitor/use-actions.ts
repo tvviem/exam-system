@@ -10,6 +10,8 @@ import {
   recordViolation,
   revokeDevice,
   setEntryClosed,
+  undoForceSubmit,
+  undoForceSubmitAll,
 } from '../../monitor';
 import { useToast } from '../toast';
 
@@ -64,6 +66,32 @@ export function useMonitorActions(options: {
     },
     onError: fail,
   });
+  const undo = useMutation({
+    mutationFn: (userId: string) => {
+      const attemptId = byId.get(userId)?.attemptId;
+      if (!attemptId) throw new Error('Người này chưa có Lượt làm bài');
+      return undoForceSubmit(sessionId, attemptId);
+    },
+    onSuccess: () => done(t('monitor.toast.undone', { count: 1 })),
+    onError: (error) => {
+      fail(error);
+      // Quá hạn hay vừa có Lượt mới: số liệu cũ, tải lại để nút Hoàn tác biến mất đúng lúc.
+      void queryClient.invalidateQueries({ queryKey: monitorQueryKey(sessionId) });
+    },
+  });
+  const undoAll = useMutation({
+    mutationFn: () => undoForceSubmitAll(sessionId),
+    onSuccess: (result) =>
+      done(
+        result.skipped.length > 0
+          ? t('monitor.toast.undoneSome', {
+              count: result.reopened,
+              skipped: result.skipped.length,
+            })
+          : t('monitor.toast.undone', { count: result.reopened }),
+      ),
+    onError: fail,
+  });
   const violation = useMutation({
     mutationFn: (input: { userId: string; action: 'warning' | 'disqualify'; reason: string }) => {
       const attemptId = byId.get(input.userId)?.attemptId;
@@ -94,7 +122,7 @@ export function useMonitorActions(options: {
     onSuccess: () => done(t(entryClosed ? 'monitor.toast.reopened' : 'monitor.toast.closed')),
     onError: fail,
   });
-  return { extend, force, violation, revoke, pardon, entry };
+  return { extend, force, undo, undoAll, violation, revoke, pardon, entry };
 }
 
 export type MonitorActions = ReturnType<typeof useMonitorActions>;

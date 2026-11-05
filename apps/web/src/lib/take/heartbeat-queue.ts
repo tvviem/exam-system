@@ -11,7 +11,8 @@ export interface HeartbeatEvent {
 
 export type Notice =
   | { id: string; kind: 'time_extended'; minutes: number; reason: string; at: string }
-  | { id: string; kind: 'warning'; reason: string; at: string };
+  | { id: string; kind: 'warning'; reason: string; at: string }
+  | { id: string; kind: 'reopened'; at: string };
 
 export interface HeartbeatReply {
   status: 'in_progress' | 'submitted';

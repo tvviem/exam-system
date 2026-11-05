@@ -321,6 +321,14 @@ session_events (                          -- sự kiện bất thường (Q198, 
   -- Trigger session_events_guard: không sửa, không xóa. (`device_rejected` chưa có nơi ghi.)
 )
 
+attempt_reopenings (                      -- nhật ký Hoàn tác Buộc nộp (Q273–Q280, migration 0016), chỉ ghi thêm
+  id, attempt_id → attempts, reopened_by → users, reopened_at,
+  previous_submitted_at,                  -- lúc Lượt bị Buộc nộp; UNIQUE(attempt_id, previous_submitted_at): mỗi lần nộp hoàn tác một lần
+  new_deadline                            -- hạn mới của Lượt (undoDeadlineOf)
+  -- Trigger attempts_guard: Lượt đã nộp chỉ mở lại khi lý do cũ là 'examiner', trạng thái về in_progress với
+  --   submitted_at và submit_reason trống, hạn không rút ngắn, mọi cột khác giữ nguyên, và có dòng khớp lần nộp và hạn mới.
+)
+
 attempt_time_extensions (                 -- nhật ký Cộng giờ (Q254, Q256, Q262): một dòng mỗi Lượt được cộng
   id, attempt_id → attempts, minutes int CHECK (1..180), scope enum('one','group','all'),
   reason text CHECK (1..200 ký tự), batch_id uuid, extended_by → users, at,

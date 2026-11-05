@@ -1,8 +1,11 @@
-import { EXTEND_MINUTES_MAX, EXTEND_REASON_MAX } from '@exam/shared';
+import { EXTEND_MINUTES_MAX, EXTEND_REASON_MAX, UNDO_FORCE_SUBMIT_WINDOW_MS } from '@exam/shared';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { confirmMatches, confirmPhraseOf } from '../../force-confirm';
+import type { MonitorPerson } from '../../monitor';
 import { newId } from '../../uuid';
 import { Button, Dialog, TextField } from '..';
+import { clockText, ProgressBar, Remaining } from './parts';
 
 // Hộp thoại của các thao tác nặng: luôn nêu số người bị ảnh hưởng, đòi lý do khi cần (Q254, Q256, Q259, Q260).
 
@@ -160,6 +163,129 @@ export function ReasonDialog({
           onClick={() => onConfirm(reason.trim())}
         >
           {confirmLabel}
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
+/**
+ * Buộc nộp (Q277): tầng bảo vệ thứ nhất. Nêu rõ ai (tên, Mã định danh, Lớp), họ đang làm tới đâu (đã trả lời, còn bao lâu) và
+ * chỉ cho bấm khi Người ra đề đã gõ lại Mã định danh (một người) hay số người (nhóm, cả phòng). Hoàn tác được trong 10 phút.
+ */
+export function ForceDialog({
+  people,
+  scope,
+  scopeLabel,
+  totalItems,
+  busy,
+  onConfirm,
+  onClose,
+}: {
+  people: MonitorPerson[];
+  scope: 'one' | 'group' | 'all';
+  scopeLabel: string;
+  totalItems: number;
+  busy: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [typed, setTyped] = useState('');
+  const phrase = confirmPhraseOf(people, scope);
+  const ok = people.length > 0 && confirmMatches(typed, phrase);
+  const [only] = people;
+  const undoMinutes = Math.round(UNDO_FORCE_SUBMIT_WINDOW_MS / 60_000);
+  return (
+    <Dialog open onClose={onClose} title={t('monitor.force.title')}>
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (ok && !busy) onConfirm();
+        }}
+      >
+        {scope === 'one' && only ? (
+          <div className="rounded-lg border border-border bg-bg p-3">
+            <p className="font-semibold">{only.fullName}</p>
+            <p className="text-sm text-fg-muted">
+              {[only.code, only.classLabel].filter(Boolean).join(' · ')}
+            </p>
+            <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <dt className="text-fg-muted">{t('monitor.col.answered')}</dt>
+                <dd>
+                  <ProgressBar value={only.answered} max={totalItems} />
+                </dd>
+              </div>
+              <div>
+                <dt className="text-fg-muted">{t('monitor.col.remaining')}</dt>
+                <dd>
+                  <Remaining person={only} />
+                </dd>
+              </div>
+            </dl>
+          </div>
+        ) : (
+          <p className="text-sm">
+            {t('monitor.force.many', { scope: scopeLabel, count: people.length })}
+          </p>
+        )}
+        <p className="text-sm text-fg-muted">{t('monitor.force.body', { minutes: undoMinutes })}</p>
+        <TextField
+          id="force-confirm"
+          autoFocus
+          label={t('monitor.force.typeLabel', { phrase })}
+          value={typed}
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          onChange={(event) => setTyped(event.target.value)}
+        />
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" variant="danger" disabled={!ok || busy}>
+            {t('monitor.force.confirm', { count: people.length })}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+/** Hoàn tác Buộc nộp (Q278): xác nhận nhẹ, nêu số người và thời gian còn lại; không phải gõ lại. */
+export function UndoDialog({
+  people,
+  secondsLeft,
+  busy,
+  onConfirm,
+  onClose,
+}: {
+  people: MonitorPerson[];
+  /** Giây còn lại của người hết hạn sớm nhất. */
+  secondsLeft: number | null;
+  busy: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [only] = people;
+  return (
+    <Dialog open onClose={onClose} title={t('monitor.undo.title')}>
+      <div className="text-sm text-fg-muted">
+        {people.length === 1 && only
+          ? t('monitor.undo.bodyOne', { name: only.fullName })
+          : t('monitor.undo.bodyMany', { count: people.length })}{' '}
+        {secondsLeft !== null && t('monitor.undo.left', { time: clockText(secondsLeft) })}
+      </div>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
+        <Button
+          variant="primary"
+          disabled={busy || people.length === 0 || secondsLeft === 0}
+          onClick={onConfirm}
+        >
+          {t('monitor.undo.confirm', { count: people.length })}
         </Button>
       </div>
     </Dialog>

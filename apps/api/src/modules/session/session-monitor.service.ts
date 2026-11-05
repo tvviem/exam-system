@@ -5,6 +5,9 @@ import {
   extensionScopeOf,
   type ForceSubmitRequest,
   monitorStateOf,
+  undoDeadlineOf,
+  undoProblemOf,
+  undoUntilOf,
   type ViolationRequest,
 } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
@@ -73,6 +76,7 @@ export class SessionMonitorService {
       submitted: 0,
       suspended: 0,
       attention: 0,
+      undoable: 0,
     };
     const counter = {
       not_started: 'notStarted',
@@ -104,6 +108,29 @@ export class SessionMonitorService {
           })
         : [];
       const state = monitorStateOf(attempt ?? null, now);
+      // Còn hoàn tác Buộc nộp được đến lúc nào (Q278); Lượt mới nhất của người này là Lượt bị nộp nên không có Lượt mới hơn.
+      // Chỉ mời hoàn tác khi thật sự mở lại được: đủ điều kiện (Q276) và còn thời gian làm (Cắt cứng đã hết giờ thì không).
+      const undoUntil =
+        attempt?.submittedAt &&
+        undoProblemOf({
+          status: attempt.status,
+          submitReason: attempt.submitReason,
+          submittedAt: attempt.submittedAt,
+          deadline: attempt.deadline,
+          now,
+          sessionCancelled: session.cancelledAt !== null,
+          hasNewerAttempt: false,
+        }) === null &&
+        undoDeadlineOf({
+          submittedAt: attempt.submittedAt,
+          deadline: attempt.deadline,
+          now,
+          hardClose: session.hardClose,
+          closesAt: session.closesAt,
+        }) !== null
+          ? undoUntilOf(attempt.submittedAt)
+          : null;
+      if (undoUntil) summary.undoable += 1;
       summary.total += 1;
       summary[counter[state]] += 1;
       if (reasons.length > 0) summary.attention += 1;
@@ -119,6 +146,7 @@ export class SessionMonitorService {
         deadline: attempt?.deadline ?? null,
         submittedAt: attempt?.submittedAt ?? null,
         submitReason: attempt?.submitReason ?? null,
+        undoUntil,
         answered: attempt?.answered ?? 0,
         hiddenCount: attempt?.hiddenCount ?? 0,
         warnings: attempt?.warnings ?? 0,
@@ -198,6 +226,46 @@ export class SessionMonitorService {
     });
     this.realtime.affected(sessionId, touched);
     return result;
+  }
+
+  /**
+   * Hoàn tác Buộc nộp (Q273–Q280). Một Lượt (`attemptId`): lỗi `409 INVALID_STATE` kèm lý do nếu không mở lại được. Không nêu
+   * `attemptId`: mở lại mọi Lượt bị Buộc nộp trong 10 phút qua, Lượt không đủ điều kiện được báo ở `skipped`.
+   */
+  async undoForceSubmit(actor: Actor, sessionId: string, attemptId: string | null) {
+    const { result, touched } = await this.db.transaction(async (tx) => {
+      // Khóa Phiên thi `FOR UPDATE`: Bắt đầu Lượt (giữ `FOR SHARE`) chờ, nên hoàn tác và Lượt mới nối đuôi nhau.
+      const session = await lockOwnedSession(tx, actor.id, sessionId);
+      const result = await this.attempts.undoForceSubmit(tx, {
+        sessionId,
+        attemptIds: attemptId ? [attemptId] : null,
+        by: actor.id,
+        now: this.clock.now(),
+        hardClose: session.hardClose,
+        closesAt: session.closesAt,
+        sessionCancelled: session.cancelledAt !== null,
+      });
+      const refused = attemptId ? result.skipped[0] : undefined;
+      if (refused) throw new ApiError('INVALID_STATE', { reason: refused.problem });
+      const ids = result.reopened.map((item) => item.attemptId);
+      if (ids.length > 0) {
+        await this.audit.record(
+          {
+            actor,
+            action: 'session.force_submit_undone',
+            entityType: 'session',
+            entityId: sessionId,
+            after: { scope: attemptId ? 'one' : 'batch', attemptIds: ids },
+          },
+          tx,
+        );
+      }
+      return { result, touched: ids };
+    });
+    this.realtime.affected(sessionId, touched);
+    return attemptId
+      ? { attemptId, deadline: result.reopened[0]?.deadline }
+      : { reopened: result.reopened.length, skipped: result.skipped };
   }
 
   /** Cảnh cáo (vẫn làm tiếp) hoặc Đình chỉ (nộp ngay) một Lượt đang làm, bắt buộc lý do (Q259). */

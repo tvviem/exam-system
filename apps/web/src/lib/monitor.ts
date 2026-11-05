@@ -23,6 +23,8 @@ export interface MonitorPerson {
   deadline: string | null;
   submittedAt: string | null;
   submitReason: string | null;
+  /** Còn Hoàn tác Buộc nộp được đến lúc này (Q278); `null` nếu không hoàn tác được. */
+  undoUntil: string | null;
   answered: number;
   hiddenCount: number;
   warnings: number;
@@ -44,6 +46,8 @@ export interface MonitorSnapshot {
     submitted: number;
     suspended: number;
     attention: number;
+    /** Số Lượt đang Hoàn tác Buộc nộp được. */
+    undoable: number;
   };
   people: MonitorPerson[];
 }
@@ -81,6 +85,20 @@ export const forceSubmit = (sessionId: string, body: { attemptIds: string[] } | 
     method: 'POST',
     body,
   });
+
+/** Hoàn tác Buộc nộp một Lượt; lỗi `409 INVALID_STATE` mang `reason` (Q276). */
+export const undoForceSubmit = (sessionId: string, attemptId: string) =>
+  apiFetch<{ attemptId: string; deadline: string }>(
+    `/sessions/${sessionId}/attempts/${attemptId}/undo-force-submit`,
+    { method: 'POST', body: {} },
+  );
+
+/** Hoàn tác mọi Lượt bị Buộc nộp trong 10 phút qua (Q278). */
+export const undoForceSubmitAll = (sessionId: string) =>
+  apiFetch<{ reopened: number; skipped: { attemptId: string; problem: string }[] }>(
+    `/sessions/${sessionId}/undo-force-submit`,
+    { method: 'POST', body: {} },
+  );
 
 export const recordViolation = (sessionId: string, attemptId: string, body: ViolationRequest) =>
   apiFetch<{ id: string }>(`/sessions/${sessionId}/attempts/${attemptId}/violations`, {

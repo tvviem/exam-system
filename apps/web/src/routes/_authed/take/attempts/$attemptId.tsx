@@ -41,8 +41,10 @@ function AttemptPage() {
   if (attempt.data.status === 'submitted') {
     return (
       <SubmittedScreen
+        attemptId={attemptId}
         submittedAt={attempt.data.attempt.submittedAt}
         reason={attempt.data.attempt.submitReason}
+        serverNow={attempt.data.attempt.serverNow}
         lostAnswers={attempt.data.lostAnswers}
       />
     );

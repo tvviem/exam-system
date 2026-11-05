@@ -24,7 +24,7 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
 - Tổ chức Phiên thi.
   - Thiết lập: Khung giờ, Thời lượng, Mã vào thi, số lượt làm bài, xáo trộn câu và phương án.
   - Lập Danh sách dự thi: tìm theo Lớp hoặc từng người.
-- Theo dõi phòng thi trực tiếp (đã xong, lát cắt 4): Cộng giờ, Buộc nộp, Thu hồi thiết bị cho đổi máy, Cảnh cáo, Đình chỉ, Đóng cửa vào thi; số liệu cập nhật qua Socket.IO.
+- Theo dõi phòng thi trực tiếp (đã xong, lát cắt 4): Cộng giờ, Buộc nộp, Thu hồi thiết bị cho đổi máy, Cảnh cáo, Đình chỉ, Đóng cửa vào thi; số liệu cập nhật qua Socket.IO. Buộc nộp phải gõ lại Mã định danh (một người) hay số người (nhóm, cả phòng) mới bấm được; bấm nhầm thì **Hoàn tác Buộc nộp** trong 10 phút, Người dự thi tự về đề với các câu đã lưu còn nguyên.
 - *Chưa làm (lát cắt 5):* chấm Câu tự luận theo từng câu (có thể ẩn tên), Công bố kết quả, xử lý Phúc khảo, Đính chính đáp án, xuất Kết quả ra Excel.
 
 **Người dự thi**

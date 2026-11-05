@@ -20,6 +20,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { undoSecondsLeft } from '../../force-confirm';
 import type { MonitorPerson } from '../../monitor';
 import { type Counts, remainingSecondsAt } from '../../monitor-view';
 import { warningOf } from '../../take/clock';
@@ -91,6 +92,13 @@ export function useRemaining(person: MonitorPerson): number | null {
   useSecond();
   if (person.state === 'submitted' || person.state === 'suspended') return null;
   return remainingSecondsAt(person.deadline, serverNow, performance.now() - receivedAt);
+}
+
+/** Giây còn lại của cửa sổ Hoàn tác Buộc nộp theo ảnh chụp mới nhất (trôi mỗi giây); `null` nếu không có. */
+export function useUndoLeft(undoUntil: string | null): number | null {
+  const { serverNow, receivedAt } = useContext(SnapshotClock);
+  useSecond();
+  return undoSecondsLeft(undoUntil, serverNow, performance.now() - receivedAt);
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
