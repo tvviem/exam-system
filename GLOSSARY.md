@@ -203,6 +203,10 @@ _Avoid_: gia hạn, kéo dài Phiên thi (kéo dài Khung giờ hoặc Thời l�
 Hành động của Người ra đề kết thúc ngay một Lượt làm bài, một nhóm Lượt đã chọn, hoặc mọi Lượt đang làm của cả Phiên thi. Các Câu trả lời đã lưu được giữ và Chấm như bình thường. Khác Đình chỉ ở chỗ không kèm Vi phạm.
 _Avoid_: thu bài, ép nộp
 
+**Hoàn tác Buộc nộp** (`UndoForceSubmit`):
+Hành động của Người ra đề mở lại một Lượt vừa bị Buộc nộp nhầm, trong 10 phút kể từ lúc bị nộp. Lượt trở lại đang làm với các Câu trả lời đã lưu và hạn mới bằng phần thời gian còn lại lúc bị nộp, tính từ lúc hoàn tác. Chỉ áp dụng cho Lượt bị Buộc nộp (không cho Đình chỉ, hết giờ, Người dự thi tự nộp hay Hủy Phiên thi); không làm được khi người đó đã bắt đầu Lượt mới, khi Phiên thi đã Hủy, hay khi Lượt đã được Chấm.
+_Avoid_: khôi phục bài, mở lại bài
+
 **Hủy Phiên thi** (`Cancel`):
 Hành động của Người ra đề dừng hẳn một Phiên thi, thường vì đề sai hoặc lộ đề: mọi Lượt đang làm được nộp ngay, không ai vào thi được nữa, không tính Kết quả nhưng vẫn xem lại được, và Người dự thi được thông báo. Không hoàn tác. Muốn thi lại thì tạo Phiên thi mới (cần sửa đề thì Nhân bản Bộ đề, Phát hành bản mới trước). Phiên thi đã có Lượt làm bài thì chỉ Hủy, không Xóa.
 _Avoid_: hủy kỳ thi
@@ -224,7 +228,7 @@ Nội dung Người dự thi chọn hoặc viết cho một Câu hỏi trong Lư
 _Avoid_: đáp án, answer
 
 **Nộp bài** (`Submit`):
-Kết thúc Lượt làm bài, do Người dự thi chủ động hoặc hệ thống tự động khi hết thời gian. Người ra đề cũng có thể kết thúc Lượt bằng Buộc nộp, Đình chỉ hoặc Hủy Phiên thi. Sau khi Nộp bài, Câu trả lời không còn sửa được.
+Kết thúc Lượt làm bài, do Người dự thi chủ động hoặc hệ thống tự động khi hết thời gian. Người ra đề cũng có thể kết thúc Lượt bằng Buộc nộp, Đình chỉ hoặc Hủy Phiên thi. Sau khi Nộp bài, Câu trả lời không còn sửa được (trừ Lượt bị Buộc nộp nhầm và được Hoàn tác Buộc nộp trong 10 phút).
 _Avoid_: hoàn thành, finish
 
 **Cần chú ý** (`NeedsAttention`):

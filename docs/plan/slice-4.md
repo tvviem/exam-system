@@ -795,3 +795,25 @@ Làm đúng "PR 4e: thiết kế chi tiết (đã duyệt 4/11/2026)"; không mi
 
 
 **Sau 4e (4/11/2026, theo lệnh "làm nốt các việc còn lại"):** migration `0015_violations_session_user_idx`; đo 500 người (xem trên); khoảng trải của tin đẩy; kiểm Socket.IO qua nginx của `infra/`; ngưỡng "Người dự thi thấy Cộng giờ" của script đặt 3 giây (Q266 chỉ đòi tin đẩy tới dưới 1 giây, đạt 127 ms).
+
+## Hoàn tác Buộc nộp: thiết kế chi tiết (đã duyệt 5/11/2026)
+
+Chủ dự án hỏi Buộc nộp nhầm một Người dự thi thì sao, và chọn kết hợp cách B (khó bấm nhầm) với cách A (cứu được khi lỡ): "kịch bản xuyên từ B qua A". Đồng ý Q273–Q280 và yêu cầu khi test quan tâm tới tính chính xác dữ liệu và thời gian đáp ứng giao diện.
+
+| # | Quyết định |
+|---|---|
+| Q273 | Chỉ hoàn tác **Lượt bị Buộc nộp** (lý do `examiner`). Không hoàn tác Đình chỉ, hết giờ, Người dự thi tự nộp, Hủy Phiên thi |
+| Q274 | Cửa sổ hoàn tác **10 phút** kể từ lúc bị nộp (hằng số `UNDO_FORCE_SUBMIT_WINDOW_MS`) |
+| Q275 | Hạn mới = lúc hoàn tác + (hạn cũ − lúc bị nộp). Phiên thi Cắt cứng thì không vượt giờ đóng. Lượt đã quá hạn lúc bị nộp thì không hoàn tác |
+| Q276 | Từ chối (`409`, mã lý do riêng): người đó đã bắt đầu Lượt mới (`NEW_ATTEMPT_STARTED`); Phiên thi đã Hủy (`SESSION_CANCELLED`); quá 10 phút (`UNDO_WINDOW_PASSED`); Lượt không phải bị Buộc nộp (`NOT_FORCE_SUBMITTED`); hết giờ lúc bị nộp (`ATTEMPT_EXPIRED`); khi lát cắt 5 bắt đầu Chấm thì chặn luôn |
+| Q277 | **Tầng B:** hộp Buộc nộp nêu tên, Mã định danh, Lớp, tiến độ (đã trả lời x/y) và thời gian còn lại; nút Buộc nộp khóa tới khi gõ lại đúng Mã định danh (không có mã: họ tên) với một người, hoặc gõ lại số người với nhóm và cả phòng; hộp ghi rõ "hoàn tác được trong 10 phút" |
+| Q278 | **Tầng A:** nút Hoàn tác Buộc nộp kèm đếm lùi ở ngăn chi tiết người đó và ở dải "Bị Buộc nộp"; nút "Hoàn tác tất cả Buộc nộp trong 10 phút qua (N người)" có hộp xác nhận nêu số người (không gõ lại) |
+| Q279 | Người dự thi: màn "Đã nộp" vì Buộc nộp tiếp tục hỏi lại heartbeat mỗi 15 giây trong 15 phút; khi Lượt được mở lại thì tự về đề, dải "Người ra đề đã mở lại bài của bạn"; Câu chưa kịp gửi lúc bị nộp mất. Các lý do nộp khác vẫn dừng hẳn |
+| Q280 | Thuật ngữ **Hoàn tác Buộc nộp** (`UndoForceSubmit`) vào GLOSSARY; sửa mục Nộp bài |
+
+**Kỹ thuật:** migration 0016: bảng chỉ ghi thêm `attempt_reopenings` (Lượt, người làm, lúc, lúc bị nộp trước đó, hạn mới); trigger `attempts_guard` cho đúng một đường `submitted` → `in_progress` (lý do cũ `examiner`, có dòng `attempt_reopenings` cùng giao dịch, hạn mới tính đúng). API `POST /sessions/:id/attempts/:attemptId/undo-force-submit` và `POST /sessions/:id/undo-force-submit` (lô, cho mọi Lượt bị Buộc nộp trong cửa sổ). Nhật ký `session.force_submit_undone`. Tin đẩy báo Lượt và màn Theo dõi. `monitor` trả thêm `undoUntil` mỗi người và tổng số có thể hoàn tác.
+
+**Seam test:** S1 hàm thuần (hạn mới có Cắt cứng, cửa sổ); S2 HTTP + PostgreSQL (hoàn tác giữ nguyên Câu trả lời và số liệu, đúng hạn mới, mọi lý do từ chối, quyền 404/403, nhật ký); S3 trigger (SQL trực tiếp không mở lại được trừ đường hợp lệ); S4 đồng thời (hoàn tác xen `start` Lượt mới, hoàn tác hai lần, hoàn tác xen Người dự thi tự nộp); S6 Playwright (gõ lại xác nhận, hoàn tác, Người dự thi về đề).
+
+**Ngân sách thời gian:** hoàn tác một người dưới 300 ms, lô 100 người dưới 500 ms; Người dự thi thấy được mở lại trong dưới 1 giây qua tin đẩy; hộp xác nhận mở dưới 200 ms; kiểm tra gõ lại tức thì (phía trình duyệt).
+
