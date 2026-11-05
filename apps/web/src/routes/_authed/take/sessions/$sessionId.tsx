@@ -35,7 +35,15 @@ function ConfirmPage() {
   });
 
   const waiting = session?.phase === 'upcoming' && session.waitingRoom;
-  const remaining = useWaitingRoom(sessionId, session?.opensAt ?? '', waiting === true);
+  const remaining = useWaitingRoom(
+    sessionId,
+    session?.opensAt ?? '',
+    // Vẫn báo có mặt khi Phiên thi đã mở mà chưa bấm bắt đầu, để Người ra đề không thấy "mất kết nối" oan.
+    session !== undefined &&
+      session.deviceStatus === 'active' &&
+      session.inProgressAttemptId === null &&
+      (waiting === true || session.phase === 'open'),
+  );
   // Đã từng ở Phòng chờ rồi Phiên thi mở: báo một dòng, nút "Bắt đầu làm bài" tự bật (không tự bắt đầu).
   const wasWaiting = useRef(false);
   useEffect(() => {

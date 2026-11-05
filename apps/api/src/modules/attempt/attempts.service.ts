@@ -168,9 +168,12 @@ export class AttemptsService {
     if (deviceProblem(rows, deviceKey) !== null) throw invalidState('NOT_JOINED');
     const phase = phaseOf(gate, now);
     if (phase === 'cancelled') throw invalidState('SESSION_CANCELLED');
-    const first = (await this.presence.waitingLastSeen(sessionId)).get(userId) === undefined;
-    await this.presence.touchWaiting(sessionId, userId, now);
-    if (first) this.realtime.sessionChanged(sessionId);
+    // Chỉ Phiên thi sắp mở hoặc đang mở mới có Phòng chờ; đã đóng cửa vào thi thì không ghi nhịp nữa.
+    if (phase !== 'upcoming' && phase !== 'open')
+      throw invalidState(entryProblem(phase, false) ?? 'ENTRY_CLOSED');
+    if (await this.presence.touchWaiting(sessionId, userId, now)) {
+      this.realtime.sessionChanged(sessionId);
+    }
     return {
       serverNow: now.toISOString(),
       opensAt: gate.opensAt.toISOString(),
@@ -398,6 +401,10 @@ export class AttemptsService {
       items: gates.map((gate) => {
         const own = mine.filter((attempt) => attempt.sessionId === gate.sessionId);
         const summary = summaries.get(gate.examId);
+        const deviceStatus = deviceStatusOf(
+          devices.filter((device) => device.sessionId === gate.sessionId),
+          hash,
+        );
         return {
           sessionId: gate.sessionId,
           title: gate.title,
@@ -410,19 +417,8 @@ export class AttemptsService {
           maxAttempts: gate.maxAttempts,
           attemptsUsed: own.length,
           inProgressAttemptId: own.find((attempt) => attempt.status === 'in_progress')?.id ?? null,
-          deviceStatus: deviceStatusOf(
-            devices.filter((device) => device.sessionId === gate.sessionId),
-            hash,
-          ),
-          ...waitingFlags(
-            phaseOf(gate, now),
-            gate.opensAt,
-            now,
-            deviceStatusOf(
-              devices.filter((device) => device.sessionId === gate.sessionId),
-              hash,
-            ),
-          ),
+          deviceStatus,
+          ...waitingFlags(phaseOf(gate, now), gate.opensAt, now, deviceStatus),
         };
       }),
     };
@@ -739,10 +735,6 @@ export class AttemptsService {
   }
 }
 
-/**
- * Thiết bị này với Phiên thi: `active` (đã vào, dùng được), `revoked` (đã bị thu hồi), `other` (người này đang dùng thiết bị khác),
- * `none` (chưa có thiết bị nào đang gắn, cần nhập Mã vào thi).
- */
 /** `canWait`: đã tới cửa sổ Phòng chờ (nhập mã được); `waitingRoom`: đã nhập mã trên thiết bị này và đang chờ giờ mở. */
 function waitingFlags(
   phase: SessionPhase,
@@ -754,6 +746,10 @@ function waitingFlags(
   return { canWait, waitingRoom: canWait && device === 'active' };
 }
 
+/**
+ * Thiết bị này với Phiên thi: `active` (đã vào, dùng được), `revoked` (đã bị thu hồi), `other` (người này đang dùng thiết bị khác),
+ * `none` (chưa có thiết bị nào đang gắn, cần nhập Mã vào thi).
+ */
 function deviceStatusOf(
   rows: { status: 'active' | 'revoked'; deviceHash: string }[],
   hash: string | undefined,

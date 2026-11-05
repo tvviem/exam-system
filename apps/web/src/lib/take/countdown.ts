@@ -12,7 +12,7 @@ export const serverNowOf = (clock: ServerClock, perfNow: number): number =>
 
 /** Còn bao lâu tới giờ mở (mili giây, không âm). */
 export const remainingMs = (opensAtMs: number, nowMs: number): number =>
-  Math.max(0, opensAtMs - nowMs);
+  Number.isFinite(opensAtMs - nowMs) ? Math.max(0, opensAtMs - nowMs) : 0;
 
 /** "29:05" hoặc "1:02:03"; làm tròn lên giây để không hiện 00:00 khi còn chưa tới giờ. */
 export function formatCountdown(ms: number): string {

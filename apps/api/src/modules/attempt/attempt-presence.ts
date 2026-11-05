@@ -61,16 +61,19 @@ export class AttemptPresence {
   }
 
   /** Ghi nhịp của Phòng chờ. Redis lỗi thì bỏ qua (chỉ mất trạng thái trực tuyến, ADR-0002). */
-  async touchWaiting(sessionId: string, userId: string, now: Date): Promise<void> {
+  async touchWaiting(sessionId: string, userId: string, now: Date): Promise<boolean> {
     const key = this.waitingKey(sessionId);
     try {
-      await this.redis
+      const replies = await this.redis
         .multi()
         .hset(key, userId, String(now.getTime()))
         .pexpire(key, PRESENCE_TTL_MS)
         .exec();
+      // HSET trả 1 khi trường mới: lần đầu người này báo có mặt (không phải đọc cả bảng).
+      return replies?.[0]?.[1] === 1;
     } catch (error) {
       log.warn(`Không ghi được nhịp Phòng chờ: ${String(error)}`);
+      return false;
     }
   }
 

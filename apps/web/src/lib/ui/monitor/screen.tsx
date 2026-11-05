@@ -283,7 +283,7 @@ function MonitorBody({
               joined: people.filter((p) => p.state !== 'not_started' || p.waiting !== 'none')
                 .length,
               total: people.length,
-              online: data.summary.waitingOnline,
+              online: people.filter((p) => p.waiting === 'online').length,
             })}
           </p>
         )}

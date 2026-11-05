@@ -1,6 +1,7 @@
-import { WAITING_PING_MS } from '@exam/shared';
+import { type SessionPhase, WAITING_PING_MS } from '@exam/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { ApiError } from '../api';
 import { takeSessionsQuery, waitingPing } from '../take';
 import { remainingMs, type ServerClock, serverNowOf } from './countdown';
 
@@ -19,6 +20,7 @@ export function useWaitingRoom(sessionId: string, opensAt: string, active: boole
   useEffect(() => {
     if (!active) return;
     let stopped = false;
+    let lastPhase: SessionPhase = 'upcoming';
     const refresh = () =>
       void queryClient.invalidateQueries({ queryKey: takeSessionsQuery.queryKey });
     const ping = async () => {
@@ -27,10 +29,14 @@ export function useWaitingRoom(sessionId: string, opensAt: string, active: boole
         if (stopped) return;
         clock.current = { serverNowMs: Date.parse(reply.serverNow), receivedAt: performance.now() };
         setOpensAtMs(Date.parse(reply.opensAt));
-        if (reply.canStart || reply.phase !== 'upcoming') refresh();
-      } catch {
-        // Mất mạng thoáng qua: nhịp sau thử lại. Lỗi trạng thái (thu hồi thiết bị, hủy) thì danh sách báo đúng khi tải lại.
-        if (!stopped) refresh();
+        // Chỉ tải lại danh sách ngay lúc Phiên thi chuyển từ sắp mở sang mở (hoặc đổi trạng thái khác).
+        if (reply.phase !== lastPhase) {
+          lastPhase = reply.phase;
+          refresh();
+        }
+      } catch (error) {
+        // Mất mạng thoáng qua: nhịp sau thử lại, không tải lại danh sách. Server từ chối (thu hồi thiết bị, hủy, đóng) thì danh sách báo đúng.
+        if (!stopped && error instanceof ApiError) refresh();
       }
     };
     void ping();
