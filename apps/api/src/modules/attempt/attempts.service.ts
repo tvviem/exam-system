@@ -37,6 +37,7 @@ import { buildAttemptSections, layoutInputOf, type SavedResponse } from './attem
 import { generateDeviceKey, hashDeviceKey } from './device-key';
 import { deviceProblem } from './device-problem';
 import { JoinRateLimiter } from './join-rate-limiter';
+import { HEARTBEAT_LIMIT, RequestRateLimiter, SAVE_LIMIT } from './request-rate-limiter';
 
 type Executor = Database | Transaction;
 
@@ -101,6 +102,7 @@ export class AttemptsService {
     @Inject(SESSION_ENTRY) private readonly entry: SessionEntry,
     @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
     private readonly joinLimiter: JoinRateLimiter,
+    private readonly requestLimiter: RequestRateLimiter,
     private readonly presence: AttemptPresence,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
@@ -197,6 +199,7 @@ export class AttemptsService {
     attemptId: string,
     request: HeartbeatRequest,
   ) {
+    await this.requestLimiter.hit('heartbeat', userId, HEARTBEAT_LIMIT);
     let attempt = await this.ownAttempt(this.db, userId, attemptId);
     const now = this.clock.now();
     // Mốc cho nhịp sau lùi 5 giây: giao dịch Cộng giờ chưa kịp xác nhận lúc này vẫn được thấy ở nhịp sau (trình duyệt bỏ trùng theo id).
@@ -527,6 +530,7 @@ export class AttemptsService {
     attemptId: string,
     input: SaveItemInput[],
   ) {
+    await this.requestLimiter.hit('save', userId, SAVE_LIMIT);
     const first = await this.ownAttempt(this.db, userId, attemptId);
     const now = this.clock.now();
     if (first.status === 'submitted') throw invalidState('ATTEMPT_CLOSED');
