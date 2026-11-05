@@ -80,7 +80,18 @@ export class AttemptsController {
       path: '/',
       maxAge: DEVICE_COOKIE_MAX_AGE_SECONDS,
     });
-    return { sessionId: result.sessionId, attemptId: result.attemptId };
+    return { sessionId: result.sessionId, attemptId: result.attemptId, waiting: result.waiting };
+  }
+
+  /** Nhịp của Phòng chờ (Q284): báo còn trực tuyến, nhận giờ server và giờ mở để đếm ngược. */
+  @Post('sessions/:id/waiting')
+  @HttpCode(200)
+  waiting(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: FastifyRequest,
+  ) {
+    return this.attempts.waiting(user.id, deviceKeyOf(req), id);
   }
 
   @Post('sessions/:id/start')

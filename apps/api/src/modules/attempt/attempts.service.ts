@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import {
+  canEnterWaitingRoom,
   deadlineOf,
   HARD_CLOSE_MIN_SECONDS,
   type HeartbeatRequest,
@@ -37,7 +38,12 @@ import { buildAttemptSections, layoutInputOf, type SavedResponse } from './attem
 import { generateDeviceKey, hashDeviceKey } from './device-key';
 import { deviceProblem } from './device-problem';
 import { JoinRateLimiter } from './join-rate-limiter';
-import { HEARTBEAT_LIMIT, RequestRateLimiter, SAVE_LIMIT } from './request-rate-limiter';
+import {
+  HEARTBEAT_LIMIT,
+  RequestRateLimiter,
+  SAVE_LIMIT,
+  WAITING_LIMIT,
+} from './request-rate-limiter';
 
 type Executor = Database | Transaction;
 
@@ -122,14 +128,55 @@ export class AttemptsService {
     const now = this.clock.now();
     const gate = pickGate(gates, now);
     const running = await this.inProgressOf(this.db, gate.sessionId, userId);
-    const problem = entryProblem(phaseOf(gate, now), running !== undefined);
+    const phase = phaseOf(gate, now);
+    // Trước giờ mở: trong 30 phút cuối thì vào Phòng chờ (Q284), sớm hơn thì báo giờ mở để quay lại sau.
+    const waiting = canEnterWaitingRoom(phase, gate.opensAt, now);
+    if (phase === 'upcoming' && !waiting) {
+      throw new ApiError('INVALID_STATE', {
+        reason: 'NOT_OPEN_YET',
+        opensAt: gate.opensAt.toISOString(),
+      });
+    }
+    const problem = waiting ? null : entryProblem(phase, running !== undefined);
     if (problem) throw invalidState(problem);
     await this.joinLimiter.clear(userId);
 
     const key = deviceKey ?? generateDeviceKey();
     await this.bindDevice(this.db, gate.sessionId, userId, hashDeviceKey(key), meta);
     this.realtime.sessionChanged(gate.sessionId);
-    return { deviceKey: key, sessionId: gate.sessionId, attemptId: running?.id ?? null };
+    return {
+      deviceKey: key,
+      sessionId: gate.sessionId,
+      attemptId: running?.id ?? null,
+      waiting,
+    };
+  }
+
+  /**
+   * Nhịp của Phòng chờ (Q284): báo còn trực tuyến, trả giờ server và giờ mở để màn chờ đếm ngược chính xác, và `canStart`
+   * khi Phiên thi đã mở. Chỉ cho người trong Danh sách, trên thiết bị đang gắn.
+   */
+  async waiting(userId: string, deviceKey: string | undefined, sessionId: string) {
+    await this.requestLimiter.hit('waiting', userId, WAITING_LIMIT);
+    const gate = await this.entry.gateFor(sessionId, userId);
+    if (!gate) throw new ApiError('NOT_FOUND');
+    const now = this.clock.now();
+    const rows = await this.db
+      .select({ status: sessionDevices.status, deviceHash: sessionDevices.deviceHash })
+      .from(sessionDevices)
+      .where(and(eq(sessionDevices.sessionId, sessionId), eq(sessionDevices.userId, userId)));
+    if (deviceProblem(rows, deviceKey) !== null) throw invalidState('NOT_JOINED');
+    const phase = phaseOf(gate, now);
+    if (phase === 'cancelled') throw invalidState('SESSION_CANCELLED');
+    const first = (await this.presence.waitingLastSeen(sessionId)).get(userId) === undefined;
+    await this.presence.touchWaiting(sessionId, userId, now);
+    if (first) this.realtime.sessionChanged(sessionId);
+    return {
+      serverNow: now.toISOString(),
+      opensAt: gate.opensAt.toISOString(),
+      phase,
+      canStart: phase === 'open',
+    };
   }
 
   private async bindDevice(
@@ -366,6 +413,15 @@ export class AttemptsService {
           deviceStatus: deviceStatusOf(
             devices.filter((device) => device.sessionId === gate.sessionId),
             hash,
+          ),
+          ...waitingFlags(
+            phaseOf(gate, now),
+            gate.opensAt,
+            now,
+            deviceStatusOf(
+              devices.filter((device) => device.sessionId === gate.sessionId),
+              hash,
+            ),
           ),
         };
       }),
@@ -687,6 +743,17 @@ export class AttemptsService {
  * Thiết bị này với Phiên thi: `active` (đã vào, dùng được), `revoked` (đã bị thu hồi), `other` (người này đang dùng thiết bị khác),
  * `none` (chưa có thiết bị nào đang gắn, cần nhập Mã vào thi).
  */
+/** `canWait`: đã tới cửa sổ Phòng chờ (nhập mã được); `waitingRoom`: đã nhập mã trên thiết bị này và đang chờ giờ mở. */
+function waitingFlags(
+  phase: SessionPhase,
+  opensAt: Date,
+  now: Date,
+  device: 'active' | 'revoked' | 'other' | 'none',
+) {
+  const canWait = canEnterWaitingRoom(phase, opensAt, now);
+  return { canWait, waitingRoom: canWait && device === 'active' };
+}
+
 function deviceStatusOf(
   rows: { status: 'active' | 'revoked'; deviceHash: string }[],
   hash: string | undefined,

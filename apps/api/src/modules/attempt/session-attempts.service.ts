@@ -320,6 +320,10 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
     );
   }
 
+  waitingLastSeen(sessionId: string) {
+    return this.presence.waitingLastSeen(sessionId);
+  }
+
   async inProgressCounts(sessionIds: string[], executor: Pick<Database, 'select'> = this.db) {
     const counts = new Map<string, number>();
     if (sessionIds.length === 0) return counts;

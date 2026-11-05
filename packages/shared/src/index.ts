@@ -8,3 +8,4 @@ export * from './realtime.js';
 export * from './rich-text.js';
 export * from './session.js';
 export * from './undo-force-submit.js';
+export * from './waiting-room.js';

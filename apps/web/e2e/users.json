@@ -1076,5 +1076,61 @@
     "roleTags": ["candidate"],
     "code": "UD-M-002",
     "classLabel": "LOP-UD-M"
+  },
+  {
+    "username": "e2e-lb-pc-gv-desktop",
+    "fullName": "Người ra đề Phòng chờ (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-pc-sv1-desktop",
+    "fullName": "Thí sinh Phòng chờ 1 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PC-D-001",
+    "classLabel": "LOP-PC-D"
+  },
+  {
+    "username": "e2e-lb-pc-sv2-desktop",
+    "fullName": "Thí sinh Phòng chờ 2 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PC-D-002",
+    "classLabel": "LOP-PC-D"
+  },
+  {
+    "username": "e2e-lb-pc-gv-mobile",
+    "fullName": "Người ra đề Phòng chờ (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-pc-sv1-mobile",
+    "fullName": "Thí sinh Phòng chờ 1 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PC-M-001",
+    "classLabel": "LOP-PC-M"
+  },
+  {
+    "username": "e2e-lb-pc-sv2-mobile",
+    "fullName": "Thí sinh Phòng chờ 2 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "PC-M-002",
+    "classLabel": "LOP-PC-M"
   }
 ]

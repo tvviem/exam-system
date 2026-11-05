@@ -27,6 +27,7 @@ const person = (over: Partial<MonitorPerson> = {}): MonitorPerson => ({
   device: 'ok',
   revokedDeviceId: null,
   reasons: [],
+  waiting: 'none',
   ...over,
 });
 
@@ -96,5 +97,19 @@ describe('foldText: tìm không phân biệt dấu và hoa thường', () => {
   it('bỏ dấu, đổi đ thành d', () => {
     expect(foldText('Đặng Thị Nguyệt')).toBe('dang thi nguyet');
     expect(foldText('SV001')).toBe('sv001');
+  });
+});
+
+describe('lọc Phòng chờ (Q284)', () => {
+  it('chỉ lấy người chưa có Lượt mà đã nhập mã, dù còn trực tuyến hay mất kết nối', () => {
+    const online = person({ state: 'not_started', attemptId: null, waiting: 'online' });
+    const offline = person({ state: 'not_started', attemptId: null, waiting: 'offline' });
+    const absent = person({ state: 'not_started', attemptId: null, waiting: 'none' });
+    expect([online, offline, absent].map((p) => matchesFilter(p, 'waiting'))).toEqual([
+      true,
+      true,
+      false,
+    ]);
+    expect(matchesFilter(person({ waiting: 'online' }), 'waiting')).toBe(false);
   });
 });

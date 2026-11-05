@@ -24,7 +24,7 @@ export async function seedOpenSession(
   tag: string,
   code: string,
   candidateCode: string,
-  options: { essayLatex?: string } = {},
+  options: { essayLatex?: string; opensInMs?: number } = {},
 ) {
   const headers = { origin: ORIGIN };
   const post = async (url: string, data: unknown) => {
@@ -124,7 +124,7 @@ export async function seedOpenSession(
   const session = await post('/api/sessions', {
     examId: exam.id,
     title: `Ca làm bài ${tag}`,
-    opensAt: new Date(now - 10 * 60_000).toISOString(),
+    opensAt: new Date(now + (options.opensInMs ?? -10 * 60_000)).toISOString(),
     closesAt: new Date(now + 4 * 3_600_000).toISOString(),
     durationMinutes: 30,
     accessCode: code,

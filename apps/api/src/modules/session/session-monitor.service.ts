@@ -9,6 +9,7 @@ import {
   undoProblemOf,
   undoUntilOf,
   type ViolationRequest,
+  waitingStateOf,
 } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
@@ -68,6 +69,7 @@ export class SessionMonitorService {
       this.attempts.monitorAttempts(sessionId, session.examId),
       this.attempts.devicesOf(sessionId),
     ]);
+    const waitingSeen = await this.attempts.waitingLastSeen(sessionId);
     const summary = {
       total: 0,
       notStarted: 0,
@@ -77,6 +79,8 @@ export class SessionMonitorService {
       suspended: 0,
       attention: 0,
       undoable: 0,
+      joined: 0,
+      waitingOnline: 0,
     };
     const counter = {
       not_started: 'notStarted',
@@ -131,6 +135,14 @@ export class SessionMonitorService {
           ? undoUntilOf(attempt.submittedAt)
           : null;
       if (undoUntil) summary.undoable += 1;
+      // Phòng chờ (Q284): đã nhập mã (có thiết bị đang gắn) nhưng chưa có Lượt; trực tuyến theo nhịp 15 giây.
+      const waiting = waitingStateOf({
+        joined: !attempt && own.some((item) => item.status === 'active'),
+        lastSeenAt: waitingSeen.get(profile.id) ?? null,
+        now,
+      });
+      if (waiting !== 'none') summary.joined += 1;
+      if (waiting === 'online') summary.waitingOnline += 1;
       summary.total += 1;
       summary[counter[state]] += 1;
       if (reasons.length > 0) summary.attention += 1;
@@ -147,6 +159,7 @@ export class SessionMonitorService {
         submittedAt: attempt?.submittedAt ?? null,
         submitReason: attempt?.submitReason ?? null,
         undoUntil,
+        waiting,
         answered: attempt?.answered ?? 0,
         hiddenCount: attempt?.hiddenCount ?? 0,
         warnings: attempt?.warnings ?? 0,

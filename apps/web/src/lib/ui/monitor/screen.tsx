@@ -114,6 +114,10 @@ function MonitorBody({
     () => people.filter((p) => matchesFilter(p, 'attention')).length,
     [people],
   );
+  const waitingCount = useMemo(
+    () => people.filter((p) => matchesFilter(p, 'waiting')).length,
+    [people],
+  );
   const classes = useMemo(
     () =>
       [...new Set(people.map((p) => p.classLabel).filter((c): c is string => !!c))].sort((a, b) =>
@@ -269,9 +273,20 @@ function MonitorBody({
         <SummaryBar
           counts={counts}
           total={people.length}
-          active={filter === 'attention' ? null : filter}
+          active={filter === 'attention' || filter === 'waiting' ? null : filter}
           onPick={(key) => setFilter((current) => (current === key ? null : key))}
         />
+
+        {waitingCount > 0 && (
+          <p className="text-sm text-fg-muted" data-testid="waiting-line">
+            {t('monitor.waiting.line', {
+              joined: people.filter((p) => p.state !== 'not_started' || p.waiting !== 'none')
+                .length,
+              total: people.length,
+              online: data.summary.waitingOnline,
+            })}
+          </p>
+        )}
 
         <div className="flex flex-wrap items-end gap-3">
           {wide ? (
@@ -322,6 +337,15 @@ function MonitorBody({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {waitingCount > 0 && (
+            <Chip
+              active={filter === 'waiting'}
+              count={waitingCount}
+              onClick={() => setFilter((current) => (current === 'waiting' ? null : 'waiting'))}
+            >
+              {t('monitor.waiting.chip')}
+            </Chip>
+          )}
           <Chip
             active={filter === 'attention'}
             count={attention}

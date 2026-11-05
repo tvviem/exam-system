@@ -163,6 +163,8 @@ export interface SessionAttempts {
     sessionIds: string[],
     executor?: Pick<Database, 'select'>,
   ): Promise<Map<string, number>>;
+  /** Giờ báo gần nhất của từng người trong Phòng chờ của Phiên thi (người chưa từng báo vắng), Q284. */
+  waitingLastSeen(sessionId: string): Promise<Map<string, Date>>;
   /** Mã các Phiên thi mà người này đang có Lượt đang làm (cùng nghĩa "đang làm" như trên). */
   sessionIdsWithInProgressOf(
     userId: string,

@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
 import { formatDateTime } from '../../../../lib/format';
 import { attemptQueryKey, startAttempt, takeSessionsQuery } from '../../../../lib/take';
+import { formatCountdown } from '../../../../lib/take/countdown';
+import { useWaitingRoom } from '../../../../lib/take/use-waiting-room';
 import { Button, buttonClass, Card, ErrorMessage, PrimaryButton } from '../../../../lib/ui';
 import { ListSkeleton } from '../../../../lib/ui/admin';
 
@@ -30,6 +33,14 @@ function ConfirmPage() {
       await navigate({ to: '/take/attempts/$attemptId', params: { attemptId: state.attempt.id } });
     },
   });
+
+  const waiting = session?.phase === 'upcoming' && session.waitingRoom;
+  const remaining = useWaitingRoom(sessionId, session?.opensAt ?? '', waiting === true);
+  // Đã từng ở Phòng chờ rồi Phiên thi mở: báo một dòng, nút "Bắt đầu làm bài" tự bật (không tự bắt đầu).
+  const wasWaiting = useRef(false);
+  useEffect(() => {
+    if (waiting) wasWaiting.current = true;
+  }, [waiting]);
 
   if (sessions.isPending) return <ListSkeleton rows={2} />;
   if (!session) {
@@ -75,13 +86,19 @@ function ConfirmPage() {
           <li>{t('take.confirm.noticeAutosave')}</li>
         </ul>
       </Card>
+      {waiting && <WaitingPanel opensAt={session.opensAt} remaining={remaining} />}
+      {!waiting && wasWaiting.current && session.phase === 'open' && !resuming && (
+        <p role="status" className="rounded-lg bg-success/10 p-3 text-sm font-medium text-success">
+          {t('take.waitingRoom.opened')}
+        </p>
+      )}
       {!usable && <ErrorMessage>{t('take.confirm.needCode')}</ErrorMessage>}
       {start.isError && <ErrorMessage>{errorMessage(t, start.error)}</ErrorMessage>}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Link to="/take" className={buttonClass('secondary')}>
           {t('take.backToList')}
         </Link>
-        {usable ? (
+        {usable && !waiting ? (
           <PrimaryButton loading={start.isPending} onClick={() => start.mutate()}>
             {start.isPending
               ? t('take.confirm.starting')
@@ -90,9 +107,40 @@ function ConfirmPage() {
                 : t('take.confirm.start')}
           </PrimaryButton>
         ) : (
-          <Button disabled>{t('take.confirm.start')}</Button>
+          <Button disabled>
+            {waiting ? t('take.waitingRoom.startLocked') : t('take.confirm.start')}
+          </Button>
         )}
       </div>
     </div>
+  );
+}
+
+/** Phòng chờ (Q284): đếm ngược theo đồng hồ server, vài lời dặn; nút bắt đầu chỉ bật khi Phiên thi mở. */
+function WaitingPanel({ opensAt, remaining }: { opensAt: string; remaining: number }) {
+  const { t } = useTranslation();
+  return (
+    <Card className="flex flex-col items-center gap-3 text-center">
+      <h2 className="text-base font-semibold">{t('take.waitingRoom.title')}</h2>
+      <p className="text-sm text-fg-muted">{t('take.waitingRoom.countdown')}</p>
+      <p
+        className="font-mono text-4xl font-semibold tabular-nums"
+        data-testid="waiting-countdown"
+        aria-live="off"
+      >
+        {formatCountdown(remaining)}
+      </p>
+      <p className="text-sm text-fg-muted">
+        {t('take.waitingRoom.opensAt', { time: formatDateTime(opensAt) })}
+      </p>
+      <p role="status" className="text-sm font-medium text-success">
+        {t('take.waitingRoom.online')}
+      </p>
+      <ul className="flex list-disc flex-col gap-1 pl-5 text-left text-sm">
+        <li>{t('take.waitingRoom.tip1')}</li>
+        <li>{t('take.waitingRoom.tip2')}</li>
+        <li>{t('take.waitingRoom.tip3')}</li>
+      </ul>
+    </Card>
   );
 }

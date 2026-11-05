@@ -1,3 +1,4 @@
+import type { WaitingState } from '@exam/shared';
 import {
   type AttentionReason,
   type DeviceState,
@@ -32,6 +33,8 @@ export interface MonitorPerson {
   /** Thiết bị bị Thu hồi gần nhất: đích của "Hoàn tác Thu hồi". */
   revokedDeviceId: string | null;
   reasons: AttentionReason[];
+  /** Chỉ có nghĩa khi `state = not_started`: đã nhập mã vào Phòng chờ (Q284). */
+  waiting: WaitingState;
 }
 
 export interface MonitorSnapshot {
@@ -48,6 +51,9 @@ export interface MonitorSnapshot {
     attention: number;
     /** Số Lượt đang Hoàn tác Buộc nộp được. */
     undoable: number;
+    /** Số người đã nhập mã (có thiết bị) mà chưa có Lượt, và số đang trực tuyến trong Phòng chờ. */
+    joined: number;
+    waitingOnline: number;
   };
   people: MonitorPerson[];
 }

@@ -120,9 +120,9 @@ describe('vào thi: nhập Mã vào thi và Gắn thiết bị (Q229)', () => {
   });
 
   it('báo đúng lý do khi chưa mở, đã đóng cửa vào thi, đã đóng và đã hủy', async () => {
-    t.clock.advance(-minutes(90)); // 06:30, chưa mở
+    t.clock.advance(-minutes(120)); // 06:00, chưa mở và chưa tới cửa sổ Phòng chờ (30 phút trước giờ mở)
     expect(reasonOf(await an.join('AB3K9X'))).toBe('NOT_OPEN_YET');
-    t.clock.advance(minutes(90));
+    t.clock.advance(minutes(120));
     await sql(`update sessions set entry_closed_at = $1 where id = $2`, [t.clock.now(), sessionId]);
     expect(reasonOf(await an.join('AB3K9X'))).toBe('ENTRY_CLOSED');
     await sql(`update sessions set entry_closed_at = null where id = $1`, [sessionId]);

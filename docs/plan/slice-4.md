@@ -838,3 +838,20 @@ Chủ dự án hỏi: người dự thi bấm đổi đáp án liên tục có l
 - **Vào thi lúc 9h50:** server đúng thiết kế, có test (`attempt-take.int.test.ts`): vào được, hạn 10h10, đóng trình duyệt rồi vào lại ở 10h05 (sau giờ đóng) vẫn làm tiếp đúng Lượt cũ. Thông báo "đã vào trên một thiết bị khác" (`DEVICE_BOUND_ELSEWHERE`) chỉ xuất hiện khi trình duyệt không có cookie thiết bị `exam_did` của lần vào trước: dùng cửa sổ ẩn danh đã đóng, xóa cookie, đổi trình duyệt, hoặc mở bằng địa chỉ mạng LAN `http://192.168…` (cookie `Secure` không được lưu). Người ra đề **Thu hồi thiết bị** là cách xử lý theo ADR-0007.
 - **Buộc nộp nhầm:** CSDL không cho mở lại Lượt đã nộp (trigger `attempts_guard`), nên chưa có cách hoàn tác; các phương án đang chờ chủ dự án chọn.
 
+## Phòng chờ (Q284, 5/11/2026)
+
+Chủ dự án duyệt: Người dự thi vào Phòng chờ trước giờ mở, đăng nhập lại vẫn về Phòng chờ, Người ra đề thấy bao nhiêu người đang chờ (xem Q283 trong mục "Giao diện làm bài, điều hướng Người dự thi và Phòng chờ").
+
+| Mã | Quyết định |
+|---|---|
+| Q284a | Cửa sổ Phòng chờ: **30 phút** trước giờ mở (`WAITING_ROOM_WINDOW_MS`). Ngoài cửa sổ nhập đúng mã vẫn bị `NOT_OPEN_YET` (kèm `opensAt`, thông báo nêu quy tắc 30 phút) |
+| Q284b | Vào Phòng chờ = nhập đúng Mã vào thi: gắn Thiết bị dự thi như thường, `join` trả `waiting: true`. Không tạo Lượt, không đụng số lượt còn lại |
+| Q284c | Đến giờ mở trang chờ **không tự bắt đầu**: hiện dòng "Phiên thi đã mở" và bật nút "Bắt đầu làm bài" |
+| Q284d | Trạng thái chờ lấy từ nhịp `POST /take/sessions/:id/waiting` mỗi 15 giây, lưu Redis `waiting:{sessionId}` (không thêm bảng, không migration); quá 45 giây không có nhịp là "mất kết nối" |
+| Q284e | Màn Theo dõi: người chưa có Lượt mà đã nhập mã hiện **Đang chờ** / **Chờ · mất kết nối**; dòng "Đã nhập mã N/M · đang trực tuyến K"; chip lọc **Phòng chờ**; `summary.joined`, `summary.waitingOnline` |
+| Q284f | Đăng nhập xong: có đúng một Lượt đang làm thì vào thẳng Lượt đó, không thì đúng một Phòng chờ thì về Phòng chờ, còn lại về "Phiên thi của tôi" (`resumeTargetOf`) |
+| Q284g | Giới hạn nhịp chờ 30 lần mỗi 10 giây mỗi người (429 `RATE_LIMITED`, như heartbeat) |
+
+**Kỹ thuật:** luật thuần ở `packages/shared/src/waiting-room.ts` (`canEnterWaitingRoom`, `waitingStateOf`, các hằng); API `attempts.service.ts` (`join`, `waiting`, cờ `canWait` và `waitingRoom` ở `GET /take/sessions`); tin đẩy `sessionChanged` khi người chờ xuất hiện lần đầu để màn Theo dõi cập nhật ngay. Web: `lib/take/use-waiting-room.ts` (nhịp, đếm ngược theo đồng hồ server cộng đồng hồ đơn điệu, `lib/take/countdown.ts`), `WaitingPanel` ở màn xác nhận, nhóm "Phòng chờ" trong "Phiên thi của tôi".
+
+**Test:** shared 6 (`waiting-room.test.ts`); tích hợp 13 (`attempt-waiting-room.int.test.ts`: cửa sổ, nhịp, mất kết nối, thiết bị khác, giới hạn nhịp, hiện trên Theo dõi); web 8 (`entry`, `countdown`, `monitor-view`); E2E `waiting-room.spec.ts` (desktop và mobile: nhập mã trước 25 giây, Người ra đề thấy đang chờ, về trang gốc thì quay lại Phòng chờ, tới giờ mở thì bấm Bắt đầu).
