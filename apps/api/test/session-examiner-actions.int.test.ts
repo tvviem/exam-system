@@ -276,6 +276,7 @@ describe('Đóng và Mở lại cửa vào thi (Q258)', () => {
     await Promise.all([closeEntry(), dung.join('AB3K9X')]);
     const started = await dung.call('POST', `/take/sessions/${live.sessionId}/start`);
     expect(started.statusCode).toBe(409);
-    expect(started.json().reason).toBe('ENTRY_CLOSED');
+    // Hai kết cục đúng tùy ai tới trước: `join` bị từ chối (chưa gắn thiết bị: NOT_JOINED) hoặc đã gắn nhưng cửa đã đóng (ENTRY_CLOSED).
+    expect(['ENTRY_CLOSED', 'NOT_JOINED']).toContain(started.json().reason);
   });
 });
