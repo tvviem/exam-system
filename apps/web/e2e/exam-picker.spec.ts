@@ -24,35 +24,41 @@ async function seed(page: Page, topicName: string) {
   const topic = await page.request.post('/api/topics', { headers, data: { name: topicName } });
   expect(topic.ok(), await topic.text()).toBe(true);
   const topicId = (await topic.json()).id;
-  for (let i = 1; i <= 25; i++) {
-    const res = await page.request.post('/api/questions', {
-      headers,
-      data: {
-        type: 'single_choice',
-        topicId,
-        stem: rich(`Câu CN ${String(i).padStart(2, '0')}`),
-        defaultPoints: 1,
-        tags: [],
-        payload: {
-          options: [
-            { id: 'o1', content: rich('a') },
-            { id: 'o2', content: rich('b') },
-          ],
-          key: ['o1'],
-          shuffleOptions: true,
+  // Song song cho nhanh: nạp tuần tự 25 câu có thể mất hơn 30 giây trên máy CI chậm.
+  await Promise.all(
+    Array.from({ length: 25 }, async (_, k) => {
+      const res = await page.request.post('/api/questions', {
+        headers,
+        data: {
+          type: 'single_choice',
+          topicId,
+          stem: rich(`Câu CN ${String(k + 1).padStart(2, '0')}`),
+          defaultPoints: 1,
+          tags: [],
+          payload: {
+            options: [
+              { id: 'o1', content: rich('a') },
+              { id: 'o2', content: rich('b') },
+            ],
+            key: ['o1'],
+            shuffleOptions: true,
+          },
         },
-      },
-    });
-    expect(res.ok(), await res.text()).toBe(true);
-  }
+      });
+      expect(res.ok(), await res.text()).toBe(true);
+    }),
+  );
 }
 
 test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang và bộ lọc, rồi thêm vào Bộ đề', async ({
   page,
 }, testInfo) => {
+  test.setTimeout(90_000);
   const p = testInfo.project.name;
+  // Tên Chủ đề riêng mỗi lần chạy (kể cả khi CI chạy lại): lọc theo Chủ đề này nên luôn đúng 25 câu.
+  const topicName = `Chọn nhiều ${p} ${Date.now()}`;
   await signIn(page, `e2e-cn-${p}`);
-  await seed(page, `Chọn nhiều ${p} ${Date.now()}`);
+  await seed(page, topicName);
 
   await page.goto('/examiner/exams');
   await page.getByRole('button', { name: 'Tạo Bộ đề' }).click();
@@ -61,6 +67,7 @@ test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang
   await expect(page.getByRole('heading', { name: 'Đề chọn nhiều', level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'Thêm câu hỏi' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
+  await dialog.getByLabel('Chủ đề').selectOption({ label: topicName });
   const count = (n: number) => dialog.getByText(new RegExp(`^Đã chọn ${n} câu`));
   const boxes = dialog.getByRole('checkbox', { name: /^Chọn câu:/ });
   await expect(boxes).toHaveCount(20);
