@@ -12,6 +12,8 @@ export const UNDO_PROBLEMS = [
   'NEW_ATTEMPT_STARTED',
   'ATTEMPT_EXPIRED',
   'UNDO_WINDOW_PASSED',
+  /** Đã có điểm chấm tay của Lượt, hoặc Phiên thi đã Công bố (Q296). */
+  'ALREADY_GRADED',
 ] as const;
 export type UndoProblem = (typeof UNDO_PROBLEMS)[number];
 

@@ -144,6 +144,7 @@
     "INVALID_STATE_BATCH_NOT_READY": "Lô nhập không còn ở bước xem trước (đã tạo hoặc đang xử lý).",
     "INVALID_STATE_BATCH_NOT_CANCELLABLE": "Lô đang được xử lý hoặc đã tạo câu hỏi nên không hủy được.",
     "INVALID_STATE_NOT_FORCE_SUBMITTED": "Chỉ Lượt bị Buộc nộp mới hoàn tác được.",
+    "INVALID_STATE_ALREADY_GRADED": "Bài này đã được chấm tay hoặc Phiên thi đã Công bố kết quả nên không hoàn tác Buộc nộp được.",
     "INVALID_STATE_UNDO_WINDOW_PASSED": "Đã quá 10 phút kể từ lúc Buộc nộp nên không hoàn tác được nữa.",
     "INVALID_STATE_NEW_ATTEMPT_STARTED": "Người này đã bắt đầu Lượt làm bài mới nên không mở lại Lượt cũ được.",
     "INVALID_STATE_ATTEMPT_EXPIRED": "Lượt này đã hết giờ lúc bị Buộc nộp nên không mở lại được.",

@@ -53,7 +53,7 @@ const KNOWN_DEBT = new Set([
 describe('A1: ranh giới module', () => {
   const imports = crossModuleSchemaImports();
 
-  it.each(['session', 'attempt'])('%s không import bảng của module khác', (module) => {
+  it.each(['session', 'attempt', 'grading'])('%s không import bảng của module khác', (module) => {
     const bad = imports.filter((i) => i.from === module).map((i) => `${i.file} -> ${i.to}`);
     expect(bad).toEqual([]);
   });
@@ -62,7 +62,10 @@ describe('A1: ranh giới module', () => {
   it('không có cặp import bảng chéo module nào mới ngoài danh sách nợ cũ', () => {
     const unknown = [...new Set(imports.map((i) => `${i.from}->${i.to}`))].filter(
       (pair) =>
-        !KNOWN_DEBT.has(pair) && !pair.startsWith('session->') && !pair.startsWith('attempt->'),
+        !KNOWN_DEBT.has(pair) &&
+        !pair.startsWith('session->') &&
+        !pair.startsWith('attempt->') &&
+        !pair.startsWith('grading->'),
     );
     expect(unknown).toEqual([]);
   });

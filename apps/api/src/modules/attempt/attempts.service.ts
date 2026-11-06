@@ -15,6 +15,7 @@ import {
 import { Inject, Injectable } from '@nestjs/common';
 import { and, count, desc, eq, gt, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
+import { ATTEMPT_SUBMITTED_HOOKS, type AttemptSubmittedHooks } from '../../common/attempt-grading';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
@@ -112,6 +113,7 @@ export class AttemptsService {
     private readonly presence: AttemptPresence,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
+    @Inject(ATTEMPT_SUBMITTED_HOOKS) private readonly submitted: AttemptSubmittedHooks,
   ) {}
 
   // --- Vào thi (Q229) -----------------------------------------------------------------------------------------------
@@ -518,13 +520,15 @@ export class AttemptsService {
 
   /** Đóng (hết giờ) Lượt đang dở của người này nếu đã quá hạn cộng ân hạn; giao dịch riêng, chạy xong là bền. */
   private async closeOverdue(userId: string, sessionId: string) {
-    await this.db.transaction(async (tx) => {
+    const closedId = await this.db.transaction(async (tx) => {
       const running = await this.inProgressOf(tx, sessionId, userId);
       const now = this.clock.now();
       if (running && isPastGrace(running.deadline, now)) {
-        await this.closeOne(tx, running.id, 'timeout', now);
+        return (await this.closeOne(tx, running.id, 'timeout', now)) ? running.id : null;
       }
+      return null;
     });
+    if (closedId) void this.submitted.onSubmitted([closedId]);
   }
 
   /** Nội dung đề theo bố cục của Lượt, kèm Câu trả lời đã lưu. Lượt đã nộp chỉ trả trạng thái (Q206). */
@@ -532,7 +536,9 @@ export class AttemptsService {
     const attempt = await this.ownAttempt(this.db, userId, attemptId);
     const now = this.clock.now();
     if (attempt.status === 'in_progress' && this.pastGrace(attempt, now)) {
-      await this.closeOne(this.db, attempt.id, 'timeout', now);
+      if (await this.closeOne(this.db, attempt.id, 'timeout', now)) {
+        void this.submitted.onSubmitted([attempt.id]);
+      }
       return this.submittedState(await this.ownAttempt(this.db, userId, attemptId), now);
     }
     if (attempt.status === 'submitted') return this.submittedState(attempt, now);
@@ -665,19 +671,23 @@ export class AttemptsService {
       if (attempt.status === 'submitted') {
         return {
           sessionId: attempt.sessionId,
+          closedNow: false,
           view: this.submittedState(attempt, this.clock.now()),
         };
       }
       await this.requireDevice(tx, attempt.sessionId, userId, deviceKey);
       const now = this.clock.now();
       const reason: SubmitReason = this.pastGrace(attempt, now) ? 'timeout' : 'candidate';
-      await this.closeOne(tx, attemptId, reason, now);
+      const closedNow = await this.closeOne(tx, attemptId, reason, now);
       return {
         sessionId: attempt.sessionId,
+        closedNow,
         view: this.submittedState(await this.ownAttempt(tx, userId, attemptId), now),
       };
     });
     this.realtime.sessionChanged(state.sessionId);
+    // Chấm tự động ở nền (Q286): báo sau khi giao dịch nộp đã commit.
+    if (state.closedNow) void this.submitted.onSubmitted([attemptId]);
     return state.view;
   }
 

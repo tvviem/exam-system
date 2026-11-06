@@ -22,6 +22,10 @@ export interface JobPayloads {
   'question-import.commit': { batchId: string; actorId: string; actorIp: string | null };
   /** Dọn lô nhập quá 30 ngày và lô kẹt do worker chết (Q146). */
   'question-import.cleanup': Record<string, never>;
+  /** Chấm tự động các Lượt vừa nộp (Q286); `attemptIds` tối đa 50 id mỗi job. */
+  'grading.autograde': { attemptIds: string[] };
+  /** Lưới an toàn: chấm các Lượt đã nộp mà chưa có dấu "đã chấm", mỗi 5 giây (Q286). */
+  'grading.sweep': Record<string, never>;
   /** Tự nộp các Lượt làm bài quá hạn, mỗi 10 giây (Q212). */
   'attempt.sweep': Record<string, never>;
   /** Dọn dẹp định kỳ hằng ngày (Q96). */

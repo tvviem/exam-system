@@ -297,3 +297,16 @@ Cổng `AttemptGradeGuard` do `grading` cài, `attempt` dùng:
 ### 7. Không nằm trong 5a
 
 API và màn hình cho Người ra đề (5b), `session_gradings`, Công bố, `review_after_release` (5c), Phúc khảo, Đính chính, `key_correction_effects` (5d), Ủy quyền chấm (cần cùng lúc có API ở 5b).
+
+### PR 5a: ghi chú triển khai (6/11/2026)
+
+- **`packages/scoring`** (29 test): `scoreResponse` (bốn Loại câu, ba Quy tắc chấm, `keyOverride` cho Đính chính ở 5d), `resultOf`, và số học theo đơn vị 0,01 (`centi.ts`) nên không có số lẻ nhị phân. Mệnh đề bỏ trống tính là không đúng; dữ liệu lạ cho 0 điểm và không ném lỗi; tự luận chỉ khoảng trắng là bỏ trống. Gói không phụ thuộc gói nào.
+- **Migration 0017:** `response_grades`, `attempt_grades`, enum `response_grade_source`, chỉ mục `response_grades_pending_idx` (tự luận chờ chấm) và `attempts_submitted_idx` (job quét). Trigger `response_grades_guard` (Lượt phải đã nộp, khóa dòng Lượt `FOR SHARE`, câu thuộc Bộ đề, điểm không vượt điểm câu) và `attempt_grades_guard`. Ràng buộc `source ≠ auto` phải có `graded_by`, nhận xét ≤ 1000 ký tự.
+- **Module `grading`** (`AutogradeService`, `GradingJobs`, `GradingHooksService`) nối với `attempt` và `exam` qua ba cổng mới trong `common/`: `GRADING_SOURCE` (attempt cài đặt), `ATTEMPT_SUBMITTED_HOOKS` và `ATTEMPT_GRADE_GUARD` (grading cài đặt). `architecture.test.ts` thêm `grading` vào danh sách cấm import bảng chéo module.
+- **Báo Lượt vừa nộp:** gọi hook ngay sau commit ở Nộp bài của Người dự thi, đóng lười khi có request và job tự nộp hết giờ. Các đường nộp trong giao dịch của bên khác (Buộc nộp, Đình chỉ, Hủy Phiên thi, Khóa tài khoản) không báo mà để job quét 5 giây bắt, vì báo trước khi commit thì job chạy sớm sẽ không thấy Lượt. Job quét chỉ xét Lượt nộp trong 24 giờ gần nhất, phân trang 500, tối đa 200 Lượt mỗi lần.
+- **Idempotent và an toàn khi đồng thời:** chấm dùng `ON CONFLICT DO UPDATE ... WHERE source = 'auto'` nên không ghi đè điểm chấm tay; mỗi Lượt một giao dịch (4 Lượt song song), Lượt vừa được mở lại bị trigger từ chối (`check_violation`) và được bỏ qua.
+- **Hoàn tác Buộc nộp:** lý do mới `ALREADY_GRADED` (đã có điểm chấm tay; điều kiện "Phiên thi đã Công bố" thêm ở 5c); điểm tự động bị xóa trong cùng giao dịch Hoàn tác; hoàn tác cả lô bỏ qua riêng Lượt đã chấm tay. Chuỗi tiếng Việt `INVALID_STATE_ALREADY_GRADED` ở `vi.json`.
+- **Thay đổi so với thiết kế:** chỉ một: bộ test đo thời gian dựng Lượt bằng SQL (`grading-bench.int.test.ts`, chỉ chạy khi `GRADING_BENCH=1`).
+- **Test:** `grading-auto.int.test.ts` 16 test (S2 chấm đủ Loại câu, câu bỏ trống, idempotent, không ghi đè điểm tay, Buộc nộp cả phòng, hết giờ, Hủy Phiên thi, ngoài cửa sổ 24 giờ, mất hàng đợi; S3 trigger; S4 hai lần chấm cùng lúc; Hoàn tác xóa điểm / bị chặn / cả lô); toàn bộ 775 test tích hợp qua.
+- **Số đo:** chấm 500 Lượt (50 câu mỗi Bộ đề bốn Loại câu, theo lô 50) mất **1,29 giây**, 2,6 ms mỗi Lượt (ngân sách 10 giây và 20 ms). Request Nộp bài chỉ thêm một lệnh xếp job Redis (không chờ chấm).
+- **Để ngỏ:** 5b thêm gọi `autogradeSession` khi mở bảng Kết quả để chấm bù Lượt cũ hơn 24 giờ; điều kiện "Phiên thi đã Công bố" của `canReopen` thêm ở 5c; thử tải 500 người nộp cùng lúc qua `load:exam` (S7) ở 5e.
