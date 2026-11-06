@@ -82,7 +82,11 @@ export class AutogradeService {
         .values(rows)
         .onConflictDoUpdate({
           target: [responseGrades.attemptId, responseGrades.itemId],
-          set: { score: sql`excluded.score`, gradedAt: sql`excluded.graded_at` },
+          set: {
+            score: sql`excluded.score`,
+            verdict: sql`excluded.verdict`,
+            gradedAt: sql`excluded.graded_at`,
+          },
           setWhere: sql`${responseGrades.source} = 'auto'`,
         });
     }
@@ -116,11 +120,12 @@ export class AutogradeService {
             points: item.points,
             payload: item.snapshot.payload,
           };
-          const { score } = scoreResponse(scoring, attempt.responses.get(item.itemId));
+          const { score, verdict } = scoreResponse(scoring, attempt.responses.get(item.itemId));
           return {
             attemptId: attempt.attemptId,
             itemId: item.itemId,
             score: score === null ? null : score.toFixed(2),
+            verdict,
             source: 'auto' as const,
             gradedAt,
           };

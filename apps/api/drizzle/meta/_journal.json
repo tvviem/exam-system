@@ -127,6 +127,13 @@
       "when": 1793950487940,
       "tag": "0017_cham_tu_dong",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793957220444,
+      "tag": "0018_cham_tay",
+      "breakpoints": true
     }
   ]
 }

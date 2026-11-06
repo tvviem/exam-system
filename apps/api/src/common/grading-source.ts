@@ -28,6 +28,11 @@ export interface GradingSource {
     executor?: GradingExecutor,
     options?: { lock?: boolean },
   ): Promise<GradableAttempt[]>;
+  /** Mọi Lượt đã nộp của Phiên thi (để dựng danh sách Lượt có thể được tính). */
+  attemptsOfSession(
+    sessionId: string,
+    executor?: GradingExecutor,
+  ): Promise<{ attemptId: string; userId: string; attemptNo: number; submittedAt: Date }[]>;
   /** Id các Lượt nộp từ `since`, mới nhất trước; phân trang bằng `offset`. */
   submittedSince(since: Date, limit: number, offset: number): Promise<string[]>;
 }

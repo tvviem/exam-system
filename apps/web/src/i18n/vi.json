@@ -144,6 +144,10 @@
     "INVALID_STATE_BATCH_NOT_READY": "Lô nhập không còn ở bước xem trước (đã tạo hoặc đang xử lý).",
     "INVALID_STATE_BATCH_NOT_CANCELLABLE": "Lô đang được xử lý hoặc đã tạo câu hỏi nên không hủy được.",
     "INVALID_STATE_NOT_FORCE_SUBMITTED": "Chỉ Lượt bị Buộc nộp mới hoàn tác được.",
+    "INVALID_STATE_DELEGATE_IS_OWNER": "Chủ Phiên thi đã có quyền chấm, không cần ủy quyền cho chính mình.",
+    "INVALID_STATE_DELEGATE_NOT_EXAMINER": "Chỉ ủy quyền được cho Người ra đề đang hoạt động.",
+    "INVALID_STATE_DELEGATE_IN_ROSTER": "Người này có tên trong Danh sách dự thi của Phiên thi nên không chấm được bài của chính mình.",
+    "INVALID_STATE_NOT_GRADED_YET": "Bài này vừa nộp, hệ thống đang chấm. Hãy thử lại sau vài giây.",
     "INVALID_STATE_ALREADY_GRADED": "Bài này đã được chấm tay hoặc Phiên thi đã Công bố kết quả nên không hoàn tác Buộc nộp được.",
     "INVALID_STATE_UNDO_WINDOW_PASSED": "Đã quá 10 phút kể từ lúc Buộc nộp nên không hoàn tác được nữa.",
     "INVALID_STATE_NEW_ATTEMPT_STARTED": "Người này đã bắt đầu Lượt làm bài mới nên không mở lại Lượt cũ được.",
@@ -782,6 +786,8 @@
     "session.added": "Bạn được thêm vào Phiên thi “{{title}}”.",
     "session.rescheduled": "Phiên thi “{{title}}” đã đổi giờ mở hoặc giờ đóng.",
     "session.cancelled": "Phiên thi “{{title}}” đã bị Hủy.",
+    "session.grading_delegated": "Bạn được ủy quyền chấm Phiên thi “{{title}}”.",
+    "session.grading_delegate_revoked": "Quyền chấm Phiên thi “{{title}}” của bạn đã được thu hồi.",
     "account.password_reissued": "Mật khẩu tạm của bạn vừa được Người ra đề cấp lại. Đăng nhập bằng mật khẩu mới và đổi ngay."
   },
   "credentialSlips": {

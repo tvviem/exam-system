@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
 import { IdentityModule } from '../identity/identity.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { GradingSessionsService } from './grading-sessions.service';
 import { SessionEntryService } from './session-entry.service';
 import { SessionLifecycleService } from './session-lifecycle.service';
 import { SessionLiveGuardService } from './session-live-guard.service';
@@ -27,6 +28,7 @@ import { SessionsService } from './sessions.service';
     SessionEntryService,
     SessionOwnedContent,
     SessionLiveGuardService,
+    GradingSessionsService,
   ],
   exports: [
     SessionUsageService,
@@ -34,6 +36,7 @@ import { SessionsService } from './sessions.service';
     SessionMonitorService,
     SessionOwnedContent,
     SessionLiveGuardService,
+    GradingSessionsService,
   ],
 })
 export class SessionModule {}

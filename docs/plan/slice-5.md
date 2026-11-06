@@ -311,7 +311,7 @@ API và màn hình cho Người ra đề (5b), `session_gradings`, Công bố, `
 - **Số đo:** chấm 500 Lượt (Bộ đề bốn Loại câu, theo lô 50) mất **0,36 giây**, 0,7 ms mỗi Lượt (ngân sách 10 giây và 20 ms). Request Nộp bài chỉ thêm một lệnh xếp job Redis (không chờ chấm).
 - **Để ngỏ:** 5b thêm gọi `autogradeSession` khi mở bảng Kết quả để chấm bù Lượt cũ hơn 24 giờ; điều kiện "Phiên thi đã Công bố" của `canReopen` thêm ở 5c; thử tải 500 người nộp cùng lúc qua `load:exam` (S7) ở 5e.
 
-## PR 5b: thiết kế chi tiết (đề xuất 6/11/2026, chờ duyệt)
+## PR 5b: thiết kế chi tiết (đã duyệt 6/11/2026: chia 5b-1 API và 5b-2 giao diện; prototype màn Chấm giữa hai PR; trang quản trị Ủy quyền; thông báo chuông; điền bù `verdict`)
 
 **Phạm vi:** Người ra đề (hoặc người được Ủy quyền) chấm Câu tự luận, quyết Mức xử lý Vi phạm, xem bảng Kết quả và Thống kê câu của một Phiên thi. **Chưa có Công bố** (5c), nên Người dự thi vẫn chỉ thấy "Đã nộp". Đề xuất **chia hai PR** như lát cắt 4: **5b-1** (API, dễ kiểm bằng test) và **5b-2** (giao diện), để mỗi PR nhỏ, CI nhanh và bạn xem được từng phần.
 
@@ -384,10 +384,22 @@ Chủ Phiên thi hoặc Quản trị viên: `PUT /sessions/:id/grading-delegate 
 
 Mở bài kế dưới 300 ms (nạp trước bài kế nên người dùng thấy gần như tức thì); lưu điểm một bài dưới 150 ms; hàng đợi 500 bài dưới 300 ms; bảng Kết quả 500 người dưới 500 ms; Thống kê câu dưới 500 ms; đặt Mức xử lý dưới 150 ms; cấp Ủy quyền dưới 300 ms.
 
-### 8. Cần bạn quyết trước khi làm
+### 8. Các điểm đã quyết (chủ dự án đồng ý cả 5 đề xuất, 6/11/2026)
 
 1. **Chia 5b-1 (API) rồi 5b-2 (giao diện)**: đề xuất chia (như lát cắt 4).
 2. **Prototype màn Chấm trước khi lập trình giao diện** (ui-design Q110 ghi mẫu Chấm cần prototype riêng để chọn). Đề xuất dựng 1–2 bản prototype trên nhánh `prototype/cham-bai` (máy tính và điện thoại, dữ liệu giả) giữa 5b-1 và 5b-2, bạn chọn rồi mới làm giao diện thật. Hay bạn thấy bố cục đã duyệt ở Q293 là đủ, bỏ prototype?
 3. **Trang quản trị "Ủy quyền chấm"** trong 5b-2 (Quản trị viên hiện chưa có màn nào về Phiên thi): đề xuất một trang nhỏ tìm Phiên thi và cấp/thu hồi.
 4. **Thông báo chuông cho người được Ủy quyền** (thêm loại thông báo mới ngoài danh sách Q303): đề xuất có.
 5. **Điền bù `verdict`** cho dữ liệu chấm đã có từ 5a như mục 2 (chỉ ảnh hưởng dữ liệu thử của bạn).
+
+### PR 5b-1: ghi chú triển khai (6/11/2026)
+
+- **API** (migration 0018, module `grading`): `ManualGradingService` (câu tự luận kèm tiến độ, hàng đợi, một bài, lưu điểm, Chấm ẩn tên), `ResultsService` (bảng Kết quả, chi tiết từng người, Thống kê câu, danh sách Vi phạm), `PenaltiesService` (Mức xử lý), `DelegationService` (Ủy quyền), `GradingAccessService` (chủ hoặc người được Ủy quyền), `GradingContextService` (nạp Bộ đề, Lượt, điểm; chấm bù Lượt thiếu dấu "đã chấm"). Ba controller: `GradingController`, `OwnerDelegateController`, `AdminDelegateController` (đường dẫn như mục 3).
+- **Cổng mới** (`apps/api/src/common`): `GRADING_SESSIONS` (session cài đặt), `EXAMINER_DIRECTORY` (identity), `VIOLATION_PENALTIES` (attempt); `GRADING_SOURCE.attemptsOfSession`; `closeAll` của `SESSION_ATTEMPTS` đã trả id từ 5a.
+- **Cơ sở dữ liệu:** `session_gradings`, `session_grading_delegates` (một người hiệu lực mỗi Phiên thi, trigger chỉ cho thu hồi một lần, không xóa), cột `response_grades.verdict` (điền bù từ dữ liệu 5a), trigger chấm tay chỉ cho câu tự luận.
+- **Chấm ẩn tên giữ ở server (S5):** hàng đợi và bài không có tên, mã, Lớp hay `userId`; bảng Kết quả khi còn bài chờ chấm chỉ trả điểm trắc nghiệm và không trả mã Lượt; danh sách Vi phạm và chi tiết từng người không trả mã Lượt (nối mã Lượt với tên sẽ lộ người viết bài).
+- **Quyền:** người khác chủ và không được Ủy quyền nhận 404 ở mọi đường; Người dự thi bị chặn; người được Ủy quyền không quản lý Ủy quyền (404 ở đường của chủ); Ủy quyền mất hiệu lực nếu người nhận bị thêm vào Danh sách dự thi; cấp Ủy quyền mới thì thay người cũ (có thông báo cho cả hai).
+- **Test:** `grading-manual.int.test.ts` 20 test (hàng đợi, ẩn tên và quét JSON không lộ danh tính, lưu điểm và biên, hai người lưu cùng lúc, bảng Kết quả 3,5/4 → 8,8, Mức xử lý 10 % → 7,9 / Hủy / bỏ, Thống kê câu, quyền, Ủy quyền đủ chiều kể cả Quản trị viên, trigger); `grading-queue.test.ts` 6 test cho hàm thuần; toàn bộ 799 test tích hợp qua.
+- **Số đo** (500 Lượt, PostgreSQL thật, một tiến trình): bảng Kết quả **48 ms**, hàng đợi 500 bài **30 ms**, mở một bài **33 ms**, lưu điểm **32 ms**, Thống kê câu **24 ms** (ngân sách 500, 300, 300, 150, 500 ms).
+- **Để ngỏ:** điều kiện "Phiên thi đã Công bố" của chặn Hoàn tác và của đổi Mức xử lý thêm ở 5c; giao diện (tab/đường dẫn Kết quả, màn Chấm, trang quản trị Ủy quyền) ở 5b-2 sau khi chủ dự án chọn prototype màn Chấm.
+
