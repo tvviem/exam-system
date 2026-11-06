@@ -362,7 +362,7 @@ appeals (                                 -- Phúc khảo: mỗi đối tượng
 --   base  = max(raw_score) hoặc raw_score của lượt cuối (theo sessions.attempt_scoring)
 --   void  = có violation nào với penalty_type = 'void'      → Kết quả = 0, ghi "Hủy"
 --   final = base × (1 − min(100, Σ penalty_percent) / 100)
---   Điểm quy đổi = round(final / max_score × 10, 2)
+--   Điểm quy đổi = round(final / max_score × 10, 1)   -- làm tròn đến 0,1 (Q287)
 
 notifications (                           -- thông báo trong ứng dụng; module `notifications`
   id, user_id → users, type text, data jsonb, created_at, read_at

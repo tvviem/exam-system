@@ -269,7 +269,7 @@ _Avoid_: bảng điểm
 Tổng điểm đạt được trên tổng điểm của Bộ đề, ví dụ 37/50.
 
 **Điểm quy đổi** (`ScaledScore`):
-Điểm thô quy về thang 10, làm tròn đến 0,01.
+Điểm thô quy về thang 10, làm tròn đến 0,1 (từ 5 trở lên làm tròn lên), ví dụ 7,2 hoặc 6,5.
 _Avoid_: điểm chuẩn hóa
 
 **Đính chính đáp án** (`KeyCorrection`):
