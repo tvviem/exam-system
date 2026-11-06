@@ -123,6 +123,8 @@ Quy tắc: một module chỉ gọi module khác qua service công khai của mo
 | Câu chọn nhiều | `điểm × max(0, (số đúng đã chọn − số sai đã chọn) / số Phương án đúng)` | đủ điểm khi tập đã chọn trùng khớp Đáp án đúng |
 | Chùm đúng/sai | `điểm × số Mệnh đề nhận định đúng / tổng số Mệnh đề` | đủ điểm khi mọi Mệnh đề đều đúng |
 
+Mệnh đề thí sinh để trống tính là *không đúng*. Câu trả lời không hợp lệ (Phương án không còn trong đề, dữ liệu hỏng) tính 0 điểm và không ảnh hưởng việc chấm các câu khác. Điểm từng câu làm tròn đến 0,01; Điểm thô là tổng các điểm đó; Điểm quy đổi thang 10 làm tròn đến 0,1 (Q287).
+
 Chùm đúng/sai có thêm quy tắc **Bậc thang**: `điểm × ladder[số Mệnh đề nhận định đúng]`. Người ra đề tự nhập bảng khi soạn câu, ví dụ `[0, 0.1, 0.25, 0.5, 1]` cho chùm 4 Mệnh đề.
 
 Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pure function), được unit test đầy đủ.
