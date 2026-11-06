@@ -34,7 +34,7 @@ export interface Counts {
   violations: number;
 }
 
-export type FilterKey = keyof Counts | 'attention';
+export type FilterKey = keyof Counts | 'attention' | 'waiting';
 
 export function countsOf(people: readonly MonitorPerson[]): Counts {
   const counts: Counts = {
@@ -68,6 +68,8 @@ export function matchesFilter(person: MonitorPerson, key: FilterKey): boolean {
       return person.warnings > 0 || person.state === 'suspended';
     case 'attention':
       return isLive(person) && person.reasons.length > 0;
+    case 'waiting':
+      return person.state === 'not_started' && person.waiting !== 'none';
   }
 }
 

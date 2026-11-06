@@ -53,4 +53,38 @@ export class AttemptPresence {
       return new Map();
     }
   }
+
+  // --- Phòng chờ (Q284): người đã nhập mã nhưng chưa có Lượt báo còn trực tuyến, theo `userId` ---------------------------
+
+  private waitingKey(sessionId: string) {
+    return `waiting:${sessionId}`;
+  }
+
+  /** Ghi nhịp của Phòng chờ. Redis lỗi thì bỏ qua (chỉ mất trạng thái trực tuyến, ADR-0002). */
+  async touchWaiting(sessionId: string, userId: string, now: Date): Promise<boolean> {
+    const key = this.waitingKey(sessionId);
+    try {
+      const replies = await this.redis
+        .multi()
+        .hset(key, userId, String(now.getTime()))
+        .pexpire(key, PRESENCE_TTL_MS)
+        .exec();
+      // HSET trả 1 khi trường mới: lần đầu người này báo có mặt (không phải đọc cả bảng).
+      return replies?.[0]?.[1] === 1;
+    } catch (error) {
+      log.warn(`Không ghi được nhịp Phòng chờ: ${String(error)}`);
+      return false;
+    }
+  }
+
+  /** Giờ báo gần nhất của từng người trong Phòng chờ (người chưa từng báo vắng). Redis lỗi thì coi như chưa ai báo. */
+  async waitingLastSeen(sessionId: string): Promise<Map<string, Date>> {
+    try {
+      const all = await this.redis.hgetall(this.waitingKey(sessionId));
+      return new Map(Object.entries(all).map(([userId, ms]) => [userId, new Date(Number(ms))]));
+    } catch (error) {
+      log.warn(`Không đọc được nhịp Phòng chờ: ${String(error)}`);
+      return new Map();
+    }
+  }
 }

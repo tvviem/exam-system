@@ -72,7 +72,7 @@ export function JoinForm() {
   );
 }
 
-const GROUPS: SessionGroup[] = ['open', 'upcoming', 'finished'];
+const GROUPS: SessionGroup[] = ['waiting', 'open', 'upcoming', 'finished'];
 
 export function TakeSessionList({ items }: { items: TakeSession[] }) {
   const { t } = useTranslation();
@@ -137,6 +137,12 @@ function ActionNote({ action, row }: { action: EntryAction; row: TakeSession }) 
       );
     case 'revoked':
       return <p className="text-sm text-danger">{t('take.list.revoked')}</p>;
+    case 'waiting':
+      return (
+        <p className="text-sm text-fg-muted">
+          {t('take.list.waitingNote', { time: formatDateTime(row.opensAt) })}
+        </p>
+      );
     case 'wait':
       return (
         <p className="text-sm text-fg-muted">
@@ -150,7 +156,13 @@ function ActionNote({ action, row }: { action: EntryAction; row: TakeSession }) 
         </p>
       );
     case 'enter-code':
-      return <p className="text-sm text-fg-muted">{t('take.list.needCode')}</p>;
+      return (
+        <p className="text-sm text-fg-muted">
+          {row.phase === 'upcoming'
+            ? t('take.list.needCodeEarly', { time: formatDateTime(row.opensAt) })
+            : t('take.list.needCode')}
+        </p>
+      );
     default:
       return (
         <p className="text-sm text-fg-muted">
@@ -170,6 +182,17 @@ function ActionButton({ action, row }: { action: EntryAction; row: TakeSession }
         className={buttonClass('primary')}
       >
         {t('take.list.start')}
+      </Link>
+    );
+  }
+  if (action === 'waiting') {
+    return (
+      <Link
+        to="/take/sessions/$sessionId"
+        params={{ sessionId: row.sessionId }}
+        className={buttonClass('primary')}
+      >
+        {t('take.list.goWaiting')}
       </Link>
     );
   }

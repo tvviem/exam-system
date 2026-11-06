@@ -1,4 +1,4 @@
-import type { RichText } from '@exam/shared';
+import type { RichText, SessionPhase } from '@exam/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { ApiError, apiFetch } from './api';
 import type { SessionRow } from './take/entry';
@@ -27,10 +27,17 @@ export const takeSessionsQuery = queryOptions({
 });
 
 export const joinSession = (code: string) =>
-  apiFetch<{ sessionId: string; attemptId: string | null }>('/take/join', {
+  apiFetch<{ sessionId: string; attemptId: string | null; waiting: boolean }>('/take/join', {
     method: 'POST',
     body: { code },
   });
+
+/** Nhịp của Phòng chờ (Q284): báo còn trực tuyến, nhận giờ server và giờ mở để đếm ngược chính xác. */
+export const waitingPing = (sessionId: string) =>
+  apiFetch<{ serverNow: string; opensAt: string; phase: SessionPhase; canStart: boolean }>(
+    `/take/sessions/${sessionId}/waiting`,
+    { method: 'POST', body: {} },
+  );
 
 export type TakeItemType = 'single_choice' | 'multiple_choice' | 'true_false_cluster' | 'essay';
 

@@ -99,7 +99,7 @@ function PanelBody({
           {[person.code, person.classLabel].filter(Boolean).join(' · ')}
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
-          <StateBadge state={person.state} />
+          <StateBadge state={person.state} waiting={person.waiting} />
           <ReasonBadges person={person} total={totalItems} />
           {person.warnings > 0 && (
             <Badge tone="danger" icon={<TriangleAlert aria-hidden className="size-3.5" />}>

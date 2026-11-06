@@ -175,7 +175,7 @@
     "INVALID_STATE_SESSION_CANCELLED": "Phiên thi đã bị Hủy.",
     "INVALID_STATE_HAS_ATTEMPTS": "Đã có người làm bài trong Phiên thi này nên không thực hiện được. Muốn dừng thì Hủy Phiên thi.",
     "INVALID_STATE_NO_ACTIVE_DEVICE": "Người này chưa có thiết bị nào đang gắn.",
-    "INVALID_STATE_NOT_OPEN_YET": "Phiên thi chưa mở.",
+    "INVALID_STATE_NOT_OPEN_YET": "Phiên thi chưa mở. Bạn nhập được Mã vào thi từ 30 phút trước giờ mở để vào Phòng chờ.",
     "INVALID_STATE_ENTRY_CLOSED": "Phiên thi đã đóng cửa vào thi.",
     "INVALID_STATE_ATTEMPTS_EXHAUSTED": "Bạn đã dùng hết số lượt làm bài của Phiên thi này.",
     "INVALID_STATE_DISQUALIFIED": "Bạn đã bị Đình chỉ trong Phiên thi này nên không thể bắt đầu lượt làm bài mới.",
@@ -317,6 +317,17 @@
       "starting": "Đang bắt đầu…",
       "resume": "Làm tiếp Lượt làm bài"
     },
+    "waitingRoom": {
+      "title": "Phòng chờ",
+      "countdown": "Còn lại tới giờ mở",
+      "opensAt": "Phiên thi mở lúc {{time}}",
+      "online": "Bạn đang trực tuyến trong Phòng chờ. Người ra đề thấy bạn đã sẵn sàng.",
+      "tip1": "Giữ trang này mở và dùng đúng thiết bị này; đến giờ mở sẽ có nút “Bắt đầu làm bài”.",
+      "tip2": "Kiểm tra pin và mạng, tắt thông báo làm phiền trước khi vào làm bài.",
+      "tip3": "Hệ thống không tự bắt đầu thay bạn: đồng hồ chỉ chạy khi bạn bấm “Bắt đầu làm bài”.",
+      "opened": "Phiên thi đã mở. Bấm “Bắt đầu làm bài” khi bạn sẵn sàng.",
+      "startLocked": "Chưa tới giờ mở"
+    },
     "join": {
       "label": "Mã vào thi",
       "hint": "Mã do Người ra đề cung cấp. Không cần gõ khoảng trắng hay gạch nối.",
@@ -333,6 +344,10 @@
       "revoked": "Thiết bị này đã bị thu hồi. Hãy báo Người ra đề.",
       "notOpen": "Mở lúc {{time}}",
       "needCode": "Nhập Mã vào thi để vào.",
+      "needCodeEarly": "Mở lúc {{time}}. Đã nhập được Mã vào thi để vào Phòng chờ.",
+      "waiting": "Phòng chờ",
+      "waitingNote": "Đang ở Phòng chờ. Mở lúc {{time}}.",
+      "goWaiting": "Vào Phòng chờ",
       "start": "Bắt đầu",
       "resume": "Làm tiếp",
       "enterCode": "Nhập mã",
@@ -1456,6 +1471,12 @@
     },
     "tile": {
       "violations": "Vi phạm"
+    },
+    "waiting": {
+      "online": "Đang chờ",
+      "offline": "Chờ · mất kết nối",
+      "chip": "Phòng chờ",
+      "line": "Đã nhập mã {{joined}}/{{total}} · đang trực tuyến {{online}}"
     },
     "deviceState": {
       "none": "Chưa gắn",

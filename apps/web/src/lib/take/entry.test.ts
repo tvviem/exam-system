@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entryActionOf, groupOf, normalizeCode, type SessionRow } from './entry';
+import { entryActionOf, groupOf, normalizeCode, resumeTargetOf, type SessionRow } from './entry';
 
 const row = (over: Partial<SessionRow> = {}): SessionRow => ({
   phase: 'open',
@@ -7,6 +7,8 @@ const row = (over: Partial<SessionRow> = {}): SessionRow => ({
   inProgressAttemptId: null,
   attemptsUsed: 0,
   maxAttempts: 1,
+  canWait: false,
+  waitingRoom: false,
   ...over,
 });
 
@@ -69,5 +71,52 @@ describe('groupOf: ba nhóm Đang mở / Sắp mở / Đã xong (Q206)', () => {
     [row({ attemptsUsed: 1, inProgressAttemptId: 'a1' }), 'open'],
   ])('%j thuộc nhóm %s', (input, group) => {
     expect(groupOf(input)).toBe(group);
+  });
+});
+
+describe('resumeTargetOf: đăng nhập xong đi thẳng đến chỗ đang làm', () => {
+  const r = (over: Partial<SessionRow>) => ({ ...row(over), sessionId: 's' });
+  it('đúng một Lượt đang làm: vào thẳng Lượt đó', () => {
+    expect(resumeTargetOf([r({ inProgressAttemptId: 'a1', deviceStatus: 'active' })])).toEqual({
+      kind: 'attempt',
+      attemptId: 'a1',
+    });
+  });
+  it('không có Lượt, đúng một Phòng chờ: về Phòng chờ', () => {
+    expect(
+      resumeTargetOf([
+        r({ phase: 'upcoming', deviceStatus: 'active', canWait: true, waitingRoom: true }),
+      ]),
+    ).toEqual({ kind: 'session', sessionId: 's' });
+  });
+  it('nhiều Lượt đang làm, hoặc không có gì: để chọn trong danh sách', () => {
+    expect(
+      resumeTargetOf([r({ inProgressAttemptId: 'a1' }), r({ inProgressAttemptId: 'a2' })]),
+    ).toBeNull();
+    expect(resumeTargetOf([r({ phase: 'upcoming' })])).toBeNull();
+    expect(resumeTargetOf([])).toBeNull();
+  });
+});
+
+describe('Phòng chờ trong "Phiên thi của tôi" (Q284)', () => {
+  it('sắp mở, đã nhập mã trên thiết bị này: vào Phòng chờ, nằm nhóm riêng', () => {
+    const waiting = row({
+      phase: 'upcoming',
+      deviceStatus: 'active',
+      canWait: true,
+      waitingRoom: true,
+    });
+    expect(entryActionOf(waiting)).toBe('waiting');
+    expect(groupOf(waiting)).toBe('waiting');
+  });
+
+  it('sắp mở, đã tới cửa sổ 30 phút nhưng chưa nhập mã: nhập mã để vào Phòng chờ', () => {
+    const early = row({ phase: 'upcoming', canWait: true });
+    expect(entryActionOf(early)).toBe('enter-code');
+    expect(groupOf(early)).toBe('upcoming');
+  });
+
+  it('sắp mở, còn xa giờ mở: chỉ chờ', () => {
+    expect(entryActionOf(row({ phase: 'upcoming' }))).toBe('wait');
   });
 });

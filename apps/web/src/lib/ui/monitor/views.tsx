@@ -93,7 +93,7 @@ export function CardsView({
             <Remaining person={p} />
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <StateBadge state={p.state} />
+            <StateBadge state={p.state} waiting={p.waiting} />
             <ReasonBadges person={p} total={totalItems} />
           </div>
           <ProgressBar value={p.answered} max={totalItems} />
@@ -162,7 +162,7 @@ export function TableView({
         {
           key: 'state',
           header: t('monitor.col.state'),
-          cell: (p) => <StateBadge state={p.state} />,
+          cell: (p) => <StateBadge state={p.state} waiting={p.waiting} />,
         },
         {
           key: 'answered',
@@ -197,7 +197,7 @@ export function TableView({
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
               {nameCell(p)}
-              <StateBadge state={p.state} />
+              <StateBadge state={p.state} waiting={p.waiting} />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 pb-1 text-sm">
               <ProgressBar value={p.answered} max={totalItems} />

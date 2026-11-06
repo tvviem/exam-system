@@ -175,6 +175,10 @@ _Avoid_: lịch thi
 Thiết bị duy nhất được gắn cho một Người dự thi trong một Phiên thi, tính từ lần đầu họ nhập đúng Mã vào thi. Mọi thao tác dự thi của người đó trong Phiên thi phải đến từ thiết bị này; thiết bị khác bị từ chối dù cùng tài khoản. Một thiết bị chỉ phục vụ một Người dự thi trong một Phiên thi.
 _Avoid_: máy thi, phiên thi của thiết bị
 
+**Phòng chờ** (`WaitingRoom`):
+Trạng thái của một Người dự thi đã nhập đúng Mã vào thi (Thiết bị dự thi đã được gắn) nhưng chưa bắt đầu Lượt làm bài, vì Phiên thi chưa mở. Nhập mã được từ 30 phút trước giờ mở; đến giờ mở người ấy tự bấm bắt đầu, hệ thống không tự bắt đầu thay. Người ra đề thấy họ là "Đang chờ" (còn trực tuyến) hoặc "Chờ · mất kết nối" thay cho "Chưa vào". Không phải một Phiên thi hay một màn riêng của Người ra đề.
+_Avoid_: sảnh, lobby, phòng đợi
+
 **Thu hồi thiết bị** (`Revoke`):
 Hành động của Người ra đề gỡ Thiết bị dự thi của một Người dự thi khi thiết bị gặp sự cố hoặc nghi ngờ thi hộ. Thiết bị bị thu hồi bị loại khỏi Phiên thi đó cho người ấy; thiết bị mới đầu tiên nhập đúng Mã vào thi sẽ được gắn và làm tiếp đúng Lượt làm bài cũ. Câu trả lời đã lưu được giữ, Câu trả lời chưa gửi từ thiết bị cũ không được nhận, trừ khi Người ra đề Hoàn tác Thu hồi.
 _Avoid_: đổi thiết bị, cho phép đổi thiết bị, đăng xuất

@@ -9,6 +9,7 @@ const log = new Logger('RequestRateLimiter');
 /** Giới hạn lưu bài và heartbeat theo từng người (không theo IP vì cả lớp dùng chung một IP). */
 export const SAVE_LIMIT = { max: 100, windowMs: 10_000 };
 export const HEARTBEAT_LIMIT = { max: 30, windowMs: 10_000 };
+export const WAITING_LIMIT = { max: 30, windowMs: 10_000 };
 
 /**
  * Chặn một người gửi lưu bài hay heartbeat dồn dập (script gọi API trực tiếp, hay trình duyệt lỗi lặp vô hạn) làm server chậm
@@ -26,7 +27,7 @@ export class RequestRateLimiter {
   ) {}
 
   async hit(
-    scope: 'save' | 'heartbeat',
+    scope: 'save' | 'heartbeat' | 'waiting',
     userId: string,
     limit: { max: number; windowMs: number },
   ): Promise<void> {

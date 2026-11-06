@@ -1,9 +1,10 @@
-import type { AttentionReason, MonitorState } from '@exam/shared';
+import type { AttentionReason, MonitorState, WaitingState } from '@exam/shared';
 import {
   Ban,
   CircleCheck,
   CircleDashed,
   Eye,
+  Hourglass,
   PenLine,
   ShieldOff,
   Smartphone,
@@ -47,8 +48,26 @@ const STATE_ICON: Record<MonitorState, ReactNode> = {
   suspended: <Ban aria-hidden className="size-3.5" />,
 };
 
-export function StateBadge({ state }: { state: MonitorState }) {
+export function StateBadge({
+  state,
+  waiting = 'none',
+}: {
+  state: MonitorState;
+  waiting?: WaitingState;
+}) {
   const { t } = useTranslation();
+  // Người chưa có Lượt nhưng đã nhập mã: "Đang chờ" (còn trực tuyến) hoặc "Chờ · mất kết nối" thay cho "Chưa vào" (Q284).
+  if (state === 'not_started' && waiting !== 'none') {
+    return waiting === 'online' ? (
+      <Badge tone="success" icon={<Hourglass aria-hidden className="size-3.5" />}>
+        {t('monitor.waiting.online')}
+      </Badge>
+    ) : (
+      <Badge tone="warning" icon={<WifiOff aria-hidden className="size-3.5" />}>
+        {t('monitor.waiting.offline')}
+      </Badge>
+    );
+  }
   return (
     <Badge tone={STATE_TONE[state]} icon={STATE_ICON[state]}>
       {t(`monitor.state.${state}`)}

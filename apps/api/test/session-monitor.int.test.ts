@@ -71,6 +71,8 @@ describe('trạng thái từng người và tổng hợp', () => {
       suspended: 0,
       attention: 0,
       undoable: 0,
+      joined: 0,
+      waitingOnline: 0,
     });
     const dung = body.people.find((p) => p.userId === live.userIds.dung);
     expect(dung).toMatchObject({
