@@ -43,7 +43,7 @@ Mỗi dòng: đề xuất của tôi. Chỗ có lựa chọn thật được đ�
 
 | # | Đề xuất | Lý do |
 |---|---|---|
-| Q290 | Chấm **theo từng câu** trên mọi bài ("chấm câu 5 của cả lớp rồi sang câu 6"), không theo từng bài. Điểm nhập trong `[0, điểm câu]`, bước 0,01; nhận xét tùy chọn ≤ 1000 ký tự. Tự lưu khi rời ô hoặc bấm Tiếp | Cùng một thước đo cho mọi người, theo [ui-design.md](../ui-design.md) mẫu **Chấm** |
+| Q290 | **[đã duyệt 6/11/2026]** Chấm **theo từng câu** trên mọi bài ("chấm câu 5 của cả lớp rồi sang câu 6"), không theo từng bài. Điểm nhập trong `[0, điểm câu]`, bước 0,01; nhận xét tùy chọn ≤ 1000 ký tự. Tự lưu khi rời ô hoặc bấm Tiếp | Cùng một thước đo cho mọi người, theo [ui-design.md](../ui-design.md) mẫu **Chấm** |
 | Q291 | **Chấm ẩn tên** (thuật ngữ mới `BlindGrading`): mặc định bật, **server** không trả tên, Mã định danh, Lớp trong hàng đợi chấm (chỉ "Bài 17"); thứ tự hàng đợi ngẫu nhiên nhưng ổn định (băm theo mã Lượt) để không đoán người qua thứ tự nộp. Tắt/bật được trước khi Công bố. Bảng Kết quả vẫn hiện tên (đó là màn khác) | Ẩn ở API chứ không chỉ ở giao diện |
 | Q292 | Hàng đợi chứa các Lượt **có thể được tính**: `latest` → Lượt cuối của mỗi người; `highest` → mọi Lượt đã nộp. Chỉ **chủ Phiên thi** chấm (Phiên thi chuyển cho người nhận khi Xóa người dùng thì quyền đi theo, Q205/4e); đồng chấm là backlog | Không bắt chấm bài không bao giờ được tính |
 | Q293 | Giao diện: máy tính chia đôi (hàng đợi bên trái, bài làm + hướng dẫn chấm + ô điểm bên phải), phím tắt J/K chuyển bài, nút nhanh 0 / ½ / tối đa; điện thoại một bài mỗi màn, Trước/Sau, tiến độ "37/120 đã chấm". Mở bài kế dưới 300 ms (nạp trước bài kế) | Phản hồi tức thời là yêu cầu hàng đầu |
