@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { type AuthSession, authSessionsQuery, revokeAuthSession } from '../../../lib/auth';
 import { Badge } from '../../../lib/ui';
+import { BackToTake } from '../../../lib/ui/back-to-take';
 
 export const Route = createFileRoute('/_authed/account/auth-sessions')({
   loader: ({ context }) => context.queryClient.ensureQueryData(authSessionsQuery),
@@ -28,10 +29,11 @@ function AuthSessionsPage() {
   });
 
   return (
-    <section>
+    <section className="flex flex-col gap-3">
+      <BackToTake />
       <h1 className="text-lg font-semibold">{t('authSessions.heading')}</h1>
-      <p className="mt-1 text-fg-muted">{t('authSessions.intro')}</p>
-      <ul className="mt-4 flex flex-col gap-3">
+      <p className="text-fg-muted">{t('authSessions.intro')}</p>
+      <ul className="flex flex-col gap-3">
         {sessions.map((s) => (
           <li key={s.id} className="rounded-xl border border-border bg-surface p-4">
             <p className="font-medium">

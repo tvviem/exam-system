@@ -1,4 +1,4 @@
-import { type Browser, expect, type Page } from '@playwright/test';
+import { type Browser, expect, type Locator, type Page } from '@playwright/test';
 import { examinerPage, ORIGIN, seedOpenSession, signIn } from './take-support';
 
 // Dùng chung cho các spec của màn Theo dõi (monitor.spec.ts, monitor-live.spec.ts).
@@ -13,7 +13,7 @@ export async function room(
   browser: Browser,
   project: string,
   tag: string,
-  options: { prefix?: 'mon' | 'live' | 'xd' | 'ud' | 'pc'; fakeClock?: boolean } = {},
+  options: { prefix?: 'mon' | 'live' | 'xd' | 'ud' | 'gd' | 'pc'; fakeClock?: boolean } = {},
 ) {
   const prefix = options.prefix ?? 'mon';
   const fakeClock = options.fakeClock ?? true;
@@ -52,6 +52,20 @@ export async function room(
 
 /** Cho trang Người dự thi gửi nhịp kế tiếp ngay (tua 15 giây của đồng hồ giả). */
 export const beat = (page: Page) => page.clock.fastForward(BEAT_MS + 100);
+
+/**
+ * Chờ một thông báo của Người ra đề hiện trên trang Người dự thi. Kênh đẩy thường báo trong chưa đến 1 giây; nếu chưa thấy thì
+ * tua đồng hồ giả một nhịp heartbeat. Không tua khi đã thấy: thông báo Cộng giờ tự đóng sau 15 giây (Q282) nên tua đồng hồ giả sau
+ * khi nó hiện sẽ làm nó biến mất.
+ */
+export async function awaitNotice(page: Page, notice: Locator) {
+  try {
+    await expect(notice).toBeVisible({ timeout: 2500 });
+  } catch {
+    await beat(page);
+    await expect(notice).toBeVisible();
+  }
+}
 
 export const openMonitor = async (examiner: Page, sessionId: string) => {
   const started = performance.now();

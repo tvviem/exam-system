@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { beat, openMonitor, openPerson, room } from './monitor-support';
+import { awaitNotice, beat, openMonitor, openPerson, room } from './monitor-support';
 import { overflow } from './take-support';
 
 // S6 (Q252–Q254, Q256, Q259, Q260, Q262): Người ra đề theo dõi, Cộng giờ, Buộc nộp, Cảnh cáo, Đình chỉ, Thu hồi và Hoàn tác
@@ -36,8 +36,8 @@ test('Theo dõi: thấy cả phòng, Cộng giờ cho một người, Người d
   await expect(examiner.getByText('Đã cộng 30 phút cho 1 người')).toBeVisible();
 
   // Người dự thi: nhận ở nhịp kế tiếp, kèm thông báo có lý do; đồng hồ nhảy lên ~60 phút
-  await beat(sv1);
   const notice = sv1.getByRole('status').filter({ hasText: 'Người ra đề đã cộng giờ' });
+  await awaitNotice(sv1, notice);
   await expect(notice).toContainText('Bạn được cộng thêm 30 phút');
   await expect(notice).toContainText('Mất điện phòng máy');
   const after = (await sv1.getByRole('timer').textContent()) ?? '';
@@ -170,10 +170,7 @@ test('Theo dõi: chọn nhóm, Buộc nộp cả nhóm; Đóng cửa vào thi; b
   const took = performance.now() - asked;
   console.info(`[${project}] Cộng giờ cả phòng: ${took} ms`);
   expect(took, 'Cộng giờ cả phòng phải tức thì').toBeLessThan(1000);
-  await beat(sv2);
-  await expect(
-    sv2.getByRole('status').filter({ hasText: 'Bạn được cộng thêm 7 phút' }),
-  ).toBeVisible();
+  await awaitNotice(sv2, sv2.getByRole('status').filter({ hasText: 'Bạn được cộng thêm 7 phút' }));
 
   // Chọn nhóm rồi Buộc nộp: hộp xác nhận nêu số người
   await examiner.getByRole('button', { name: /Chọn nhiều|Chọn$/ }).click();
