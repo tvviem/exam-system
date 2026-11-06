@@ -327,7 +327,7 @@ describe('Trigger của bảng điểm (S3)', () => {
       by: string | null = null,
     ) =>
       sql(
-        `insert into response_grades (attempt_id, item_id, score, source, graded_by) values ($1, $2, $3, $4::response_grade_source, $5)`,
+        `insert into response_grades (attempt_id, item_id, score, verdict, source, graded_by) values ($1, $2, $3, 'wrong', $4::response_grade_source, $5)`,
         [attemptId, item?.id, score, source, by],
       );
     // Lượt còn đang làm
@@ -336,7 +336,7 @@ describe('Trigger của bảng điểm (S3)', () => {
     await expect(insert('1.01')).rejects.toThrow(/vuot diem toi da/);
     await expect(insert('-0.5')).rejects.toThrow();
     await expect(insert('1', live.attemptIds.an, 'manual')).rejects.toThrow(
-      /response_grades_manual_has_grader/,
+      /response_grades_manual_has_grader|tu luan/,
     );
     await insert('1'); // hợp lệ
     await expect(
@@ -348,7 +348,7 @@ describe('Trigger của bảng điểm (S3)', () => {
     await submit('an');
     await expect(
       sql(
-        `insert into response_grades (attempt_id, item_id, score, source) values ($1, gen_random_uuid(), 0, 'auto')`,
+        `insert into response_grades (attempt_id, item_id, score, verdict, source) values ($1, gen_random_uuid(), 0, 'wrong', 'auto')`,
         [live.attemptIds.an],
       ),
     ).rejects.toThrow();

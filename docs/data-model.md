@@ -373,21 +373,22 @@ notifications (                           -- thông báo trong ứng dụng; mod
 response_grades (                          -- một dòng cho MỖI câu của Bộ đề trong mỗi Lượt đã chấm (kể cả câu bỏ trống)
   attempt_id → attempts ON DELETE RESTRICT, item_id → exam_items ON DELETE RESTRICT,
   score numeric(6,2) NULL,                 -- NULL = Câu tự luận có nội dung, chờ chấm; làm tròn 0,01 (Q287)
-  source enum('auto','manual','appeal','correction'),
+  verdict enum('correct','partial','wrong','blank','pending') NOT NULL,   -- 0018: tự động từ scoreResponse, chấm tay từ điểm
+  source enum('auto','manual','appeal','correction'),    -- 'manual' chỉ cho câu tự luận (trigger)
   graded_by → users NULL, graded_at, feedback text NULL CHECK (char_length <= 1000),
   PRIMARY KEY (attempt_id, item_id)
 )  -- Trigger: chỉ ghi khi Lượt đã nộp; score trong [0, điểm câu]; source = 'manual' phải có graded_by; Phiên thi đã Chốt thì chặn ghi.
 attempt_grades (attempt_id PK → attempts ON DELETE RESTRICT, graded_at)   -- dấu "đã chấm tự động xong"; job quét tìm Lượt submitted chưa có dấu
 session_gradings (
   session_id PK → sessions ON DELETE RESTRICT,
-  blind bool DEFAULT true,                 -- Chấm ẩn tên (Q291)
-  released_at NULL, released_by → users NULL,
-  appeal_period_hours int NULL CHECK (appeal_period_hours = 0 OR appeal_period_hours BETWEEN 24 AND 336),
-  finalized_at NULL                        -- released_at, finalized_at chỉ đặt một lần, không xóa
+  blind bool DEFAULT true,                 -- Chấm ẩn tên (Q291); 0018 chỉ có blind, created_at, updated_at
+  released_at NULL, released_by → users NULL,   -- thêm ở 5c
+  appeal_period_hours int NULL CHECK (appeal_period_hours = 0 OR appeal_period_hours BETWEEN 24 AND 336),   -- 5c
+  finalized_at NULL                        -- 5c; released_at, finalized_at chỉ đặt một lần, không xóa
 )
-session_grading_delegates (                -- Ủy quyền chấm (Q307)
-  session_id → sessions, user_id → users, granted_by → users, granted_at, revoked_at NULL
-)
+session_grading_delegates (                -- Ủy quyền chấm (Q307, migration 0018)
+  id, session_id → sessions, user_id → users, granted_by → users, granted_at, revoked_at NULL
+)  -- UNIQUE (session_id) WHERE revoked_at IS NULL; trigger: không xóa, thu hồi chỉ một lần
 key_correction_effects (                   -- chỉ ghi thêm: điểm đổi do mỗi Đính chính đáp án (Q302)
   correction_id → key_corrections, attempt_id → attempts, old_score numeric(6,2), new_score numeric(6,2)
 )

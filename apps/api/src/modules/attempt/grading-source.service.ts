@@ -71,6 +71,22 @@ export class GradingSourceService implements GradingSource {
     });
   }
 
+  async attemptsOfSession(sessionId: string, executor: GradingExecutor = this.db) {
+    const rows = await executor
+      .select({
+        attemptId: attempts.id,
+        userId: attempts.userId,
+        attemptNo: attempts.attemptNo,
+        submittedAt: attempts.submittedAt,
+      })
+      .from(attempts)
+      .where(and(eq(attempts.sessionId, sessionId), eq(attempts.status, 'submitted')))
+      .orderBy(attempts.userId, attempts.attemptNo);
+    return rows.flatMap((row) =>
+      row.submittedAt ? [{ ...row, submittedAt: row.submittedAt }] : [],
+    );
+  }
+
   async submittedSince(since: Date, limit: number, offset: number): Promise<string[]> {
     const rows = await this.db
       .select({ id: attempts.id })

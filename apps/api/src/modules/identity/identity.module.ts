@@ -23,6 +23,7 @@ import { CredentialSlipsController } from './credential-slips/credential-slips.c
 import { CredentialSlipsService } from './credential-slips/credential-slips.service';
 import { PdfKitSlipRenderer, SLIP_RENDERER } from './credential-slips/slip-renderer';
 import { SlipVault } from './credential-slips/slip-vault';
+import { ExaminerDirectoryService } from './examiner-directory.service';
 import { InvitationAcceptanceService } from './invitations/invitation-acceptance.service';
 import { InvitationRateLimiter } from './invitations/invitation-rate-limiter';
 import { InvitationsController } from './invitations/invitations.controller';
@@ -70,6 +71,7 @@ import { UsersRepository } from './users.repository';
     AccountRequestsService,
     RequesterCredentialsService,
     CandidateDirectoryService,
+    ExaminerDirectoryService,
     AccountRequestParseJob,
     AccountRequestApproveJob,
     CredentialSlipsService,
@@ -85,6 +87,7 @@ import { UsersRepository } from './users.repository';
     AdminAccountsService,
     RequesterCredentialsService,
     CandidateDirectoryService,
+    ExaminerDirectoryService,
   ],
 })
 export class IdentityModule {}

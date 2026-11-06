@@ -1,6 +1,13 @@
 // Các hàm chấm thuần (pure) của lát cắt 5: docs/architecture.md mục 5.5, docs/plan/slice-5.md. Không phụ thuộc gói nào.
 export { fromCenti, mulDivRound, toCenti } from './centi.js';
 export {
+  countableAttempts,
+  type SubmittedAttempt,
+  stableHash,
+  stableOrder,
+  verdictOfScore,
+} from './grading-queue.js';
+export {
   type AttemptScore,
   type CandidateResult,
   type PenaltyInput,

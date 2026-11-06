@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AutogradeService } from '../src/modules/grading/autograde.service';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
+import { call } from './support/http';
 import { openLiveSession } from './support/live-session';
 import { resetState } from './support/reset';
 
@@ -75,5 +76,53 @@ describe.skipIf(!process.env.GRADING_BENCH)('đo chấm tự động', () => {
     );
     expect(await sql(`select 1 from attempt_grades`)).toHaveLength(N);
     expect(total).toBeLessThan(10_000);
+
+    // Màn Chấm và Kết quả với 500 Lượt (Q306, PR 5b): đo từng đường.
+    const timed = async (
+      label: string,
+      run: () => Promise<{ statusCode: number }>,
+      limitMs: number,
+    ) => {
+      const t0 = performance.now();
+      const res = await run();
+      const ms = performance.now() - t0;
+      // eslint-disable-next-line no-console
+      console.log(`[đo] ${label}: ${ms.toFixed(0)} ms`);
+      expect(res.statusCode).toBe(200);
+      expect(ms).toBeLessThan(limitMs);
+    };
+    const get = (path: string) => () =>
+      call(t.app, 'GET', `/api${path}`, { cookie: live.examiner });
+    const base = `/sessions/${live.sessionId}`;
+    const [essay] = (
+      await call(t.app, 'GET', `/api${base}/grading/items`, { cookie: live.examiner })
+    ).json().items as { itemId: string }[];
+    await timed('bảng Kết quả 500 người', get(`${base}/results`), 500);
+    await timed('hàng đợi chấm 500 bài', get(`${base}/grading/items/${essay?.itemId}/queue`), 300);
+    const entries = (
+      await call(t.app, 'GET', `/api${base}/grading/items/${essay?.itemId}/queue`, {
+        cookie: live.examiner,
+      })
+    ).json().entries as { attemptId: string }[];
+    await timed(
+      'mở một bài tự luận',
+      get(`${base}/grading/items/${essay?.itemId}/attempts/${entries[0]?.attemptId}`),
+      300,
+    );
+    await timed(
+      'lưu điểm một bài',
+      () =>
+        call(
+          t.app,
+          'PUT',
+          `/api${base}/grading/attempts/${entries[0]?.attemptId}/items/${essay?.itemId}`,
+          {
+            cookie: live.examiner,
+            body: { score: 0.5 },
+          },
+        ),
+      150,
+    );
+    await timed('Thống kê câu', get(`${base}/results/item-stats`), 500);
   }, 60_000);
 });

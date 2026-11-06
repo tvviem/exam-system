@@ -10,6 +10,7 @@ import { RequestRateLimiter } from './request-rate-limiter';
 import { SessionAttemptsService } from './session-attempts.service';
 import { SessionPreviewController } from './session-preview.controller';
 import { SessionPreviewService } from './session-preview.service';
+import { ViolationPenaltiesService } from './violation-penalties.service';
 
 // Quyền truy cập (AuthGuard) do IdentityModule đăng ký toàn cục. Cổng SESSION_ENTRY và EXAM_CONTENT do
 // `AttemptPortsWiringModule` cung cấp.
@@ -25,7 +26,13 @@ import { SessionPreviewService } from './session-preview.service';
     CandidateMediaService,
     SessionPreviewService,
     GradingSourceService,
+    ViolationPenaltiesService,
   ],
-  exports: [SessionAttemptsService, CandidateMediaService, GradingSourceService],
+  exports: [
+    SessionAttemptsService,
+    CandidateMediaService,
+    GradingSourceService,
+    ViolationPenaltiesService,
+  ],
 })
 export class AttemptModule {}
