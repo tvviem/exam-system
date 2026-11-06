@@ -310,3 +310,84 @@ API và màn hình cho Người ra đề (5b), `session_gradings`, Công bố, `
 - **Test:** `grading-auto.int.test.ts` 20 test (S2 chấm đủ Loại câu, câu bỏ trống, idempotent, không ghi đè điểm tay, Buộc nộp cả phòng, hết giờ, Hủy Phiên thi, ngoài cửa sổ 24 giờ, mất hàng đợi; S3 trigger; S4 hai lần chấm cùng lúc; Hoàn tác xóa điểm / bị chặn / cả lô); toàn bộ 775 test tích hợp qua.
 - **Số đo:** chấm 500 Lượt (Bộ đề bốn Loại câu, theo lô 50) mất **0,36 giây**, 0,7 ms mỗi Lượt (ngân sách 10 giây và 20 ms). Request Nộp bài chỉ thêm một lệnh xếp job Redis (không chờ chấm).
 - **Để ngỏ:** 5b thêm gọi `autogradeSession` khi mở bảng Kết quả để chấm bù Lượt cũ hơn 24 giờ; điều kiện "Phiên thi đã Công bố" của `canReopen` thêm ở 5c; thử tải 500 người nộp cùng lúc qua `load:exam` (S7) ở 5e.
+
+## PR 5b: thiết kế chi tiết (đề xuất 6/11/2026, chờ duyệt)
+
+**Phạm vi:** Người ra đề (hoặc người được Ủy quyền) chấm Câu tự luận, quyết Mức xử lý Vi phạm, xem bảng Kết quả và Thống kê câu của một Phiên thi. **Chưa có Công bố** (5c), nên Người dự thi vẫn chỉ thấy "Đã nộp". Đề xuất **chia hai PR** như lát cắt 4: **5b-1** (API, dễ kiểm bằng test) và **5b-2** (giao diện), để mỗi PR nhỏ, CI nhanh và bạn xem được từng phần.
+
+### 1. Quyền truy cập (Q291, Q292, Q307)
+
+- Mọi API chấm và Kết quả cho **chủ Phiên thi hoặc người được Ủy quyền đang hiệu lực**; người khác nhận 404 (như Theo dõi).
+- Cấp và thu hồi Ủy quyền: chủ Phiên thi hoặc Quản trị viên. Người được Ủy quyền không ủy quyền tiếp.
+- Cổng mới `GRADING_SESSIONS` (do `session` cài đặt): cho `grading` biết chủ, Bộ đề, `attempt_scoring`, giờ mở/đóng/Đóng cửa vào thi, Phiên thi đã Hủy chưa, và người nào có trong Danh sách dự thi. Cổng `EXAMINER_DIRECTORY` (do `identity` cài đặt): "người này còn là Người ra đề đang hoạt động không" và gợi ý tìm Người ra đề để ủy quyền.
+- Người nhận Ủy quyền phải: là Người ra đề đang hoạt động, khác chủ, **không có trong Danh sách dự thi** của Phiên thi đó (nếu sau này bị thêm vào Danh sách thì Ủy quyền không còn hiệu lực).
+- Mỗi Phiên thi tối đa **một** người được Ủy quyền cùng lúc.
+
+### 2. Cơ sở dữ liệu (migration 0018)
+
+- `session_gradings (session_id PK → sessions RESTRICT, blind bool DEFAULT true, created_at, updated_at)`: ở 5b chỉ giữ công tắc Chấm ẩn tên; 5c thêm cột Công bố/Chốt bằng `ALTER`. Tạo dòng khi cần đầu tiên (mặc định `blind = true` nếu chưa có dòng).
+- `session_grading_delegates (id, session_id → sessions RESTRICT, user_id → users, granted_by → users, granted_at, revoked_at NULL)`; chỉ mục duy nhất `(session_id) WHERE revoked_at IS NULL`; trigger chỉ cho đặt `revoked_at` (một lần) hoặc ghi mới, không xóa.
+- `response_grades` thêm cột **`verdict`** (`correct | partial | wrong | blank | pending`): chấm tự động ghi lấy từ `scoreResponse`; chấm tay tính lại từ điểm. Cột này để Thống kê câu và bảng Kết quả phân biệt "sai" với "bỏ trống" mà không phải đọc bài làm. Dòng đã có (từ 5a) được điền bù: điểm trống → `pending`, đủ điểm → `correct`, giữa → `partial`, bằng 0 → `blank` nếu Lượt không có Câu trả lời cho câu đó hoặc giá trị rỗng, ngược lại `wrong`.
+- Trigger `response_grades_guard` thêm: `source = 'manual'` chỉ cho câu **tự luận** (đọc `exam_items.snapshot->>'type'`). Chấm tay không ghi đè được điểm trắc nghiệm.
+- Nhật ký `audit_logs`: `session.penalty_set`, `session.grading_delegated`, `session.grading_delegate_revoked`, `session.blind_grading_changed`. Điểm chấm tay không ghi nhật ký từng dòng (đã có `graded_by`, `graded_at`).
+
+### 3. API (đề xuất)
+
+Người ra đề hoặc người được Ủy quyền:
+
+| Phương thức | Đường dẫn | Việc |
+|---|---|---|
+| GET | `/sessions/:id/grading/items` | Các câu tự luận: số thứ tự, đề, điểm, tổng bài, đã chấm, chờ chấm |
+| GET | `/sessions/:id/grading/items/:itemId/queue?filter=pending\|all` | Hàng đợi nhẹ (tối đa 500 dòng): `attemptId`, nhãn "Bài N", đã chấm hay chưa, điểm; thứ tự ngẫu nhiên ổn định (băm theo mã Lượt); chỉ Lượt có thể được tính (Q292) và có chữ |
+| GET | `/sessions/:id/grading/items/:itemId/attempts/:attemptId` | Một bài: đề, hướng dẫn chấm, bài làm, điểm hiện tại, nhận xét; kèm tên/mã/Lớp **chỉ khi** `blind = false` |
+| PUT | `/sessions/:id/grading/attempts/:attemptId/items/:itemId` | `{ score \| null, feedback? }`: lưu điểm tay (idempotent); `score = null` đưa câu về chờ chấm; điểm trong `[0, điểm câu]`, 2 chữ số; chỉ câu tự luận; Lượt phải đã nộp |
+| GET/PUT | `/sessions/:id/grading/blind` | Xem và bật/tắt Chấm ẩn tên |
+| GET | `/sessions/:id/results` | Đầu trang (tên Phiên thi, ngày, Thời lượng, tổng số câu, tổng điểm); trạng thái (bài tự luận chờ chấm, Lượt chưa chấm tự động, Vi phạm chưa quyết); từng người (Mã, Tên, Lớp, số Lượt, Lượt được tính, Điểm thô, Điểm quy đổi, nhãn) |
+| GET | `/sessions/:id/results/people/:userId` | Điểm từng câu của một người: số thứ tự, Loại câu, điểm/tối đa, `verdict`, nguồn chấm, nhận xét |
+| GET | `/sessions/:id/results/item-stats` | Thống kê câu (Q305): đúng / một phần / sai / bỏ trống / chờ chấm mỗi câu |
+| GET | `/sessions/:id/violations` · PUT `/sessions/:id/violations/:violationId/penalty` | Danh sách Vi phạm kèm người, hành động, lý do, Mức xử lý; đặt `{ type: 'none' \| 'percent' \| 'void', percent? }` |
+| GET | `/sessions/:id/grading-delegate` | Người đang được Ủy quyền (hoặc không) |
+
+Chủ Phiên thi hoặc Quản trị viên: `PUT /sessions/:id/grading-delegate { userId }`, `DELETE /sessions/:id/grading-delegate`, `GET /sessions/:id/grading-delegate/candidates?q=` (gợi ý Người ra đề đủ điều kiện). Quản trị viên dùng cùng đường dẫn (không thuộc chủ nhưng được phép riêng cho ba đường này), kèm `GET /admin/sessions?q=` để tìm Phiên thi của mọi người. Người được Ủy quyền: `GET /sessions/delegated` liệt kê các Phiên thi được giao.
+
+**Quy tắc bảng Kết quả khi Chấm ẩn tên bật (Q291):** còn bất kỳ bài tự luận chờ chấm thì trả **Điểm thô và Điểm quy đổi chỉ gồm phần trắc nghiệm**, đánh dấu `essayHidden = true`, và **không** trả `attemptId` của Lượt (để không nối "Bài 17" ở màn Chấm với tên người). Chấm xong mọi bài tự luận hoặc tắt Chấm ẩn tên thì trả đầy đủ.
+
+**Chấm bù (`autogradeSession`):** mở bảng Kết quả thì chấm nốt các Lượt đã nộp của Phiên thi mà chưa có dấu "đã chấm" (Lượt cũ hơn cửa sổ quét 24 giờ, hoặc ngoài 10.000 Lượt gần nhất); chỉ chạy khi có Lượt thiếu, không làm chậm trường hợp thường.
+
+### 4. Cổng và module
+
+- `grading` thêm: `ResultsService` (bảng Kết quả, người, Thống kê), `ManualGradingService` (hàng đợi, bài, lưu điểm), `GradingAccessService` (chủ hoặc người được Ủy quyền, Ủy quyền), controller.
+- Cổng `GRADING_SOURCE` (attempt) mở rộng: `attemptsOfSession(sessionId)` (Lượt đã nộp: id, người, số thứ tự, giờ nộp) để dựng danh sách "có thể được tính".
+- Cổng mới `VIOLATION_PENALTIES` (attempt cài đặt): `list(sessionId)` và `setPenalty(...)` (chỉ ba cột hình phạt của `violations`).
+- Tên, Mã, Lớp lấy qua `CANDIDATE_DIRECTORY` (đã có `page`); `resultOf` từ `@exam/scoring` tính Kết quả.
+- Mở rộng `architecture.test.ts`: `grading` vẫn không import bảng module khác.
+
+### 5. Giao diện (5b-2)
+
+- Tab/đường dẫn **Kết quả** ở chi tiết Phiên thi: thanh bước, bảng người (lọc, sắp xếp, tìm, thẻ trên điện thoại), ngăn chi tiết từng người, tab con Vi phạm, tab con Thống kê câu, công tắc Chấm ẩn tên, Ủy quyền chấm (hộp chọn người), nút vào màn Chấm. Màn Kết quả là một **component dùng chung**: chủ Phiên thi mở trong tab, người được Ủy quyền mở ở `/examiner/sessions/:id/results`; danh sách Phiên thi của Người ra đề có thêm mục **"Được ủy quyền chấm"**.
+- **Màn Chấm** theo Q293: chia đôi ở máy tính, một bài mỗi màn ở điện thoại; phím J/K, Enter lưu và sang bài kế, nút nhanh 0 / ½ / tối đa; mặc định chỉ bài chưa chấm; lỗi nhập điểm ngay tại ô; nạp trước bài kế; trạng thái "Đã lưu" như màn soạn câu; không dùng `localStorage` cho điểm (mọi thứ ghi lên server ngay).
+- Trang quản trị **"Ủy quyền chấm"** (Quản trị viên): tìm Phiên thi, xem ai đang được ủy quyền, cấp/thu hồi.
+- Thông báo trên chuông cho người được Ủy quyền ("Bạn được ủy quyền chấm Phiên thi X") và khi bị thu hồi.
+
+### 6. Seam test
+
+| Seam | Ca chính |
+|---|---|
+| **S1 hàm thuần** | Thứ tự ngẫu nhiên ổn định (cùng đầu vào cùng thứ tự, khác Phiên thi khác thứ tự); chọn Lượt có thể được tính (latest/highest); quy tắc ẩn điểm tự luận khi Chấm ẩn tên; tính `verdict` từ điểm |
+| **S2 HTTP + PostgreSQL** | Hàng đợi chỉ có bài tự luận có chữ của Lượt có thể được tính; lưu điểm trong khoảng, ngoài khoảng bị từ chối, `null` đưa về chờ chấm; idempotent; chấm tay không đụng điểm trắc nghiệm; bảng Kết quả khớp `resultOf` (highest/latest, trừ %, Hủy, quy đổi 0,1); Thống kê câu đếm đúng kể cả bỏ trống; chấm bù khi Lượt thiếu dấu; Mức xử lý đặt/đổi, phần trăm ngoài 0–100 bị từ chối |
+| **S3 Trigger** | `manual` trên câu trắc nghiệm bị từ chối; `session_grading_delegates` hai người hiệu lực cùng lúc bị từ chối, xóa/sửa trái phép bị từ chối; điền bù `verdict` đúng |
+| **S4 Đồng thời** | Hai Người chấm cùng lưu một bài: một giá trị cuối, không lỗi; chấm tay xen chấm tự động của Hoàn tác (Hoàn tác bị chặn đúng); thu hồi Ủy quyền xen lúc đang lưu điểm (thao tác sau bị 404) |
+| **S5 Bảo mật** | Người ra đề khác chủ và không được Ủy quyền nhận 404 ở mọi đường; Người dự thi nhận 403/404; **JSON hàng đợi và bài (Chấm ẩn tên bật) không chứa tên, Mã định danh, Lớp, `userId`**; bảng Kết quả khi ẩn không chứa `attemptId` và không lộ điểm tự luận; Người nhận Ủy quyền nằm trong Danh sách dự thi bị từ chối; Quản trị viên cấp/thu hồi được, người được Ủy quyền không ủy quyền tiếp được |
+| **S6 Playwright (5b-2)** | Chấm tự luận bằng phím trên máy tính và bằng nút trên điện thoại; tắt Chấm ẩn tên hiện tên; Mức xử lý đổi Kết quả; Ủy quyền: Quản trị viên cấp, người được Ủy quyền vào chấm và Chủ Phiên thi thấy điểm; đo thời gian |
+
+### 7. Ngân sách thời gian (Q306, đo ở 5b)
+
+Mở bài kế dưới 300 ms (nạp trước bài kế nên người dùng thấy gần như tức thì); lưu điểm một bài dưới 150 ms; hàng đợi 500 bài dưới 300 ms; bảng Kết quả 500 người dưới 500 ms; Thống kê câu dưới 500 ms; đặt Mức xử lý dưới 150 ms; cấp Ủy quyền dưới 300 ms.
+
+### 8. Cần bạn quyết trước khi làm
+
+1. **Chia 5b-1 (API) rồi 5b-2 (giao diện)**: đề xuất chia (như lát cắt 4).
+2. **Prototype màn Chấm trước khi lập trình giao diện** (ui-design Q110 ghi mẫu Chấm cần prototype riêng để chọn). Đề xuất dựng 1–2 bản prototype trên nhánh `prototype/cham-bai` (máy tính và điện thoại, dữ liệu giả) giữa 5b-1 và 5b-2, bạn chọn rồi mới làm giao diện thật. Hay bạn thấy bố cục đã duyệt ở Q293 là đủ, bỏ prototype?
+3. **Trang quản trị "Ủy quyền chấm"** trong 5b-2 (Quản trị viên hiện chưa có màn nào về Phiên thi): đề xuất một trang nhỏ tìm Phiên thi và cấp/thu hồi.
+4. **Thông báo chuông cho người được Ủy quyền** (thêm loại thông báo mới ngoài danh sách Q303): đề xuất có.
+5. **Điền bù `verdict`** cho dữ liệu chấm đã có từ 5a như mục 2 (chỉ ảnh hưởng dữ liệu thử của bạn).
