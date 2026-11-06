@@ -106,7 +106,7 @@ Quy tắc: một module chỉ gọi module khác qua service công khai của mo
 
 ### 5.3 Nộp bài
 - Nộp bài là idempotent (gửi nhiều lần cho cùng kết quả), dùng khóa Redis chống bấm đúp.
-- Chấm tự động các câu có Đáp án đúng. Câu tự luận chuyển sang trạng thái "chờ chấm".
+- Chấm tự động các câu có Đáp án đúng chạy **ở nền** sau commit của mọi đường nộp (hook + job BullMQ, kèm job quét 30 giây bắt Lượt chưa chấm; Q286), không nằm trong request Nộp bài. Câu tự luận có nội dung chuyển sang "chờ chấm"; câu tự luận bỏ trống tự được 0 điểm (Q288).
 - Khi tới hạn mà client chưa gửi phần còn trong hàng đợi, server Nộp bài với những gì đã nhận.
 
 ### 5.4 Theo dõi Phiên thi (màn hình của Người ra đề)
@@ -123,12 +123,14 @@ Quy tắc: một module chỉ gọi module khác qua service công khai của mo
 | Câu chọn nhiều | `điểm × max(0, (số đúng đã chọn − số sai đã chọn) / số Phương án đúng)` | đủ điểm khi tập đã chọn trùng khớp Đáp án đúng |
 | Chùm đúng/sai | `điểm × số Mệnh đề nhận định đúng / tổng số Mệnh đề` | đủ điểm khi mọi Mệnh đề đều đúng |
 
+Mệnh đề thí sinh để trống tính là *không đúng*. Câu trả lời không hợp lệ (Phương án không còn trong đề, dữ liệu hỏng) tính 0 điểm và không ảnh hưởng việc chấm các câu khác. Điểm từng câu làm tròn đến 0,01; Điểm thô là tổng các điểm đó; Điểm quy đổi thang 10 làm tròn đến 0,1 (Q287).
+
 Chùm đúng/sai có thêm quy tắc **Bậc thang**: `điểm × ladder[số Mệnh đề nhận định đúng]`. Người ra đề tự nhập bảng khi soạn câu, ví dụ `[0, 0.1, 0.25, 0.5, 1]` cho chùm 4 Mệnh đề.
 
 Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pure function), được unit test đầy đủ.
 
 ### 5.6 Kết quả và Phúc khảo
-`Đã nộp → Đã chấm → Đã Công bố → (Thời hạn phúc khảo 72 giờ) → Đã Chốt`. Kết quả luôn chờ Người ra đề bấm Công bố. Khi xem Kết quả, Người dự thi thấy điểm từng câu và trạng thái *đúng / chưa đúng hoàn toàn / sai*. Không đánh dấu riêng Phương án hay Mệnh đề nào sai; với chùm đúng/sai chỉ hiện tổng, ví dụ "đúng 3/4 Mệnh đề". API **không bao giờ trả về Đáp án đúng**, kể cả sau khi Chốt, để giữ ngân hàng câu hỏi dùng được lâu dài. Nút Công bố chỉ bật khi mọi Câu tự luận đã được chấm. Nếu Phúc khảo cho thấy Đáp án đúng bị nhập sai, Người ra đề thực hiện **Đính chính đáp án**: worker chấm lại câu đó cho mọi Lượt làm bài thuộc các Phiên thi **chưa Chốt** dùng Bộ đề này (Phiên thi đã Chốt giữ nguyên) và ghi `key_corrections` cùng nhật ký thao tác. Người dự thi gửi Phúc khảo cho từng câu kèm lý do. Người ra đề chấm lại một lần; điểm cũ và điểm mới đều được lưu vết. Worker tự Chốt kết quả khi hết hạn và không còn Phúc khảo đang mở.
+`Đã nộp → Đã chấm → Đã Công bố → (Thời hạn phúc khảo 1–14 ngày, mặc định 3 ngày, Q298) → Đã Chốt`. "Đã chấm" suy ra từ bảng điểm, không phải một giá trị của `attempts.status` (ADR-0008); Kết quả của một người tính khi đọc (Q295). Chi tiết quyết định ở [plan/slice-5.md](plan/slice-5.md). Kết quả luôn chờ Người ra đề bấm Công bố. Khi xem Kết quả, Người dự thi thấy điểm từng câu và trạng thái *đúng / chưa đúng hoàn toàn / sai*. Không đánh dấu riêng Phương án hay Mệnh đề nào sai; với chùm đúng/sai chỉ hiện tổng, ví dụ "đúng 3/4 Mệnh đề". API **không bao giờ trả về Đáp án đúng**, kể cả sau khi Chốt, để giữ ngân hàng câu hỏi dùng được lâu dài. Nút Công bố chỉ bật khi mọi Câu tự luận đã được chấm. Nếu Phúc khảo cho thấy Đáp án đúng bị nhập sai, Người ra đề thực hiện **Đính chính đáp án**: worker chấm lại câu đó cho mọi Lượt làm bài thuộc các Phiên thi **chưa Chốt** dùng Bộ đề này (Phiên thi đã Chốt giữ nguyên) và ghi `key_corrections` cùng nhật ký thao tác. Người dự thi gửi Phúc khảo cho từng câu kèm lý do. Người ra đề chấm lại một lần; điểm cũ và điểm mới đều được lưu vết. Worker tự Chốt kết quả khi hết hạn và không còn Phúc khảo đang mở.
 
 ## 6. Bảo mật
 

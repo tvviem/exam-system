@@ -237,7 +237,7 @@ exam_item_illustrations (                 -- ảnh nằm trong bản chụp củ
 
 ## 4. Phiên thi (module `session`)
 
-Thực hiện ở migration 0012 (PR 4a); thiết kế và lý do ở [plan/slice-4.md](plan/slice-4.md). Cột `released_at`, `finalized_at`, `appeal_period_hours` thêm ở lát cắt 5.
+Thực hiện ở migration 0012 (PR 4a); thiết kế và lý do ở [plan/slice-4.md](plan/slice-4.md). Công bố và Chốt nằm ở bảng `session_gradings` của module `grading` (xem mục 5 và [ADR-0008](adr/0008-diem-nam-o-bang-rieng-cua-grading.md)); `sessions` chỉ thêm cột `review_after_release` (Q297).
 
 ```sql
 sessions (
@@ -248,6 +248,7 @@ sessions (
   max_attempts int DEFAULT 1 CHECK (1..5),
   attempt_scoring enum('highest','latest') DEFAULT 'highest',
   shuffle_items bool, shuffle_options bool, show_scoring_rules bool,
+  review_after_release bool DEFAULT false,              -- Cho Người dự thi xem lại đề sau Công bố (lát cắt 5, Q297); đổi được đến lúc Công bố
   access_code text NOT NULL CHECK (access_code ~ '^[A-Z0-9]{4,12}$'),   -- Mã vào thi do Người ra đề đặt trước
   entry_closed_at,                                      -- Đóng cửa vào thi
   cancelled_at, cancelled_by → users, cancel_reason,    -- Hủy Phiên thi; trigger: không hoàn tác, sau hủy chỉ đổi chủ
@@ -289,11 +290,11 @@ attempts (
   seed bigint, layout jsonb,              -- thứ tự câu và phương án cố định (layoutOf ở @exam/shared)
   started_at, deadline CHECK (> started_at),  -- deadline: nguồn sự thật của hạn nộp, server quyết định
   submitted_at, submit_reason enum('candidate','timeout','examiner','disqualified','account_locked','session_cancelled'),
-  status enum('in_progress','submitted'),                -- lát cắt 5 thêm 'graded'
+  status enum('in_progress','submitted'),                -- không thêm 'graded': "đã chấm" suy ra từ attempt_grades (ADR-0008)
   CHECK ((status = 'submitted') = (submitted_at IS NOT NULL AND submit_reason IS NOT NULL)),
   FOREIGN KEY (session_id, user_id) → session_roster ON DELETE RESTRICT,  -- người đã có Lượt không bị bớt khỏi Danh sách (Q217)
   UNIQUE (session_id, user_id, attempt_no)
-  -- Cột điểm (auto_score, manual_score, raw_score, max_score) thêm ở lát cắt 5.
+  -- Điểm không nằm ở đây mà ở response_grades, attempt_grades (lát cắt 5, ADR-0008).
 )
 -- Mỗi người chỉ có 1 Lượt làm bài đang mở trong một Phiên thi:
 UNIQUE (session_id, user_id) WHERE status = 'in_progress'
@@ -306,7 +307,7 @@ responses (                               -- Câu trả lời
   value jsonb, client_seq int CHECK (>= 0), saved_at,   -- client_seq: lưu idempotent (Q216)
   flagged bool DEFAULT false,             -- đánh dấu xem lại
   PK (attempt_id, item_id)
-  -- Cột điểm và chấm thủ công (auto_score, manual_score, graded_by, graded_at, feedback) thêm ở lát cắt 5.
+  -- Điểm và chấm thủ công nằm ở response_grades (lát cắt 5, ADR-0008), không thêm cột vào đây.
 )
 -- Trigger responses_guard (Q217): chỉ INSERT/UPDATE khi Lượt đang làm (khóa dòng Lượt FOR SHARE nên Nộp bài xen vào thì
 --   chờ rồi thấy đã nộp); câu phải thuộc Bộ đề của Phiên thi; không chuyển sang Lượt hay câu khác.
@@ -362,11 +363,34 @@ appeals (                                 -- Phúc khảo: mỗi đối tượng
 --   base  = max(raw_score) hoặc raw_score của lượt cuối (theo sessions.attempt_scoring)
 --   void  = có violation nào với penalty_type = 'void'      → Kết quả = 0, ghi "Hủy"
 --   final = base × (1 − min(100, Σ penalty_percent) / 100)
---   Điểm quy đổi = round(final / max_score × 10, 2)
+--   Điểm quy đổi = round(final / max_score × 10, 1)   -- làm tròn đến 0,1 (Q287)
 
 notifications (                           -- thông báo trong ứng dụng; module `notifications`
   id, user_id → users, type text, data jsonb, created_at, read_at
 )  -- INDEX (user_id, created_at DESC)
+
+-- Lát cắt 5 (module `grading`, thiết kế ở plan/slice-5.md, ADR-0008). Điểm ở bảng riêng, bài làm gốc giữ nguyên khóa trigger.
+response_grades (                          -- một dòng cho MỖI câu của Bộ đề trong mỗi Lượt đã chấm (kể cả câu bỏ trống)
+  attempt_id → attempts ON DELETE RESTRICT, item_id → exam_items ON DELETE RESTRICT,
+  score numeric(6,2) NULL,                 -- NULL = Câu tự luận có nội dung, chờ chấm; làm tròn 0,01 (Q287)
+  source enum('auto','manual','appeal','correction'),
+  graded_by → users NULL, graded_at, feedback text NULL CHECK (char_length <= 1000),
+  PRIMARY KEY (attempt_id, item_id)
+)  -- Trigger: chỉ ghi khi Lượt đã nộp; score trong [0, điểm câu]; source = 'manual' phải có graded_by; Phiên thi đã Chốt thì chặn ghi.
+attempt_grades (attempt_id PK → attempts ON DELETE RESTRICT, graded_at)   -- dấu "đã chấm tự động xong"; job quét tìm Lượt submitted chưa có dấu
+session_gradings (
+  session_id PK → sessions ON DELETE RESTRICT,
+  blind bool DEFAULT true,                 -- Chấm ẩn tên (Q291)
+  released_at NULL, released_by → users NULL,
+  appeal_period_hours int NULL CHECK (appeal_period_hours = 0 OR appeal_period_hours BETWEEN 24 AND 336),
+  finalized_at NULL                        -- released_at, finalized_at chỉ đặt một lần, không xóa
+)
+session_grading_delegates (                -- Ủy quyền chấm (Q307)
+  session_id → sessions, user_id → users, granted_by → users, granted_at, revoked_at NULL
+)
+key_correction_effects (                   -- chỉ ghi thêm: điểm đổi do mỗi Đính chính đáp án (Q302)
+  correction_id → key_corrections, attempt_id → attempts, old_score numeric(6,2), new_score numeric(6,2)
+)
 
 key_corrections (                         -- Đính chính đáp án → chấm lại câu đó cho mọi Lượt làm bài
   id, exam_item_id → exam_items, old_key jsonb, new_key jsonb,
