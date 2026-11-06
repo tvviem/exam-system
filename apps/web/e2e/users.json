@@ -1076,5 +1076,61 @@
     "roleTags": ["candidate"],
     "code": "UD-M-002",
     "classLabel": "LOP-UD-M"
+  },
+  {
+    "username": "e2e-lb-gd-gv-desktop",
+    "fullName": "Người ra đề Giao diện (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-gd-sv1-desktop",
+    "fullName": "Thí sinh Giao diện 1 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "GD-D-001",
+    "classLabel": "LOP-GD-D"
+  },
+  {
+    "username": "e2e-lb-gd-sv2-desktop",
+    "fullName": "Thí sinh Giao diện 2 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "GD-D-002",
+    "classLabel": "LOP-GD-D"
+  },
+  {
+    "username": "e2e-lb-gd-gv-mobile",
+    "fullName": "Người ra đề Giao diện (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-gd-sv1-mobile",
+    "fullName": "Thí sinh Giao diện 1 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "GD-M-001",
+    "classLabel": "LOP-GD-M"
+  },
+  {
+    "username": "e2e-lb-gd-sv2-mobile",
+    "fullName": "Thí sinh Giao diện 2 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "GD-M-002",
+    "classLabel": "LOP-GD-M"
   }
 ]

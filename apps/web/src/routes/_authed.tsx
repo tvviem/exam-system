@@ -47,6 +47,11 @@ function AuthedLayout() {
     <>
       <AppShell
         items={navFor(me)}
+        variant={
+          me.roleTags.includes('candidate') && !me.isAdmin && !me.roleTags.includes('examiner')
+            ? 'top'
+            : 'sidebar'
+        }
         actions={
           <>
             {!me.mustChangePassword && <NotificationBell isAdmin={me.isAdmin} />}

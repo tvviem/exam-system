@@ -8,6 +8,8 @@
   },
   "nav": {
     "take": "Vào thi",
+    "takeHome": "Phiên thi của tôi",
+    "backToTake": "Về Phiên thi của tôi",
     "areaExaminer": "Soạn đề và tổ chức thi",
     "areaTake": "Làm bài",
     "logout": "Đăng xuất",
@@ -29,7 +31,9 @@
       "auditLogs": "Nhật ký",
       "questionBank": "Câu hỏi",
       "exams": "Bộ đề",
-      "sessions": "Phiên thi"
+      "sessions": "Phiên thi",
+      "take": "Phiên thi",
+      "account": "Tài khoản"
     },
     "questionBank": "Ngân hàng câu hỏi",
     "exams": "Bộ đề",
@@ -264,9 +268,23 @@
     },
     "grid": {
       "title": "Danh sách câu",
-      "open": "Danh sách câu · {{done}}/{{total}}",
+      "open": "Đã làm {{done}}/{{total}} câu",
+      "openLabel": "Danh sách câu: đã làm {{done}}/{{total}} câu. {{status}}",
+      "remaining": "Còn {{parts}}",
+      "allDone": "Đã làm hết · chạm để rà soát",
       "cell": "Câu {{no}}, {{state}}",
       "cellFlagged": "Câu {{no}}, {{state}}, đánh dấu"
+    },
+    "review": {
+      "label": "Lọc câu để rà soát",
+      "blank": "{{count}} chưa làm",
+      "partial": "{{count}} làm dở",
+      "flagged": "{{count}} đánh dấu",
+      "next": {
+        "blank": "Đến câu chưa làm kế tiếp",
+        "partial": "Đến câu làm dở kế tiếp",
+        "flagged": "Đến câu đánh dấu kế tiếp"
+      }
     },
     "session": {
       "questionCount": "{{count}} câu",
@@ -347,6 +365,7 @@
       "warning": {
         "title": "Cảnh cáo từ Người ra đề"
       },
+      "more": "và {{count}} thông báo khác",
       "reopened": {
         "title": "Người ra đề đã mở lại bài của bạn",
         "body": "Các câu bạn đã lưu còn nguyên. Hãy làm tiếp; thời gian còn lại bằng lúc bị nộp."

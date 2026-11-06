@@ -14,6 +14,7 @@ import {
 } from '../../../lib/account';
 import { errorMessage } from '../../../lib/errors';
 import { Badge, Card, ErrorMessage, PrimaryButton, SelectField, TextField } from '../../../lib/ui';
+import { BackToTake } from '../../../lib/ui/back-to-take';
 import { PageHeader } from '../../../lib/ui/page-header';
 import { PasswordForm } from '../../../lib/ui/password-form';
 import { useToast } from '../../../lib/ui/toast';
@@ -29,6 +30,7 @@ function AccountPage() {
 
   return (
     <section className="mx-auto flex max-w-2xl flex-col gap-4">
+      <BackToTake />
       <PageHeader title={t('account.title')} />
       {account.isPending ? (
         <div className="h-48 animate-pulse rounded-xl border border-border bg-surface" />
