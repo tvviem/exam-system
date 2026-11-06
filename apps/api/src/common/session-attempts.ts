@@ -115,7 +115,7 @@ export interface SessionAttempts {
   /** Số Lượt của từng người trong Phiên thi (người chưa có Lượt vắng). */
   attemptCounts(sessionId: string): Promise<Map<string, number>>;
   /** Nộp mọi Lượt đang làm của Phiên thi với `reason`; trả số Lượt đã đóng. */
-  closeAll(tx: Transaction, sessionId: string, reason: SubmitReason): Promise<number>;
+  closeAll(tx: Transaction, sessionId: string, reason: SubmitReason): Promise<string[]>;
   /** Thiết bị của từng người trong Phiên thi (người chưa gắn thiết bị vắng). */
   devicesOf(sessionId: string): Promise<Map<string, ExamDeviceSummary[]>>;
   /** Thu hồi thiết bị đang gắn của người này. Trả `false` nếu người này chưa có thiết bị đang gắn. */

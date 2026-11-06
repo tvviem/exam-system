@@ -19,8 +19,15 @@ export interface GradableAttempt {
 }
 
 export interface GradingSource {
-  /** Chỉ trả các Lượt đã nộp (id không tồn tại hoặc còn đang làm thì vắng). */
-  loadSubmitted(attemptIds: string[], executor?: GradingExecutor): Promise<GradableAttempt[]>;
+  /**
+   * Chỉ trả các Lượt đã nộp (id không tồn tại hoặc còn đang làm thì vắng). `lock: true` (trong giao dịch) khóa các dòng Lượt
+   * `FOR SHARE` theo thứ tự `id`: Hoàn tác Buộc nộp phải chờ giao dịch chấm xong, nên không có điểm cũ đè lên bài đã mở lại.
+   */
+  loadSubmitted(
+    attemptIds: string[],
+    executor?: GradingExecutor,
+    options?: { lock?: boolean },
+  ): Promise<GradableAttempt[]>;
   /** Id các Lượt nộp từ `since`, mới nhất trước; phân trang bằng `offset`. */
   submittedSince(since: Date, limit: number, offset: number): Promise<string[]>;
 }

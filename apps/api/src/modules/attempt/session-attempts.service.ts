@@ -74,8 +74,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
   }
 
   async closeAll(tx: Transaction, sessionId: string, reason: SubmitReason) {
-    return (await closeInProgress(tx, eq(attempts.sessionId, sessionId), reason, this.clock.now()))
-      .length;
+    return closeInProgress(tx, eq(attempts.sessionId, sessionId), reason, this.clock.now());
   }
 
   async closeForUser(tx: Transaction, userId: string, reason: SubmitReason) {
@@ -490,7 +489,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       else reopened.push({ attemptId: row.id, userId: row.userId, deadline });
     }
     // Đã có điểm chấm tay thì không mở lại được (Q296); điểm tự động thì xóa để nộp lại được chấm lại.
-    const graded = await this.gradeGuard.gradedIds(
+    const graded = await this.gradeGuard.manuallyGradedIds(
       tx,
       reopened.map((item) => item.attemptId),
     );

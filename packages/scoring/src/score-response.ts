@@ -138,7 +138,8 @@ function scoreCluster(
       if (!Array.isArray(ladder) || ladder.length !== total + 1) return WRONG;
       const rate = ladder[correct];
       if (typeof rate !== 'number' || !Number.isFinite(rate) || rate < 0 || rate > 1) return WRONG;
-      return result(Math.floor(maxC * rate + 0.5 + 1e-9), maxC);
+      // Tỷ lệ của bảng là số thập phân đến 4 chữ số; đổi sang số nguyên (đơn vị 0,0001) để chia chính xác.
+      return result(mulDivRound(maxC, Math.round(rate * 10_000), 10_000), maxC);
     }
     default:
       return result(mulDivRound(maxC, correct, total), maxC);

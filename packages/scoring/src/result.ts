@@ -54,7 +54,7 @@ export function resultOf(input: {
   const percentBp = Math.min(
     10_000,
     input.penalties.reduce(
-      (sum, p) => sum + (p.type === 'percent' ? toCenti(p.percent ?? 0) : 0),
+      (sum, p) => sum + (p.type === 'percent' ? Math.max(0, toCenti(p.percent ?? 0)) : 0),
       0,
     ),
   );

@@ -5,7 +5,8 @@ import type { Transaction } from '../../db/db.module';
 import { JOB_QUEUE, type JobQueue } from '../../queue/job-queue';
 import { attemptGrades, responseGrades } from './grading.schema';
 
-const BATCH = 50;
+/** Số Lượt mỗi job chấm. */
+const JOB_SIZE = 50;
 
 /**
  * Hai cổng `grading` cài đặt cho `attempt` (nối ở `AttemptPortsWiringModule`): báo Lượt vừa nộp để chấm ở nền (Q286) và
@@ -19,9 +20,9 @@ export class GradingHooksService implements AttemptSubmittedHooks, AttemptGradeG
 
   async onSubmitted(attemptIds: string[]): Promise<void> {
     try {
-      for (let i = 0; i < attemptIds.length; i += BATCH) {
+      for (let i = 0; i < attemptIds.length; i += JOB_SIZE) {
         await this.queue.enqueue('grading.autograde', {
-          attemptIds: attemptIds.slice(i, i + BATCH),
+          attemptIds: attemptIds.slice(i, i + JOB_SIZE),
         });
       }
     } catch (error) {
@@ -30,7 +31,7 @@ export class GradingHooksService implements AttemptSubmittedHooks, AttemptGradeG
     }
   }
 
-  async gradedIds(tx: Transaction, attemptIds: string[]): Promise<Set<string>> {
+  async manuallyGradedIds(tx: Transaction, attemptIds: string[]): Promise<Set<string>> {
     if (attemptIds.length === 0) return new Set();
     const rows = await tx
       .selectDistinct({ id: responseGrades.attemptId })

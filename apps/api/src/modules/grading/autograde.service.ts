@@ -12,17 +12,18 @@ import {
   type GradableAttempt,
   type GradingSource,
 } from '../../common/grading-source';
-import { pgErrorOf } from '../../common/pg-error';
-import { type Database, DB } from '../../db/db.module';
+import { type Database, DB, type Transaction } from '../../db/db.module';
 import { attemptGrades, responseGrades } from './grading.schema';
 
-const CHECK_VIOLATION = '23514';
-/** Số Lượt chấm song song; nhỏ hơn kích thước nhóm kết nối để không chặn các request khác. */
-const PARALLEL = 4;
+/** Số Lượt chấm trong một giao dịch. */
+const CHUNK = 50;
 
 /**
  * Chấm tự động (Q286, Q287–Q289): với mỗi Lượt đã nộp, ghi một dòng điểm cho MỌI câu của Bộ đề (kể cả câu bỏ trống) và đánh dấu
  * "đã chấm". Idempotent: chạy lại ra cùng kết quả, không ghi đè điểm không phải `auto`.
+ *
+ * Mỗi lô đọc bài làm và ghi điểm trong CÙNG một giao dịch, các dòng Lượt khóa `FOR SHARE`: Hoàn tác Buộc nộp (đổi dòng Lượt)
+ * phải chờ lô chấm xong, nên điểm của lần nộp cũ không thể đè lên bài đã mở lại rồi nộp lại.
  */
 @Injectable()
 export class AutogradeService {
@@ -35,84 +36,99 @@ export class AutogradeService {
     @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
   ) {}
 
-  /** Chấm các Lượt chưa chấm trong `attemptIds`; trả số Lượt vừa chấm. */
+  /** Chấm các Lượt chưa chấm trong `attemptIds`; trả số Lượt vừa chấm. Một lô lỗi được ghi log, lần quét sau thử lại. */
   async gradeAttempts(attemptIds: string[]): Promise<number> {
-    const ids = [...new Set(attemptIds)];
-    if (ids.length === 0) return 0;
-    const done = await this.db
-      .select({ id: attemptGrades.attemptId })
-      .from(attemptGrades)
-      .where(inArray(attemptGrades.attemptId, ids));
-    const doneIds = new Set(done.map((row) => row.id));
-    const todo = await this.source.loadSubmitted(ids.filter((id) => !doneIds.has(id)));
-    if (todo.length === 0) return 0;
-
-    const contents = new Map<string, ExamContentData | null>();
-    for (const examId of new Set(todo.map((attempt) => attempt.examId))) {
-      contents.set(examId, await this.content.contentOf(examId));
-    }
-
+    const ids = [...new Set(attemptIds)].sort();
     let graded = 0;
-    for (let i = 0; i < todo.length; i += PARALLEL) {
-      const chunk = todo.slice(i, i + PARALLEL);
-      const results = await Promise.all(
-        chunk.map((attempt) => this.gradeOne(attempt, contents.get(attempt.examId) ?? null)),
-      );
-      graded += results.filter(Boolean).length;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      try {
+        graded += await this.db.transaction((tx) => this.gradeChunk(tx, ids.slice(i, i + CHUNK)));
+      } catch (error) {
+        this.logger.error(`Chấm lô Lượt lỗi, job quét sẽ thử lại: ${String(error)}`);
+      }
     }
     return graded;
   }
 
-  private async gradeOne(
+  private async gradeChunk(tx: Transaction, ids: string[]): Promise<number> {
+    const done = await tx
+      .select({ id: attemptGrades.attemptId })
+      .from(attemptGrades)
+      .where(inArray(attemptGrades.attemptId, ids));
+    const doneIds = new Set(done.map((row) => row.id));
+    const todo = await this.source.loadSubmitted(
+      ids.filter((id) => !doneIds.has(id)),
+      tx,
+      { lock: true },
+    );
+    if (todo.length === 0) return 0;
+
+    const contents = new Map<string, ExamContentData | null>();
+    for (const examId of new Set(todo.map((attempt) => attempt.examId))) {
+      contents.set(examId, await this.content.contentOf(examId, tx));
+    }
+
+    const rows: (typeof responseGrades.$inferInsert)[] = [];
+    const gradedIds: string[] = [];
+    for (const attempt of todo) {
+      const scored = this.scoreAttempt(attempt, contents.get(attempt.examId) ?? null);
+      if (!scored) continue;
+      rows.push(...scored);
+      gradedIds.push(attempt.attemptId);
+    }
+    if (rows.length > 0) {
+      await tx
+        .insert(responseGrades)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: [responseGrades.attemptId, responseGrades.itemId],
+          set: { score: sql`excluded.score`, gradedAt: sql`excluded.graded_at` },
+          setWhere: sql`${responseGrades.source} = 'auto'`,
+        });
+    }
+    if (gradedIds.length > 0) {
+      const now = this.clock.now();
+      await tx
+        .insert(attemptGrades)
+        .values(gradedIds.map((attemptId) => ({ attemptId, gradedAt: now })))
+        .onConflictDoNothing();
+    }
+    return gradedIds.length;
+  }
+
+  /** Điểm mọi câu của một Lượt; `null` (kèm log) nếu Bộ đề thiếu hoặc bản chụp hỏng, để các Lượt khác vẫn được chấm. */
+  private scoreAttempt(
     attempt: GradableAttempt,
     content: ExamContentData | null,
-  ): Promise<boolean> {
+  ): (typeof responseGrades.$inferInsert)[] | null {
     if (!content) {
       this.logger.warn(
         `Không thấy nội dung Bộ đề ${attempt.examId} để chấm Lượt ${attempt.attemptId}`,
       );
-      return false;
+      return null;
     }
-    const rows = content.sections.flatMap((section) =>
-      section.items.map((item) => {
-        const scoring: ScoringItem = {
-          type: item.snapshot.type,
-          points: item.points,
-          payload: item.snapshot.payload,
-        };
-        const { score } = scoreResponse(scoring, attempt.responses.get(item.itemId));
-        return {
-          attemptId: attempt.attemptId,
-          itemId: item.itemId,
-          score: score === null ? null : score.toFixed(2),
-          source: 'auto' as const,
-          gradedAt: this.clock.now(),
-        };
-      }),
-    );
     try {
-      await this.db.transaction(async (tx) => {
-        if (rows.length > 0) {
-          await tx
-            .insert(responseGrades)
-            .values(rows)
-            .onConflictDoUpdate({
-              target: [responseGrades.attemptId, responseGrades.itemId],
-              set: { score: sql`excluded.score`, gradedAt: sql`excluded.graded_at` },
-              setWhere: sql`${responseGrades.source} = 'auto'`,
-            });
-        }
-        await tx
-          .insert(attemptGrades)
-          .values({ attemptId: attempt.attemptId, gradedAt: this.clock.now() })
-          .onConflictDoNothing();
-      });
-      return true;
+      const gradedAt = this.clock.now();
+      return content.sections.flatMap((section) =>
+        section.items.map((item) => {
+          const scoring: ScoringItem = {
+            type: item.snapshot.type,
+            points: item.points,
+            payload: item.snapshot.payload,
+          };
+          const { score } = scoreResponse(scoring, attempt.responses.get(item.itemId));
+          return {
+            attemptId: attempt.attemptId,
+            itemId: item.itemId,
+            score: score === null ? null : score.toFixed(2),
+            source: 'auto' as const,
+            gradedAt,
+          };
+        }),
+      );
     } catch (error) {
-      // Lượt vừa được mở lại (Hoàn tác Buộc nộp): trigger từ chối, không phải lỗi; nộp lại sẽ được chấm.
-      if (pgErrorOf(error)?.code === CHECK_VIOLATION) return false;
       this.logger.error(`Chấm Lượt ${attempt.attemptId} lỗi: ${String(error)}`);
-      return false;
+      return null;
     }
   }
 }

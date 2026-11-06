@@ -528,7 +528,7 @@ export class AttemptsService {
       }
       return null;
     });
-    if (closedId) void this.submitted.onSubmitted([closedId]);
+    if (closedId) this.reportSubmitted([closedId]);
   }
 
   /** Nội dung đề theo bố cục của Lượt, kèm Câu trả lời đã lưu. Lượt đã nộp chỉ trả trạng thái (Q206). */
@@ -537,7 +537,7 @@ export class AttemptsService {
     const now = this.clock.now();
     if (attempt.status === 'in_progress' && this.pastGrace(attempt, now)) {
       if (await this.closeOne(this.db, attempt.id, 'timeout', now)) {
-        void this.submitted.onSubmitted([attempt.id]);
+        this.reportSubmitted([attempt.id]);
       }
       return this.submittedState(await this.ownAttempt(this.db, userId, attemptId), now);
     }
@@ -687,11 +687,16 @@ export class AttemptsService {
     });
     this.realtime.sessionChanged(state.sessionId);
     // Chấm tự động ở nền (Q286): báo sau khi giao dịch nộp đã commit.
-    if (state.closedNow) void this.submitted.onSubmitted([attemptId]);
+    if (state.closedNow) this.reportSubmitted([attemptId]);
     return state.view;
   }
 
   // --- Đóng Lượt ------------------------------------------------------------------------------------------------------
+
+  /** Báo `grading` các Lượt vừa nộp (đã commit) mà không chờ; lỗi của bên nhận không ảnh hưởng người nộp (job quét bắt bù). */
+  private reportSubmitted(attemptIds: string[]) {
+    this.submitted.onSubmitted(attemptIds).catch(() => undefined);
+  }
 
   /** Nộp một Lượt đang làm; không làm gì nếu đã nộp. Trả `true` nếu vừa đóng. */
   async closeOne(executor: Executor, attemptId: string, reason: SubmitReason, now: Date) {

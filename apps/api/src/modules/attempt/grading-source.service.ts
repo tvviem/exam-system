@@ -16,9 +16,10 @@ export class GradingSourceService implements GradingSource {
   async loadSubmitted(
     attemptIds: string[],
     executor: GradingExecutor = this.db,
+    options: { lock?: boolean } = {},
   ): Promise<GradableAttempt[]> {
     if (attemptIds.length === 0) return [];
-    const rows = await executor
+    const query = executor
       .select({
         id: attempts.id,
         sessionId: attempts.sessionId,
@@ -26,7 +27,9 @@ export class GradingSourceService implements GradingSource {
         attemptNo: attempts.attemptNo,
       })
       .from(attempts)
-      .where(and(inArray(attempts.id, attemptIds), eq(attempts.status, 'submitted')));
+      .where(and(inArray(attempts.id, attemptIds), eq(attempts.status, 'submitted')))
+      .orderBy(attempts.id);
+    const rows = await (options.lock ? query.for('share') : query);
     if (rows.length === 0) return [];
 
     const saved = await executor

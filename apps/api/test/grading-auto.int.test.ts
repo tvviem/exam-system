@@ -159,6 +159,48 @@ describe('Các đường nộp khác đều được chấm (job quét)', () => 
     expect((await scoreByType('an')).single_choice).toBe('1.00');
   });
 
+  it('Buộc nộp báo job chấm sau commit: chấm ngay không cần chờ job quét', async () => {
+    await answer('an', { single_choice: { optionId: 'o2' } });
+    await live.api('POST', `/sessions/${live.sessionId}/force-submit`, { scope: 'all' });
+    await t.queue.drain();
+    for (const name of ['an', 'binh', 'chi']) expect(await graded(name)).toBe(1);
+  });
+
+  it('Đình chỉ nộp Lượt ngay và báo job chấm; Cảnh cáo thì chưa nộp nên chưa chấm', async () => {
+    await answer('an', { single_choice: { optionId: 'o2' } });
+    const warn = await live.api(
+      'POST',
+      `/sessions/${live.sessionId}/attempts/${live.attemptIds.binh}/violations`,
+      { action: 'warning', reason: 'Nhìn bài bạn' },
+    );
+    expect(warn.statusCode, warn.body).toBe(201);
+    const suspend = await live.api(
+      'POST',
+      `/sessions/${live.sessionId}/attempts/${live.attemptIds.an}/violations`,
+      { action: 'disqualify', reason: 'Dùng tài liệu' },
+    );
+    expect(suspend.statusCode, suspend.body).toBe(201);
+    await t.queue.drain();
+    expect(await graded('an')).toBe(1);
+    expect((await scoreByType('an')).single_choice).toBe('1.00');
+    expect(await graded('binh')).toBe(0);
+  });
+
+  it('Hủy Phiên thi báo job chấm sau commit', async () => {
+    await answer('binh', { single_choice: { optionId: 'o2' } });
+    await live.api('POST', `/sessions/${live.sessionId}/cancel`, {});
+    await t.queue.drain();
+    expect((await scoreByType('binh')).single_choice).toBe('1.00');
+  });
+
+  it('Lượt nộp 20 phút trước (ngoài lần quét nhanh) được lần quét sâu bắt', async () => {
+    await submit('an');
+    t.queue.discard();
+    t.clock.advance(minutes(20));
+    await run('grading.sweep'); // lần đầu sau 60 giây là lần quét sâu
+    expect(await graded('an')).toBe(1);
+  });
+
   it('hết giờ: job tự nộp báo job chấm, Lượt được chấm', async () => {
     await answer('an', { single_choice: { optionId: 'o2' } });
     t.clock.advance(minutes(45) + 60_000); // quá hạn 08:45 và ân hạn

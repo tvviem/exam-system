@@ -15,6 +15,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import type { Actor } from '../../common/actor';
 import { ApiError } from '../../common/api-error';
+import { ATTEMPT_SUBMITTED_HOOKS, type AttemptSubmittedHooks } from '../../common/attempt-grading';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
@@ -34,6 +35,7 @@ export class SessionMonitorService {
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     private readonly audit: AuditService,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
+    @Inject(ATTEMPT_SUBMITTED_HOOKS) private readonly submitted: AttemptSubmittedHooks,
   ) {}
 
   /** Người này là chủ của Phiên thi (được vào phòng Theo dõi của kênh đẩy). */
@@ -238,6 +240,8 @@ export class SessionMonitorService {
       return { result, touched: closedIds };
     });
     this.realtime.affected(sessionId, touched);
+    // Chấm tự động ở nền (Q286): báo sau khi giao dịch Buộc nộp đã commit.
+    this.submitted.onSubmitted(touched).catch(() => undefined);
     return result;
   }
 
@@ -311,6 +315,10 @@ export class SessionMonitorService {
       return { id };
     });
     this.realtime.affected(sessionId, [attemptId]);
+    // Đình chỉ nộp Lượt ngay: chấm phần đã lưu ở nền (Q286). Cảnh cáo thì Lượt vẫn đang làm.
+    if (request.action === 'disqualify') {
+      this.submitted.onSubmitted([attemptId]).catch(() => undefined);
+    }
     return created;
   }
 

@@ -19,7 +19,7 @@ export const ATTEMPT_GRADE_GUARD = Symbol('ATTEMPT_GRADE_GUARD');
 
 export interface AttemptGradeGuard {
   /** Tập con của `attemptIds` đã có điểm chấm tay (hoặc Phiên thi đã Công bố): các Lượt này không mở lại được. */
-  gradedIds(tx: Transaction, attemptIds: string[]): Promise<Set<string>>;
+  manuallyGradedIds(tx: Transaction, attemptIds: string[]): Promise<Set<string>>;
   /** Xóa điểm tự động của các Lượt sắp được mở lại; nộp lại sẽ được chấm lại. */
   discard(tx: Transaction, attemptIds: string[]): Promise<void>;
 }
