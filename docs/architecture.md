@@ -106,7 +106,7 @@ Quy tắc: một module chỉ gọi module khác qua service công khai của mo
 
 ### 5.3 Nộp bài
 - Nộp bài là idempotent (gửi nhiều lần cho cùng kết quả), dùng khóa Redis chống bấm đúp.
-- Chấm tự động các câu có Đáp án đúng chạy **ở nền** sau commit của mọi đường nộp (hook + job BullMQ, kèm job quét 30 giây bắt Lượt chưa chấm; Q286), không nằm trong request Nộp bài. Câu tự luận có nội dung chuyển sang "chờ chấm"; câu tự luận bỏ trống tự được 0 điểm (Q288).
+- Chấm tự động các câu có Đáp án đúng chạy **ở nền** sau commit của mọi đường nộp (hook sau commit báo job BullMQ `grading.autograde`, kèm job quét `grading.sweep` mỗi 5 giây bắt Lượt chưa chấm: quét nhanh 15 phút gần nhất, mỗi phút một lần quét sâu 24 giờ; Q286), không nằm trong request Nộp bài. Câu tự luận có nội dung chuyển sang "chờ chấm"; câu tự luận bỏ trống tự được 0 điểm (Q288).
 - Khi tới hạn mà client chưa gửi phần còn trong hàng đợi, server Nộp bài với những gì đã nhận.
 
 ### 5.4 Theo dõi Phiên thi (màn hình của Người ra đề)
@@ -261,6 +261,8 @@ Số đo ngày 3/11/2026 (một tiến trình, PostgreSQL thật, máy phát tri
 | Lưu Câu trả lời (1000 lần lưu) | 14 ms | 468 / 508 ms |
 | Nộp bài | 12 ms | 228 / 326 ms |
 | Danh sách / tìm kiếm Câu hỏi, 20.000 câu của một Người ra đề | 20–25 ms | không đo |
+
+Số đo chấm tự động (6/11/2026, PR 5a, một tiến trình, PostgreSQL thật): chấm 500 Lượt (Bộ đề bốn Loại câu) theo lô 50 mất 0,36 giây, 0,7 ms mỗi Lượt (ngân sách 10 giây và 20 ms); request Nộp bài chỉ thêm một lệnh xếp job Redis, không chờ chấm.
 
 Số đo của kênh đẩy (4/11/2026, máy phát triển, cổng thật qua WebSocket): tin đến Người dự thi sau Cộng giờ 26–38 ms; tin đến Người ra đề sau heartbeat 10–11 ms; phát tán một tin tới 300 kết nối cùng nghe một phòng 25–33 ms. Người dùng thấy (E2E, trình duyệt thật, không tua đồng hồ): từ lúc Người ra đề bấm đến màn hình Người dự thi đổi là Cộng giờ 360–550 ms, Thu hồi 170–300 ms, Buộc nộp 180–350 ms; Người dự thi chọn đáp án đến lúc màn Theo dõi đổi 1,4–2,5 giây (gồm độ trễ lưu 300 ms của Người dự thi và cửa sổ gộp tối đa 2 giây). Trang quản trị `/admin/users` hiện sau 280–460 ms và không mở kết nối Socket.IO.
 

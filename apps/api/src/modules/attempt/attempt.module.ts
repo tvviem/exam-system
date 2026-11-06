@@ -4,6 +4,7 @@ import { AttemptSweepJob } from './attempt-sweep.job';
 import { AttemptsController } from './attempts.controller';
 import { AttemptsService } from './attempts.service';
 import { CandidateMediaService } from './candidate-media.service';
+import { GradingSourceService } from './grading-source.service';
 import { JoinRateLimiter } from './join-rate-limiter';
 import { RequestRateLimiter } from './request-rate-limiter';
 import { SessionAttemptsService } from './session-attempts.service';
@@ -23,7 +24,8 @@ import { SessionPreviewService } from './session-preview.service';
     AttemptSweepJob,
     CandidateMediaService,
     SessionPreviewService,
+    GradingSourceService,
   ],
-  exports: [SessionAttemptsService, CandidateMediaService],
+  exports: [SessionAttemptsService, CandidateMediaService, GradingSourceService],
 })
 export class AttemptModule {}

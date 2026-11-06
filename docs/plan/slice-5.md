@@ -229,3 +229,84 @@ Quy trình mỗi PR như lát cắt 4: thiết kế chi tiết và seam test c�
 - `architecture.md` 5.3 (chấm qua hook + job), 5.6 (trạng thái suy ra, Q296–Q302), mục 11 "Ngân sách phản hồi" (Q306).
 - GLOSSARY: Chấm ẩn tên; sửa Hoàn tác Buộc nộp.
 - README: bảng lát cắt và mục "Dùng thử lát cắt 5".
+
+## PR 5a: thiết kế chi tiết (đã duyệt 6/11/2026)
+
+**Phạm vi:** chấm tự động chạy đúng và có điểm trong cơ sở dữ liệu. **Chưa có màn hình nào** (màn Kết quả và Chấm là 5b); kiểm chứng bằng test tích hợp và đo thời gian. Không đụng giao diện web.
+
+### 1. `packages/scoring` (hàm thuần, không I/O)
+
+- `scoreResponse(item, value, keyOverride?) → { score, verdict }`: `item` là `{ type, points, payload }` lấy từ bản chụp; `value` là `value` của Câu trả lời (hình dạng đã có ở `responseSchemaFor`); `keyOverride` chỗ để 5d truyền Đáp án đúng đã Đính chính. `verdict` ∈ `correct | partial | wrong | blank | pending` (`pending` = tự luận có nội dung, chờ chấm tay).
+- Điểm tính bằng **số nguyên đơn vị 0,01** rồi mới đổi ra số thập phân, làm tròn half-up (Q287). Câu trả lời không hợp lệ (Phương án không còn trong đề, kiểu sai) cho 0 điểm và `wrong`, không ném lỗi (Q289).
+- `resultOf({ attempts, attemptScoring, penalties }) → { rawScore, maxScore, penaltyPercent, voided, scaledScore }` theo Q295. Dùng ở 5b nhưng viết và test ở 5a vì cùng gói và cùng quy tắc làm tròn.
+- Chạy được ở cả Node và trình duyệt (không import gì ngoài `@exam/shared`).
+
+### 2. Cơ sở dữ liệu (migration 0017)
+
+Chỉ hai bảng của Q285; ba bảng còn lại của data-model làm ở PR sau.
+
+- `response_grades (attempt_id, item_id, score numeric(6,2) NULL, source, graded_by NULL, graded_at, feedback NULL)`, khóa chính `(attempt_id, item_id)`, `attempt_id → attempts ON DELETE RESTRICT`.
+- `attempt_grades (attempt_id PK → attempts ON DELETE RESTRICT, graded_at)`.
+- Trigger `response_grades_guard`: chỉ INSERT/UPDATE khi Lượt đã `submitted`; `score` trong `[0, điểm câu]`; `source = 'manual'` phải có `graded_by`. (Chặn theo Phiên thi đã Chốt thêm ở 5c khi có `session_gradings`.)
+- Chỉ mục: `response_grades (item_id) WHERE score IS NULL` (hàng đợi chấm ở 5b); `attempts (submitted_at) WHERE status = 'submitted'` cho job quét.
+- `source` ở 5a chỉ ghi `auto`; các giá trị còn lại có sẵn trong kiểu enum cho 5b–5d.
+
+### 3. Luồng chấm
+
+```text
+nộp (Người dự thi / hết giờ / Buộc nộp / Đình chỉ / Hủy Phiên thi / Khóa tài khoản)
+  → sau commit: AttemptSubmittedHooks.onSubmitted(attemptIds)      [cổng, grading cài đặt]
+      → enqueue job "grading.autograde" { attemptIds }             [theo lô ≤ 50]
+  → worker: GradingService.autogradeAttempts(ids)
+      1. đọc Lượt đã nộp + Câu trả lời + bản chụp Bộ đề (cổng EXAM_CONTENT)
+      2. scoreResponse cho MỌI câu của Bộ đề → upsert response_grades (bỏ qua dòng source ≠ auto)
+      3. ghi attempt_grades (cùng giao dịch)
+job "grading.sweep" (lặp) → tìm Lượt submitted chưa có attempt_grades → autogradeAttempts
+```
+
+- **Idempotent:** chạy lại ra cùng kết quả; không ghi đè điểm `manual/appeal/correction` (có từ 5b).
+- **Giao dịch:** mỗi lô trong một giao dịch; một Lượt lỗi (bản chụp thiếu) được ghi log và bỏ qua, không làm hỏng cả lô, lần quét sau thử lại.
+- **Cổng mới** trong `apps/api/src/common`: `AttemptSubmittedHooks` (attempt gọi, grading cài), `AttemptGradeGuard` (xem mục 4). Test kiến trúc cấm `grading` đọc bảng của `attempt`/`exam` và ngược lại.
+- Nơi gọi hook: `closeInProgress` đã trả về id Lượt vừa đóng; các nơi gọi (Nộp bài, Hủy Phiên thi, Khóa tài khoản, Buộc nộp, Đình chỉ) gọi hook **sau commit**; job tự nộp hết giờ gọi ngay sau lô của nó. Chỗ nào gọi trong giao dịch chưa commit thì job quét bắt (mục dưới).
+- **Job quét chạy mỗi 5 giây** (đề xuất đổi từ 30 giây của Q286) và chỉ xét Lượt nộp trong **24 giờ gần nhất**, nên truy vấn luôn nhẹ dù lịch sử lớn. Lượt cũ hơn mà vẫn chưa chấm (job chết lâu) được chấm khi Người ra đề mở bảng Kết quả ở 5b (gọi `autogradeSession`).
+
+### 4. Hoàn tác Buộc nộp (Q296)
+
+Cổng `AttemptGradeGuard` do `grading` cài, `attempt` dùng:
+- `canReopen(attemptId)` → `false` nếu Lượt đã có dòng `source = 'manual'` hoặc Phiên thi đã Công bố (điều kiện thứ hai chỉ có nghĩa từ 5c; ở 5a luôn `false` cho nó).
+- `discard(tx, attemptId)` xóa `response_grades` và `attempt_grades` của Lượt trong cùng giao dịch Hoàn tác.
+- Mã lỗi mới khi bị chặn: 409 `INVALID_STATE` với `reason: 'ALREADY_GRADED'`; thêm chữ tiếng Việt cho lý do này.
+
+### 5. Seam test và ca cần có
+
+| Seam | Ca chính |
+|---|---|
+| **S1 `packages/scoring`** | Bảng ví dụ mọi Loại câu và Quy tắc chấm: chọn một đúng/sai/bỏ trống; chọn nhiều tỷ lệ (đúng 2/3, đúng 2 + thừa 1, thừa nhiều không âm), đúng hết; chùm tỷ lệ, đúng hết, bậc thang (ví dụ `[0, 0,1, 0,25, 0,5, 1]`, Mệnh đề bỏ trống = không đúng); tự luận trống = 0 `blank`, có chữ `pending`, chỉ khoảng trắng = trống; làm tròn 1,33 / 0,67; giá trị lạ → 0 `wrong`; `keyOverride`. Property: điểm trong `[0, max]`; đúng thêm một Mệnh đề không làm giảm điểm. `resultOf`: highest/latest, trừ % cộng dồn tối đa 100, Hủy → 0, Điểm quy đổi 0,1 (6,45 → 6,5) |
+| **S2 HTTP + PostgreSQL** | Nộp bài → trong vài giây có đủ `response_grades` cho mọi câu của Bộ đề (kể cả câu không trả lời) và `attempt_grades`; đúng điểm với Bộ đề bốn Loại câu; tự luận có chữ để `score NULL`; Buộc nộp cả phòng 20 Lượt → đều được chấm; Đình chỉ chấm phần đã lưu; chạy chấm hai lần cùng kết quả; hết giờ (job tự nộp) cũng được chấm |
+| **S3 Trigger** | INSERT khi Lượt đang làm bị từ chối; `score` âm hoặc lớn hơn điểm câu bị từ chối; `manual` thiếu `graded_by` bị từ chối |
+| **S4 Đồng thời** | Hai worker chấm cùng một lô không sinh dòng trùng hay lỗi; Hoàn tác Buộc nộp xen autograde (kết quả: hoặc Lượt đã mở lại và không còn điểm, hoặc Hoàn tác thấy điểm tự động và vẫn thành công rồi xóa); chấm xen Hoàn tác không để điểm mồ côi |
+| **Kiến trúc** | `grading` không import bảng `attempt`/`exam`; chạy được trong `architecture.test.ts` |
+| **Hoàn tác (S2)** | Hoàn tác thành công xóa điểm tự động, nộp lại thì chấm lại; bị chặn 409 `ALREADY_GRADED` khi đã có điểm `manual` (dựng bằng SQL vì chưa có API chấm tay) |
+
+### 6. Ngân sách thời gian (ghi và đo)
+
+- Chấm một Lượt 50 câu dưới 20 ms (đo trong test).
+- 500 Lượt nộp cùng lúc (`load:exam` hiện có thêm bước nộp) xong chấm trong **10 giây**; ghi p95 của lưu bài và heartbeat trong lúc đó để chắc chấm nền không làm chậm.
+- Request Nộp bài không chậm hơn so với trước 5a (đo trước/sau).
+
+### 7. Không nằm trong 5a
+
+API và màn hình cho Người ra đề (5b), `session_gradings`, Công bố, `review_after_release` (5c), Phúc khảo, Đính chính, `key_correction_effects` (5d), Ủy quyền chấm (cần cùng lúc có API ở 5b).
+
+### PR 5a: ghi chú triển khai (6/11/2026)
+
+- **`packages/scoring`** (29 test): `scoreResponse` (bốn Loại câu, ba Quy tắc chấm, `keyOverride` cho Đính chính ở 5d), `resultOf`, và số học theo đơn vị 0,01 (`centi.ts`) nên không có số lẻ nhị phân. Mệnh đề bỏ trống tính là không đúng; dữ liệu lạ cho 0 điểm và không ném lỗi; tự luận chỉ khoảng trắng là bỏ trống. Gói không phụ thuộc gói nào.
+- **Migration 0017:** `response_grades`, `attempt_grades`, enum `response_grade_source`, chỉ mục `response_grades_pending_idx` (tự luận chờ chấm) và `attempts_submitted_idx` (job quét). Trigger `response_grades_guard` (Lượt phải đã nộp, khóa dòng Lượt `FOR SHARE`, câu thuộc Bộ đề, điểm không vượt điểm câu) và `attempt_grades_guard`. Ràng buộc `source ≠ auto` phải có `graded_by`, nhận xét ≤ 1000 ký tự.
+- **Module `grading`** (`AutogradeService`, `GradingJobs`, `GradingHooksService`) nối với `attempt` và `exam` qua ba cổng mới trong `common/`: `GRADING_SOURCE` (attempt cài đặt), `ATTEMPT_SUBMITTED_HOOKS` và `ATTEMPT_GRADE_GUARD` (grading cài đặt). `architecture.test.ts` thêm `grading` vào danh sách cấm import bảng chéo module.
+- **Báo Lượt vừa nộp:** gọi hook ngay sau commit ở Nộp bài của Người dự thi, đóng lười khi có request, job tự nộp hết giờ, Buộc nộp, Đình chỉ và Hủy Phiên thi. Riêng Khóa tài khoản (báo trong giao dịch của `identity`) để job quét bắt. **Job quét** mỗi 5 giây: quét nhanh (một trang, 15 phút gần nhất) và mỗi phút một lần quét sâu 24 giờ (phân trang 500, tối đa 10.000 Lượt gần nhất, tối đa 500 Lượt chấm mỗi lần); Lượt cũ hơn hoặc ngoài 10.000 được chấm bù khi Người ra đề mở bảng Kết quả (5b).
+- **Idempotent và an toàn khi đồng thời:** chấm dùng `ON CONFLICT DO UPDATE ... WHERE source = 'auto'` nên không ghi đè điểm chấm tay. Mỗi lô 50 Lượt đọc bài làm và ghi điểm trong **cùng một giao dịch** với các dòng Lượt khóa `FOR SHARE` (theo thứ tự `id`): Hoàn tác Buộc nộp phải chờ lô chấm xong nên điểm của lần nộp cũ không thể đè lên bài đã mở lại rồi nộp lại. Một Lượt có bản chụp hỏng được log và bỏ qua, không làm hỏng cả lô; lỗi cả lô thì lần quét sau thử lại.
+- **Hoàn tác Buộc nộp:** lý do mới `ALREADY_GRADED` (đã có điểm chấm tay; điều kiện "Phiên thi đã Công bố" thêm ở 5c); điểm tự động bị xóa trong cùng giao dịch Hoàn tác; hoàn tác cả lô bỏ qua riêng Lượt đã chấm tay. Chuỗi tiếng Việt `INVALID_STATE_ALREADY_GRADED` ở `vi.json`.
+- **Thay đổi so với thiết kế (sau review):** hook báo thêm ở Buộc nộp, Đình chỉ, Hủy Phiên thi (thiết kế ban đầu để job quét lo); job quét chia hai tầng (nhanh và sâu) để mỗi 5 giây không phải đọc tới 10.000 id; chấm theo lô trong một giao dịch có khóa (thay vì mỗi Lượt một giao dịch) để đóng cửa sổ điểm cũ đè bài mở lại; `closeAll` của cổng `SESSION_ATTEMPTS` trả danh sách id thay vì số lượng; đổi tên `gradedIds` thành `manuallyGradedIds`; bộ test đo thời gian dựng Lượt bằng SQL (`grading-bench.int.test.ts`, chỉ chạy khi `GRADING_BENCH=1`).
+- **Test:** `grading-auto.int.test.ts` 20 test (S2 chấm đủ Loại câu, câu bỏ trống, idempotent, không ghi đè điểm tay, Buộc nộp cả phòng, hết giờ, Hủy Phiên thi, ngoài cửa sổ 24 giờ, mất hàng đợi; S3 trigger; S4 hai lần chấm cùng lúc; Hoàn tác xóa điểm / bị chặn / cả lô); toàn bộ 775 test tích hợp qua.
+- **Số đo:** chấm 500 Lượt (Bộ đề bốn Loại câu, theo lô 50) mất **0,36 giây**, 0,7 ms mỗi Lượt (ngân sách 10 giây và 20 ms). Request Nộp bài chỉ thêm một lệnh xếp job Redis (không chờ chấm).
+- **Để ngỏ:** 5b thêm gọi `autogradeSession` khi mở bảng Kết quả để chấm bù Lượt cũ hơn 24 giờ; điều kiện "Phiên thi đã Công bố" của `canReopen` thêm ở 5c; thử tải 500 người nộp cùng lúc qua `load:exam` (S7) ở 5e.

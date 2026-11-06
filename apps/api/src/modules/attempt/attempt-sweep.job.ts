@@ -1,6 +1,7 @@
 import { ATTEMPT_GRACE_SECONDS } from '@exam/shared';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
+import { ATTEMPT_SUBMITTED_HOOKS, type AttemptSubmittedHooks } from '../../common/attempt-grading';
 import { CLOCK, type Clock } from '../../common/clock';
 import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import { type Database, DB } from '../../db/db.module';
@@ -23,6 +24,7 @@ export class AttemptSweepJob implements OnModuleInit {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly registry: JobRegistry,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
+    @Inject(ATTEMPT_SUBMITTED_HOOKS) private readonly submitted: AttemptSubmittedHooks,
   ) {}
 
   onModuleInit() {
@@ -36,6 +38,7 @@ export class AttemptSweepJob implements OnModuleInit {
     const now = this.clock.now();
     let total = 0;
     const sessions = new Set<string>();
+    const closedIds: string[] = [];
     try {
       for (;;) {
         const result = await this.db.execute(sql`
@@ -49,13 +52,18 @@ export class AttemptSweepJob implements OnModuleInit {
           )
           returning id, session_id`);
         total += result.rows.length;
-        for (const row of result.rows) sessions.add(String(row.session_id));
+        for (const row of result.rows) {
+          sessions.add(String(row.session_id));
+          closedIds.push(String(row.id));
+        }
         if (result.rows.length < BATCH) break;
       }
     } finally {
       // Worker không có cổng Socket.IO; báo qua Redis để màn Theo dõi thấy các Lượt vừa tự nộp, kể cả khi một lô sau lỗi
       // (các lô trước đã xác nhận).
       for (const sessionId of sessions) this.realtime.sessionChanged(sessionId);
+      // Chấm tự động ở nền (Q286): các lô này đã commit (mỗi câu lệnh tự xác nhận).
+      await this.submitted.onSubmitted(closedIds);
     }
     if (total > 0) this.logger.log(`Đã tự nộp ${total} Lượt làm bài hết giờ`);
     return total;

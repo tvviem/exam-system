@@ -112,6 +112,8 @@ export const attempts = pgTable(
       .where(sql`${t.status} = 'in_progress'`),
     index('attempts_sweep_idx').on(t.status, t.deadline).where(sql`${t.status} = 'in_progress'`),
     index('attempts_user_idx').on(t.userId),
+    // Job quét chấm tự động (Q286): các Lượt vừa nộp.
+    index('attempts_submitted_idx').on(t.submittedAt).where(sql`${t.status} = 'submitted'`),
     check('attempts_no_check', sql`${t.attemptNo} >= 1`),
     check('attempts_deadline_check', sql`${t.deadline} > ${t.startedAt}`),
     check(

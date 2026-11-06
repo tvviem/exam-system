@@ -49,7 +49,7 @@ jobs:
   integration:
     name: Integration · e2e · migration drift
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       PODMAN: sudo podman
       DATABASE_URL: postgres://exam:exam@127.0.0.1:5435/exam

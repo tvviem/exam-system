@@ -12,6 +12,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, count, eq, gte, inArray, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { ApiError } from '../../common/api-error';
+import { ATTEMPT_GRADE_GUARD, type AttemptGradeGuard } from '../../common/attempt-grading';
 import { CLOCK, type Clock } from '../../common/clock';
 import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
 import { uniqueViolationOf } from '../../common/pg-error';
@@ -52,6 +53,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
     private readonly presence: AttemptPresence,
+    @Inject(ATTEMPT_GRADE_GUARD) private readonly gradeGuard: AttemptGradeGuard,
   ) {}
 
   async hasAttempts(sessionId: string, executor: Pick<Database, 'select'> = this.db) {
@@ -72,8 +74,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
   }
 
   async closeAll(tx: Transaction, sessionId: string, reason: SubmitReason) {
-    return (await closeInProgress(tx, eq(attempts.sessionId, sessionId), reason, this.clock.now()))
-      .length;
+    return closeInProgress(tx, eq(attempts.sessionId, sessionId), reason, this.clock.now());
   }
 
   async closeForUser(tx: Transaction, userId: string, reason: SubmitReason) {
@@ -460,7 +461,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       .groupBy(attempts.userId);
     const latestNo = new Map(latest.map((row) => [row.userId, row.latestNo]));
 
-    const reopened: UndoForceSubmitResult['reopened'] = [];
+    let reopened: UndoForceSubmitResult['reopened'] = [];
     const skipped: UndoForceSubmitResult['skipped'] = [];
     for (const row of rows) {
       const problem: UndoProblem | null =
@@ -487,7 +488,24 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       else if (!deadline) skipped.push({ attemptId: row.id, problem: 'ATTEMPT_EXPIRED' });
       else reopened.push({ attemptId: row.id, userId: row.userId, deadline });
     }
+    // Đã có điểm chấm tay thì không mở lại được (Q296); điểm tự động thì xóa để nộp lại được chấm lại.
+    const graded = await this.gradeGuard.manuallyGradedIds(
+      tx,
+      reopened.map((item) => item.attemptId),
+    );
+    if (graded.size > 0) {
+      for (const item of reopened) {
+        if (graded.has(item.attemptId)) {
+          skipped.push({ attemptId: item.attemptId, problem: 'ALREADY_GRADED' });
+        }
+      }
+      reopened = reopened.filter((item) => !graded.has(item.attemptId));
+    }
     if (reopened.length === 0) return { reopened, skipped };
+    await this.gradeGuard.discard(
+      tx,
+      reopened.map((item) => item.attemptId),
+    );
 
     // Nhật ký trước (trigger `attempts_guard` đòi dòng khớp lần nộp và hạn mới), rồi mở lại cả lô bằng một câu lệnh.
     const submittedAt = new Map(rows.map((row) => [row.id, row.submittedAt as Date]));

@@ -2,6 +2,7 @@ import { SESSION_TITLE_MAX, type SessionSettings } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { eq, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
+import { ATTEMPT_SUBMITTED_HOOKS, type AttemptSubmittedHooks } from '../../common/attempt-grading';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
@@ -26,12 +27,14 @@ export class SessionLifecycleService {
     private readonly sessions: SessionsService,
     private readonly notifications: NotificationsService,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
+    @Inject(ATTEMPT_SUBMITTED_HOOKS) private readonly submitted: AttemptSubmittedHooks,
   ) {}
 
   /** Hủy không hoàn tác (Q203); các Lượt đang làm được nộp ngay với lý do `session_cancelled`. */
   async cancel(ownerId: string, id: string, reason: string | undefined) {
     // Lấy các Lượt đang làm trước khi bị đóng, để báo Người dự thi ngay thay vì chờ heartbeat kế tiếp.
     const live = await this.attempts.liveAttemptIds(id);
+    let closedIds: string[] = [];
     await this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, id);
       if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
@@ -45,7 +48,7 @@ export class SessionLifecycleService {
         })
         .where(eq(sessions.id, id));
       // Q203: mọi Lượt đang làm được nộp ngay trong cùng giao dịch.
-      await this.attempts.closeAll(tx, id, 'session_cancelled');
+      closedIds = await this.attempts.closeAll(tx, id, 'session_cancelled');
       await notifyRoster(this.notifications, tx, id, 'session.cancelled', {
         sessionId: id,
         title: session.title,
@@ -53,6 +56,8 @@ export class SessionLifecycleService {
       });
     });
     this.realtime.affected(id, live);
+    // Chấm phần đã lưu của các Lượt vừa bị nộp, ở nền (Q286), sau khi giao dịch Hủy đã commit.
+    this.submitted.onSubmitted(closedIds).catch(() => undefined);
     return this.sessions.get(ownerId, id);
   }
 

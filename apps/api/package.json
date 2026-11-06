@@ -24,6 +24,7 @@
     "demo:room": "node scripts/demo-room.cjs"
   },
   "dependencies": {
+    "@exam/scoring": "workspace:*",
     "@exam/shared": "workspace:*",
     "@fastify/cookie": "^11.1.5",
     "@fastify/multipart": "^10.1.6",
