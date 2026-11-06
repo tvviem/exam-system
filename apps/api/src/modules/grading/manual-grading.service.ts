@@ -18,6 +18,9 @@ import {
   GradingContextService,
 } from './grading-context.service';
 
+/** Hàng đợi trả tối đa chừng này dòng (Phiên thi tối đa 500 người). */
+const QUEUE_LIMIT = 500;
+
 /** Một bài tự luận có chữ trong hàng đợi (không bao gồm bài bỏ trống tự được 0 điểm, Q288). */
 interface QueueEntry {
   attemptId: string;
@@ -99,6 +102,7 @@ export class ManualGradingService {
       pending,
       entries: queue
         .filter((entry) => filter === 'all' || entry.row.verdict === 'pending')
+        .slice(0, QUEUE_LIMIT)
         .map((entry) => ({
           attemptId: entry.attemptId,
           label: entry.label,
@@ -156,7 +160,8 @@ export class ManualGradingService {
     const { info } = await this.access.require(actor.id, sessionId);
     const ctx = await this.context.load(info);
     const item = this.essayItem(ctx, itemId);
-    if (!ctx.submitted.some((attempt) => attempt.attemptId === attemptId)) {
+    // Chỉ chấm Lượt có thể được tính (Q292), như hàng đợi.
+    if (!ctx.countable.some((attempt) => attempt.attemptId === attemptId)) {
       throw new ApiError('NOT_FOUND');
     }
     const points = toCenti(item.points);
@@ -167,23 +172,28 @@ export class ManualGradingService {
       });
     }
     const score = centi === null ? null : fromCenti(centi);
-    const [saved] = await this.db
-      .update(responseGrades)
-      .set({
-        score: score === null ? null : score.toFixed(2),
-        verdict: verdictOfScore(score, item.points),
-        source: 'manual',
-        gradedBy: actor.id,
-        gradedAt: this.clock.now(),
-        feedback: request.feedback?.trim() ? request.feedback.trim() : null,
-      })
-      .where(and(eq(responseGrades.attemptId, attemptId), eq(responseGrades.itemId, itemId)))
-      .returning();
+    const write = async () => {
+      const [row] = await this.db
+        .update(responseGrades)
+        .set({
+          score: score === null ? null : score.toFixed(2),
+          verdict: verdictOfScore(score, item.points),
+          source: 'manual',
+          gradedBy: actor.id,
+          gradedAt: this.clock.now(),
+          feedback: request.feedback?.trim() ? request.feedback.trim() : null,
+        })
+        .where(and(eq(responseGrades.attemptId, attemptId), eq(responseGrades.itemId, itemId)))
+        .returning();
+      return row;
+    };
+    let saved = await write();
     if (!saved) {
       // Chưa chấm tự động xong (vừa nộp): chấm ngay rồi thử lại một lần.
       await this.autograde.gradeAttempts([attemptId]);
-      throw new ApiError('INVALID_STATE', { reason: 'NOT_GRADED_YET' });
+      saved = await write();
     }
+    if (!saved) throw new ApiError('INVALID_STATE', { reason: 'NOT_GRADED_YET' });
     return {
       attemptId,
       itemId,

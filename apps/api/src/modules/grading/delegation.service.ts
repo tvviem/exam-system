@@ -84,6 +84,8 @@ export class DelegationService {
     if (await this.sessions.isInRoster(sessionId, userId)) {
       throw new ApiError('INVALID_STATE', { reason: 'DELEGATE_IN_ROSTER' });
     }
+    const existing = await this.active(sessionId);
+    if (existing?.userId === userId) return this.current(caller, sessionId);
     const now = this.clock.now();
     let replaced: string | null = null;
     try {
@@ -185,7 +187,12 @@ export class DelegationService {
       .where(
         and(eq(sessionGradingDelegates.userId, userId), isNull(sessionGradingDelegates.revokedAt)),
       );
-    const infos = await this.sessions.infoMany(rows.map((row) => row.sessionId));
+    const all = await this.sessions.infoMany(rows.map((row) => row.sessionId));
+    // Bỏ Phiên thi mà người này nay có tên trong Danh sách dự thi (Ủy quyền không còn hiệu lực, Q307).
+    const infos = [];
+    for (const info of all) {
+      if (!(await this.sessions.isInRoster(info.sessionId, userId))) infos.push(info);
+    }
     const owners = await this.examiners.profiles([...new Set(infos.map((info) => info.ownerId))]);
     return {
       items: infos.map((info) => ({

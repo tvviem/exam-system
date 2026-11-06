@@ -1,4 +1,4 @@
-import { countableAttempts } from '@exam/scoring';
+import { countableAttempts, toCenti } from '@exam/scoring';
 import { Inject, Injectable } from '@nestjs/common';
 import { inArray } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
@@ -75,7 +75,7 @@ export class GradingContextService {
         list.push({
           attemptId: row.attemptId,
           itemId: row.itemId,
-          scoreCenti: row.score === null ? null : Math.round(Number(row.score) * 100),
+          scoreCenti: row.score === null ? null : toCenti(Number(row.score)),
           verdict: row.verdict,
           source: row.source,
           feedback: row.feedback,
@@ -86,7 +86,7 @@ export class GradingContextService {
     return {
       info,
       items,
-      maxScoreCenti: items.reduce((sum, item) => sum + Math.round(item.points * 100), 0),
+      maxScoreCenti: items.reduce((sum, item) => sum + toCenti(item.points), 0),
       submitted,
       countable,
       rows,

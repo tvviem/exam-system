@@ -25,6 +25,3 @@ export function itemsOf(content: ExamContentData): GradingItem[] {
     })),
   );
 }
-
-export const toCentiScore = (value: string | null): number | null =>
-  value === null ? null : Math.round(Number(value) * 100);

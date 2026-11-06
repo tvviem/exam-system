@@ -193,16 +193,20 @@ describe('Bảng Kết quả (Q295, Q291)', () => {
     });
     const an = rowOf(data, 'an');
     expect(an).toMatchObject({
-      state: 'waiting_essay',
+      state: 'hidden',
       essayHidden: true,
       rawScore: 3,
       maxScore: 4,
       scaledScore: 7.5,
-      pendingEssays: 1,
+      pendingEssays: null,
     });
     expect(an.countedAttemptId).toBeUndefined();
     expect(rowOf(data, 'dung')).toMatchObject({ state: 'no_attempt', rawScore: null });
-    expect(JSON.stringify(data)).not.toContain(live.attemptIds.an);
+    // không một mã Lượt nào xuất hiện trong bảng, và không nói người nào đã được chấm hết hay chưa
+    for (const id of Object.values(live.attemptIds)) expect(JSON.stringify(data)).not.toContain(id);
+    expect(new Set(data.people.map((p: { state: string }) => p.state))).toEqual(
+      new Set(['hidden', 'no_attempt']),
+    );
   });
 
   it('chấm xong thì có đủ điểm: 3,5/4 → 8,8 (làm tròn 0,1 từ 5 trở lên); Chi bài trắng = 0', async () => {
@@ -237,7 +241,7 @@ describe('Bảng Kết quả (Q295, Q291)', () => {
     const hidden = (await api('GET', `${base()}/results/people/${live.userIds.an}`)).json();
     expect(hidden.essayHidden).toBe(true);
     const essay = hidden.attempts[0].items.find((i: { type: string }) => i.type === 'essay');
-    expect(essay).toMatchObject({ score: null, verdict: 'hidden' });
+    expect(essay).toMatchObject({ score: null, verdict: 'hidden', source: null });
     expect(hidden.attempts[0].attemptId).toBeUndefined();
     await queue();
     await grade('an', 0.5, 'Khá');
@@ -264,6 +268,46 @@ describe('Bảng Kết quả (Q295, Q291)', () => {
       correctRate: 33.3,
     });
     expect(byType.essay).toMatchObject({ pending: 2, blank: 1 });
+  });
+});
+
+describe('Nhiều Lượt, chấm bù và hàng đợi', () => {
+  it('highest lấy Lượt cao nhất, latest lấy Lượt cuối; hàng đợi `all` và `pending` khác nhau', async () => {
+    await api('PUT', `${base()}/grading/blind`, { blind: false });
+    await sql(`update sessions set max_attempts = 2 where id = $1`, [live.sessionId]);
+    const an = live.takers.an as Taker;
+    const second = (await an.call('POST', `/take/sessions/${live.sessionId}/start`)).json();
+    expect(second.attempt.id).not.toBe(live.attemptIds.an);
+    const view = (await an.call('GET', `/take/attempts/${second.attempt.id}`)).json();
+    const single = view.sections[0].items.find((i: { type: string }) => i.type === 'single_choice');
+    await an.call('PUT', `/take/attempts/${second.attempt.id}/responses`, {
+      items: [{ itemId: single.itemId, value: { optionId: 'o2' }, clientSeq: 1 }],
+    });
+    await an.call('POST', `/take/attempts/${second.attempt.id}/submit`);
+    await t.queue.drain();
+
+    // highest: Lượt 1 được 3 điểm trắc nghiệm, Lượt 2 chỉ 1 điểm
+    expect(rowOf(await results(), 'an')).toMatchObject({ rawScore: 3, attemptCount: 2 });
+    // hàng đợi gồm cả hai Lượt của An (highest) cộng bài của Bình; Lượt 2 bỏ trống tự luận nên không vào
+    expect((await queue('all')).total).toBe(2);
+    await sql(`update sessions set attempt_scoring = 'latest' where id = $1`, [live.sessionId]);
+    expect(rowOf(await results(), 'an')).toMatchObject({
+      rawScore: 1,
+      countedAttemptId: second.attempt.id,
+    });
+    // latest: Lượt 1 của An không còn có thể được tính nên không còn trong hàng đợi
+    expect((await queue('all')).total).toBe(1);
+    expect((await grade('an', 0.5)).statusCode).toBe(404);
+  });
+
+  it('mở Kết quả chấm bù Lượt chưa có dấu "đã chấm"', async () => {
+    await sql(`delete from response_grades where attempt_id = $1`, [live.attemptIds.binh]);
+    await sql(`delete from attempt_grades where attempt_id = $1`, [live.attemptIds.binh]);
+    const data = await results();
+    expect(rowOf(data, 'binh')).toMatchObject({ attemptCount: 1 });
+    expect(
+      await sql(`select 1 from attempt_grades where attempt_id = $1`, [live.attemptIds.binh]),
+    ).toHaveLength(1);
   });
 });
 
@@ -308,6 +352,22 @@ describe('Mức xử lý Vi phạm (Q294)', () => {
     );
   });
 
+  it('nhiều Vi phạm cộng dồn, tối đa trừ 100 %', async () => {
+    await violation();
+    await violation();
+    await api('PUT', `${base()}/grading/blind`, { blind: false });
+    const ids = (await api('GET', `${base()}/violations`))
+      .json()
+      .items.map((v: { id: string }) => v.id);
+    await api('PUT', `${base()}/violations/${ids[0]}/penalty`, { type: 'percent', percent: 70 });
+    await api('PUT', `${base()}/violations/${ids[1]}/penalty`, { type: 'percent', percent: 60 });
+    expect(rowOf(await results(), 'an')).toMatchObject({
+      penaltyPercent: 100,
+      scaledScore: 0,
+      voided: false,
+    });
+  });
+
   it('phần trăm ngoài 1–100 hoặc thiếu bị từ chối; Vi phạm lạ là 404', async () => {
     await violation();
     const id = (await api('GET', `${base()}/violations`)).json().items[0].id as string;
@@ -346,6 +406,8 @@ describe('Quyền truy cập và Ủy quyền (Q292, Q307)', () => {
     const granted = await api('PUT', `${base()}/grading-delegate`, { userId: await userId('gv2') });
     expect(granted.statusCode, granted.body).toBe(200);
     expect(granted.json().delegate).toMatchObject({ userId: await userId('gv2') });
+    // cấp lại cho cùng người không sinh thông báo hay nhật ký thừa
+    await api('PUT', `${base()}/grading-delegate`, { userId: await userId('gv2') });
     expect((await api('GET', `${base()}/results`, undefined, live.other)).statusCode).toBe(200);
     await queue();
     expect((await grade('an', 0.5, undefined, live.other)).statusCode).toBe(200);

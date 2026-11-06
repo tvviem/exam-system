@@ -8,7 +8,7 @@ import {
   type ViolationPenalties,
   type ViolationRecord,
 } from '../../common/violation-penalties';
-import { type GradingAccess, GradingAccessService } from './grading-access.service';
+import { GradingAccessService } from './grading-access.service';
 import { type GradingContext, GradingContextService } from './grading-context.service';
 
 /** Dòng của bảng Kết quả (docs/plan/slice-5.md, PR 5b). */
@@ -18,9 +18,10 @@ export interface ResultRow {
   fullName: string;
   classLabel: string | null;
   attemptCount: number;
-  state: 'no_attempt' | 'waiting_essay' | 'graded';
-  /** Số câu tự luận có chữ còn chờ chấm trong các Lượt có thể được tính của người này. */
-  pendingEssays: number;
+  /** `hidden`: Chấm ẩn tên đang che điểm tự luận nên không nói người này đã được chấm hết hay chưa (Q291). */
+  state: 'no_attempt' | 'hidden' | 'waiting_essay' | 'graded';
+  /** Số câu tự luận có chữ còn chờ chấm của người này; `null` khi `essayHidden` (đếm theo người sẽ nối "Bài N" với tên). */
+  pendingEssays: number | null;
   /** Chấm ẩn tên đang che điểm tự luận: `rawScore` và `scaledScore` chỉ gồm phần trắc nghiệm. */
   essayHidden: boolean;
   rawScore: number | null;
@@ -30,6 +31,14 @@ export interface ResultRow {
   voided: boolean;
   /** Mã Lượt được tính; vắng khi `essayHidden` để không nối "Bài N" ở màn Chấm với tên người (Q291). */
   countedAttemptId?: string;
+}
+
+/** Bỏ mã Lượt khỏi Vi phạm trả ra: ghép nó với hàng đợi chấm ẩn tên sẽ lộ người viết bài (Q291). */
+function withoutAttemptId<T extends { attemptId: string }>({
+  attemptId: _hidden,
+  ...rest
+}: T): Omit<T, 'attemptId'> {
+  return rest;
 }
 
 const penaltyInput = (violation: ViolationRecord): PenaltyInput => ({
@@ -89,6 +98,12 @@ export class ResultsService {
       list.push(penaltyInput(violation));
       penaltiesOf.set(violation.userId, list);
     }
+    const attemptsByUser = new Map<string, typeof ctx.countable>();
+    for (const attempt of ctx.countable) {
+      const list = attemptsByUser.get(attempt.userId) ?? [];
+      list.push(attempt);
+      attemptsByUser.set(attempt.userId, list);
+    }
     const submittedCount = new Map<string, number>();
     for (const attempt of ctx.submitted) {
       submittedCount.set(attempt.userId, (submittedCount.get(attempt.userId) ?? 0) + 1);
@@ -96,7 +111,7 @@ export class ResultsService {
 
     const maxScore = fromCenti(ctx.maxScoreCenti);
     const rows: ResultRow[] = profiles.map((profile) => {
-      const attempts = ctx.countable.filter((attempt) => attempt.userId === profile.id);
+      const attempts = attemptsByUser.get(profile.id) ?? [];
       let pending = 0;
       const scores = attempts.map((attempt) => {
         let total = 0;
@@ -123,7 +138,7 @@ export class ResultsService {
         fullName: profile.fullName,
         classLabel: classOf.get(profile.id) ?? null,
         attemptCount: submittedCount.get(profile.id) ?? 0,
-        pendingEssays: pending,
+        pendingEssays: hide && attempts.length > 0 ? null : pending,
         essayHidden: hide && attempts.length > 0,
         maxScore,
       };
@@ -139,7 +154,11 @@ export class ResultsService {
       }
       return {
         ...base,
-        state: pending > 0 ? ('waiting_essay' as const) : ('graded' as const),
+        state: hide
+          ? ('hidden' as const)
+          : pending > 0
+            ? ('waiting_essay' as const)
+            : ('graded' as const),
         rawScore: result.rawScore,
         scaledScore: result.scaledScore,
         penaltyPercent: result.penaltyPercent,
@@ -214,7 +233,7 @@ export class ResultsService {
               points: item.points,
               score: hidden || !row || row.scoreCenti === null ? null : fromCenti(row.scoreCenti),
               verdict: hidden ? ('hidden' as const) : (row?.verdict ?? 'pending'),
-              source: row?.source ?? null,
+              source: hidden ? null : (row?.source ?? null),
               feedback: hidden ? null : (row?.feedback ?? null),
             };
           }),
@@ -222,7 +241,10 @@ export class ResultsService {
       }),
       violations: violations
         .filter((violation) => violation.userId === targetUserId)
-        .map(({ attemptId: _attemptId, userId: _userId, ...rest }) => rest),
+        .map((violation) => {
+          const { userId: _userId, ...rest } = withoutAttemptId(violation);
+          return rest;
+        }),
     };
   }
 
@@ -277,15 +299,11 @@ export class ResultsService {
     const byId = new Map(people.map((person) => [person.id, person]));
     return {
       // Không trả `attemptId`: ghép với hàng đợi chấm ẩn tên sẽ lộ người viết bài (Q291).
-      items: list.map(({ attemptId: _attemptId, ...rest }) => ({
-        ...rest,
-        fullName: byId.get(rest.userId)?.fullName ?? null,
-        code: byId.get(rest.userId)?.code ?? null,
+      items: list.map((violation) => ({
+        ...withoutAttemptId(violation),
+        fullName: byId.get(violation.userId)?.fullName ?? null,
+        code: byId.get(violation.userId)?.code ?? null,
       })),
     };
-  }
-
-  accessOf(userId: string, sessionId: string): Promise<GradingAccess> {
-    return this.access.require(userId, sessionId);
   }
 }

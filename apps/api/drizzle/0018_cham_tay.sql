@@ -25,7 +25,8 @@ UPDATE response_grades g SET verdict = CASE
 	WHEN NOT EXISTS (
 		SELECT 1 FROM responses r
 		WHERE r.attempt_id = g.attempt_id AND r.item_id = g.item_id AND r.value IS NOT NULL
-			AND r.value NOT IN ('null'::jsonb, '{"optionIds": []}'::jsonb, '{"answers": {}}'::jsonb, '{"text": ""}'::jsonb)
+			AND r.value NOT IN ('null'::jsonb, '{"optionIds": []}'::jsonb, '{"answers": {}}'::jsonb)
+			AND NOT (r.value->>'text' IS NOT NULL AND btrim(r.value->>'text') = '')
 	) THEN 'blank'::response_verdict
 	ELSE 'wrong'::response_verdict
 END
