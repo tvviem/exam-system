@@ -25,6 +25,20 @@ Bất biến vẫn giữ và được test: **Đáp án đúng chỉ ở server*
 - `packages/scoring` còn rỗng; `notifications` chạy (3 loại, Q211); `exceljs` đã dùng cho nhập/xuất khác; BullMQ worker đã có job quét tự nộp.
 - Đã ghi sẵn ở lát cắt 4: Hoàn tác Buộc nộp "không làm được khi Lượt đã được Chấm" (Q276), nên lát cắt 5 phải định nghĩa "đã Chấm" (Q296).
 
+## Ghi chú cho hướng dẫn sử dụng (nguồn viết tài liệu người dùng sau này)
+
+Cập nhật khi mỗi quyết định được duyệt; viết bằng lời của người dùng, không có thuật ngữ kỹ thuật.
+
+**Người ra đề**
+- *Chấm tự động:* bài trắc nghiệm được chấm trong vài giây sau khi Người dự thi nộp bài (kể cả hết giờ hay Buộc nộp). Bạn xem được điểm trắc nghiệm sớm; Người dự thi chỉ thấy điểm sau khi bạn bấm **Công bố** (Q286).
+- *Cách tính điểm:* chọn một đúng thì đủ điểm; chọn nhiều và chùm đúng/sai tính theo Quy tắc chấm bạn đặt khi soạn câu; chọn thừa đáp án sai ở câu chọn nhiều bị trừ (thấp nhất 0); Mệnh đề để trống tính là không đúng; câu trả lời lạ tính 0 (Q289).
+- *Làm tròn:* điểm từng câu đến 0,01; Điểm thô là tổng các điểm đó; Điểm quy đổi thang 10 đến 0,1, từ 5 trở lên làm tròn lên, ví dụ 6,45 thành 6,5 (Q287). Nên đặt điểm các câu chẵn (40 câu × 0,25; 50 câu × 0,2) để tổng đúng 10.
+- *Câu tự luận bỏ trống:* tự được 0 điểm và không xuất hiện trong danh sách chờ chấm; bạn vẫn sửa được ở bảng Kết quả (Q288).
+- *Chấm tự luận:* chấm theo từng câu trên mọi bài (câu 1 của cả lớp, rồi câu 2…). Điểm từ 0 đến điểm của câu, bước 0,01, có nút nhanh 0 / một nửa / tối đa; nhận xét không bắt buộc (tối đa 1000 ký tự) và Người dự thi đọc được sau khi Công bố; điểm tự lưu khi sang bài kế (Q290).
+- *Chấm ẩn tên:* mặc định bật. Khi chấm bạn chỉ thấy "Bài 17", không thấy tên, Mã định danh, Lớp; thứ tự bài được xáo để không đoán được người viết. Bảng Kết quả vẫn hiện tên nhưng **ẩn điểm các câu tự luận cho đến khi bạn chấm xong mọi câu tự luận**. Bật hoặc tắt được bất cứ lúc nào trước khi Công bố. Lưu ý: nếu bài tự nêu tên hoặc chữ viết nhận ra được thì ẩn tên không che được (Q291).
+- *Chấm bài nào:* Phiên thi tính điểm lượt cuối thì chỉ chấm Lượt cuối của mỗi người; tính điểm lượt cao nhất thì chấm mọi Lượt (Q292).
+- *Ai chấm được:* chủ Phiên thi, hoặc người được Ủy quyền (Q307, chờ duyệt).
+
 ## Quyết định cần duyệt (Q285–Q306)
 
 Mỗi dòng: đề xuất của tôi. Chỗ có lựa chọn thật được đánh dấu **[chọn]**.
@@ -45,7 +59,7 @@ Mỗi dòng: đề xuất của tôi. Chỗ có lựa chọn thật được đ�
 |---|---|---|
 | Q290 | **[đã duyệt 6/11/2026]** Chấm **theo từng câu** trên mọi bài ("chấm câu 5 của cả lớp rồi sang câu 6"), không theo từng bài. Điểm nhập trong `[0, điểm câu]`, bước 0,01; nhận xét tùy chọn ≤ 1000 ký tự. Tự lưu khi rời ô hoặc bấm Tiếp | Cùng một thước đo cho mọi người, theo [ui-design.md](../ui-design.md) mẫu **Chấm** |
 | Q291 | **[đã duyệt 6/11/2026]** **Chấm ẩn tên** (thuật ngữ mới `BlindGrading`): mặc định bật, **server** không trả tên, Mã định danh, Lớp trong hàng đợi chấm (chỉ "Bài 17"); thứ tự hàng đợi ngẫu nhiên nhưng ổn định (băm theo mã Lượt) để không đoán người qua thứ tự nộp. Tắt/bật được trước khi Công bố. Bảng Kết quả vẫn hiện tên (đó là màn khác) nhưng khi Chấm ẩn tên đang bật thì **ẩn điểm các câu tự luận** cho đến khi chấm xong mọi câu tự luận, để không đoán được người viết từ điểm | Ẩn ở API chứ không chỉ ở giao diện |
-| Q292 | Hàng đợi chứa các Lượt **có thể được tính**: `latest` → Lượt cuối của mỗi người; `highest` → mọi Lượt đã nộp. Chỉ **chủ Phiên thi** chấm (Phiên thi chuyển cho người nhận khi Xóa người dùng thì quyền đi theo, Q205/4e); đồng chấm là backlog | Không bắt chấm bài không bao giờ được tính |
+| Q292 | **[đã duyệt 6/11/2026; bổ sung Ủy quyền ở Q307]** Hàng đợi chứa các Lượt **có thể được tính**: `latest` → Lượt cuối của mỗi người; `highest` → mọi Lượt đã nộp. Chỉ **chủ Phiên thi** chấm (Phiên thi chuyển cho người nhận khi Xóa người dùng thì quyền đi theo, Q205/4e); đồng chấm là backlog | Không bắt chấm bài không bao giờ được tính |
 | Q293 | Giao diện: máy tính chia đôi (hàng đợi bên trái, bài làm + hướng dẫn chấm + ô điểm bên phải), phím tắt J/K chuyển bài, nút nhanh 0 / ½ / tối đa; điện thoại một bài mỗi màn, Trước/Sau, tiến độ "37/120 đã chấm". Mở bài kế dưới 300 ms (nạp trước bài kế) | Phản hồi tức thời là yêu cầu hàng đầu |
 
 ### Mức xử lý, Kết quả, Công bố
