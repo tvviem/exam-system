@@ -208,7 +208,7 @@ Hành động của Người ra đề kết thúc ngay một Lượt làm bài, 
 _Avoid_: thu bài, ép nộp
 
 **Hoàn tác Buộc nộp** (`UndoForceSubmit`):
-Hành động của Người ra đề mở lại một Lượt vừa bị Buộc nộp nhầm, trong 10 phút kể từ lúc bị nộp. Lượt trở lại đang làm với các Câu trả lời đã lưu và hạn mới bằng phần thời gian còn lại lúc bị nộp, tính từ lúc hoàn tác. Chỉ áp dụng cho Lượt bị Buộc nộp (không cho Đình chỉ, hết giờ, Người dự thi tự nộp hay Hủy Phiên thi); không làm được khi người đó đã bắt đầu Lượt mới, khi Phiên thi đã Hủy, hay khi Lượt đã được Chấm.
+Hành động của Người ra đề mở lại một Lượt vừa bị Buộc nộp nhầm, trong 10 phút kể từ lúc bị nộp. Lượt trở lại đang làm với các Câu trả lời đã lưu và hạn mới bằng phần thời gian còn lại lúc bị nộp, tính từ lúc hoàn tác. Chỉ áp dụng cho Lượt bị Buộc nộp (không cho Đình chỉ, hết giờ, Người dự thi tự nộp hay Hủy Phiên thi); không làm được khi người đó đã bắt đầu Lượt mới, khi Phiên thi đã Hủy, hay khi đã có điểm thủ công của Lượt hoặc Phiên thi đã Công bố kết quả.
 _Avoid_: khôi phục bài, mở lại bài
 
 **Hủy Phiên thi** (`Cancel`):
@@ -271,6 +271,14 @@ Tổng điểm đạt được trên tổng điểm của Bộ đề, ví dụ 3
 **Điểm quy đổi** (`ScaledScore`):
 Điểm thô quy về thang 10, làm tròn đến 0,1 (từ 5 trở lên làm tròn lên), ví dụ 7,2 hoặc 6,5.
 _Avoid_: điểm chuẩn hóa
+
+**Chấm ẩn tên** (`BlindGrading`):
+Cách Người ra đề chấm Câu tự luận mà không thấy tên, Mã định danh hay Lớp của người làm bài (chỉ thấy "Bài 17"); bật mặc định, tắt hoặc bật lại được đến khi Công bố kết quả. Điểm các câu tự luận trong bảng Kết quả cũng được ẩn cho đến khi chấm xong.
+_Avoid_: chấm kín, chấm mù
+
+**Ủy quyền chấm** (`GradingDelegate`):
+Việc chủ Phiên thi hoặc Quản trị viên giao cho một Người ra đề khác (không có tên trong Danh sách dự thi của Phiên thi đó) quyền thay chủ Phiên thi chấm Câu tự luận, quyết Mức xử lý, Công bố kết quả, xử lý Phúc khảo và xuất Excel khi chủ Phiên thi có sự cố. Không gồm sửa hay Hủy Phiên thi, Đính chính đáp án, xem Theo dõi trực tiếp. Thu hồi được bất cứ lúc nào; không đổi chủ sở hữu.
+_Avoid_: chuyển giao (đó là việc đổi chủ vĩnh viễn)
 
 **Đính chính đáp án** (`KeyCorrection`):
 Việc Người ra đề sửa Đáp án đúng của một câu trong Bộ đề đã Phát hành sau khi phát hiện nhập sai. Câu đó được chấm lại tự động cho mọi Người dự thi.

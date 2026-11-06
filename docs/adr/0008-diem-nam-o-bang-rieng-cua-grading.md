@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Điểm nằm ở bảng riêng của module `grading`, không thêm cột vào `attempts` và `responses`
