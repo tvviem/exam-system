@@ -1,6 +1,6 @@
 # Lát cắt 5: Chấm, Công bố kết quả, Phúc khảo
 
-> Trạng thái: **proposed** (6/11/2026). Chưa có dòng code nào; chờ chủ dự án duyệt Q285–Q306 (mỗi quyết định có đề xuất sẵn, đồng ý hoặc đổi từng mục). Thuật ngữ theo [GLOSSARY.md](../../GLOSSARY.md) (Chấm, Kết quả, Điểm thô, Điểm quy đổi, Công bố kết quả, Phúc khảo, Thời hạn phúc khảo, Chốt kết quả, Đính chính đáp án, Mức xử lý, Hủy kết quả). Nền tảng: [architecture.md](../architecture.md) mục 5.5–5.6, [data-model.md](../data-model.md) mục 4, [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md), [ADR-0008](../adr/0008-diem-nam-o-bang-rieng-cua-grading.md) (proposed).
+> Trạng thái: **proposed** (6/11/2026). Chưa có dòng code nào; chờ chủ dự án duyệt Q285–Q307 (mỗi quyết định có đề xuất sẵn, đồng ý hoặc đổi từng mục). Thuật ngữ theo [GLOSSARY.md](../../GLOSSARY.md) (Chấm, Kết quả, Điểm thô, Điểm quy đổi, Công bố kết quả, Phúc khảo, Thời hạn phúc khảo, Chốt kết quả, Đính chính đáp án, Mức xử lý, Hủy kết quả). Nền tảng: [architecture.md](../architecture.md) mục 5.5–5.6, [data-model.md](../data-model.md) mục 4, [ADR-0005](../adr/0005-chup-noi-dung-khi-phat-hanh.md), [ADR-0008](../adr/0008-diem-nam-o-bang-rieng-cua-grading.md) (proposed).
 
 ## Mục tiêu
 
@@ -37,9 +37,9 @@ Cập nhật khi mỗi quyết định được duyệt; viết bằng lời c�
 - *Chấm tự luận:* chấm theo từng câu trên mọi bài (câu 1 của cả lớp, rồi câu 2…). Điểm từ 0 đến điểm của câu, bước 0,01, có nút nhanh 0 / một nửa / tối đa; nhận xét không bắt buộc (tối đa 1000 ký tự) và Người dự thi đọc được sau khi Công bố; điểm tự lưu khi sang bài kế (Q290).
 - *Chấm ẩn tên:* mặc định bật. Khi chấm bạn chỉ thấy "Bài 17", không thấy tên, Mã định danh, Lớp; thứ tự bài được xáo để không đoán được người viết. Bảng Kết quả vẫn hiện tên nhưng **ẩn điểm các câu tự luận cho đến khi bạn chấm xong mọi câu tự luận**. Bật hoặc tắt được bất cứ lúc nào trước khi Công bố. Lưu ý: nếu bài tự nêu tên hoặc chữ viết nhận ra được thì ẩn tên không che được (Q291).
 - *Chấm bài nào:* Phiên thi tính điểm lượt cuối thì chỉ chấm Lượt cuối của mỗi người; tính điểm lượt cao nhất thì chấm mọi Lượt (Q292).
-- *Ai chấm được:* chủ Phiên thi, hoặc người được Ủy quyền (Q307, chờ duyệt).
+- *Ai chấm được:* chủ Phiên thi, hoặc một Người ra đề khác được **Ủy quyền** khi chủ Phiên thi có sự cố (ví dụ ốm). Chủ Phiên thi hoặc Quản trị viên cấp và thu hồi; người nhận không được có tên trong Danh sách dự thi của Phiên thi đó; được chấm tự luận, quyết Mức xử lý, Công bố, xử lý Phúc khảo, xuất Excel, nhưng không sửa hay Hủy Phiên thi, không Đính chính đáp án, không xem Theo dõi trực tiếp; mọi thao tác ghi nhật ký kèm tên người làm (Q307).
 
-## Quyết định cần duyệt (Q285–Q306)
+## Quyết định cần duyệt (Q285–Q307)
 
 Mỗi dòng: đề xuất của tôi. Chỗ có lựa chọn thật được đánh dấu **[chọn]**.
 
@@ -59,7 +59,7 @@ Mỗi dòng: đề xuất của tôi. Chỗ có lựa chọn thật được đ�
 |---|---|---|
 | Q290 | **[đã duyệt 6/11/2026]** Chấm **theo từng câu** trên mọi bài ("chấm câu 5 của cả lớp rồi sang câu 6"), không theo từng bài. Điểm nhập trong `[0, điểm câu]`, bước 0,01; nhận xét tùy chọn ≤ 1000 ký tự. Tự lưu khi rời ô hoặc bấm Tiếp | Cùng một thước đo cho mọi người, theo [ui-design.md](../ui-design.md) mẫu **Chấm** |
 | Q291 | **[đã duyệt 6/11/2026]** **Chấm ẩn tên** (thuật ngữ mới `BlindGrading`): mặc định bật, **server** không trả tên, Mã định danh, Lớp trong hàng đợi chấm (chỉ "Bài 17"); thứ tự hàng đợi ngẫu nhiên nhưng ổn định (băm theo mã Lượt) để không đoán người qua thứ tự nộp. Tắt/bật được trước khi Công bố. Bảng Kết quả vẫn hiện tên (đó là màn khác) nhưng khi Chấm ẩn tên đang bật thì **ẩn điểm các câu tự luận** cho đến khi chấm xong mọi câu tự luận, để không đoán được người viết từ điểm | Ẩn ở API chứ không chỉ ở giao diện |
-| Q292 | **[đã duyệt 6/11/2026; bổ sung Ủy quyền ở Q307]** Hàng đợi chứa các Lượt **có thể được tính**: `latest` → Lượt cuối của mỗi người; `highest` → mọi Lượt đã nộp. Chỉ **chủ Phiên thi** chấm (Phiên thi chuyển cho người nhận khi Xóa người dùng thì quyền đi theo, Q205/4e); đồng chấm là backlog | Không bắt chấm bài không bao giờ được tính |
+| Q292 | **[đã duyệt 6/11/2026; Ủy quyền ở Q307]** Hàng đợi chứa các Lượt **có thể được tính**: `latest` → Lượt cuối của mỗi người; `highest` → mọi Lượt đã nộp. Chỉ **chủ Phiên thi** chấm (Phiên thi chuyển cho người nhận khi Xóa người dùng thì quyền đi theo, Q205/4e); đồng chấm là backlog | Không bắt chấm bài không bao giờ được tính |
 | Q293 | Giao diện: máy tính chia đôi (hàng đợi bên trái, bài làm + hướng dẫn chấm + ô điểm bên phải), phím tắt J/K chuyển bài, nút nhanh 0 / ½ / tối đa; điện thoại một bài mỗi màn, Trước/Sau, tiến độ "37/120 đã chấm". Mở bài kế dưới 300 ms (nạp trước bài kế) | Phản hồi tức thời là yêu cầu hàng đầu |
 
 ### Mức xử lý, Kết quả, Công bố
@@ -89,6 +89,7 @@ Mỗi dòng: đề xuất của tôi. Chỗ có lựa chọn thật được đ�
 | Q304 | **Xuất Excel** từ tab Kết quả, hai trang tính: *Tổng hợp* (Mã định danh, Họ tên, Lớp, số Lượt, Điểm thô, tối đa, Điểm quy đổi, ghi chú: Hủy / trừ x % / chờ chấm) và *Chi tiết* (một cột mỗi câu). Xuất được mọi lúc (chưa Công bố thì tiêu đề ghi "Chưa Công bố"). Tạo thẳng trong API, mục tiêu dưới 1 giây cho 500 người; vượt thì chuyển job worker. Chữ bắt đầu bằng `= + - @` được thêm dấu nháy để chống chèn công thức | ExcelJS đã có; 500 dòng nhỏ |
 | Q305 | **Thống kê câu** trên tab Kết quả: mỗi câu số người đúng / một phần / sai / bỏ trống (tính khi đọc). Mục đích chính là giúp Người ra đề *thấy câu nghi sai đáp án* rồi Đính chính; không làm độ phân biệt/độ khó nâng cao | Phát hiện lỗi đáp án trước khi Công bố rẻ hơn sau Phúc khảo |
 | Q306 | **Ngân sách thời gian** (đo và ghi vào architecture "Ngân sách phản hồi"): chấm tự động một Lượt dưới 20 ms CPU, 500 Lượt xong trong 10 giây kể từ lúc Buộc nộp cả phòng; mở bài tự luận kế dưới 300 ms; lưu điểm một bài dưới 150 ms; mở bảng Kết quả 500 người dưới 500 ms; Công bố dưới 1 giây; Người dự thi mở Kết quả dưới 300 ms; xuất Excel 500 người dưới 1 giây; không request nào trên 1 giây | Yêu cầu hiệu năng của chủ dự án |
+| Q307 | **[đã duyệt 6/11/2026]** **Ủy quyền chấm** (thuật ngữ mới `GradingDelegate`): chủ Phiên thi hoặc Quản trị viên cấp cho **một Người ra đề khác** quyền thay chủ Phiên thi khi có sự cố. Người nhận **không được có tên trong Danh sách dự thi** của Phiên thi đó. Được làm: xem bảng Kết quả, chấm tự luận, quyết Mức xử lý Vi phạm, Công bố, xử lý Phúc khảo, xuất Excel. Không được: sửa hay Hủy Phiên thi, Đính chính đáp án (thuộc chủ Bộ đề), xem Theo dõi trực tiếp. Thu hồi bất cứ lúc nào bởi người cấp hoặc Quản trị viên; chủ Phiên thi vẫn giữ nguyên quyền. Mọi thao tác ghi `audit_logs` kèm tên người thực hiện | Xử lý sự cố sức khỏe của Người ra đề mà không phải Xóa tài khoản để chuyển Phiên thi; nhẹ hơn đồng chấm. Dữ liệu: bảng `session_grading_delegates (session_id, user_id, granted_by, granted_at, revoked_at)`; endpoint `PUT/DELETE /sessions/:id/grading-delegate` |
 
 ## Mô hình dữ liệu (đề xuất, thay đổi so với data-model mục 4)
 
@@ -197,6 +198,7 @@ Quy trình mỗi PR như lát cắt 4: thiết kế chi tiết và seam test c�
 ## Thuật ngữ mới (sẽ vào GLOSSARY khi duyệt)
 
 - **Chấm ẩn tên** (`BlindGrading`): Người ra đề chấm Câu tự luận mà không thấy tên, Mã định danh, Lớp của người làm bài; bật mặc định.
+- **Ủy quyền chấm** (`GradingDelegate`): Người ra đề được chủ Phiên thi hoặc Quản trị viên giao quyền chấm và Công bố thay khi chủ Phiên thi có sự cố; không phải chuyển quyền sở hữu.
 - Sửa mục **Hoàn tác Buộc nộp** ("khi Lượt đã được Chấm" → "khi đã có điểm thủ công của Lượt hoặc Phiên thi đã Công bố", Q296).
 - Bổ sung trạng thái Phiên thi **Đã Công bố**, **Đã Chốt** (đã dự kiến ở Q202).
 
