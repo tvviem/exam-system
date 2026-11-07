@@ -117,8 +117,10 @@ test('Công bố, khóa chấm, Người dự thi xem Kết quả tô màu theo 
     };
     if (n === 1) {
       await expect(page.getByText('Xuất sắc')).toBeVisible();
-      await expect(page.getByText('Giới hạn là… (bài làm đầy đủ)')).toBeHidden(); // đóng sẵn, mở bằng chi tiết
-      await page.getByText('Tự luận').first().click();
+      await expect(page.getByText('Giới hạn là… (bài làm đầy đủ)')).toBeHidden(); // chỉ hiện khi chọn đúng câu tự luận
+      // Giao diện duyệt từng câu (Q318): mở bản đồ (điện thoại) rồi chọn Câu 4 (tự luận, thứ tự đề không xáo).
+      if (project === 'mobile') await page.getByRole('button', { name: /Mở bản đồ câu/ }).click();
+      await page.getByRole('button', { name: 'Câu 4: Đúng' }).filter({ visible: true }).click();
       await expect(page.getByText('Giới hạn là… (bài làm đầy đủ)')).toBeVisible();
       await expect(page.getByText('Bài làm rất tốt')).toBeVisible();
       await expect(page.getByText(/Bạn có thể gửi Phúc khảo đến/)).toBeVisible();

@@ -1862,14 +1862,36 @@
       "excellent": "Xuất sắc"
     },
     "penaltyTitle": "Mức xử lý áp lên điểm của bạn",
-    "items": "Từng câu",
+    "items": "Kết quả từng câu",
     "cluster": "đúng {{correct}}/{{total}} Mệnh đề",
     "yourAnswer": "Bài làm của bạn",
     "feedback": "Nhận xét của Người ra đề",
-    "yourChoice": " · bạn đã chọn",
     "saidTrue": "Bạn chọn Đúng",
     "saidFalse": "Bạn chọn Sai",
     "appealUntil": "Bạn có thể gửi Phúc khảo đến {{time}}.",
-    "noAppeal": "Phiên thi này không nhận Phúc khảo; kết quả đã chốt."
+    "noAppeal": "Phiên thi này không nhận Phúc khảo; kết quả đã chốt.",
+    "verdict": {
+      "correct": "Đúng",
+      "partial": "Chưa đúng hoàn toàn",
+      "wrong": "Sai",
+      "blank": "Bỏ trống"
+    },
+    "filterLabel": "Lọc câu theo kết quả",
+    "filterHint": "Đang lọc: {{verdict}} ({{count}} câu). Nút câu trước, câu sau chỉ đi qua các câu này.",
+    "filterClear": "Bỏ lọc",
+    "position": "Câu {{current}}/{{total}}",
+    "points": "{{score}}/{{points}} điểm",
+    "prev": "Câu trước",
+    "next": "Câu sau",
+    "nextWrong": "Câu sai kế tiếp",
+    "navLabel": "Duyệt từng câu",
+    "mapOpenLabel": "Mở bản đồ câu, đang ở câu {{no}}",
+    "mapTitle": "Chọn câu",
+    "cell": "Câu {{no}}: {{verdict}}",
+    "wrongSummary": "{{count}} câu sai",
+    "noWrong": "Không có câu sai",
+    "noReview": "Người ra đề không mở xem lại nội dung câu này.",
+    "notAnswered": "Bạn không trả lời",
+    "yourChoiceTag": "Bạn đã chọn"
   }
 }
