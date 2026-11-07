@@ -45,14 +45,17 @@ export function QuestionPicker({
     anchor.current = null;
   }, [page, q, topicId, type, tag]);
 
-  // Chờ gõ xong một nhịp rồi mới hỏi api.
+  // Chờ gõ xong một nhịp rồi mới hỏi api. Chỉ đặt lại trang khi từ khóa thật sự đổi: nếu không, bộ đếm chạy ngay từ lúc màn
+  // Bộ đề được dựng và kéo người dùng về trang 1 giữa chừng khi họ vừa sang trang 2.
   useEffect(() => {
+    const next = text.trim();
+    if (next === q) return;
     const timer = setTimeout(() => {
-      setQ(text.trim());
+      setQ(next);
       setPage(1);
     }, 250);
     return () => clearTimeout(timer);
-  }, [text]);
+  }, [text, q]);
 
   const topics = useQuery({ ...topicsQuery(), enabled: open });
   const list = useQuery({
