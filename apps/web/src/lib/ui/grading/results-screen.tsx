@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { EyeOff, Pencil, UserCog } from 'lucide-react';
+import { EyeOff, MessageSquareWarning, Pencil, UserCog } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../errors';
@@ -33,6 +33,7 @@ import { Chip, ChipGroup } from '../chips';
 import { type Column, DataList } from '../data-list';
 import { Tabs } from '../tabs';
 import { useToast } from '../toast';
+import { AppealsPanel } from './appeals-panel';
 import { DelegateDialog } from './delegate-dialog';
 import { ReleasePanel } from './release-panel';
 
@@ -104,6 +105,17 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
             <EyeOff aria-hidden className="size-4" />
             {t(data.blind ? 'grading.blindOn' : 'grading.blindOff')}
           </button>
+          {released && (
+            <Link
+              to="/examiner/sessions/$sessionId/appeals"
+              params={{ sessionId }}
+              className={buttonClass(data.release.appeals.open > 0 ? 'primary' : 'secondary')}
+              data-testid="handle-appeals"
+            >
+              <MessageSquareWarning aria-hidden className="size-4" />
+              {t('grading.results.handleAppeals', { count: data.release.appeals.open })}
+            </Link>
+          )}
           {data.role === 'owner' && (
             <Button onClick={() => setDelegating(true)}>
               <UserCog aria-hidden className="size-4" />
@@ -111,7 +123,7 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
             </Button>
           )}
         </div>
-        <ReleasePanel sessionId={sessionId} data={data} />
+        <ReleasePanel sessionId={sessionId} data={data} onOpenAppeals={() => setTab('appeals')} />
         {status.essayHidden && (
           <p
             role="status"
@@ -141,6 +153,15 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
             label: t('grading.results.stats'),
             content: tab === 'stats' ? <StatsPanel sessionId={sessionId} /> : null,
           },
+          ...(released
+            ? [
+                {
+                  id: 'appeals',
+                  label: t('grading.results.appeals', { count: data.release.appeals.open }),
+                  content: tab === 'appeals' ? <AppealsPanel sessionId={sessionId} /> : null,
+                },
+              ]
+            : []),
           {
             id: 'violations',
             label: t('grading.results.violations', { count: status.violationsUndecided }),

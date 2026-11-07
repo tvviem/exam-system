@@ -1366,5 +1366,41 @@
     "roleTags": ["candidate"],
     "code": "RV-M-001",
     "classLabel": "LOP-RV-M"
+  },
+  {
+    "username": "e2e-lb-ap-gv-desktop",
+    "fullName": "Người ra đề Phúc khảo (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-ap-sv-desktop",
+    "fullName": "Thí sinh Phúc khảo (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "AP-D-001",
+    "classLabel": "LOP-AP-D"
+  },
+  {
+    "username": "e2e-lb-ap-gv-mobile",
+    "fullName": "Người ra đề Phúc khảo (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-ap-sv-mobile",
+    "fullName": "Thí sinh Phúc khảo (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "AP-M-001",
+    "classLabel": "LOP-AP-M"
   }
 ]

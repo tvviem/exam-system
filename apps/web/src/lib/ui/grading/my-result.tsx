@@ -3,11 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { CircleAlert, Gauge, ThumbsUp, Trophy } from 'lucide-react';
 import { type ComponentType, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { myAppealsQuery } from '../../appeals';
 import { errorMessage } from '../../errors';
 import { formatDateTime } from '../../format';
 import { type MyResult, myResultQuery } from '../../grading';
 import { ErrorMessage } from '..';
 import { ListSkeleton } from '../admin';
+import { AppealBox, AppealSummary, MyAppealsList } from './appeal-box';
 import { BAND_STYLE } from './result-band';
 import { ResultReview } from './result-review';
 
@@ -56,6 +58,11 @@ export function ResultView({
 }) {
   const { t } = useTranslation();
   const [localNo, setLocalNo] = useState<number | undefined>(currentNo);
+  const sessionId = data.session.sessionId;
+  const appeals = useQuery(myAppealsQuery(sessionId));
+  const appealed = new Set(
+    (appeals.data?.appeals ?? []).flatMap((appeal) => (appeal.no === null ? [] : [appeal.no])),
+  );
   const { summary } = data;
   const band = resultBandOf(summary.percent);
   const style = BAND_STYLE[band];
@@ -109,16 +116,25 @@ export function ResultView({
         </div>
       </section>
 
+      <AppealSummary sessionId={sessionId} />
+
       {data.penalties.length > 0 && (
         <section className="flex flex-col gap-1 rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm text-danger">
           <h2 className="font-semibold">{t('myResult.penaltyTitle')}</h2>
           <ul className="flex flex-col gap-1">
             {data.penalties.map((p) => (
-              <li key={`${p.action}-${p.reason}-${p.type}`}>
-                {t(`grading.violation.${p.action}`)}: {p.reason} ·{' '}
-                {p.type === 'void'
-                  ? t('grading.penalty.void')
-                  : t('grading.penalty.percent', { percent: fmt(p.percent) })}
+              <li key={p.id} className="flex flex-col gap-2">
+                <span>
+                  {t(`grading.violation.${p.action}`)}: {p.reason} ·{' '}
+                  {p.type === 'void'
+                    ? t('grading.penalty.void')
+                    : t('grading.penalty.percent', { percent: fmt(p.percent) })}
+                </span>
+                <AppealBox
+                  sessionId={sessionId}
+                  subject={{ kind: 'penalty', violationId: p.id }}
+                  label={t('appeal.penaltyLabel')}
+                />
               </li>
             ))}
           </ul>
@@ -129,7 +145,17 @@ export function ResultView({
         items={data.items}
         currentNo={onCurrentNo ? currentNo : localNo}
         onCurrentNo={onCurrentNo ?? setLocalNo}
+        marked={appealed}
+        extra={(item) => (
+          <AppealBox
+            sessionId={sessionId}
+            subject={{ kind: 'response', no: item.no }}
+            label={t('grading.person.item', { no: item.no })}
+          />
+        )}
       />
+
+      <MyAppealsList sessionId={sessionId} />
 
       <p className="text-sm text-fg-muted">
         {data.appealUntil

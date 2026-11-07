@@ -48,6 +48,8 @@ export interface ResultsData {
     appealUntil: string | null;
     finalizedAt: string | null;
     reviewAfterRelease: boolean;
+    /** Phúc khảo chờ xử lý và đã xử lý (0 khi chưa Công bố). */
+    appeals: { open: number; resolved: number };
   };
   people: ResultRow[];
 }
@@ -338,6 +340,8 @@ export interface MyResult {
     voided: boolean;
   };
   penalties: {
+    /** Id Vi phạm: để Phúc khảo về Mức xử lý này. */
+    id: string;
     action: 'warning' | 'disqualify';
     reason: string;
     type: 'percent' | 'void';
