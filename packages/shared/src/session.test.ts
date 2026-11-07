@@ -116,6 +116,7 @@ describe('thiết lập Phiên thi (Q199–Q202, Q208)', () => {
       shuffleItems: false,
       shuffleOptions: false,
       showScoringRules: false,
+      reviewAfterRelease: false,
       accessCode: 'AB3K9X',
     });
   });
@@ -262,7 +263,7 @@ describe('sessionUpdateSchema: sửa kèm version', () => {
 describe('sessionEditableFields: giao diện khóa ô nào (Q202)', () => {
   it('Sắp mở: mọi ô sửa tự do', () => {
     const fields = sessionEditableFields('upcoming');
-    expect(Object.keys(fields)).toHaveLength(12);
+    expect(Object.keys(fields)).toHaveLength(13);
     expect(Object.values(fields).every((rule) => rule === 'free')).toBe(true);
   });
 
@@ -272,12 +273,13 @@ describe('sessionEditableFields: giao diện khóa ô nào (Q202)', () => {
         closesAt: 'grow',
         durationMinutes: 'grow',
         accessCode: 'free',
+        reviewAfterRelease: 'free',
       });
     }
   });
 
-  it('Đã đóng và Đã hủy: không ô nào', () => {
-    expect(sessionEditableFields('closed')).toEqual({});
+  it('Đã đóng chỉ còn đổi được "xem lại bài sau Công bố"; Đã hủy: không ô nào', () => {
+    expect(sessionEditableFields('closed')).toEqual({ reviewAfterRelease: 'free' });
     expect(sessionEditableFields('cancelled')).toEqual({});
   });
 });
