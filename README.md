@@ -332,4 +332,4 @@ Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, r
 
 ## Bản quyền
 
-Mã nguồn đóng. © 2026 tvviem. Mọi quyền được bảo lưu; không được sao chép, phân phối hoặc sử dụng khi chưa có sự đồng ý bằng văn bản.
+Mã nguồn mở theo giấy phép [MIT](LICENSE). © 2026 TRIỆU VĨNH VIÊM.
