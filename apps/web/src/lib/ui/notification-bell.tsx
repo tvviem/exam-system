@@ -41,7 +41,9 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
       return;
     }
     if (
-      (n.type === 'appeal.resolved' || n.type === 'appeal.period_extended') &&
+      (n.type === 'appeal.resolved' ||
+        n.type === 'appeal.period_extended' ||
+        n.type === 'result.corrected') &&
       typeof n.data.sessionId === 'string'
     ) {
       await navigate({ to: '/take/results/$sessionId', params: { sessionId: n.data.sessionId } });

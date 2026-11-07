@@ -7,6 +7,7 @@ import { JobRegistry } from '../../queue/job-queue';
 import { AppealFinalizeService } from './appeal-finalize.service';
 import { AutogradeService } from './autograde.service';
 import { attemptGrades } from './grading.schema';
+import { KeyRecorrectService } from './key-recorrect.service';
 
 // Mỗi 5 giây (Q286, đề xuất của PR 5a): lưới an toàn cho Lượt nộp mà tin báo chưa tới (Khóa tài khoản, job bị mất, Redis hỏng).
 const EVERY_5_SECONDS = '*/5 * * * * *';
@@ -32,6 +33,7 @@ export class GradingJobs implements OnModuleInit {
     @Inject(GRADING_SOURCE) private readonly source: GradingSource,
     private readonly autograde: AutogradeService,
     private readonly finalize: AppealFinalizeService,
+    private readonly recorrect: KeyRecorrectService,
     private readonly registry: JobRegistry,
   ) {}
 
@@ -42,6 +44,9 @@ export class GradingJobs implements OnModuleInit {
     this.registry.register('grading.sweep', () => this.sweep().then(() => undefined), {
       cron: EVERY_5_SECONDS,
     });
+    this.registry.register('grading.recorrect', ({ correctionId }) =>
+      this.recorrect.run(correctionId),
+    );
     this.registry.register('grading.finalize', () => this.finalize.sweep().then(() => undefined), {
       cron: EVERY_MINUTE,
     });

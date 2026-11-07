@@ -2,11 +2,11 @@ import { countableAttempts, toCenti } from '@exam/scoring';
 import { Inject, Injectable } from '@nestjs/common';
 import { inArray } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
-import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
 import type { GradingSessionInfo } from '../../common/grading-sessions';
 import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
 import { type Database, DB } from '../../db/db.module';
 import { AutogradeService } from './autograde.service';
+import { EffectiveContentService } from './effective-content.service';
 import { attemptGrades, responseGrades } from './grading.schema';
 import { type GradingItem, itemsOf } from './grading-layout';
 
@@ -48,7 +48,7 @@ export class GradingContextService {
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(GRADING_SOURCE) private readonly source: GradingSource,
-    @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
+    private readonly content: EffectiveContentService,
     private readonly autograde: AutogradeService,
   ) {}
 

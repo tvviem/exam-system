@@ -34,6 +34,8 @@ export interface GradingSessions {
     value: boolean,
     executor: GradingSessionExecutor,
   ): Promise<void>;
+  /** Mọi Phiên thi dùng Bộ đề này (Đính chính đáp án chấm lại cho các Phiên thi chưa Chốt). */
+  byExam(examId: string, executor?: GradingSessionExecutor): Promise<GradingSessionInfo[]>;
   /** Các Phiên thi có trong `sessionIds` (mới mở trước). */
   infoMany(sessionIds: string[]): Promise<GradingSessionInfo[]>;
   /** Mọi người trong Danh sách dự thi, kèm Lớp chụp lúc thêm. */

@@ -8,6 +8,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { appeals, sessionGradings } from './grading.schema';
 import { GradingAccessService } from './grading-access.service';
 import { appealDeadlineOf } from './grading-status.service';
+import { KeyCorrectionsService } from './key-corrections.service';
 
 const SWEEP_LIMIT = 200;
 const DAY_MS = 86_400_000;
@@ -27,6 +28,7 @@ export class AppealFinalizeService {
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     private readonly access: GradingAccessService,
     private readonly notifications: NotificationsService,
+    private readonly corrections: KeyCorrectionsService,
   ) {}
 
   /**
@@ -42,6 +44,11 @@ export class AppealFinalizeService {
         .where(eq(sessionGradings.sessionId, sessionId))
         .for('update');
       if (!row?.releasedAt || row.finalizedAt) return false;
+      // Đang chấm lại sau Đính chính đáp án: chưa Chốt để không Lượt nào bị bỏ sót giữa chừng (Q319).
+      const info = await this.sessions.info(sessionId, tx);
+      if (info && (await this.corrections.hasRunning(info.examId, tx as unknown as Database))) {
+        return false;
+      }
       const until = appealDeadlineOf(row.releasedAt, row.appealPeriodHours ?? 0);
       if (until && until.getTime() > now.getTime()) return false;
       const [open] = await tx

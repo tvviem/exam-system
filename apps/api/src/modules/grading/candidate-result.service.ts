@@ -3,7 +3,6 @@ import { type CandidateSource, candidateViewOf } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
-import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
 import {
   GRADING_SESSIONS,
   type GradingSessionInfo,
@@ -12,6 +11,7 @@ import {
 import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
 import { VIOLATION_PENALTIES, type ViolationPenalties } from '../../common/violation-penalties';
 import { type Database, DB } from '../../db/db.module';
+import { EffectiveContentService } from './effective-content.service';
 import { responseGrades } from './grading.schema';
 import { itemsOf } from './grading-layout';
 import { GradingStatusService } from './grading-status.service';
@@ -26,7 +26,7 @@ export class CandidateResultService {
     @Inject(DB) private readonly db: Database,
     @Inject(GRADING_SESSIONS) private readonly sessions: GradingSessions,
     @Inject(GRADING_SOURCE) private readonly source: GradingSource,
-    @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
+    private readonly content: EffectiveContentService,
     @Inject(VIOLATION_PENALTIES) private readonly violations: ViolationPenalties,
     private readonly status: GradingStatusService,
   ) {}

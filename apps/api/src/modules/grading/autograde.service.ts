@@ -2,17 +2,14 @@ import { type ScoringItem, scoreResponse } from '@exam/scoring';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { inArray, sql } from 'drizzle-orm';
 import { CLOCK, type Clock } from '../../common/clock';
-import {
-  EXAM_CONTENT,
-  type ExamContentData,
-  type ExamContentProvider,
-} from '../../common/exam-content';
+import type { ExamContentData } from '../../common/exam-content';
 import {
   GRADING_SOURCE,
   type GradableAttempt,
   type GradingSource,
 } from '../../common/grading-source';
 import { type Database, DB, type Transaction } from '../../db/db.module';
+import { EffectiveContentService } from './effective-content.service';
 import { attemptGrades, responseGrades } from './grading.schema';
 
 /** Số Lượt chấm trong một giao dịch. */
@@ -33,7 +30,7 @@ export class AutogradeService {
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(GRADING_SOURCE) private readonly source: GradingSource,
-    @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
+    private readonly content: EffectiveContentService,
   ) {}
 
   /** Chấm các Lượt chưa chấm trong `attemptIds`; trả số Lượt vừa chấm. Một lô lỗi được ghi log, lần quét sau thử lại. */

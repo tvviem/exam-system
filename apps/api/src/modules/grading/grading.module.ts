@@ -10,6 +10,7 @@ import { CandidateAppealsService } from './candidate-appeals.service';
 import { CandidateResultController } from './candidate-result.controller';
 import { CandidateResultService } from './candidate-result.service';
 import { DelegationService } from './delegation.service';
+import { EffectiveContentService } from './effective-content.service';
 import { GradingController } from './grading.controller';
 import { GradingJobs } from './grading.jobs';
 import { GradingAccessService } from './grading-access.service';
@@ -17,6 +18,9 @@ import { GradingContextService } from './grading-context.service';
 import { AdminDelegateController, OwnerDelegateController } from './grading-delegate.controller';
 import { GradingHooksService } from './grading-hooks.service';
 import { GradingStatusService } from './grading-status.service';
+import { KeyCorrectionsController } from './key-corrections.controller';
+import { KeyCorrectionsService } from './key-corrections.service';
+import { KeyRecorrectService } from './key-recorrect.service';
 import { ManualGradingService } from './manual-grading.service';
 import { PenaltiesService } from './penalties.service';
 import { ReleaseService } from './release.service';
@@ -34,6 +38,7 @@ import { ResultsExportService } from './results-export.service';
     CandidateResultController,
     CandidateAppealsController,
     AppealsController,
+    KeyCorrectionsController,
   ],
   providers: [
     AutogradeService,
@@ -52,6 +57,9 @@ import { ResultsExportService } from './results-export.service';
     AppealsService,
     CandidateAppealsService,
     AppealFinalizeService,
+    EffectiveContentService,
+    KeyCorrectionsService,
+    KeyRecorrectService,
   ],
   exports: [AutogradeService, GradingHooksService, GradingStatusService],
 })

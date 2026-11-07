@@ -28,6 +28,8 @@ export interface JobPayloads {
   'grading.sweep': Record<string, never>;
   /** Chốt kết quả khi hết Thời hạn phúc khảo và nhắc Phúc khảo quá hạn (Q301, Q315), mỗi phút. */
   'grading.finalize': Record<string, never>;
+  /** Chấm lại các Lượt đã nộp sau Đính chính đáp án, theo lô (Q319). */
+  'grading.recorrect': { correctionId: string };
   /** Tự nộp các Lượt làm bài quá hạn, mỗi 10 giây (Q212). */
   'attempt.sweep': Record<string, never>;
   /** Dọn dẹp định kỳ hằng ngày (Q96). */

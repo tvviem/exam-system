@@ -6,7 +6,6 @@ import type { Actor } from '../../common/actor';
 import { ApiError, validationFailed } from '../../common/api-error';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
-import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
 import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
 import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import { VIOLATION_PENALTIES, type ViolationPenalties } from '../../common/violation-penalties';
@@ -14,6 +13,7 @@ import { type Database, DB } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AppealFinalizeService } from './appeal-finalize.service';
+import { EffectiveContentService } from './effective-content.service';
 import { appeals, responseGrades } from './grading.schema';
 import { GradingAccessService } from './grading-access.service';
 import { itemsOf } from './grading-layout';
@@ -32,7 +32,7 @@ export class AppealsService {
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(GRADING_SOURCE) private readonly source: GradingSource,
-    @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
+    private readonly content: EffectiveContentService,
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     @Inject(VIOLATION_PENALTIES) private readonly violations: ViolationPenalties,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
