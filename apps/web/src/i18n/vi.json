@@ -199,8 +199,7 @@
     "INVALID_STATE_SESSION_NOT_FINISHED": "Phiên thi chưa kết thúc: còn Lượt đang làm, hoặc chưa hết Khung giờ và chưa Đóng cửa vào thi.",
     "INVALID_STATE_NO_ATTEMPTS": "Chưa có Lượt làm bài nào để Công bố.",
     "INVALID_STATE_UNGRADED_ATTEMPTS": "Còn Lượt chưa chấm tự động xong, hãy thử lại sau ít giây.",
-    "INVALID_STATE_ESSAYS_PENDING": "Còn bài tự luận chưa chấm.",
-    "INVALID_STATE_ALREADY_RELEASED_BLOCK": "Đã Công bố."
+    "INVALID_STATE_ESSAYS_PENDING": "Còn bài tự luận chưa chấm."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -1312,7 +1311,9 @@
       "open": "Đang mở",
       "entry_closed": "Đóng cửa vào thi",
       "closed": "Đã đóng",
-      "cancelled": "Đã hủy"
+      "cancelled": "Đã hủy",
+      "released": "Đã Công bố",
+      "finalized": "Đã Chốt"
     },
     "listEmpty": "Chưa có Phiên thi nào. Bấm “Tạo Phiên thi” để bắt đầu.",
     "listNoMatch": "Không có Phiên thi nào khớp.",
@@ -1395,7 +1396,8 @@
     },
     "hint": {
       "cancelDisabled": "Phiên thi đã bị Hủy.",
-      "editDisabled": "Phiên thi đã đóng hoặc đã hủy nên không sửa được."
+      "editDisabled": "Phiên thi đã đóng hoặc đã hủy nên không sửa được.",
+      "cancelReleased": "Phiên thi đã Công bố kết quả nên không Hủy được."
     },
     "cancelDialog": {
       "title": "Hủy Phiên thi này?",

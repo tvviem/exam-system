@@ -425,8 +425,10 @@ export class AttemptsService {
           inProgressAttemptId: own.find((attempt) => attempt.status === 'in_progress')?.id ?? null,
           deviceStatus,
           ...waitingFlags(phaseOf(gate, now), gate.opensAt, now, deviceStatus),
-          resultReleased: released.has(gate.sessionId),
-          resultAppealUntil: released.get(gate.sessionId)?.appealUntil ?? null,
+          // Chỉ người đã có Lượt mới có Kết quả để xem.
+          resultReleased: released.has(gate.sessionId) && own.length > 0,
+          resultAppealUntil:
+            own.length > 0 ? (released.get(gate.sessionId)?.appealUntil ?? null) : null,
         };
       }),
     };

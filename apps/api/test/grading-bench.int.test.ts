@@ -1,10 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AutogradeService } from '../src/modules/grading/autograde.service';
+import { CandidateResultService } from '../src/modules/grading/candidate-result.service';
+import { ResultsExportService } from '../src/modules/grading/results-export.service';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
 import { call } from './support/http';
 import { openLiveSession } from './support/live-session';
 import { resetState } from './support/reset';
+import type { Taker } from './support/take';
 
 // Đo thời gian chấm tự động (docs/plan/slice-5.md Q306, PR 5a). Chỉ chạy khi đặt GRADING_BENCH=1 (không chạy trong CI):
 //   GRADING_BENCH=1 pnpm --filter @exam/api exec vitest run --project integration test/grading-bench.int.test.ts
@@ -124,5 +127,44 @@ describe.skipIf(!process.env.GRADING_BENCH)('đo chấm tự động', () => {
       150,
     );
     await timed('Thống kê câu', get(`${base}/results/item-stats`), 500);
+
+    // Công bố, Kết quả của Người dự thi và xuất Excel với 500 người (Q306, PR 5c).
+    const gv = (await sql<{ id: string }>(`select id from users where username = 'gv1'`))[0]
+      ?.id as string;
+    await sql(
+      `update response_grades g set score = 0.5, source = 'manual', graded_by = $1, verdict = 'partial'
+       from exam_items ei where ei.id = g.item_id and ei.snapshot->>'type' = 'essay' and g.score is null`,
+      [gv],
+    );
+    await sql(`update session_gradings set blind = false where session_id = $1`, [
+      live.sessionId,
+    ]).catch(() => undefined);
+    await (live.takers.an as Taker).call('POST', `/take/attempts/${live.attemptIds.an}/submit`);
+    await call(t.app, 'POST', `/api${base}/close-entry`, { cookie: live.examiner });
+    await timed(
+      'Công bố 500 người',
+      () =>
+        call(t.app, 'POST', `/api${base}/release`, {
+          cookie: live.examiner,
+          body: { appealPeriodDays: 3 },
+        }),
+      1000,
+    );
+    const benchUser = (
+      await sql<{ id: string }>(`select id from users where username = 'bench7'`)
+    )[0]?.id as string;
+    const t1 = performance.now();
+    const mine = await t.app.get(CandidateResultService).result(benchUser, live.sessionId);
+    const resultMs = performance.now() - t1;
+    console.log(`[đo] Kết quả của Người dự thi: ${resultMs.toFixed(0)} ms`);
+    expect(mine.items).toHaveLength(4);
+    expect(resultMs).toBeLessThan(300);
+    const t2 = performance.now();
+    const book = await t.app.get(ResultsExportService).build(gv, live.sessionId);
+    const exportMs = performance.now() - t2;
+    console.log(
+      `[đo] xuất Excel 500 người: ${exportMs.toFixed(0)} ms (${(book.file.length / 1024).toFixed(0)} KB)`,
+    );
+    expect(exportMs).toBeLessThan(1000);
   }, 60_000);
 });

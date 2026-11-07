@@ -38,7 +38,8 @@ export class GradingSessionsService implements GradingSessions {
       .select()
       .from(sessions)
       .where(eq(sessions.id, sessionId))
-      .for('update');
+      // NO KEY UPDATE vẫn loại trừ Hoàn tác, Hủy (FOR UPDATE) nhưng không chặn chèn dòng thiết lập chấm (khóa ngoại): tránh bế tắc.
+      .for('no key update');
     return row ? toInfo(row) : null;
   }
 

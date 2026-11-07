@@ -24,6 +24,9 @@ export interface SessionSummary {
   shuffleOptions: boolean;
   showScoringRules: boolean;
   reviewAfterRelease: boolean;
+  /** Đã Công bố / đã Chốt kết quả (Q299); chỉ có ở danh sách và chi tiết. */
+  resultReleased: boolean;
+  resultFinalized: boolean;
   accessCode: string;
   entryClosedAt: string | null;
   cancelledAt: string | null;

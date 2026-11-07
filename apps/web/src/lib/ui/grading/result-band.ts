@@ -18,24 +18,24 @@ export const BAND_STYLE: Record<ResultBand, BandStyle> = {
     hero: 'border-danger/50 bg-danger-soft text-danger',
     stroke: 'stroke-danger',
     track: 'stroke-danger/20',
-    muted: 'text-danger/90',
+    muted: 'text-danger',
   },
   fair: {
     hero: 'border-warning/50 bg-warning-soft text-warning',
     stroke: 'stroke-warning',
     track: 'stroke-warning/20',
-    muted: 'text-warning/90',
+    muted: 'text-warning',
   },
   good: {
     hero: 'border-primary/40 bg-primary-soft text-on-primary-soft',
     stroke: 'stroke-primary',
     track: 'stroke-primary/20',
-    muted: 'text-on-primary-soft/90',
+    muted: 'text-on-primary-soft',
   },
   excellent: {
     hero: 'border-success bg-success text-on-success',
     stroke: 'stroke-on-success',
     track: 'stroke-on-success/25',
-    muted: 'text-on-success/90',
+    muted: 'text-on-success',
   },
 };

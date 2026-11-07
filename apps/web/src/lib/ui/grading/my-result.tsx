@@ -91,7 +91,7 @@ export function ResultView({ data }: { data: MyResult }) {
           <h2 className="font-semibold">{t('myResult.penaltyTitle')}</h2>
           <ul className="flex flex-col gap-1">
             {data.penalties.map((p) => (
-              <li key={`${p.action}-${p.reason}`}>
+              <li key={`${p.action}-${p.reason}-${p.type}`}>
                 {t(`grading.violation.${p.action}`)}: {p.reason} ·{' '}
                 {p.type === 'void'
                   ? t('grading.penalty.void')
@@ -136,7 +136,7 @@ function ScoreRing({
   const circumference = 2 * Math.PI * radius;
   const filled = (Math.min(100, Math.max(0, percent)) / 100) * circumference;
   return (
-    <div className="relative size-40" role="img" aria-label={`${fmt(percent, 1)}%`}>
+    <div className="relative size-40">
       <svg viewBox="0 0 128 128" className="size-full -rotate-90" aria-hidden>
         <circle cx="64" cy="64" r={radius} fill="none" strokeWidth="10" className={style.track} />
         <circle
@@ -151,6 +151,7 @@ function ScoreRing({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
+      <span className="sr-only">{`${fmt(percent, 1)}%`}</span>
     </div>
   );
 }

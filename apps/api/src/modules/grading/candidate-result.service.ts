@@ -35,9 +35,7 @@ export class CandidateResultService {
     const state = (await this.status.releaseStates([sessionId])).get(sessionId);
     if (!state) throw new ApiError('INVALID_STATE', { reason: 'NOT_RELEASED' });
 
-    const mine = (await this.source.attemptsOfSession(sessionId)).filter(
-      (attempt) => attempt.userId === userId,
-    );
+    const mine = await this.source.attemptsOfUser(sessionId, userId);
     if (mine.length === 0) throw new ApiError('NOT_FOUND');
     const countable = countableAttempts(mine, info.attemptScoring);
     const [content, found, violations] = await Promise.all([
@@ -51,7 +49,7 @@ export class CandidateResultService {
             countable.map((attempt) => attempt.attemptId),
           ),
         ),
-      this.violations.list(sessionId),
+      this.violations.listForUser(sessionId, userId),
     ]);
     if (!content) throw new ApiError('NOT_FOUND');
     const items = itemsOf(content);
@@ -59,7 +57,7 @@ export class CandidateResultService {
 
     const rowsOf = new Map<string, typeof found>();
     for (const row of found) rowsOf.set(row.attemptId, [...(rowsOf.get(row.attemptId) ?? []), row]);
-    const mineViolations = violations.filter((violation) => violation.userId === userId);
+    const mineViolations = violations;
     const penalties: PenaltyInput[] = mineViolations.map((violation) => ({
       type: violation.penaltyType,
       percent: violation.penaltyPercent,
@@ -93,10 +91,17 @@ export class CandidateResultService {
       .map((item) => {
         const row = byItem.get(item.itemId);
         const value = attempt?.responses.get(item.itemId);
-        const view = candidateViewOf(
-          { type: item.type, stem: item.stem, payload: item.payload } as unknown as CandidateSource,
-          { showScoringRules: false },
-        );
+        // Chỉ dựng khi Phiên thi bật xem lại đề.
+        const view = info.reviewAfterRelease
+          ? candidateViewOf(
+              {
+                type: item.type,
+                stem: item.stem,
+                payload: item.payload,
+              } as unknown as CandidateSource,
+              { showScoringRules: false },
+            )
+          : null;
         return {
           no: seen?.get(item.itemId) ?? item.no,
           type: item.type,
@@ -115,7 +120,7 @@ export class CandidateResultService {
               }
             : {}),
           // Xem lại đề (Q297): nội dung câu và lựa chọn/đáp án CỦA CHÍNH HỌ; `view` đã bỏ key và rubric.
-          ...(info.reviewAfterRelease
+          ...(view
             ? { review: { stem: view.stem, payload: view.payload, answer: value ?? null } }
             : {}),
         };

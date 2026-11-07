@@ -6,7 +6,7 @@ import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
 import { formatDateTime } from '../../../../lib/format';
-import { PHASE_TONE } from '../../../../lib/session-phase';
+import { PHASE_TONE, releaseLabelKey } from '../../../../lib/session-phase';
 import {
   cancelSession,
   deleteSession,
@@ -124,6 +124,9 @@ function SessionDetail({ session }: { session: SessionSummary }) {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={PHASE_TONE[session.phase]}>{t(`session.phase.${session.phase}`)}</Badge>
+            {releaseLabelKey(session) && (
+              <Badge tone="success">{t(releaseLabelKey(session) as string)}</Badge>
+            )}
             <Button
               disabled={!canEdit || editing}
               title={canEdit ? undefined : t('session.hint.editDisabled')}
@@ -154,8 +157,12 @@ function SessionDetail({ session }: { session: SessionSummary }) {
                 },
                 {
                   label: t('session.action.cancel'),
-                  disabled: cancelled,
-                  hint: cancelled ? t('session.hint.cancelDisabled') : undefined,
+                  disabled: cancelled || session.resultReleased,
+                  hint: cancelled
+                    ? t('session.hint.cancelDisabled')
+                    : session.resultReleased
+                      ? t('session.hint.cancelReleased')
+                      : undefined,
                   onSelect: () => setConfirm('cancel'),
                 },
                 {

@@ -54,6 +54,12 @@ function phaseCondition(phase: SessionPhase, now: Date): SQL {
 }
 
 /** Phiên thi của Người ra đề (Q192–Q222). Mọi truy cập lọc theo `owner_id`; của người khác coi như không tồn tại. */
+/** Nhãn Đã Công bố, Đã Chốt của Phiên thi (Q299): hiện ở danh sách và chi tiết, và để khóa nút Hủy. */
+const releaseFlags = (states: Map<string, { finalizedAt: Date | null }>, id: string) => ({
+  resultReleased: states.has(id),
+  resultFinalized: states.get(id)?.finalizedAt != null,
+});
+
 @Injectable()
 export class SessionsService {
   constructor(
@@ -157,7 +163,14 @@ export class SessionsService {
           .offset(offset),
     );
     const titles = await this.exams.titlesOf(result.items.map((row) => row.examId));
-    return { ...result, items: result.items.map((row) => this.present(row, titles, now)) };
+    const states = await this.gradingStatus.releaseStates(result.items.map((row) => row.id));
+    return {
+      ...result,
+      items: result.items.map((row) => ({
+        ...this.present(row, titles, now),
+        ...releaseFlags(states, row.id),
+      })),
+    };
   }
 
   get(ownerId: string, id: string) {
@@ -207,7 +220,11 @@ export class SessionsService {
       .from(sessions)
       .where(and(eq(sessions.id, id), eq(sessions.ownerId, ownerId)));
     if (!row) throw new ApiError('NOT_FOUND');
-    return this.present(row, await this.exams.titlesOf([row.examId]), this.clock.now());
+    const states = await this.gradingStatus.releaseStates([row.id]);
+    return {
+      ...this.present(row, await this.exams.titlesOf([row.examId]), this.clock.now()),
+      ...releaseFlags(states, row.id),
+    };
   }
 
   /** Bộ đề phải của chính người tạo và đã Phát hành, chưa Lưu trữ (Q203). */

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
 import { formatDateTime } from '../../../../lib/format';
 import { delegatedSessionsQuery } from '../../../../lib/grading';
-import { PHASE_TONE } from '../../../../lib/session-phase';
+import { PHASE_TONE, releaseLabelKey } from '../../../../lib/session-phase';
 import { SESSION_PHASES, type SessionPhase, sessionsQuery } from '../../../../lib/sessions';
 import { Badge, buttonClass, ErrorMessage, SearchField } from '../../../../lib/ui';
 import { EmptyState, ListSkeleton, Pagination } from '../../../../lib/ui/admin';
@@ -119,9 +119,14 @@ function SessionsPage() {
                 >
                   <span className="flex flex-wrap items-center justify-between gap-2">
                     <span className="min-w-0 break-words font-medium">{session.title}</span>
-                    <Badge tone={PHASE_TONE[session.phase]}>
-                      {t(`session.phase.${session.phase}`)}
-                    </Badge>
+                    <span className="flex items-center gap-1">
+                      <Badge tone={PHASE_TONE[session.phase]}>
+                        {t(`session.phase.${session.phase}`)}
+                      </Badge>
+                      {releaseLabelKey(session) && (
+                        <Badge tone="success">{t(releaseLabelKey(session) as string)}</Badge>
+                      )}
+                    </span>
                   </span>
                   <span className="text-sm text-fg-muted">
                     {t('session.meta', { exam: session.examTitle, count: session.rosterCount })}

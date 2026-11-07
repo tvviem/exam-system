@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { JobRegistry } from '../src/queue/job-queue';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
 import { call } from './support/http';
@@ -350,6 +351,69 @@ describe('Kết quả của Người dự thi (Q297)', () => {
   });
 });
 
+describe('Hoàn tác Buộc nộp sau Công bố (Q296)', () => {
+  it('Lượt bị Buộc nộp trong Phiên thi đã Công bố không Hoàn tác được: 409 ALREADY_GRADED', async () => {
+    await resetState();
+    live = await openLiveSession(t, ['an']);
+    const forced = await api('POST', `${base()}/force-submit`, {
+      attemptIds: [live.attemptIds.an],
+    });
+    expect(forced.statusCode, forced.body).toBe(200);
+    await t.queue.drain();
+    await t.app.get(JobRegistry).run('grading.sweep', {});
+    expect((await api('POST', `${base()}/close-entry`)).statusCode).toBe(200);
+    const done = await release(3);
+    expect(done.statusCode, done.body).toBe(200);
+    const undo = await api(
+      'POST',
+      `${base()}/attempts/${live.attemptIds.an}/undo-force-submit`,
+      {},
+    );
+    expect(undo.statusCode, undo.body).toBe(409);
+    expect(undo.json().reason).toBe('ALREADY_GRADED');
+    expect((await live.attemptRow('an')).status).toBe('submitted');
+  });
+});
+
+describe('Nhiều Lượt và trigger sau Công bố', () => {
+  it('nhiều Lượt: Kết quả theo Lượt được tính (highest) và ghi rõ lượt nào', async () => {
+    await sql(`update sessions set max_attempts = 2 where id = $1`, [live.sessionId]);
+    const an = live.takers.an as Taker;
+    const second = (await an.call('POST', `/take/sessions/${live.sessionId}/start`)).json();
+    await an.call('POST', `/take/attempts/${second.attempt.id}/submit`); // lượt 2 bỏ trống
+    await t.queue.drain();
+    finish();
+    await gradeAll();
+    await release();
+    const data = (await resultOf('an')).json();
+    expect(data.attemptCount).toBe(2);
+    expect(data.countedAttemptNo).toBe(1);
+    expect(data.summary.rawScore).toBe(3.5);
+  });
+
+  it('sau Công bố (chưa Chốt) trigger từ chối đổi điểm tay nhưng cho ghi lại giá trị cũ', async () => {
+    finish();
+    await gradeAll();
+    await release(3);
+    await expect(
+      sql(
+        `update response_grades set score = 0.1, source = 'manual', graded_by = $2 where attempt_id = $1 and item_id = $3`,
+        [live.attemptIds.an, live.userIds.an, items.essay],
+      ),
+    ).rejects.toThrow(/cong bo/);
+    await sql(
+      `update response_grades set graded_at = now() where attempt_id = $1 and source = 'auto'`,
+      [live.attemptIds.an],
+    );
+    await expect(
+      sql(
+        `update response_grades set score = 0.1 where attempt_id = $1 and source = 'auto' and item_id <> $2`,
+        [live.attemptIds.an, items.essay],
+      ),
+    ).rejects.toThrow(/cong bo/);
+  });
+});
+
 describe('Xuất Excel (Q304)', () => {
   const download = async (who?: string) => {
     const res = await call(t.app, 'GET', `/api${base()}/results.xlsx`, {
@@ -385,9 +449,25 @@ describe('Xuất Excel (Q304)', () => {
     const flat = summary.flat().join('|');
     expect(flat).toContain('Chưa Công bố');
     expect(flat).toContain("'=HYPERLINK"); // dấu nháy đứng trước
-    expect(flat).toContain('chờ chấm tự luận');
+    expect(flat).toContain('chờ chấm');
     const detail = cells(workbook.getWorksheet('Chi tiết') as ExcelJS.Worksheet);
     expect(detail[0]).toEqual(['Mã định danh', 'Họ và tên', 'Câu 1', 'Câu 2', 'Câu 3', 'Câu 4']);
+  });
+
+  it('Chấm ẩn tên còn che điểm tự luận thì trang Chi tiết cũng che; khung giờ nhiều ngày ghi khoảng ngày; mã định danh chống công thức', async () => {
+    await sql(`update users set code = '=1+1' where id = $1`, [live.userIds.binh]);
+    await sql(`update sessions set closes_at = closes_at + interval '1 day' where id = $1`, [
+      live.sessionId,
+    ]);
+    await api('GET', `${base()}/results`);
+    await grade('an', 0.5); // còn bài của Bình chờ chấm: đang che
+    const { workbook } = await download();
+    const summary = cells(workbook.getWorksheet('Tổng hợp') as ExcelJS.Worksheet);
+    expect(summary[1]).toEqual(['Ngày diễn ra', '02/11/2026 – 03/11/2026']);
+    const detail = cells(workbook.getWorksheet('Chi tiết') as ExcelJS.Worksheet);
+    const an = detail.find((row) => row[0] === 'SV001') as string[];
+    expect(an.slice(2)).toEqual(['1', '1', '1', 'đang ẩn']); // điểm tự luận bị che, trắc nghiệm vẫn hiện
+    expect(detail.flat()).toContain("'=1+1");
   });
 
   it('sau Công bố không còn "Chưa Công bố"; điểm tự luận và trắc nghiệm đúng ở trang Chi tiết', async () => {

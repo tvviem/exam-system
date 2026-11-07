@@ -8,13 +8,17 @@ export const XLSX_CONTENT_TYPE = XLSX_TYPE;
 /** Ô bắt đầu bằng `= + - @` được thêm dấu nháy để Excel không hiểu thành công thức (Q304). */
 export const safeCell = (text: string): string => (/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
 
-const dateText = (date: Date) =>
+const dayText = (date: Date) =>
   date.toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     timeZone: 'Asia/Ho_Chi_Minh',
   });
+
+/** Khung giờ trong một ngày thì ghi ngày đó; kéo qua nhiều ngày thì ghi khoảng ngày (Q304). */
+const dateRangeText = (opens: Date, closes: Date) =>
+  dayText(opens) === dayText(closes) ? dayText(opens) : `${dayText(opens)} – ${dayText(closes)}`;
 
 /** Xuất Excel Kết quả (docs/plan/slice-5.md, PR 5c; Q304): *Tổng hợp* (thông tin chung và bảng người) và *Chi tiết* (mỗi câu một cột). */
 @Injectable()
@@ -26,10 +30,11 @@ export class ResultsExportService {
     const workbook = new ExcelJS.Workbook();
     const summary = workbook.addWorksheet('Tổng hợp');
     const { session, release, people } = payload;
+    const hideEssays = payload.status.essayHidden;
     const waiting = people.filter((p) => p.state === 'waiting_essay' || p.essayHidden).length;
 
     summary.addRow(['Tên Phiên thi', safeCell(session.title)]);
-    summary.addRow(['Ngày diễn ra', dateText(session.opensAt)]);
+    summary.addRow(['Ngày diễn ra', dateRangeText(session.opensAt, session.closesAt)]);
     summary.addRow(['Thời gian làm bài', `${session.durationMinutes} phút`]);
     summary.addRow(['Tổng số câu', `${session.totalItems} câu`]);
     summary.addRow(['Tổng điểm Bộ đề', session.maxScore]);
@@ -42,7 +47,7 @@ export class ResultsExportService {
       'Lớp',
       'Số Lượt',
       'Điểm thô',
-      'Tổng điểm',
+      'Tổng điểm Bộ đề',
       'Điểm quy đổi',
       'Ghi chú',
     ]);
@@ -65,11 +70,13 @@ export class ResultsExportService {
         ).map((row) => [row.itemId, row]),
       );
       detail.addRow([
-        person.code ?? '',
+        safeCell(person.code ?? ''),
         safeCell(person.fullName),
         ...ctx.items.map((item) => {
           const row = rows.get(item.itemId);
           if (!row) return '';
+          // Chấm ẩn tên còn che điểm tự luận thì trang Chi tiết cũng che, như bảng Kết quả (Q291).
+          if (item.type === 'essay' && hideEssays) return 'đang ẩn';
           return row.scoreCenti === null ? 'chờ chấm' : row.scoreCenti / 100;
         }),
       ]);
@@ -82,11 +89,11 @@ export class ResultsExportService {
 function summaryRow(person: ResultRow, maxScore: number) {
   const notes: string[] = [];
   if (person.state === 'no_attempt') notes.push('Chưa làm bài');
-  if (person.state === 'waiting_essay' || person.essayHidden) notes.push('chờ chấm tự luận');
+  if (person.state === 'waiting_essay' || person.essayHidden) notes.push('chờ chấm');
   if (person.voided) notes.push('Hủy kết quả');
-  else if (person.penaltyPercent > 0) notes.push(`trừ ${person.penaltyPercent}%`);
+  else if (person.penaltyPercent > 0) notes.push(`trừ ${person.penaltyPercent} %`);
   return [
-    person.code ?? '',
+    safeCell(person.code ?? ''),
     safeCell(person.fullName),
     safeCell(person.classLabel ?? ''),
     person.attemptCount,

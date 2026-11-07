@@ -14,6 +14,7 @@ import {
   type GradingSessions,
 } from '../../common/grading-sessions';
 import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
+import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import { type Database, DB } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -43,6 +44,7 @@ export class ReleaseService {
     private readonly status: GradingStatusService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
   ) {}
 
   private pendingEssays(ctx: GradingContext) {
@@ -92,14 +94,14 @@ export class ReleaseService {
 
   async release(actor: Actor, sessionId: string, request: ReleaseRequest) {
     await this.access.require(actor.id, sessionId);
-    const released = await this.db.transaction(async (tx) => {
+    const info = await this.db.transaction(async (tx) => {
       // Khóa Phiên thi rồi dòng thiết lập chấm: nối đuôi với Hoàn tác, Hủy (khóa Phiên thi) và chấm tay (khóa dòng thiết lập).
-      const info = await this.sessions.lock(sessionId, tx);
-      if (!info) throw new ApiError('NOT_FOUND');
+      const locked = await this.sessions.lock(sessionId, tx);
+      if (!locked) throw new ApiError('NOT_FOUND');
       const row = await this.status.lockForRelease(tx, sessionId);
-      const ctx = await this.context.load(info);
+      const ctx = await this.context.load(locked);
       const { blockers, pendingEssays } = await this.blockersOf(
-        info,
+        locked,
         ctx,
         Boolean(row?.releasedAt),
         tx as unknown as Database,
@@ -129,15 +131,16 @@ export class ReleaseService {
         {
           userIds: ctx.submitted.map((attempt) => attempt.userId),
           type: 'results.released',
-          data: { sessionId, title: info.title },
+          data: { sessionId, title: locked.title },
         },
         tx,
       );
-      return info;
+      return locked;
     });
+    this.realtime.sessionChanged(sessionId);
     const state = (await this.status.releaseStates([sessionId])).get(sessionId);
     return {
-      sessionId: released.sessionId,
+      sessionId: info.sessionId,
       releasedAt: state?.releasedAt ?? null,
       appealUntil: state?.appealUntil ?? null,
       finalizedAt: state?.finalizedAt ?? null,
@@ -148,6 +151,8 @@ export class ReleaseService {
   async setReview(actor: Actor, sessionId: string, value: boolean) {
     const { info } = await this.access.require(actor.id, sessionId);
     await this.db.transaction(async (tx) => {
+      // Cùng thứ tự khóa với Công bố: dòng Phiên thi trước, dòng thiết lập chấm sau (không bế tắc).
+      await this.sessions.lock(sessionId, tx);
       await this.status.lockForWrite(tx, sessionId);
       if (info.reviewAfterRelease === value) return;
       await this.sessions.setReviewAfterRelease(sessionId, value, tx);

@@ -26,6 +26,12 @@ export interface ViolationRecord {
 export interface ViolationPenalties {
   /** Mọi Vi phạm của Phiên thi, cũ trước. */
   list(sessionId: string, executor?: ViolationExecutor): Promise<ViolationRecord[]>;
+  /** Vi phạm của một người trong Phiên thi, cũ trước. */
+  listForUser(
+    sessionId: string,
+    userId: string,
+    executor?: ViolationExecutor,
+  ): Promise<ViolationRecord[]>;
   /** Đặt Mức xử lý; trả Vi phạm sau khi đặt, hoặc `null` nếu không thuộc Phiên thi này. */
   setPenalty(
     sessionId: string,

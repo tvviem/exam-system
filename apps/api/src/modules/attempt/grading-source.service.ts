@@ -87,6 +87,28 @@ export class GradingSourceService implements GradingSource {
     );
   }
 
+  async attemptsOfUser(sessionId: string, userId: string, executor: GradingExecutor = this.db) {
+    const rows = await executor
+      .select({
+        attemptId: attempts.id,
+        userId: attempts.userId,
+        attemptNo: attempts.attemptNo,
+        submittedAt: attempts.submittedAt,
+      })
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.sessionId, sessionId),
+          eq(attempts.userId, userId),
+          eq(attempts.status, 'submitted'),
+        ),
+      )
+      .orderBy(attempts.attemptNo);
+    return rows.flatMap((row) =>
+      row.submittedAt ? [{ ...row, submittedAt: row.submittedAt }] : [],
+    );
+  }
+
   async inProgressCount(sessionId: string, executor: GradingExecutor = this.db) {
     const [row] = await executor
       .select({ n: count() })
