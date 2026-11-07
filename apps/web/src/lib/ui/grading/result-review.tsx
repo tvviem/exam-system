@@ -1,5 +1,12 @@
 import { Check, ChevronLeft, ChevronRight, Contrast, LayoutGrid, Minus, X } from 'lucide-react';
-import { type ComponentType, type CSSProperties, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentType,
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MyResultItem } from '../../grading';
 import {
@@ -66,11 +73,17 @@ export function ResultReview({
   items,
   currentNo,
   onCurrentNo,
+  extra,
+  marked,
 }: {
   items: MyResultItem[];
   /** Số câu đang xem (đưa lên địa chỉ để tải lại hay Back vẫn giữ chỗ). */
   currentNo?: number;
   onCurrentNo: (no: number) => void;
+  /** Phần thêm cuối thẻ câu (Phúc khảo của câu này). */
+  extra?: (item: MyResultItem) => ReactNode;
+  /** Số các câu cần đánh dấu trên bản đồ (đã Phúc khảo). */
+  marked?: ReadonlySet<number>;
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<ReviewVerdict | null>(null);
@@ -199,7 +212,13 @@ export function ResultReview({
         )}
         {/* Bản đồ câu chỉ hiện ở màn rộng; điện thoại mở từ thanh dưới. */}
         <div className="hidden lg:block">
-          <ResultMap items={items} current={item.no} filter={filter} onPick={goTo} />
+          <ResultMap
+            items={items}
+            current={item.no}
+            filter={filter}
+            onPick={goTo}
+            marked={marked}
+          />
         </div>
       </aside>
 
@@ -239,6 +258,7 @@ export function ResultReview({
         </div>
 
         <ItemBody item={item} />
+        {extra?.(item)}
 
         <footer className="hidden items-center gap-2 lg:flex">
           <button
@@ -327,7 +347,14 @@ export function ResultReview({
       </nav>
 
       <Dialog open={mapOpen} onClose={() => setMapOpen(false)} title={t('myResult.mapTitle')}>
-        <ResultMap items={items} current={item.no} filter={filter} onPick={goTo} large />
+        <ResultMap
+          items={items}
+          current={item.no}
+          filter={filter}
+          onPick={goTo}
+          marked={marked}
+          large
+        />
       </Dialog>
     </section>
   );
@@ -339,12 +366,14 @@ function ResultMap({
   current,
   filter,
   onPick,
+  marked,
   large = false,
 }: {
   items: MyResultItem[];
   current: number;
   filter: ReviewVerdict | null;
   onPick: (index: number) => void;
+  marked?: ReadonlySet<number>;
   /** Ô 48 px cho ngón tay (hộp thoại trên điện thoại); mặc định 40 px cho chuột. */
   large?: boolean;
 }) {
@@ -362,10 +391,10 @@ function ResultMap({
           <li key={entry.no} className="contents">
             <button
               type="button"
-              aria-label={t('myResult.cell', {
+              aria-label={`${t('myResult.cell', {
                 no: entry.no,
                 verdict: t(`myResult.verdict.${entry.verdict}`),
-              })}
+              })}${marked?.has(entry.no) ? ` · ${t('appeal.marked')}` : ''}`}
               aria-current={entry.no === current ? 'true' : undefined}
               onClick={() => onPick(index)}
               className={`relative inline-flex ${large ? 'h-12' : 'h-10'} w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 text-sm font-semibold ${style.cell} ${
@@ -374,6 +403,12 @@ function ResultMap({
             >
               <span className="leading-none tabular-nums">{entry.no}</span>
               <CellIcon aria-hidden className="mt-0.5 size-3" />
+              {marked?.has(entry.no) && (
+                <span
+                  aria-hidden
+                  className="absolute top-0.5 right-0.5 size-2 rounded-full bg-primary"
+                />
+              )}
             </button>
           </li>
         );

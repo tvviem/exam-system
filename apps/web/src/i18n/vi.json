@@ -199,7 +199,13 @@
     "INVALID_STATE_SESSION_NOT_FINISHED": "Phiên thi chưa kết thúc: còn Lượt đang làm, hoặc chưa hết Khung giờ và chưa Đóng cửa vào thi.",
     "INVALID_STATE_NO_ATTEMPTS": "Chưa có Lượt làm bài nào để Công bố.",
     "INVALID_STATE_UNGRADED_ATTEMPTS": "Còn Lượt chưa chấm tự động xong, hãy thử lại sau ít giây.",
-    "INVALID_STATE_ESSAYS_PENDING": "Còn bài tự luận chưa chấm."
+    "INVALID_STATE_ESSAYS_PENDING": "Còn bài tự luận chưa chấm.",
+    "INVALID_STATE_ALREADY_FINALIZED": "Kết quả đã được Chốt nên không nhận hay xử lý Phúc khảo nữa.",
+    "INVALID_STATE_APPEAL_PERIOD_ENDED": "Đã hết thời hạn gửi Phúc khảo.",
+    "INVALID_STATE_APPEAL_LIMIT_REACHED": "Bạn đã dùng hết số lượt Phúc khảo của Phiên thi này.",
+    "INVALID_STATE_ALREADY_APPEALED": "Bạn đã gửi Phúc khảo cho nội dung này rồi.",
+    "INVALID_STATE_ALREADY_RESOLVED": "Phúc khảo này đã được xử lý.",
+    "INVALID_STATE_PERIOD_NOT_EXTENDED": "Hạn mới phải dài hơn hạn hiện tại."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -1734,7 +1740,9 @@
       "empty": "Không có ai khớp.",
       "cardScore": "Điểm thô {{raw}}/{{max}} · quy đổi {{scaled}}",
       "person": "Chi tiết",
-      "sort": "Sắp xếp"
+      "sort": "Sắp xếp",
+      "appeals": "Phúc khảo ({{count}})",
+      "handleAppeals": "Xử lý Phúc khảo ({{count}})"
     },
     "filters": {
       "all": "Tất cả",
@@ -1849,6 +1857,16 @@
         "ESSAYS_PENDING": "Còn {{count}} bài tự luận chưa chấm."
       },
       "releasedUntil": "Đã Công bố lúc {{time}} · Phúc khảo đến {{until}}"
+    },
+    "appealExtend": {
+      "counts": "{{open}} Phúc khảo chờ xử lý, {{resolved}} đã xử lý.",
+      "open": "Gia hạn",
+      "title": "Gia hạn Thời hạn phúc khảo",
+      "hint": "Chọn tổng số ngày kể từ lúc Công bố. Chỉ được kéo dài, không rút ngắn, tối đa 14 ngày.",
+      "label": "Thời hạn mới",
+      "confirm": "Gia hạn",
+      "done": "Đã gia hạn Thời hạn phúc khảo",
+      "days": "{{count}} ngày"
     }
   },
   "myResult": {
@@ -1903,6 +1921,78 @@
       "partial": "Một phần",
       "wrong": "Sai",
       "blank": "Bỏ trống"
+    }
+  },
+  "appeal": {
+    "unit": {
+      "day": "ngày",
+      "hour": "giờ",
+      "minute": "phút"
+    },
+    "summary": {
+      "open": "Bạn có thể gửi Phúc khảo trong {{left}} nữa · đã dùng {{used}}/{{limit}} lượt.",
+      "ended": "Đã hết thời hạn gửi Phúc khảo.",
+      "finalized": "Kết quả đã được Chốt, không nhận Phúc khảo nữa.",
+      "none": "Phiên thi này không nhận Phúc khảo."
+    },
+    "open": "Phúc khảo {{label}}",
+    "dialogTitle": "Gửi Phúc khảo {{label}}",
+    "confirm": "Gửi Phúc khảo {{label}}? Bạn còn {{left}}/{{limit}} lượt. Mỗi đối tượng chỉ Phúc khảo một lần và không rút lại được.",
+    "mayChange": "Điểm có thể tăng hoặc giảm sau khi xem xét lại.",
+    "reasonLabel": "Lý do (ít nhất {{min}} ký tự)",
+    "send": "Gửi Phúc khảo {{label}}",
+    "sent": "Đã gửi Phúc khảo",
+    "exhausted": "Bạn đã dùng hết {{limit}} lượt Phúc khảo.",
+    "penaltyLabel": "Mức xử lý",
+    "marked": "đã Phúc khảo",
+    "yourReason": "Lý do của bạn",
+    "reply": "Người ra đề trả lời",
+    "change": "Từ {{from}} thành {{to}}",
+    "mine": "Phúc khảo của tôi ({{count}})",
+    "status": {
+      "open": "Phúc khảo đang chờ xử lý",
+      "resolved": "Phúc khảo đã được xử lý"
+    },
+    "seenAs": "Người dự thi thấy: Câu {{no}}",
+    "panel": {
+      "title": "Phúc khảo",
+      "filter": "Lọc Phúc khảo",
+      "open": "Chờ xử lý ({{count}})",
+      "resolved": "Đã xử lý ({{count}})",
+      "all": "Tất cả ({{count}})",
+      "empty": "Không có Phúc khảo nào đang chờ xử lý.",
+      "emptyResolved": "Chưa có Phúc khảo nào được xử lý.",
+      "status": {
+        "open": "Chờ xử lý",
+        "resolved": "Đã xử lý"
+      }
+    },
+    "screen": {
+      "progress": "Phúc khảo {{current}}/{{total}} · {{open}} chờ xử lý",
+      "nav": "Chuyển Phúc khảo",
+      "prev": "Trước",
+      "next": "Sau",
+      "theirReason": "Lý do của Người dự thi",
+      "question": "Câu hỏi (kèm đáp án)",
+      "theirAnswer": "Bài làm của Người dự thi",
+      "currentScore": "Điểm hiện tại: {{score}}/{{points}} ({{source}})",
+      "source": {
+        "auto": "chấm tự động",
+        "manual": "chấm tay",
+        "appeal": "đã sửa qua Phúc khảo",
+        "correction": "đã đính chính đáp án"
+      },
+      "currentPenalty": "Mức xử lý hiện tại",
+      "newScore": "Điểm mới (tối đa {{points}})",
+      "quick": "Điểm nhanh",
+      "newPenalty": "Mức xử lý mới",
+      "penaltyPercent": "Trừ",
+      "replyLabel": "Trả lời Người dự thi (bắt buộc)",
+      "keep": "Giữ nguyên và trả lời",
+      "change": "Đổi và trả lời",
+      "done": "Đã xử lý Phúc khảo",
+      "resolvedTitle": "Đã xử lý",
+      "backToResults": "Về Kết quả"
     }
   }
 }
