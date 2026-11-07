@@ -154,6 +154,75 @@ export class KeyCorrectionsService {
     };
   }
 
+  /** Người này là chủ Bộ đề (được Đính chính)? Giao diện dùng để ẩn hay hiện nút. */
+  async canCorrect(userId: string, examId: string): Promise<boolean> {
+    return (await this.exams.ownerOf(examId)) === userId;
+  }
+
+  /** Số lần đã đính chính của từng câu trong Bộ đề (Thống kê câu và danh sách câu ghi "đã đính chính N lần"). */
+  async countsByItem(examId: string): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select({ itemId: keyCorrections.itemId, total: count() })
+      .from(keyCorrections)
+      .where(eq(keyCorrections.examId, examId))
+      .groupBy(keyCorrections.itemId);
+    return new Map(rows.map((row) => [row.itemId, row.total]));
+  }
+
+  /**
+   * Các câu có đáp án của Bộ đề kèm nội dung và đáp án hiệu lực, cho hộp thoại Đính chính (chọn câu, chọn đáp án mới). Chỉ chủ Bộ
+   * đề thấy: đây là nội dung có đáp án.
+   */
+  async items(userId: string, examId: string) {
+    await this.requireOwner(userId, examId);
+    const content = await this.content.contentOf(examId);
+    if (!content) throw new ApiError('NOT_FOUND');
+    const counts = await this.countsByItem(examId);
+    let no = 0;
+    const items = content.sections.flatMap((section) =>
+      section.items.map((item) => {
+        no += 1;
+        return { item, no };
+      }),
+    );
+    return {
+      items: items
+        .filter(({ item }) => item.snapshot.type !== 'essay')
+        .map(({ item, no: number }) => ({
+          itemId: item.itemId,
+          no: number,
+          type: item.snapshot.type,
+          points: item.points,
+          stem: item.snapshot.stem,
+          payload: item.snapshot.payload,
+          questionId: item.snapshot.questionId,
+          corrections: counts.get(item.itemId) ?? 0,
+        })),
+    };
+  }
+
+  /** Đính chính mới nhất đã đổi điểm của một Lượt ở một câu (màn xử lý Phúc khảo cảnh báo điểm tự động vừa đổi). */
+  async latestEffect(attemptId: string, itemId: string) {
+    const [row] = await this.db
+      .select({
+        correctedAt: keyCorrections.correctedAt,
+        oldScore: keyCorrectionEffects.oldScore,
+        newScore: keyCorrectionEffects.newScore,
+      })
+      .from(keyCorrectionEffects)
+      .innerJoin(keyCorrections, eq(keyCorrections.id, keyCorrectionEffects.correctionId))
+      .where(and(eq(keyCorrectionEffects.attemptId, attemptId), eq(keyCorrections.itemId, itemId)))
+      .orderBy(desc(keyCorrections.correctedAt))
+      .limit(1);
+    return row
+      ? {
+          correctedAt: row.correctedAt,
+          oldScore: row.oldScore === null ? null : Number(row.oldScore),
+          newScore: row.newScore === null ? null : Number(row.newScore),
+        }
+      : null;
+  }
+
   /** Chấm lại lỗi (`failed`) thì chạy lại; job idempotent nên chỉ chấm nốt phần chưa đổi. */
   async retry(userId: string, examId: string, correctionId: string) {
     await this.requireOwner(userId, examId);

@@ -100,6 +100,12 @@ export interface AppealDetail {
     stem: unknown;
     payload: Record<string, unknown>;
   };
+  examId?: string;
+  itemId?: string;
+  /** Chỉ chủ Bộ đề Đính chính được; người được Ủy quyền chỉ thấy gợi ý báo chủ Bộ đề. */
+  canCorrect?: boolean;
+  /** Đính chính đã đổi điểm tự động của Lượt này ở câu này. */
+  correction?: { correctedAt: string; oldScore: number | null; newScore: number | null } | null;
   answer?: unknown;
   grade?: {
     score: number | null;

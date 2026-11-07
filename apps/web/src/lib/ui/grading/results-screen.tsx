@@ -35,6 +35,7 @@ import { Tabs } from '../tabs';
 import { useToast } from '../toast';
 import { AppealsPanel } from './appeals-panel';
 import { DelegateDialog } from './delegate-dialog';
+import { KeyCorrectionDialog } from './key-correction-dialog';
 import { ReleasePanel } from './release-panel';
 
 // Màn Kết quả của một Phiên thi (docs/plan/slice-5.md, PR 5b): bảng người, Thống kê câu, Vi phạm kèm Mức xử lý, chi tiết từng
@@ -151,7 +152,14 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
           {
             id: 'stats',
             label: t('grading.results.stats'),
-            content: tab === 'stats' ? <StatsPanel sessionId={sessionId} /> : null,
+            content:
+              tab === 'stats' ? (
+                <StatsPanel
+                  sessionId={sessionId}
+                  examId={data.session.examId}
+                  canCorrect={data.role === 'owner'}
+                />
+              ) : null,
           },
           ...(released
             ? [
@@ -439,10 +447,20 @@ const penaltyText = (
         ? t('grading.penalty.percent', { percent: fmt(v.penaltyPercent) })
         : t('grading.penalty.none');
 
-function StatsPanel({ sessionId }: { sessionId: string }) {
+function StatsPanel({
+  sessionId,
+  examId,
+  canCorrect,
+}: {
+  sessionId: string;
+  examId: string;
+  /** Chỉ chủ Phiên thi (cũng là chủ Bộ đề) có nút Đính chính; người được Ủy quyền thì không (Q307). */
+  canCorrect: boolean;
+}) {
   const { t } = useTranslation();
   const stats = useQuery(itemStatsQuery(sessionId));
   const [hardFirst, setHardFirst] = useState(false);
+  const [fixing, setFixing] = useState<string | null>(null);
   if (stats.isPending) return <ListSkeleton rows={4} />;
   if (stats.isError) return <ErrorMessage>{errorMessage(t, stats.error)}</ErrorMessage>;
   const items = [...stats.data.items].sort((a, b) =>
@@ -458,14 +476,28 @@ function StatsPanel({ sessionId }: { sessionId: string }) {
       </div>
       <ul className="flex flex-col gap-2">
         {items.map((item) => (
-          <StatRow key={item.itemId} item={item} />
+          <StatRow
+            key={item.itemId}
+            item={item}
+            onCorrect={
+              canCorrect && item.type !== 'essay' ? () => setFixing(item.itemId) : undefined
+            }
+          />
         ))}
       </ul>
+      {canCorrect && (
+        <KeyCorrectionDialog
+          examId={examId}
+          itemId={fixing ?? undefined}
+          open={fixing !== null}
+          onClose={() => setFixing(null)}
+        />
+      )}
     </div>
   );
 }
 
-function StatRow({ item }: { item: ItemStat }) {
+function StatRow({ item, onCorrect }: { item: ItemStat; onCorrect?: () => void }) {
   const { t } = useTranslation();
   const total = item.correct + item.partial + item.wrong + item.blank + item.pending;
   const pct = (n: number) => (total === 0 ? 0 : (n / total) * 100);
@@ -480,6 +512,11 @@ function StatRow({ item }: { item: ItemStat }) {
           </span>
         </span>
         <span className="flex items-center gap-2 text-sm tabular-nums">
+          {item.corrections > 0 && (
+            <Badge tone="neutral">
+              {t('grading.stats.corrected', { count: item.corrections })}
+            </Badge>
+          )}
           {low && <Badge tone="warning">{t('grading.stats.suspect')}</Badge>}
           {item.correctRate === null
             ? '—'
@@ -496,6 +533,11 @@ function StatRow({ item }: { item: ItemStat }) {
         <div className="bg-danger" style={{ width: `${pct(item.wrong)}%` }} />
         <div className="bg-fg-muted/40" style={{ width: `${pct(item.blank)}%` }} />
       </div>
+      {onCorrect && (
+        <Button className="mt-2" onClick={onCorrect} data-testid={`key-fix-${item.no}`}>
+          {t('keyFix.openItem')}
+        </Button>
+      )}
       <p className="mt-1 text-sm text-fg-muted tabular-nums">
         {t('grading.stats.counts', {
           correct: item.correct,

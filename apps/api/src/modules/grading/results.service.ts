@@ -11,6 +11,7 @@ import {
 } from '../../common/violation-penalties';
 import { GradingAccessService } from './grading-access.service';
 import { type GradingContext, GradingContextService } from './grading-context.service';
+import { KeyCorrectionsService } from './key-corrections.service';
 import { ReleaseService } from './release.service';
 
 /** Dòng của bảng Kết quả (docs/plan/slice-5.md, PR 5b). */
@@ -62,6 +63,7 @@ export class ResultsService {
     @Inject(VIOLATION_PENALTIES) private readonly violations: ViolationPenalties,
     @Inject(GRADING_SOURCE) private readonly source: GradingSource,
     private readonly release: ReleaseService,
+    private readonly corrections: KeyCorrectionsService,
   ) {}
 
   /** Chấm ẩn tên đang bật mà còn bài tự luận chờ chấm: che điểm tự luận (Q291). */
@@ -189,6 +191,7 @@ export class ResultsService {
       release,
       session: {
         sessionId,
+        examId: access.info.examId,
         title: access.info.title,
         opensAt: access.info.opensAt,
         closesAt: access.info.closesAt,
@@ -292,6 +295,7 @@ export class ResultsService {
         if (bucket) bucket[row.verdict]++;
       }
     }
+    const corrected = await this.corrections.countsByItem(access.info.examId);
     return {
       attempts: ctx.countable.length,
       items: ctx.items.map((item) => {
@@ -310,6 +314,8 @@ export class ResultsService {
           type: item.type,
           points: item.points,
           ...bucket,
+          /** Số lần đã đính chính đáp án của câu này (Q317). */
+          corrections: corrected.get(item.itemId) ?? 0,
           correctRate: total === 0 ? null : Math.round((bucket.correct / total) * 1000) / 10,
         };
       }),

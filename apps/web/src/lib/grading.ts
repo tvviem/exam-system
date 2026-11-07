@@ -25,6 +25,7 @@ export interface ResultRow {
 export interface ResultsData {
   session: {
     sessionId: string;
+    examId: string;
     title: string;
     opensAt: string;
     closesAt: string;
@@ -97,6 +98,8 @@ export interface ItemStat {
   wrong: number;
   blank: number;
   pending: number;
+  /** Số lần đã đính chính đáp án của câu này. */
+  corrections: number;
   correctRate: number | null;
 }
 
