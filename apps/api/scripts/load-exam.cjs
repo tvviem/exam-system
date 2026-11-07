@@ -437,10 +437,17 @@ async function main() {
     const p99 = pct(samples[name], 0.99);
     if (!(p99 < limit)) failures.push(`${name} p99 ${p99.toFixed(0)}ms ≥ ${limit}ms`);
   }
+  // Q306: "không request nào trên 1 giây". `visible` (tin đẩy trải 2 giây có chủ ý) và `myResultSpike` (đã có ngưỡng riêng ở trên) không tính ở đây.
+  for (const [name, list] of Object.entries(samples)) {
+    if (['visible', 'myResultSpike'].includes(name) || !list.length) continue;
+    const max = Math.max(...list);
+    if (!(max < 1000)) failures.push(`${name} có yêu cầu mất ${max.toFixed(0)}ms ≥ 1000ms`);
+  }
   if (!grading) failures.push('giai đoạn sau giờ thi không chạy xong');
   else {
     for (const [name, limit] of Object.entries(grading.limits)) {
-      if (!samples[name].length) continue;
+      // Quá ít mẫu thì p99 vô nghĩa (ví dụ lưu bài của người làm muộn khi phòng nhỏ chấm xong trong chưa tới một giây): bỏ qua ngưỡng, vẫn in số đo.
+      if (samples[name].length < (grading.minSamples[name] ?? 1)) continue;
       const p99 = pct(samples[name], 0.99);
       if (!(p99 < limit)) failures.push(`${name} p99 ${p99.toFixed(0)}ms ≥ ${limit}ms`);
     }

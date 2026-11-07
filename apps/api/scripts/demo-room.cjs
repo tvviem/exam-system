@@ -20,7 +20,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client } = require('pg');
-const { MIX_DEMO, createMixedQuestions, answerFor } = require('./exam-mix.cjs');
+const { MIX_DEMO, createMixedQuestions, answerFor, appealTargetOf, APPEAL_REASON } = require('./exam-mix.cjs');
 const { hashPassword } = require('../dist/modules/identity/password/password-hasher.js');
 
 const args = process.argv.slice(2);
@@ -349,10 +349,9 @@ async function afterExam(teacher, sessionId, clients) {
   }
   let sent = 0;
   for (const c of clients.slice(0, 10)) {
-    const sessionIdOf = (await c.must('GET', '/take/sessions')).items[0].sessionId;
-    const result = await c.must('GET', `/take/sessions/${sessionIdOf}/result`);
-    const miss = result.items.find((it) => it.type !== 'essay' && it.score !== null && it.score < it.points) ?? result.items[0];
-    const res = await c.call('POST', `/take/sessions/${sessionIdOf}/appeals`, { target: 'response', no: miss.no, reason: 'Em cho rằng đáp án của em đúng, nhờ thầy cô xem lại.' });
+    const { sessionId: candidateSessionId } = (await c.must('GET', '/take/sessions')).items[0];
+    const miss = appealTargetOf(await c.must('GET', `/take/sessions/${candidateSessionId}/result`));
+    const res = await c.call('POST', `/take/sessions/${candidateSessionId}/appeals`, { target: 'response', no: miss.no, reason: APPEAL_REASON });
     if (res.ok) sent += 1;
   }
   say(`${sent} Phúc khảo đã gửi sẵn. Người ra đề: ${ORIGIN}/examiner/sessions/${sessionId}/appeals (hoặc tab Phúc khảo ở ${results}); thử Đính chính đáp án ở "Thống kê câu".`);

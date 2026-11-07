@@ -1,6 +1,9 @@
 // Bộ đề mẫu bốn Loại câu và câu trả lời mẫu, dùng chung cho `load-exam.cjs` (đo tải) và `demo-room.cjs` (phòng thi thử).
 // Đáp án đúng cố định: Chọn một 'a'; Chọn nhiều a và b; Chùm Đúng/Sai/Đúng/Sai; Tự luận có Hướng dẫn chấm. Mỗi câu 1 điểm, Tự luận 2 điểm.
 
+/** Điểm mỗi câu theo Loại: Tự luận 2 điểm, còn lại 1 điểm. */
+const pointsOf = (type) => (type === 'essay' ? 2 : 1);
+
 const options = (textDoc) => ['a', 'b', 'c', 'd'].map((id) => ({ id, content: textDoc(`Phương án ${id}`) }));
 const payloadOf = {
   single_choice: (textDoc) => ({ options: options(textDoc), key: ['a'], shuffleOptions: true }),
@@ -27,12 +30,12 @@ async function createMixedQuestions(post, textDoc, topicId, mix) {
         type,
         topicId,
         stem: textDoc(`Câu hỏi ${type} số ${i + 1}`),
-        defaultPoints: type === 'essay' ? 2 : 1,
+        defaultPoints: pointsOf(type),
         tags: [],
         payload: payloadOf[type](textDoc),
       });
       questionIds.push(q.id);
-      points.push(type === 'essay' ? 2 : 1);
+      points.push(pointsOf(type));
     }
   }
   return { questionIds, points };
@@ -52,4 +55,12 @@ function answerFor(item, i, salt) {
   }
 }
 
-module.exports = { MIX_LOAD, MIX_DEMO, createMixedQuestions, answerFor };
+/** Lý do Phúc khảo mẫu. */
+const APPEAL_REASON = 'Em cho rằng đáp án của em đúng, nhờ thầy cô xem lại.';
+
+/** Câu để Phúc khảo trong Kết quả của một người: câu trắc nghiệm chưa đủ điểm, nếu không có thì câu đầu. */
+function appealTargetOf(result) {
+  return result.items.find((it) => it.type !== 'essay' && it.score !== null && it.score < it.points) ?? result.items[0];
+}
+
+module.exports = { MIX_LOAD, MIX_DEMO, createMixedQuestions, answerFor, appealTargetOf, APPEAL_REASON };

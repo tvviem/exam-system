@@ -7,7 +7,7 @@ import {
   type GradingSessionInfo,
   type GradingSessions,
 } from '../../common/grading-sessions';
-import { type Database, DB } from '../../db/db.module';
+import { type Database, DB, type Transaction } from '../../db/db.module';
 import { sessionGradingDelegates, sessionGradings } from './grading.schema';
 
 export type GradingRole = 'owner' | 'delegate';
@@ -54,8 +54,12 @@ export class GradingAccessService {
   }
 
   /** Những người xử lý Phúc khảo và nhận nhắc việc: chủ Phiên thi và người đang được Ủy quyền (nếu có). */
-  async staffIds(info: GradingSessionInfo): Promise<string[]> {
-    const delegates = await this.db
+  /** Người nhận thông báo của Phiên thi. Trong giao dịch phải truyền `tx` để không xin thêm kết nối từ nhóm (treo khi nhiều yêu cầu cùng lúc). */
+  async staffIds(
+    info: GradingSessionInfo,
+    executor: Database | Transaction = this.db,
+  ): Promise<string[]> {
+    const delegates = await executor
       .select({ userId: sessionGradingDelegates.userId })
       .from(sessionGradingDelegates)
       .where(

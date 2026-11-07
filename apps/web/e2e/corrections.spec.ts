@@ -93,7 +93,7 @@ test('Người ra đề đính chính đáp án: xem trước, xác nhận, ch�
   await dialog.getByTestId('key-close').click();
   await expect(examiner.getByText('Đã đính chính 1 lần')).toBeVisible();
 
-  // Màn xử lý Phúc khảo: cảnh báo điểm tự động vừa đổi và đường tắt Đính chính cho cả lớp (chủ Bộ đề).
+  // Màn xử lý Phúc khảo: cảnh báo điểm tự động vừa đổi và đường tắt Đính chính cho cả Phiên thi (chủ Bộ đề).
   await examiner.goto(`/examiner/sessions/${sessionId}/appeals`);
   await expect(examiner.getByTestId('appeal-correction')).toContainText('vừa đổi do Đính chính');
   await expect(examiner.getByTestId('appeal-correction')).toContainText('từ 1 thành 0');

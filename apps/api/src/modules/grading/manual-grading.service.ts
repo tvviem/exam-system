@@ -1,4 +1,4 @@
-import { countableAttempts, fromCenti, stableOrder, toCenti, verdictOfScore } from '@exam/scoring';
+import { fromCenti, stableOrder, toCenti, verdictOfScore } from '@exam/scoring';
 import { blindLabelOf, type SaveGradeRequest } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
@@ -63,8 +63,8 @@ export class ManualGradingService {
     return ordered.map((entry, index) => ({ ...entry, label: blindLabelOf(index + 1) }));
   }
 
-  private essayItem(ctx: { items: GradingItem[] }, itemId: string) {
-    const item = ctx.items.find((i) => i.itemId === itemId);
+  private essayItem(items: GradingItem[], itemId: string) {
+    const item = items.find((i) => i.itemId === itemId);
     if (item?.type !== 'essay') throw new ApiError('NOT_FOUND');
     return item;
   }
@@ -96,7 +96,7 @@ export class ManualGradingService {
   async queue(userId: string, sessionId: string, itemId: string, filter: 'pending' | 'all') {
     const { info } = await this.access.require(userId, sessionId);
     const ctx = await this.context.load(info);
-    const item = this.essayItem(ctx, itemId);
+    const item = this.essayItem(ctx.items, itemId);
     const queue = this.queueOf(ctx, itemId);
     const pending = queue.filter((entry) => entry.row.verdict === 'pending').length;
     return {
@@ -121,7 +121,7 @@ export class ManualGradingService {
   async entry(userId: string, sessionId: string, itemId: string, attemptId: string) {
     const { info } = await this.access.require(userId, sessionId);
     const ctx = await this.context.load(info);
-    const item = this.essayItem(ctx, itemId);
+    const item = this.essayItem(ctx.items, itemId);
     const entry = this.queueOf(ctx, itemId).find((e) => e.attemptId === attemptId);
     if (!entry) throw new ApiError('NOT_FOUND');
     const [attempt] = await this.source.loadSubmitted([attemptId]);
@@ -167,14 +167,9 @@ export class ManualGradingService {
     // dù lớp đông (đo tải 500 người: 85 ms khi nạp cả Phiên thi, PR 5e).
     const content = await this.content.contentOf(info.examId);
     if (!content) throw new ApiError('NOT_FOUND');
-    const item = this.essayItem({ items: itemsOf(content) }, itemId);
+    const item = this.essayItem(itemsOf(content), itemId);
     // Chỉ chấm Lượt có thể được tính (Q292), như hàng đợi.
-    const [target] = await this.source.loadSubmitted([attemptId]);
-    if (!target || target.sessionId !== sessionId) throw new ApiError('NOT_FOUND');
-    const mine = await this.source.attemptsOfUser(sessionId, target.userId);
-    if (!countableAttempts(mine, info.attemptScoring).some((a) => a.attemptId === attemptId)) {
-      throw new ApiError('NOT_FOUND');
-    }
+    if (!(await this.context.isCountable(info, attemptId))) throw new ApiError('NOT_FOUND');
     const points = toCenti(item.points);
     const centi = request.score === null ? null : toCenti(request.score);
     if (centi !== null && centi > points) {

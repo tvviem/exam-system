@@ -97,8 +97,8 @@ Chạy lại bước khác thì `pnpm -C apps/api demo:room --clean` trước. N
 6. Câu sai → **Phúc khảo Câu N** → gõ lý do (ít nhất 10 ký tự) → **Gửi**. Dòng "đã dùng 1/3 lượt" hiện; câu có chấm trên bản đồ.
 
 **C. `--through appeal` (Người ra đề)**
-7. Chuông thông báo hoặc tab **Phúc khảo**: danh sách Phúc khảo chờ; mở **Xử lý Phúc khảo**, xem câu, đáp án, bài làm; **Giữ nguyên** hoặc **Đặt điểm khác** kèm câu trả lời bắt buộc; phím J/K sang Phúc khảo kế. Thử **Gia hạn** Thời hạn phúc khảo.
-8. Tab **Thống kê câu** → câu Chọn một nhiều người sai → **Đính chính câu này** → chọn đáp án mới → **Xem trước** (bao nhiêu người tăng, giảm) → xác nhận. Điểm cả phòng đổi sau vài giây; Người dự thi nhận thông báo và thấy điểm mới.
+7. Chuông thông báo hoặc tab **Phúc khảo**: danh sách Phúc khảo chờ; mở **Xử lý Phúc khảo**, xem câu, Đáp án đúng, Câu trả lời của Người dự thi; **Giữ nguyên** hoặc **Đặt điểm khác** kèm câu trả lời bắt buộc; phím J/K sang Phúc khảo kế. Thử **Gia hạn** Thời hạn phúc khảo.
+8. Tab **Thống kê câu** → câu Chọn một nhiều người sai → **Đính chính câu này** → chọn Đáp án đúng mới → **Xem trước** (bao nhiêu người tăng, giảm) → xác nhận. Điểm cả phòng đổi sau vài giây; Người dự thi nhận thông báo và thấy điểm mới.
 9. Xử lý hết Phúc khảo và để Thời hạn phúc khảo hết (hoặc sửa giờ trong cơ sở dữ liệu thử): trong vòng một phút Phiên thi tự **Đã Chốt**; Đính chính sau đó không đổi điểm Phiên thi đã Chốt.
 
 Chi tiết từng thao tác nhìn từ phía người dùng ở [docs/huong-dan/cham-diem-va-phuc-khao.md](../docs/huong-dan/cham-diem-va-phuc-khao.md).
