@@ -443,3 +443,67 @@ describe('Lớp bảo vệ cơ sở dữ liệu (S3)', () => {
     ).rejects.toThrow(/Cau/i);
   });
 });
+
+describe('Dữ liệu cho giao diện Đính chính (5d-3b)', () => {
+  it('danh sách câu có đáp án chỉ cho chủ Bộ đề, kèm số lần đã đính chính', async () => {
+    const list = (await api('GET', `${exam()}/key-correction-items`)).json();
+    expect(list.items.map((i: { type: string }) => i.type)).toEqual([
+      'single_choice',
+      'multiple_choice',
+      'true_false_cluster',
+    ]); // không có câu tự luận
+    expect(list.items[0]).toMatchObject({ no: 1, points: 1, corrections: 0 });
+    expect(JSON.stringify(list.items[0].payload)).toContain('"key":["o2"]');
+    expect(list.items[0].questionId).toBeTruthy();
+    expect(
+      (await api('GET', `${exam()}/key-correction-items`, undefined, live.other)).statusCode,
+    ).toBe(404);
+
+    await correct(['o1']);
+    await t.queue.drain();
+    const after = (await api('GET', `${exam()}/key-correction-items`)).json();
+    expect(after.items[0]).toMatchObject({ corrections: 1 });
+    expect(JSON.stringify(after.items[0].payload)).toContain('"key":["o1"]'); // đáp án hiệu lực
+  });
+
+  it('Kết quả có examId; Thống kê câu có số lần đính chính', async () => {
+    const results = (await api('GET', `${base()}/results`)).json();
+    expect(results.session.examId).toBe(examId);
+    await correct(['o1']);
+    await t.queue.drain();
+    const stats = (await api('GET', `${base()}/results/item-stats`)).json();
+    const single = stats.items.find((i: { itemId: string }) => i.itemId === items.single_choice);
+    expect(single.corrections).toBe(1);
+    expect(stats.items.find((i: { itemId: string }) => i.itemId === items.essay).corrections).toBe(
+      0,
+    );
+  });
+
+  it('màn xử lý Phúc khảo biết Đính chính đã đổi điểm tự động và ai được Đính chính', async () => {
+    await releaseNow();
+    const an = live.takers.an as Taker;
+    const no = (await an.call('GET', `/take/sessions/${live.sessionId}/result`))
+      .json()
+      .items.find((i: { type: string }) => i.type === 'single_choice').no;
+    // Phúc khảo trước, Đính chính sau: điểm tự động của An đổi từ 1 xuống 0.
+    await an.call('POST', `/take/sessions/${live.sessionId}/appeals`, {
+      target: 'response',
+      no,
+      reason: 'Tôi không chắc điểm câu này',
+    });
+    await correct(['o1']);
+    await t.queue.drain();
+    const appealId = (await api('GET', `${base()}/appeals`)).json().items[0].id as string;
+    const detail = (await api('GET', `${base()}/appeals/${appealId}`)).json();
+    expect(detail).toMatchObject({ examId, itemId: items.single_choice, canCorrect: true });
+    expect(detail.correction).toMatchObject({ oldScore: 1, newScore: 0 });
+
+    await api('PUT', `${base()}/grading-delegate`, {
+      userId: (await sql<{ id: string }>(`select id from users where username = 'gv2'`))[0]?.id,
+    });
+    const asDelegate = (
+      await api('GET', `${base()}/appeals/${appealId}`, undefined, live.other)
+    ).json();
+    expect(asDelegate.canCorrect).toBe(false);
+  });
+});

@@ -13,6 +13,11 @@ const uuid = () => new ParseUUIDPipe();
 export class KeyCorrectionsController {
   constructor(private readonly corrections: KeyCorrectionsService) {}
 
+  @Get('key-correction-items')
+  items(@Param('examId', uuid()) examId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.corrections.items(user.id, examId);
+  }
+
   @Get('items/:itemId/key-corrections')
   history(
     @Param('examId', uuid()) examId: string,

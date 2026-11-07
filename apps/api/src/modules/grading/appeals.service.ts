@@ -18,6 +18,7 @@ import { appeals, responseGrades } from './grading.schema';
 import { GradingAccessService } from './grading-access.service';
 import { itemsOf } from './grading-layout';
 import { GradingStatusService } from './grading-status.service';
+import { KeyCorrectionsService } from './key-corrections.service';
 
 /** Danh sách trả tối đa chừng này Phúc khảo (hạn mức 10 % số câu × 500 người vẫn nhỏ hơn nhiều so với con số này). */
 const LIST_LIMIT = 500;
@@ -41,6 +42,7 @@ export class AppealsService {
     private readonly finalize: AppealFinalizeService,
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
+    private readonly corrections: KeyCorrectionsService,
   ) {}
 
   /** Danh sách Phúc khảo: chờ xử lý lên đầu (cũ trước), kèm số chờ và số đã xử lý. */
@@ -166,8 +168,18 @@ export class AppealsService {
       this.source.loadSubmitted([row.attemptId]),
       this.source.displayNumbers([row.attemptId]),
     ]);
+    const [correction, canCorrect] = await Promise.all([
+      this.corrections.latestEffect(row.attemptId, item.itemId),
+      this.corrections.canCorrect(userId, info.examId),
+    ]);
     return {
       ...base,
+      examId: info.examId,
+      itemId: item.itemId,
+      /** Chỉ chủ Bộ đề Đính chính được (Q307); người được Ủy quyền chỉ thấy gợi ý báo chủ Bộ đề. */
+      canCorrect,
+      /** Đính chính đã đổi điểm tự động của Lượt này ở câu này (cảnh báo khi xử lý, Q316). */
+      correction: correction && correction.correctedAt > row.createdAt ? correction : null,
       item: {
         no: item.no,
         seenAs: numbers.get(row.attemptId)?.get(item.itemId) ?? null,

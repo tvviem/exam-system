@@ -1817,7 +1817,8 @@
       "suspect": "Nên kiểm tra đáp án",
       "rate": "Đúng {{rate}}%",
       "bar": "Tỷ lệ đúng, một phần, sai, bỏ trống",
-      "counts": "đúng {{correct}} · một phần {{partial}} · sai {{wrong}} · bỏ trống {{blank}} · chờ chấm {{pending}}"
+      "counts": "đúng {{correct}} · một phần {{partial}} · sai {{wrong}} · bỏ trống {{blank}} · chờ chấm {{pending}}",
+      "corrected": "Đã đính chính {{count}} lần"
     },
     "delegate": {
       "open": "Ủy quyền chấm",
@@ -2004,5 +2005,37 @@
       "resolvedTitle": "Đã xử lý",
       "backToResults": "Về Kết quả"
     }
+  },
+  "keyFix": {
+    "title": "Đính chính đáp án Câu {{no}}",
+    "pickTitle": "Đính chính đáp án",
+    "pickHint": "Chọn câu có đáp án nhập sai.",
+    "noItems": "Bộ đề này không có câu nào để đính chính (câu tự luận không có đáp án).",
+    "corrected": "đã đính chính {{count}} lần",
+    "open": "Đính chính đáp án",
+    "openItem": "Đính chính câu này",
+    "newKeyOne": "Đáp án đúng mới (chọn một)",
+    "newKeyMany": "Đáp án đúng mới (chọn một hoặc nhiều)",
+    "newKeyStatements": "Đúng hay Sai của từng Mệnh đề",
+    "currentKey": "đáp án hiện tại",
+    "reasonLabel": "Lý do (ít nhất {{min}} ký tự)",
+    "same": "Hãy chọn đáp án khác với đáp án hiện tại.",
+    "preview": "Xem trước tác động",
+    "confirm": "Xác nhận Đính chính",
+    "impact": "Sẽ chấm lại: {{increase}} người tăng điểm, {{decrease}} người giảm, {{unchanged}} không đổi.",
+    "impactFinalized": "{{count}} Phiên thi đã Chốt giữ nguyên điểm.",
+    "impactAppeals": "Có {{count}} Phúc khảo đang chờ về câu này.",
+    "impactNote": "Điểm chấm tay và điểm đã sửa qua Phúc khảo không bị đổi. Người dự thi ở Phiên thi đã Công bố có điểm đổi sẽ nhận thông báo.",
+    "bankNote": "Câu gốc trong Ngân hàng câu hỏi chưa được sửa. Hãy sửa ở đó nếu bạn còn dùng câu này cho Bộ đề khác.",
+    "openBank": "Mở câu gốc",
+    "running": "Đang chấm lại… {{processed}}/{{total}}",
+    "runningHint": "Bạn có thể đóng hộp thoại, việc chấm lại vẫn chạy.",
+    "done": "Xong: {{increase}} người tăng điểm, {{decrease}} người giảm.",
+    "failed": "Chấm lại bị lỗi. Bấm Thử lại để chấm nốt.",
+    "retry": "Thử lại",
+    "warnTitle": "Điểm tự động của câu này vừa đổi do Đính chính",
+    "warnBody": "Điểm tự động đã đổi từ {{from}} thành {{to}} sau khi Người dự thi gửi Phúc khảo. Hãy xem điểm hiện tại trước khi đặt điểm mới.",
+    "viaAppeal": "Đính chính cho cả lớp",
+    "askOwner": "Nếu nghi đáp án nhập sai cho cả lớp, hãy báo chủ Bộ đề để Đính chính đáp án."
   }
 }

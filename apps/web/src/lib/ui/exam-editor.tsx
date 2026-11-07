@@ -38,6 +38,7 @@ import { Badge, Button, Card, Dialog, ErrorMessage, PrimaryButton, TextField } f
 import { Breadcrumb } from './breadcrumb';
 import { ExamPreview } from './exam-preview';
 import { ExamPublishDialog } from './exam-publish-dialog';
+import { KeyCorrectionDialog } from './grading/key-correction-dialog';
 import { PageHeader } from './page-header';
 import { Rich } from './question-editor-fields';
 import { QuestionPicker } from './question-picker';
@@ -231,6 +232,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const [tab, setTab] = useState('edit');
   const [removingSection, setRemovingSection] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [fixingKey, setFixingKey] = useState(false);
   const skipBlock = useRef(false);
   const readOnly = exam.status !== 'draft';
   const isArchived = exam.status === 'archived';
@@ -337,13 +339,23 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
         }
       />
       {readOnly && (
-        <p role="status" className="rounded-lg border border-border bg-surface p-3 text-sm">
-          {t('exam.readOnlyNote')}{' '}
-          {exam.sessionCount > 0
-            ? t('exam.sessionCount', { count: exam.sessionCount })
-            : t('exam.sessionCountNone')}
-          .
-        </p>
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-sm">
+          <p role="status">
+            {t('exam.readOnlyNote')}{' '}
+            {exam.sessionCount > 0
+              ? t('exam.sessionCount', { count: exam.sessionCount })
+              : t('exam.sessionCountNone')}
+            .
+          </p>
+          <Button className="w-fit" onClick={() => setFixingKey(true)} data-testid="key-fix-open">
+            {t('keyFix.open')}
+          </Button>
+          <KeyCorrectionDialog
+            examId={exam.id}
+            open={fixingKey}
+            onClose={() => setFixingKey(false)}
+          />
+        </div>
       )}
       <ErrorMessage>
         {(duplicate.isError && errorMessage(t, duplicate.error)) ||

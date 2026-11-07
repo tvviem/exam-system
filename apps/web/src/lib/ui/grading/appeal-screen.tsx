@@ -1,7 +1,7 @@
 import type { RichText } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CircleCheck, TriangleAlert } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,13 +14,14 @@ import {
 import { errorMessage } from '../../errors';
 import { formatDateTime } from '../../format';
 import type { PenaltyInput } from '../../grading';
-import { Badge, ErrorMessage, PrimaryButton } from '..';
+import { Badge, Button, ErrorMessage, PrimaryButton } from '..';
 import { ListSkeleton } from '../admin';
 import { QuestionView, type QuestionViewData } from '../question-view';
 import { RichTextView } from '../rich-text-view';
 import { useToast } from '../toast';
 import { appealValueText } from './appeal-box';
 import { appealSubject } from './appeals-panel';
+import { KeyCorrectionDialog } from './key-correction-dialog';
 
 // Màn xử lý Phúc khảo của Người ra đề (docs/plan/slice-5.md, PR 5d-2; Q310, Q313): một Phúc khảo một màn như màn Chấm. Máy tính
 // có danh sách bên trái; điện thoại đi bằng nút trước/sau. Phím J/K sang Phúc khảo kế tiếp/trước. Hiện tên Người dự thi (Phúc khảo
@@ -258,6 +259,7 @@ type Doc = { id: string; content: RichText };
 /** Nội dung câu (có đáp án, vì đây là Người ra đề), bài làm của Người dự thi và điểm hiện tại. */
 function ItemSection({ data }: { data: AppealDetail }) {
   const { t } = useTranslation();
+  const [fixing, setFixing] = useState(false);
   const item = data.item;
   if (!item) return null;
   const question = {
@@ -276,6 +278,23 @@ function ItemSection({ data }: { data: AppealDetail }) {
         <h3 className="text-sm font-semibold">{t('appeal.screen.theirAnswer')}</h3>
         <AnswerView item={item} answer={data.answer} />
       </section>
+      {/* Đính chính đã đổi điểm tự động của câu này sau khi Phúc khảo được gửi (Q316). */}
+      {data.correction && (
+        <p
+          role="status"
+          data-testid="appeal-correction"
+          className="flex items-start gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning"
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>
+            <span className="font-semibold">{t('keyFix.warnTitle')}. </span>
+            {t('keyFix.warnBody', {
+              from: fmt(data.correction.oldScore),
+              to: fmt(data.correction.newScore),
+            })}
+          </span>
+        </p>
+      )}
       {data.grade && (
         <p className="text-sm tabular-nums" data-testid="appeal-grade">
           {t('appeal.screen.currentScore', {
@@ -284,6 +303,31 @@ function ItemSection({ data }: { data: AppealDetail }) {
             source: t(`appeal.screen.source.${data.grade.source}`),
           })}
         </p>
+      )}
+      {item.type !== 'essay' && data.status === 'open' && data.examId && data.itemId && (
+        <div className="flex flex-col gap-1">
+          {data.canCorrect ? (
+            <>
+              <Button
+                className="w-fit"
+                onClick={() => setFixing(true)}
+                data-testid="appeal-fix-class"
+              >
+                {t('keyFix.viaAppeal')}
+              </Button>
+              <KeyCorrectionDialog
+                examId={data.examId}
+                itemId={data.itemId}
+                open={fixing}
+                onClose={() => setFixing(false)}
+              />
+            </>
+          ) : (
+            <p className="text-sm text-fg-muted" data-testid="appeal-ask-owner">
+              {t('keyFix.askOwner')}
+            </p>
+          )}
+        </div>
       )}
     </>
   );

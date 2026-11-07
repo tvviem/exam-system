@@ -1402,5 +1402,41 @@
     "roleTags": ["candidate"],
     "code": "AP-M-001",
     "classLabel": "LOP-AP-M"
+  },
+  {
+    "username": "e2e-lb-dc-gv-desktop",
+    "fullName": "Người ra đề Đính chính (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-dc-sv-desktop",
+    "fullName": "Thí sinh Đính chính (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "DC-D-001",
+    "classLabel": "LOP-DC-D"
+  },
+  {
+    "username": "e2e-lb-dc-gv-mobile",
+    "fullName": "Người ra đề Đính chính (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-dc-sv-mobile",
+    "fullName": "Thí sinh Đính chính (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "DC-M-001",
+    "classLabel": "LOP-DC-M"
   }
 ]
