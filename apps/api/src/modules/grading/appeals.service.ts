@@ -224,6 +224,8 @@ export class AppealsService {
       }
     }
 
+    // Người nhận thông báo lấy trước giao dịch (không dùng nhóm kết nối trong giao dịch: xem CandidateAppealsService.create).
+    const staff = await this.access.staffIds(info);
     const resolved = await this.db.transaction(async (tx) => {
       // Phúc khảo nối đuôi với job Chốt và gia hạn; 409 nếu đã Chốt.
       await this.status.lockForAppeal(tx, sessionId);
@@ -328,7 +330,6 @@ export class AppealsService {
         .from(appeals)
         .where(and(eq(appeals.sessionId, sessionId), eq(appeals.status, 'open')));
       if ((open?.total ?? 0) === 0) {
-        const staff = await this.access.staffIds(info);
         for (const type of ['appeal.new', 'appeal.overdue']) {
           await this.notifications.clearUnread({ userIds: staff, type, sessionId }, tx);
         }

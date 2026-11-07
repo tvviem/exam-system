@@ -25,13 +25,14 @@ Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên đ
   - Thiết lập: Khung giờ, Thời lượng, Mã vào thi, số lượt làm bài, xáo trộn câu và phương án.
   - Lập Danh sách dự thi: tìm theo Lớp hoặc từng người.
 - Theo dõi phòng thi trực tiếp (đã xong, lát cắt 4): Cộng giờ, Buộc nộp, Thu hồi thiết bị cho đổi máy, Cảnh cáo, Đình chỉ, Đóng cửa vào thi; số liệu cập nhật qua Socket.IO. Buộc nộp phải gõ lại Mã định danh (một người) hay số người (nhóm, cả phòng) mới bấm được; bấm nhầm thì **Hoàn tác Buộc nộp** trong 10 phút, Người dự thi tự về đề với các câu đã lưu còn nguyên.
-- *Chưa làm (lát cắt 5):* chấm Câu tự luận theo từng câu (có thể ẩn tên), Công bố kết quả, xử lý Phúc khảo, Đính chính đáp án, xuất Kết quả ra Excel.
+- Chấm và Kết quả (lát cắt 5): Lượt vừa nộp được **chấm tự động** (ba Loại câu trắc nghiệm) trong vài giây; Người ra đề **chấm Câu tự luận** theo từng câu (ẩn tên, bằng bàn phím hoặc ngón tay, tự lưu), quyết **Mức xử lý** cho Vi phạm, xem **bảng Kết quả** và **Thống kê câu**, **Công bố kết quả** với Thời hạn phúc khảo 0–14 ngày, **xuất Excel**; có thể **Ủy quyền chấm** cho Người ra đề khác khi có sự cố.
+- **Phúc khảo** và **Đính chính đáp án** (lát cắt 5): xử lý Phúc khảo từng cái một (phím J/K), gia hạn Thời hạn phúc khảo, hệ thống nhắc khi quá hạn và tự **Chốt** khi hết hạn mà không còn Phúc khảo; phát hiện nhập sai đáp án thì đổi đáp án, xem trước bao nhiêu người đổi điểm rồi chấm lại cả phòng ở nền chỉ trong vài giây.
 
 **Người dự thi**
 - Vào thi bằng Mã vào thi; mỗi Phiên thi gắn với một thiết bị (Người ra đề cho đổi máy khi có sự cố).
 - Làm bài trên điện thoại với hai chế độ xem chuyển qua lại được: **Từng câu** và **Cả đề**; cài như ứng dụng (PWA).
 - Bài tự lưu, chịu được mạng chập chờn và tải lại trang khi mất mạng, đồng hồ do server quyết định, cảnh báo khi còn 5 phút và 1 phút; nhận ngay thông báo Cộng giờ, Cảnh cáo, Buộc nộp từ Người ra đề.
-- *Chưa làm (lát cắt 5):* xem Kết quả sau khi được Công bố (điểm từng câu, không lộ Đáp án đúng) và gửi Phúc khảo trong 72 giờ.
+- Xem **Kết quả của tôi** sau khi Công bố (bản đồ câu ✓ ◐ ✗, lọc câu sai, xem từng câu một, không bao giờ thấy Đáp án đúng) và gửi **Phúc khảo** trong Thời hạn phúc khảo (tối đa 10 % số câu, ít nhất 3); nhận thông báo khi được xử lý hoặc khi điểm đổi vì Đính chính.
 
 Định nghĩa đầy đủ của mọi thuật ngữ in hoa nằm trong [GLOSSARY.md](GLOSSARY.md).
 
@@ -253,6 +254,23 @@ Lệnh in địa chỉ màn Theo dõi và tài khoản `demo-gv`; đăng nhập 
 
 **Đo tải:** `LOAD_USERS=100 nice -n 19 pnpm -C apps/api load:exam` (khoảng 2 phút); 500 người: `LOAD_API_INSTANCES=2 LOAD_USERS=500 nice -n 19 pnpm -C apps/api load:exam` (khoảng 5 phút; một bản api không đủ cho 500 người cùng Cộng giờ). Số đo ở [docs/architecture.md](docs/architecture.md) mục 11.
 
+## Dùng thử lát cắt 5
+
+Cần như lát cắt 4 và `pnpm db:migrate` (migration `0017`–`0021`: chấm, thiết lập chấm và Công bố, Phúc khảo, Đính chính). Chạy cả `pnpm dev` và worker (`pnpm -C apps/api dev:worker`): chấm tự động, chấm lại và job Chốt chạy ở worker.
+
+**Cách nhanh nhất:** phòng thi thử đi tiếp sau giờ thi. Chuẩn bị như lát cắt 4 (`LOGIN_MAX_PER_IP=100000`, `pnpm -C apps/api build`), rồi:
+
+```bash
+pnpm -C apps/api demo:room --users 20 --through grade     # nộp xong, chấm tự động xong; bạn tự chấm 2 câu Tự luận
+pnpm -C apps/api demo:room --users 20 --through release   # script chấm Tự luận và Công bố giúp
+pnpm -C apps/api demo:room --users 20 --through appeal    # như trên, có sẵn 10 Phúc khảo chờ xử lý
+pnpm -C apps/api demo:room --clean                        # xóa mọi dữ liệu demo-*
+```
+
+Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Người dự thi `demo-sv001`…, mật khẩu `Demo-Phong-Thi-123`. Hướng dẫn từng bước cho người dùng nằm ở [docs/huong-dan/cham-diem-va-phuc-khao.md](docs/huong-dan/cham-diem-va-phuc-khao.md); bảng "Cách thử, mong đợi" chi tiết ở [docs/plan/slice-5.md](docs/plan/slice-5.md).
+
+**Đo tải sau giờ thi:** `LOAD_USERS=100 nice -n 19 pnpm -C apps/api load:exam` (khoảng 4 phút; Bộ đề 40 câu, cả phòng bị Buộc nộp cùng lúc rồi chấm, Công bố, Phúc khảo, Đính chính). Số đo và cách đọc ở [docs/hieu-nang.md](docs/hieu-nang.md).
+
 ## Vận hành
 
 **Các tiến trình**
@@ -309,7 +327,9 @@ Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, r
 | [GLOSSARY.md](GLOSSARY.md) | Thuật ngữ nghiệp vụ và tên dùng trong mã nguồn |
 | [docs/architecture.md](docs/architecture.md) | Kiến trúc, luồng nghiệp vụ, bảo mật, trải nghiệm điện thoại, triển khai, phạm vi |
 | [docs/data-model.md](docs/data-model.md) | Thiết kế bảng PostgreSQL, ràng buộc, công thức tính Kết quả |
-| [docs/plan/](docs/plan) | Kế hoạch, quyết định, ghi chú triển khai và hướng dẫn thử từng lát cắt: slice-0 đến slice-4 (slice-1: Q43–Q99, slice-3: Q159–Q191, slice-4: Q192–Q272) |
+| [docs/plan/](docs/plan) | Kế hoạch, quyết định, ghi chú triển khai và hướng dẫn thử từng lát cắt: slice-0 đến slice-5 (slice-1: Q43–Q99, slice-3: Q159–Q191, slice-4: Q192–Q272, slice-5: Q285–Q322) |
+| [docs/hieu-nang.md](docs/hieu-nang.md) | Hiệu năng và sức tải đã đo, cách đọc số đo, khuyến nghị cỡ phòng thi |
+| [docs/huong-dan/](docs/huong-dan) | Hướng dẫn sử dụng theo vai (chấm điểm, Công bố, Phúc khảo, Đính chính) |
 | [docs/ops/demo-wsl.md](docs/ops/demo-wsl.md) | Triển khai demo trên laptop WSL (bản nháp) |
 | [docs/ui-design.md](docs/ui-design.md), [docs/ui-review.md](docs/ui-review.md) | Thiết kế giao diện và kết quả rà soát giao diện |
 | [demo-data/README.md](demo-data/README.md) | File Excel dữ liệu demo và kịch bản dùng |
@@ -325,7 +345,7 @@ Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, r
 | 2 | **Xong.** Chủ đề, Câu hỏi, Hình minh họa, soạn công thức, nhập Excel |
 | 3 | **Xong.** Bộ đề, Phần, Đặt điểm nhanh, Xem thử, Phát hành, Lưu trữ Câu hỏi và Bộ đề, Nhân bản, Chuyển giao kèm Bộ đề |
 | 4 | **Xong.** Phiên thi, Danh sách dự thi, Mã vào thi, làm bài trên điện thoại (chịu mất mạng), theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ, kênh đẩy Socket.IO, Xóa Người ra đề chuyển Phiên thi |
-| 5 | Chấm, Công bố kết quả, Phúc khảo, Đính chính đáp án, xuất Excel |
+| 5 | **Xong.** Chấm tự động và tự luận, Công bố kết quả, Kết quả của tôi, Phúc khảo, Chốt, Đính chính đáp án, Ủy quyền chấm, xuất Excel, đo tải sau giờ thi |
 | 6 | Triển khai production lên pod `prod-exam` |
 
 Để giai đoạn sau: rút ngẫu nhiên câu hỏi, thống kê câu hỏi, nhập câu hỏi từ Word, tải ảnh vào Câu tự luận, giao diện tiếng Anh, gửi email, xác thực hai lớp cho Quản trị viên, chuyển sang VPS.

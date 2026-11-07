@@ -74,6 +74,35 @@ Dùng ba file mới: `cau-hoi-cau-truc-du-lieu.xlsx` (10 câu Chọn một, Ch�
 13. Người ra đề: tab **Theo dõi** của Phiên thi, thử Cộng giờ, Cảnh cáo, Đình chỉ, Buộc nộp, Thu hồi thiết bị, Đóng cửa vào thi. Xem thêm bảng "Cách thử, mong đợi" trong `docs/plan/slice-4.md` (mục Hướng dẫn thử 4c-1, 4d-2, 4d-3).
 14. Quản trị viên: mở trang một Người ra đề đang có Phiên thi đang diễn ra để thấy dải cảnh báo và nút Khóa, Xóa bị vô hiệu; sau khi Phiên thi hết (hoặc **Hủy Phiên thi**), thử **Xóa người dùng** để thấy hộp xác nhận chuyển Chủ đề, Bộ đề và Phiên thi cho người nhận.
 
+## Kịch bản 3: chấm, Công bố, Phúc khảo, Đính chính (khoảng 10 phút)
+
+Không cần file Excel: `demo:room` dựng sẵn Bộ đề 20 câu đủ bốn Loại (8 Chọn một, 5 Chọn nhiều, 5 Chùm đúng sai, 2 Tự luận; mỗi câu 1 điểm, Tự luận 2 điểm), cho người dự thi giả làm đủ mọi câu và nộp, rồi dừng đúng ở bước bạn muốn thử. Làm sau `pnpm db:migrate`, khi `pnpm dev` và worker (`pnpm -C apps/api dev:worker`) đang chạy, có `LOGIN_MAX_PER_IP=100000` trong `apps/api/.env`, và đã `pnpm -C apps/api build`.
+
+| Muốn thử | Lệnh | Script làm sẵn |
+|---|---|---|
+| Chấm Tự luận, Mức xử lý, bảng Kết quả, Công bố | `pnpm -C apps/api demo:room --users 20 --through grade` | Nộp bài và chấm tự động |
+| Kết quả của tôi, gửi Phúc khảo | `pnpm -C apps/api demo:room --users 20 --through release` | Thêm: chấm Tự luận, Công bố (hạn Phúc khảo 3 ngày) |
+| Xử lý Phúc khảo, Đính chính đáp án, Chốt | `pnpm -C apps/api demo:room --users 20 --through appeal` | Thêm: 10 Phúc khảo gửi sẵn |
+
+Chạy lại bước khác thì `pnpm -C apps/api demo:room --clean` trước. Người ra đề `demo-gv`, Người dự thi `demo-sv001`…, mật khẩu `Demo-Phong-Thi-123`; lệnh in sẵn địa chỉ màn Kết quả của Phiên thi.
+
+**A. `--through grade` (Người ra đề `demo-gv`)**
+1. Mở Phiên thi → tab **Kết quả**: thanh bước hiện "chờ chấm 40 bài Tự luận".
+2. **Chấm câu Tự luận**: màn Chấm hiện từng bài ẩn tên; nhập điểm bằng bàn phím (0 đến 2), Enter sang bài kế; điểm tự lưu.
+3. Tab **Thống kê câu**: xem tỷ lệ đúng từng câu. **Vi phạm** (nếu có): chọn Mức xử lý.
+4. Chấm hết thì **Công bố kết quả**, chọn hạn Phúc khảo (ví dụ 3 ngày). Thử **Xuất Excel**.
+
+**B. `--through release` (Người dự thi `demo-sv001`, cửa sổ ẩn danh, điện thoại 360 px)**
+5. **Kết quả của tôi**: thẻ điểm, bản đồ câu ✓ ◐ ✗ –, nút lọc "Sai", mũi tên hoặc phím ← → sang câu kế.
+6. Câu sai → **Phúc khảo Câu N** → gõ lý do (ít nhất 10 ký tự) → **Gửi**. Dòng "đã dùng 1/3 lượt" hiện; câu có chấm trên bản đồ.
+
+**C. `--through appeal` (Người ra đề)**
+7. Chuông thông báo hoặc tab **Phúc khảo**: danh sách Phúc khảo chờ; mở **Xử lý Phúc khảo**, xem câu, đáp án, bài làm; **Giữ nguyên** hoặc **Đặt điểm khác** kèm câu trả lời bắt buộc; phím J/K sang Phúc khảo kế. Thử **Gia hạn** Thời hạn phúc khảo.
+8. Tab **Thống kê câu** → câu Chọn một nhiều người sai → **Đính chính câu này** → chọn đáp án mới → **Xem trước** (bao nhiêu người tăng, giảm) → xác nhận. Điểm cả phòng đổi sau vài giây; Người dự thi nhận thông báo và thấy điểm mới.
+9. Xử lý hết Phúc khảo và để Thời hạn phúc khảo hết (hoặc sửa giờ trong cơ sở dữ liệu thử): trong vòng một phút Phiên thi tự **Đã Chốt**; Đính chính sau đó không đổi điểm Phiên thi đã Chốt.
+
+Chi tiết từng thao tác nhìn từ phía người dùng ở [docs/huong-dan/cham-diem-va-phuc-khao.md](../docs/huong-dan/cham-diem-va-phuc-khao.md).
+
 ## Sinh lại file
 
 Các file `.xlsx` được sinh từ mã, không sửa tay. Dữ liệu nằm trong `apps/api/scripts/demo-data/`. Sửa xong chạy:

@@ -9,11 +9,18 @@
 //   pnpm -C apps/api demo:room --users 300 --minutes 45
 //   pnpm -C apps/api demo:room --clean            (xóa mọi dữ liệu `demo-*` do script tạo)
 //
+// Đi tiếp sau giờ thi (docs/plan/slice-5.md, Q322): `--through` cho cả phòng nộp nhanh (vài chục giây, không có người mất mạng/làm chậm) rồi dừng ở:
+//   --through grade     đã nộp và chấm tự động xong; còn 2 câu Tự luận để bạn tự chấm ở màn Chấm
+//   --through release   script chấm Tự luận giúp và Công bố (hạn Phúc khảo 3 ngày); bạn vào xem "Kết quả của tôi", thử Phúc khảo
+//   --through appeal    như release và 10 Người dự thi đã gửi sẵn Phúc khảo; bạn xử lý Phúc khảo và thử Đính chính đáp án
+//   ví dụ: pnpm -C apps/api demo:room --users 20 --through appeal
+//
 // Người dự thi giả đi qua chính API thật (đăng nhập, vào thi, bắt đầu, lưu bài, heartbeat) nên màn Theo dõi hiện đúng như thật.
 // Thôi mô phỏng bằng Ctrl-C; dữ liệu còn nguyên cho tới khi chạy `--clean`.
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client } = require('pg');
+const { MIX_DEMO, createMixedQuestions, answerFor } = require('./exam-mix.cjs');
 const { hashPassword } = require('../dist/modules/identity/password/password-hasher.js');
 
 const args = process.argv.slice(2);
@@ -24,6 +31,11 @@ const flag = (name, fallback) => {
 const CLEAN = args.includes('--clean');
 const N = Number(flag('users', 120));
 const MINUTES = Number(flag('minutes', 30));
+const THROUGH = flag('through', null);
+if (THROUGH && !['grade', 'release', 'appeal'].includes(THROUGH)) {
+  console.error('--through chỉ nhận grade, release hoặc appeal');
+  process.exit(1);
+}
 const API = flag('api', 'http://localhost:3000/api');
 const ORIGIN = flag('origin', 'http://localhost:5173');
 const RAMP_MS = 20_000;
@@ -175,28 +187,14 @@ async function seed() {
 async function buildSession(teacher, userIds) {
   const { textDoc } = await import('@exam/shared');
   const topic = await teacher.must('POST', '/topics', { name: 'Demo phòng thi' });
-  const questionIds = [];
-  for (let i = 0; i < 20; i++) {
-    const q = await teacher.must('POST', '/questions', {
-      type: 'single_choice',
-      topicId: topic.id,
-      stem: textDoc(`Câu hỏi thử số ${i + 1}`),
-      defaultPoints: 1,
-      tags: [],
-      payload: {
-        options: ['a', 'b', 'c', 'd'].map((id) => ({ id, content: textDoc(`Phương án ${id}`) })),
-        key: ['a'],
-        shuffleOptions: true,
-      },
-    });
-    questionIds.push(q.id);
-  }
+  // 20 câu đủ bốn Loại câu (8 Chọn một, 5 Chọn nhiều, 5 Chùm đúng sai, 2 Tự luận); mỗi câu 1 điểm, Tự luận 2 điểm.
+  const { questionIds, points } = await createMixedQuestions((url, body) => teacher.must('POST', url, body), textDoc, topic.id, MIX_DEMO);
   const exam = await teacher.must('POST', '/exams', { title: 'Đề thử phòng thi' });
   const saved = await teacher.must('PUT', `/exams/${exam.id}`, {
     title: 'Đề thử phòng thi',
     instructions: textDoc(''),
     version: exam.version,
-    sections: [{ id: exam.sections[0].id, title: null, instructions: textDoc(''), items: questionIds.map((questionId) => ({ questionId, points: 1 })) }],
+    sections: [{ id: exam.sections[0].id, title: null, instructions: textDoc(''), items: questionIds.map((questionId, k) => ({ questionId, points: points[k] })) }],
   });
   await teacher.must('POST', `/exams/${exam.id}/publish`, { version: saved.version });
   const now = Date.now();
@@ -209,7 +207,7 @@ async function buildSession(teacher, userIds) {
     accessCode: ACCESS_CODE,
   });
   await teacher.must('POST', `/sessions/${session.id}/roster`, { userIds });
-  return session.id;
+  return { sessionId: session.id, examId: exam.id };
 }
 
 // Hành vi của người dự thi giả theo số thứ tự: đa số làm bình thường, một số cố ý có dấu hiệu "Cần chú ý".
@@ -224,7 +222,8 @@ const stats = { working: 0, submitted: 0, stopped: 0, offline: 0, failed: 0 };
 let stopping = false;
 
 async function candidate(i, startedAtRef) {
-  const behavior = behaviorOf(i);
+  const quick = Boolean(THROUGH); // chế độ --through: ai cũng làm đủ và nộp sớm
+  const behavior = quick ? 'normal' : behaviorOf(i);
   const c = new Client_(`sv${pad(i)}`);
   await sleep(Math.random() * RAMP_MS);
   if (stopping) return;
@@ -250,7 +249,7 @@ async function candidate(i, startedAtRef) {
   let seq = 0;
   let pending = [];
   const event = (type) => pending.push({ id: crypto.randomUUID(), type });
-  const finishAt = startedAt + MINUTES * 60_000 * (0.7 + Math.random() * 0.25);
+  const finishAt = quick ? startedAt + 8_000 + Math.random() * 15_000 : startedAt + MINUTES * 60_000 * (0.7 + Math.random() * 0.25);
   // Mỗi hành vi có "lịch" riêng tính từ lúc bắt đầu.
   const offlineFrom = startedAt + 60_000;
   const offlineTo = offlineFrom + 3 * 60_000;
@@ -263,9 +262,15 @@ async function candidate(i, startedAtRef) {
     seq += 1;
     const item = items[seq % items.length];
     await c.call('PUT', `/take/attempts/${attemptId}/responses`, {
-      items: [{ itemId: item.itemId, clientSeq: seq, value: { optionId: item.payload.options[0].id }, flagged: false }],
+      items: [{ itemId: item.itemId, clientSeq: seq, value: answerFor(item, i, seq), flagged: false }],
     });
   };
+  if (quick) {
+    // Làm đủ mọi câu một lượt (đáp án pha đúng/sai theo số thứ tự người để có điểm khác nhau).
+    await c.must('PUT', `/take/attempts/${attemptId}/responses`, {
+      items: items.map((item, k) => ({ itemId: item.itemId, clientSeq: 1000 + k, value: answerFor(item, i, k), flagged: false })),
+    });
+  }
 
   while (!stopping) {
     const now = Date.now();
@@ -301,7 +306,7 @@ async function candidate(i, startedAtRef) {
       await c.call('POST', `/take/attempts/${attemptId}/submit`);
       stats.submitted += 1;
       stats.working -= 1;
-      return;
+      return c;
     }
     await sleep(1000);
   }
@@ -310,17 +315,63 @@ async function candidate(i, startedAtRef) {
 }
 candidate.warned = false;
 
+/** Sau giờ thi cho `--through`: đóng cửa vào thi, chờ chấm tự động; tới `release` thì chấm Tự luận và Công bố; tới `appeal` thì gửi Phúc khảo. */
+async function afterExam(teacher, sessionId, clients) {
+  const base = `/sessions/${sessionId}`;
+  const say = (text) => console.log(`  ${text}`);
+  await teacher.must('POST', `${base}/close-entry`);
+  const results = `${ORIGIN}/examiner/sessions/${sessionId}?tab=results`;
+  if (THROUGH === 'grade') {
+    say(`Đã nộp ${clients.length}/${N} bài, chấm tự động chạy ở worker. Vào ${results} → Chấm câu Tự luận (2 câu), rồi Công bố.`);
+    return;
+  }
+  // Chấm Tự luận thay Người ra đề: chờ chấm tự động xếp đủ bài vào hàng đợi rồi cho điểm 0,5 / 1 / 1,5 / 2 luân phiên.
+  const essays = (await teacher.must('GET', `${base}/grading/items`)).items;
+  let graded = 0;
+  for (const essay of essays) {
+    let entries = [];
+    for (let wait = 0; wait < 60; wait++) {
+      entries = (await teacher.must('GET', `${base}/grading/items/${essay.itemId}/queue?filter=pending`)).entries;
+      if (entries.length >= clients.length) break;
+      await sleep(500);
+    }
+    for (const [k, entry] of entries.entries()) {
+      await teacher.must('PUT', `${base}/grading/attempts/${entry.attemptId}/items/${essay.itemId}`, { score: 0.5 * ((k % 4) + 1), feedback: null });
+      graded += 1;
+    }
+  }
+  say(`Đã chấm ${graded} bài Tự luận.`);
+  const released = await teacher.must('POST', `${base}/release`, { appealPeriodDays: 3 });
+  say(`Đã Công bố kết quả, hạn Phúc khảo tới ${released.appealUntil}.`);
+  if (THROUGH === 'release') {
+    say(`Người dự thi (demo-sv001…, mật khẩu ${PASSWORD}) vào "Kết quả của tôi" xem điểm và thử Phúc khảo. Người ra đề xem ${results}.`);
+    return;
+  }
+  let sent = 0;
+  for (const c of clients.slice(0, 10)) {
+    const sessionIdOf = (await c.must('GET', '/take/sessions')).items[0].sessionId;
+    const result = await c.must('GET', `/take/sessions/${sessionIdOf}/result`);
+    const miss = result.items.find((it) => it.type !== 'essay' && it.score !== null && it.score < it.points) ?? result.items[0];
+    const res = await c.call('POST', `/take/sessions/${sessionIdOf}/appeals`, { target: 'response', no: miss.no, reason: 'Em cho rằng đáp án của em đúng, nhờ thầy cô xem lại.' });
+    if (res.ok) sent += 1;
+  }
+  say(`${sent} Phúc khảo đã gửi sẵn. Người ra đề: ${ORIGIN}/examiner/sessions/${sessionId}/appeals (hoặc tab Phúc khảo ở ${results}); thử Đính chính đáp án ở "Thống kê câu".`);
+}
+
 async function simulate() {
   const userIds = await seed();
   const teacher = new Client_('gv');
   await teacher.must('POST', '/auth/login', { identifier: TEACHER, password: PASSWORD });
-  const sessionId = await buildSession(teacher, userIds);
+  const { sessionId } = await buildSession(teacher, userIds);
   console.log(`
 Đã dựng phòng thi thử: ${N} người, Thời lượng ${MINUTES} phút, Mã vào thi ${ACCESS_CODE}.
   Đăng nhập Người ra đề:  ${ORIGIN}   tên đăng nhập ${TEACHER}   mật khẩu ${PASSWORD}
   Màn Theo dõi:           ${ORIGIN}/examiner/sessions/${sessionId}?tab=monitor
-Người dự thi giả vào thi rải trong ${RAMP_MS / 1000} giây. Cứ 20 người: 1 hay rời tab, 1 mất mạng 3 phút, 2 làm rất chậm; phần còn lại nộp bài
-sau khoảng 70-95% Thời lượng. Buộc nộp, Cộng giờ, Thu hồi bạn thử ở màn Theo dõi sẽ tới họ qua heartbeat 15 giây.
+${
+    THROUGH
+      ? `Chế độ --through ${THROUGH}: Người dự thi giả vào thi rải trong ${RAMP_MS / 1000} giây, làm đủ mọi câu rồi nộp sau khoảng 10-25 giây; script đi tiếp tới bước đã chọn.`
+      : `Người dự thi giả vào thi rải trong ${RAMP_MS / 1000} giây. Cứ 20 người: 1 hay rời tab, 1 mất mạng 3 phút, 2 làm rất chậm; phần còn lại nộp bài\nsau khoảng 70-95% Thời lượng. Buộc nộp, Cộng giờ, Thu hồi bạn thử ở màn Theo dõi sẽ tới họ qua heartbeat 15 giây.`
+  }
 Ctrl-C để dừng mô phỏng (dữ liệu còn nguyên); \`pnpm -C apps/api demo:room --clean\` để xóa.\n`);
 
   const startedAtRef = { count: 0 };
@@ -331,9 +382,10 @@ Ctrl-C để dừng mô phỏng (dữ liệu còn nguyên); \`pnpm -C apps/api d
     stopping = true;
     console.log('\nĐang dừng mô phỏng… Dữ liệu demo còn nguyên (xóa bằng --clean).');
   });
-  await Promise.all(Array.from({ length: N }, (_, i) => candidate(i, startedAtRef)));
+  const done = await Promise.all(Array.from({ length: N }, (_, i) => candidate(i, startedAtRef)));
   clearInterval(report);
   console.log('Mô phỏng đã dừng.');
+  if (THROUGH && !stopping) await afterExam(teacher, sessionId, done.filter(Boolean));
 }
 
 (CLEAN ? clean() : simulate()).then(

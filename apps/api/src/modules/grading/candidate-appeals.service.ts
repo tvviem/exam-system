@@ -94,6 +94,9 @@ export class CandidateAppealsService {
       attemptId = violation.attemptId;
     }
 
+    // Danh sách người nhận thông báo lấy TRƯỚC giao dịch: gọi nhóm kết nối trong giao dịch thì nhiều người gửi cùng lúc giữ hết
+    // kết nối để chờ nhau (đã gặp khi đo tải 500 người, PR 5e).
+    const staff = await this.access.staffIds(info);
     const created = await this.db
       .transaction(async (tx) => {
         const state = await this.status.lockForAppeal(tx, sessionId);
@@ -132,7 +135,7 @@ export class CandidateAppealsService {
           .where(and(eq(appeals.sessionId, sessionId), eq(appeals.status, 'open')));
         await this.notifications.upsertUnread(
           {
-            userIds: await this.access.staffIds(info),
+            userIds: staff,
             type: 'appeal.new',
             sessionId,
             data: { title: info.title, count: open?.total ?? 1 },
