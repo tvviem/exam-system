@@ -34,6 +34,7 @@ import { type Column, DataList } from '../data-list';
 import { Tabs } from '../tabs';
 import { useToast } from '../toast';
 import { DelegateDialog } from './delegate-dialog';
+import { ReleasePanel } from './release-panel';
 
 // Màn Kết quả của một Phiên thi (docs/plan/slice-5.md, PR 5b): bảng người, Thống kê câu, Vi phạm kèm Mức xử lý, chi tiết từng
 // người, Chấm ẩn tên và Ủy quyền chấm. Dùng cho chủ Phiên thi (tab) và người được Ủy quyền (đường dẫn riêng).
@@ -61,6 +62,7 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
   if (results.isError) return <ErrorMessage>{errorMessage(t, results.error)}</ErrorMessage>;
   const data = results.data;
   const { status } = data;
+  const released = data.release.releasedAt !== null;
   return (
     <div className="flex flex-col gap-4">
       <Card className="flex flex-col gap-3">
@@ -83,7 +85,10 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
           <Link
             to="/examiner/sessions/$sessionId/grading"
             params={{ sessionId }}
-            className={buttonClass(status.pendingEssays > 0 ? 'primary' : 'secondary')}
+            className={buttonClass(status.pendingEssays > 0 && !released ? 'primary' : 'secondary')}
+            aria-disabled={released}
+            tabIndex={released ? -1 : undefined}
+            onClick={(e) => released && e.preventDefault()}
           >
             <Pencil aria-hidden className="size-4" />
             {t('grading.results.grade')}
@@ -92,7 +97,7 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
           <button
             type="button"
             aria-pressed={data.blind}
-            disabled={blind.isPending}
+            disabled={blind.isPending || released}
             onClick={() => blind.mutate(!data.blind)}
             className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 text-sm font-medium pointer-fine:min-h-9"
           >
@@ -106,6 +111,7 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
             </Button>
           )}
         </div>
+        <ReleasePanel sessionId={sessionId} data={data} />
         {status.essayHidden && (
           <p
             role="status"
@@ -138,7 +144,10 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
           {
             id: 'violations',
             label: t('grading.results.violations', { count: status.violationsUndecided }),
-            content: tab === 'violations' ? <ViolationsPanel sessionId={sessionId} /> : null,
+            content:
+              tab === 'violations' ? (
+                <ViolationsPanel sessionId={sessionId} released={released} />
+              ) : null,
           },
         ]}
       />
@@ -479,7 +488,7 @@ function StatRow({ item }: { item: ItemStat }) {
   );
 }
 
-function ViolationsPanel({ sessionId }: { sessionId: string }) {
+function ViolationsPanel({ sessionId, released }: { sessionId: string; released: boolean }) {
   const { t } = useTranslation();
   const violations = useQuery(violationsQuery(sessionId));
   if (violations.isPending) return <ListSkeleton rows={3} />;
@@ -491,14 +500,22 @@ function ViolationsPanel({ sessionId }: { sessionId: string }) {
       <p className="text-sm text-fg-muted">{t('grading.violations.hint')}</p>
       <ul className="flex flex-col gap-3">
         {violations.data.items.map((v) => (
-          <ViolationRow key={v.id} sessionId={sessionId} violation={v} />
+          <ViolationRow key={v.id} sessionId={sessionId} violation={v} locked={released} />
         ))}
       </ul>
     </div>
   );
 }
 
-function ViolationRow({ sessionId, violation }: { sessionId: string; violation: ViolationItem }) {
+function ViolationRow({
+  sessionId,
+  violation,
+  locked,
+}: {
+  sessionId: string;
+  violation: ViolationItem;
+  locked: boolean;
+}) {
   const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -536,14 +553,14 @@ function ViolationRow({ sessionId, violation }: { sessionId: string; violation: 
           {decided ? penaltyText(t, violation) : t('grading.penalty.undecided')}
         </span>
         <Button
-          disabled={save.isPending || (decided && violation.penaltyType === 'none')}
+          disabled={locked || save.isPending || (decided && violation.penaltyType === 'none')}
           onClick={() => save.mutate({ type: 'none' })}
         >
           {t('grading.penalty.setNone')}
         </Button>
         <Button
           variant="danger-ghost"
-          disabled={save.isPending || violation.penaltyType === 'void'}
+          disabled={locked || save.isPending || violation.penaltyType === 'void'}
           onClick={() => save.mutate({ type: 'void' })}
         >
           {t('grading.penalty.setVoid')}
@@ -559,7 +576,7 @@ function ViolationRow({ sessionId, violation }: { sessionId: string; violation: 
           />
           <span className="text-sm">%</span>
           <Button
-            disabled={save.isPending || !percentOk}
+            disabled={locked || save.isPending || !percentOk}
             onClick={() => save.mutate({ type: 'percent', percent: percentValue })}
           >
             {t('grading.penalty.setPercent')}

@@ -7,6 +7,7 @@ import { VIOLATION_PENALTIES, type ViolationPenalties } from '../../common/viola
 import { type Database, DB } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
 import { GradingAccessService } from './grading-access.service';
+import { GradingStatusService } from './grading-status.service';
 
 /** Mức xử lý Vi phạm (Q294): chọn đến lúc Công bố; sau đó chỉ qua Phúc khảo (5c, 5d chặn). */
 @Injectable()
@@ -17,11 +18,13 @@ export class PenaltiesService {
     @Inject(VIOLATION_PENALTIES) private readonly violations: ViolationPenalties,
     private readonly access: GradingAccessService,
     private readonly audit: AuditService,
+    private readonly status: GradingStatusService,
   ) {}
 
   async set(actor: Actor, sessionId: string, violationId: string, request: PenaltyRequest) {
     await this.access.require(actor.id, sessionId);
     return this.db.transaction(async (tx) => {
+      await this.status.lockForWrite(tx, sessionId);
       const [before] = (await this.violations.list(sessionId, tx)).filter(
         (v) => v.id === violationId,
       );

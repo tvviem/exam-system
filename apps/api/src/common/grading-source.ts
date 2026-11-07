@@ -38,6 +38,16 @@ export interface GradingSource {
    * `attemptId` → `itemId` → số. Lượt không có bố cục hợp lệ vắng trong kết quả.
    */
   displayNumbers(attemptIds: string[]): Promise<Map<string, Map<string, number>>>;
+  /** Các Lượt đã nộp của MỘT người trong Phiên thi (Kết quả của tôi không cần tải cả Phiên thi). */
+  attemptsOfUser(
+    sessionId: string,
+    userId: string,
+    executor?: GradingExecutor,
+  ): Promise<{ attemptId: string; userId: string; attemptNo: number; submittedAt: Date }[]>;
+  /** Số Lượt đang làm của Phiên thi (Công bố đòi bằng 0). */
+  inProgressCount(sessionId: string, executor?: GradingExecutor): Promise<number>;
+  /** Phiên thi của từng Lượt: `attemptId` → `sessionId`. */
+  sessionIdsOf(attemptIds: string[], executor?: GradingExecutor): Promise<Map<string, string>>;
   /** Id các Lượt nộp từ `since`, mới nhất trước; phân trang bằng `offset`. */
   submittedSince(since: Date, limit: number, offset: number): Promise<string[]>;
 }

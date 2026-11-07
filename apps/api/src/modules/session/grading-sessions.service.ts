@@ -20,6 +20,7 @@ const toInfo = (row: typeof sessions.$inferSelect): GradingSessionInfo => ({
   attemptScoring: row.attemptScoring,
   entryClosedAt: row.entryClosedAt,
   cancelledAt: row.cancelledAt,
+  reviewAfterRelease: row.reviewAfterRelease,
 });
 
 /** Cài đặt cổng `GRADING_SESSIONS` (docs/plan/slice-5.md, PR 5b). */
@@ -30,6 +31,23 @@ export class GradingSessionsService implements GradingSessions {
   async info(sessionId: string, executor: GradingSessionExecutor = this.db) {
     const [row] = await executor.select().from(sessions).where(eq(sessions.id, sessionId));
     return row ? toInfo(row) : null;
+  }
+
+  async lock(sessionId: string, executor: GradingSessionExecutor) {
+    const [row] = await executor
+      .select()
+      .from(sessions)
+      .where(eq(sessions.id, sessionId))
+      // NO KEY UPDATE vẫn loại trừ Hoàn tác, Hủy (FOR UPDATE) nhưng không chặn chèn dòng thiết lập chấm (khóa ngoại): tránh bế tắc.
+      .for('no key update');
+    return row ? toInfo(row) : null;
+  }
+
+  async setReviewAfterRelease(sessionId: string, value: boolean, executor: GradingSessionExecutor) {
+    await executor
+      .update(sessions)
+      .set({ reviewAfterRelease: value, version: sql`${sessions.version} + 1` })
+      .where(eq(sessions.id, sessionId));
   }
 
   async infoMany(sessionIds: string[]) {

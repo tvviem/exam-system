@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -82,14 +83,34 @@ export const attemptGrades = pgTable('attempt_grades', {
 });
 
 /** Thiết lập chấm của một Phiên thi (Q291): hiện chỉ có công tắc Chấm ẩn tên, mặc định bật khi chưa có dòng. */
-export const sessionGradings = pgTable('session_gradings', {
-  sessionId: uuid('session_id')
-    .primaryKey()
-    .references(() => sessions.id, { onDelete: 'restrict' }),
-  blind: boolean('blind').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const sessionGradings = pgTable(
+  'session_gradings',
+  {
+    sessionId: uuid('session_id')
+      .primaryKey()
+      .references(() => sessions.id, { onDelete: 'restrict' }),
+    blind: boolean('blind').notNull().default(true),
+    /** Công bố kết quả (Q298): một lần cho cả Phiên thi, không hoàn tác. */
+    releasedAt: timestamp('released_at', { withTimezone: true }),
+    releasedBy: uuid('released_by').references(() => users.id),
+    /** Thời hạn phúc khảo tính bằng giờ: 0 (không nhận) hoặc 24–336; đi cùng `released_at`. */
+    appealPeriodHours: integer('appeal_period_hours'),
+    /** Chốt kết quả (Q301); `0` giờ Phúc khảo thì Chốt ngay lúc Công bố. */
+    finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      'session_gradings_appeal_hours',
+      sql`${t.appealPeriodHours} IS NULL OR ${t.appealPeriodHours} = 0 OR ${t.appealPeriodHours} BETWEEN 24 AND 336`,
+    ),
+    check(
+      'session_gradings_release_consistent',
+      sql`(${t.releasedAt} IS NULL) = (${t.appealPeriodHours} IS NULL) AND (${t.finalizedAt} IS NULL OR ${t.releasedAt} IS NOT NULL)`,
+    ),
+  ],
+);
 
 /** Ủy quyền chấm (Q307): tối đa một người hiệu lực mỗi Phiên thi; thu hồi chỉ đặt `revoked_at`. */
 export const sessionGradingDelegates = pgTable(

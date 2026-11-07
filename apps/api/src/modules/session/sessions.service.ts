@@ -13,6 +13,7 @@ import { and, desc, eq, gt, isNotNull, isNull, lte, or, type SQL, sql } from 'dr
 import { ApiError, validationFailed } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
 import { EXAM_CATALOG, type ExamCatalog } from '../../common/exam-catalog';
+import { SESSION_GRADING_STATUS, type SessionGradingStatus } from '../../common/grading-status';
 import { type Page, paginate } from '../../common/pagination';
 import { exclusionViolationOf } from '../../common/pg-error';
 import { escapeLike } from '../../common/sql-like';
@@ -53,6 +54,12 @@ function phaseCondition(phase: SessionPhase, now: Date): SQL {
 }
 
 /** Phiên thi của Người ra đề (Q192–Q222). Mọi truy cập lọc theo `owner_id`; của người khác coi như không tồn tại. */
+/** Nhãn Đã Công bố, Đã Chốt của Phiên thi (Q299): hiện ở danh sách và chi tiết, và để khóa nút Hủy. */
+const releaseFlags = (states: Map<string, { finalizedAt: Date | null }>, id: string) => ({
+  resultReleased: states.has(id),
+  resultFinalized: states.get(id)?.finalizedAt != null,
+});
+
 @Injectable()
 export class SessionsService {
   constructor(
@@ -60,6 +67,7 @@ export class SessionsService {
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(EXAM_CATALOG) private readonly exams: ExamCatalog,
     private readonly notifications: NotificationsService,
+    @Inject(SESSION_GRADING_STATUS) private readonly gradingStatus: SessionGradingStatus,
   ) {}
 
   async create(ownerId: string, input: SessionSettings) {
@@ -90,6 +98,12 @@ export class SessionsService {
           issues: problems.map(({ path, code }) => ({ path, code })),
         });
       if (next.examId !== current.examId) await this.requireUsableExam(ownerId, next.examId);
+      // Đã Công bố thì không đổi "Cho xem lại đề" nữa (Q297).
+      if (next.reviewAfterRelease !== current.reviewAfterRelease) {
+        if ((await this.gradingStatus.releaseStates([id], tx)).has(id)) {
+          throw new ApiError('INVALID_STATE', { reason: 'ALREADY_RELEASED' });
+        }
+      }
 
       try {
         await tx
@@ -149,7 +163,14 @@ export class SessionsService {
           .offset(offset),
     );
     const titles = await this.exams.titlesOf(result.items.map((row) => row.examId));
-    return { ...result, items: result.items.map((row) => this.present(row, titles, now)) };
+    const states = await this.gradingStatus.releaseStates(result.items.map((row) => row.id));
+    return {
+      ...result,
+      items: result.items.map((row) => ({
+        ...this.present(row, titles, now),
+        ...releaseFlags(states, row.id),
+      })),
+    };
   }
 
   get(ownerId: string, id: string) {
@@ -170,6 +191,7 @@ export class SessionsService {
       shuffleItems: sessions.shuffleItems,
       shuffleOptions: sessions.shuffleOptions,
       showScoringRules: sessions.showScoringRules,
+      reviewAfterRelease: sessions.reviewAfterRelease,
       accessCode: sessions.accessCode,
       entryClosedAt: sessions.entryClosedAt,
       cancelledAt: sessions.cancelledAt,
@@ -198,7 +220,11 @@ export class SessionsService {
       .from(sessions)
       .where(and(eq(sessions.id, id), eq(sessions.ownerId, ownerId)));
     if (!row) throw new ApiError('NOT_FOUND');
-    return this.present(row, await this.exams.titlesOf([row.examId]), this.clock.now());
+    const states = await this.gradingStatus.releaseStates([row.id]);
+    return {
+      ...this.present(row, await this.exams.titlesOf([row.examId]), this.clock.now()),
+      ...releaseFlags(states, row.id),
+    };
   }
 
   /** Bộ đề phải của chính người tạo và đã Phát hành, chưa Lưu trữ (Q203). */

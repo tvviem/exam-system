@@ -416,3 +416,77 @@ Mở bài kế dưới 300 ms (nạp trước bài kế nên người dùng th�
 - **Để ngỏ:** Công bố và xem Kết quả của Người dự thi (5c); chặn đổi Mức xử lý và Hủy Phiên thi sau Công bố; xuất Excel (5c).
 - **Sau review (7/11/2026):** màn Chấm lưu lạc quan an toàn hơn (lỗi lưu thì bỏ điểm lạc quan của bài và quay lại bài đó; Hoàn tác đặt lại bộ nhớ đệm của bài rồi hỏi lại sau khi lưu; sửa nhận xét không ghi đè dấu Hoàn tác; nhận xét gõ dở được giữ theo từng bài và gửi kèm điểm dù chấm bằng nút, phím hay "Điểm khác"; giữ phím không chấm liên tiếp; làm tươi tiến độ một lần khi hết lượt lưu đang bay); câu đang chấm được ghim lên địa chỉ để chấm hết bài cuối không nhảy sang câu khác làm mất bảng "đã chấm hết"; vùng đọc màn hình (đã lưu, Hoàn tác) nằm ngoài phần dựng lại mỗi lần sang bài, và tiêu điểm đưa về bài mới sau khi chấm; thanh chọn câu là nút `aria-current` thay cho tab đủ bộ; nạp trước cả bài liền kề lẫn bài chưa chấm kế tiếp. Bảng người có **sắp xếp** (theo tên, điểm cao đến thấp, thấp đến cao); tab Vi phạm có dòng giải thích cộng dồn tối đa 100 %; bấm chuông "được ủy quyền" dẫn thẳng tới Kết quả. **Ghi chú đối chiếu số câu chỉ hiện khi Chấm ẩn tên tắt** (theo ý chủ dự án: bật thì đối chiếu số câu lộ bài nào của ai). Giới hạn: gõ điểm bằng bàn phím cần bấm "Điểm khác…" trước (phím 1–5 và nút điểm thay phần lớn nhu cầu).
 
+
+## PR 5c: thiết kế chi tiết (đã duyệt 7/11/2026: chia 5c-1 API và 5c-2 giao diện; người được Ủy quyền Công bố được; chặn Công bố khi chưa có Lượt; "Kết quả của tôi" làm thẳng, tô màu theo mức đạt)
+
+**Phạm vi:** Người ra đề **Công bố kết quả**; Người dự thi **xem Kết quả** của mình; **xuất Excel**; các chặn sau Công bố. Chưa có Phúc khảo và job Chốt (5d). Các quyết định đã duyệt dùng nguyên: Q297 (nội dung Kết quả và công tắc xem lại đề), Q298 (điều kiện và hạn Phúc khảo 1–14 ngày hoặc không nhận), Q299 (sau Công bố), Q301 (Chốt ngay nếu không nhận Phúc khảo), Q303 (thông báo), Q304 (Excel). Đề xuất **chia 5c-1 (API) và 5c-2 (giao diện)** như 5b.
+
+### 1. Cơ sở dữ liệu (migration 0019)
+
+- `session_gradings` thêm `released_at`, `released_by → users`, `appeal_period_hours` (CHECK `0` hoặc 24–336), `finalized_at`. Trigger: `released_at` và `finalized_at` chỉ đặt một lần, không xóa; `finalized_at` chỉ đặt khi đã Công bố; `appeal_period_hours` đi cùng `released_at`.
+- `sessions` thêm `review_after_release bool DEFAULT false` (Q297); sửa được đến lúc Công bố (kiểm ở service, vì cột thuộc `session`).
+- `response_grades_guard` thêm: Phiên thi **đã Công bố** thì không ghi điểm `manual` mới (Q299: chỉ qua Phúc khảo/Đính chính, nguồn `appeal`, `correction` ở 5d); **đã Chốt** thì không đổi điểm nào. Ghi lại điểm tự động giữ nguyên giá trị (chấm bù idempotent) vẫn qua.
+
+### 2. Công bố (`POST /sessions/:id/release { appealPeriodDays: 0 | 1..14 }`)
+
+- **Ai:** chủ Phiên thi hoặc người được Ủy quyền (đúng Q307: Công bố nằm trong quyền được giao).
+- **Điều kiện** (Q298), kiểm trong cùng giao dịch, trả `409 INVALID_STATE` kèm `reason` và, nếu thiếu, số liệu: `SESSION_NOT_FINISHED` (còn Lượt đang làm, hoặc chưa quá Khung giờ và chưa Đóng cửa vào thi), `UNGRADED_ATTEMPTS`, `ESSAYS_PENDING` (kèm số bài), `ALREADY_RELEASED`, `SESSION_CANCELLED`. Phiên thi không có Lượt nào cũng chặn (`NO_ATTEMPTS`).
+- **Làm gì:** khóa dòng Phiên thi (nối đuôi với Hoàn tác, Hủy, chấm tay), đặt `released_at`, `released_by`, `appeal_period_hours = days × 24`; nếu `0` thì đặt `finalized_at = released_at` ngay (Q301). Ghi `audit_logs` (`session.released`). Gửi thông báo cho mọi Người dự thi **đã có Lượt** (`results.released`, Q303). Đẩy tin `monitor.changed`.
+- **Trạng thái cho Người ra đề:** `GET /sessions/:id/results` thêm `release: { ready, blockers, releasedAt, appealUntil, finalizedAt }` để nút Công bố tự báo lý do chưa bật.
+
+### 3. Người dự thi xem Kết quả
+
+- `GET /take/sessions/:id/result` (đúng người trong Danh sách, đã Công bố, trên mọi thiết bị: không đòi Thiết bị dự thi vì không làm bài), 409 `NOT_RELEASED` trước đó. Trả: Điểm thô và tối đa, Điểm quy đổi (0,1), Mức xử lý và lý do (Hủy, trừ x %, kèm lý do Vi phạm), hạn Phúc khảo còn lại, và từng câu **theo thứ tự họ đã thấy** (số "Câu N" của họ): Loại câu, điểm/tối đa, `verdict` (đúng, một phần, sai, bỏ trống), với chùm đúng/sai "đúng 3/4 Mệnh đề"; câu **tự luận** kèm bài làm và nhận xét của chính họ. Nếu `review_after_release` bật: thêm nội dung câu và lựa chọn/đáp án **của chính họ** (dựng bằng `candidateViewOf`, vẫn không có `key`, `rubric`, bậc thang).
+- **Chỉ Lượt được tính** (highest hoặc latest); nhiều Lượt thì ghi "Lượt được tính: lượt 2".
+- Cổng mới `SESSION_RESULTS` do `grading` cài đặt cho `attempt` để `GET /take/sessions` thêm `resultReleased` và `resultUntil` mà `attempt` không đọc bảng của `grading`.
+- **Bảo mật (S5):** quét JSON mọi response của Người dự thi tìm `key`, `correct`, `rubric`, `ladder`, `scoringRule` khi tắt xem lại đề; người ngoài Danh sách nhận 404.
+
+### 4. Các chặn sau Công bố (Q299, Q294, Q296)
+
+Hủy Phiên thi: `409 SESSION_RELEASED`. Hoàn tác Buộc nộp: cổng `AttemptGradeGuard.manuallyGradedIds` thêm điều kiện "Phiên thi đã Công bố" (đã chuẩn bị ở 5a). Lưu điểm tay, đặt Mức xử lý, bật/tắt Chấm ẩn tên và đổi `review_after_release`: `409 ALREADY_RELEASED`. Cổng `SessionGradingStatus` cho `session` đọc trạng thái Đã Công bố/Đã Chốt để hiện nhãn và chặn Hủy.
+
+### 5. Xuất Excel (`GET /sessions/:id/results.xlsx`, Q304)
+
+Chủ hoặc người được Ủy quyền; hai trang tính: *Tổng hợp* (phần đầu: Tên Phiên thi, Ngày diễn ra, Thời gian làm bài, Tổng số câu; bảng: Mã định danh, Họ tên, Lớp, Số Lượt, Điểm thô, Tổng điểm, Điểm quy đổi, Ghi chú) và *Chi tiết* (mỗi câu một cột). Tạo bằng ExcelJS, ô bắt đầu `= + - @` thêm dấu nháy (chống chèn công thức). Chưa Công bố thì ghi "Chưa Công bố"; còn bài chờ chấm thì Ghi chú "chờ chấm". Mục tiêu dưới 1 giây cho 500 người.
+
+### 6. Giao diện (5c-2)
+
+- Màn Kết quả: khối **Công bố** (chọn hạn Phúc khảo 1–14 ngày hoặc "không nhận Phúc khảo", nút Công bố tự tắt kèm lý do, hộp xác nhận nêu số người nhận, số Vi phạm chưa quyết, hạn Phúc khảo), thẻ trạng thái *Đã Công bố đến …* / *Đã Chốt*, nút **Xuất Excel**; sau Công bố các điều khiển chấm bị khóa kèm lời giải thích.
+- Form Phiên thi thêm ô **"Cho xem lại đề sau Công bố"** (mặc định tắt).
+- **Màn "Kết quả của tôi"** cho Người dự thi: thẻ Phiên thi ở "Phiên thi của tôi" có nhãn *Đã có Kết quả* và nút Xem Kết quả; màn gồm đầu trang điểm (thô, quy đổi, Mức xử lý nếu có), danh sách câu theo thứ tự họ đã thấy (điểm và kết luận, bài và nhận xét tự luận), bật xem lại đề thì mở rộng từng câu. Phần Phúc khảo để 5d. Tối ưu cho điện thoại; mở dưới 300 ms.
+- Chuông: *Kết quả đã được Công bố* dẫn thẳng tới màn Kết quả của tôi.
+
+### 7. Seam test
+
+S1 hàm thuần (điều kiện sẵn sàng Công bố, thứ tự câu theo bố cục của Người dự thi, tính "đúng 3/4 Mệnh đề"); S2 HTTP + PostgreSQL (từng lý do chặn Công bố; Công bố đặt đúng ngày/hạn, `0` Chốt ngay; Hủy bị chặn; lưu điểm tay, Mức xử lý, Hoàn tác bị chặn; Kết quả của Người dự thi khớp `resultOf` kể cả nhiều Lượt, Hủy, trừ %; thông báo; xuất Excel đúng nội dung, chống công thức); S3 trigger (đặt `released_at` hai lần, Chốt trước Công bố, ghi điểm tay sau Công bố, đổi điểm sau Chốt); S4 đồng thời (Công bố xen chấm tay hoặc Hoàn tác: một bên thắng, không điểm mồ côi; hai lần Công bố cùng lúc: một lần thành công); S5 bảo mật như trên; S6 Playwright (Công bố, Người dự thi thấy Kết quả, tắt/bật xem lại đề, xuất Excel); ngân sách: Công bố dưới 1 giây (500 người), Kết quả của Người dự thi dưới 300 ms, Excel dưới 1 giây.
+
+### 8. Các điểm đã quyết (chủ dự án đồng ý cả bốn, 7/11/2026)
+
+1. **Chia 5c-1 (API) rồi 5c-2 (giao diện)**: đề xuất chia.
+2. **Người được Ủy quyền được Công bố** (như Q307 đã duyệt): xác nhận giữ.
+3. **Chặn Công bố khi Phiên thi chưa có Lượt nào** (`NO_ATTEMPTS`): đề xuất có.
+4. **Màn "Kết quả của tôi" không cần prototype** (nội dung đã chốt ở Q297, bố cục đơn giản): đề xuất làm thẳng.
+
+### PR 5c-1: ghi chú triển khai (7/11/2026)
+
+- **Chủ dự án thêm yêu cầu cho màn "Kết quả của tôi" (5c-2):** tô màu nổi bật theo mức đạt, bốn dải: dưới 50 % (cảnh báo), 50 đến dưới 70 %, 70 đến dưới 90 %, 90 đến 100 %; phối màu theo bộ màu giao diện hiện tại. Mức đạt tính theo **điểm sau Mức xử lý chia cho tổng điểm Bộ đề** (`percent`, tính sẵn ở server; Hủy kết quả là 0 %) vì phản ánh cả câu được điểm một phần; hàm `resultBandOf` ở `@exam/shared`.
+- **Migration 0019:** `session_gradings` thêm `released_at`, `released_by`, `appeal_period_hours` (0 hoặc 24–336, CHECK đi cùng `released_at`), `finalized_at` (chỉ khi đã Công bố); `sessions.review_after_release`. Trigger `session_gradings_guard` (đã Công bố/Chốt thì không đổi, không xóa); `response_grades_guard` thêm: sau Công bố không ghi điểm `auto`/`manual` đổi giá trị (chỉ `appeal`, `correction` ở 5d), sau Chốt không đổi gì; ghi lại giá trị cũ (chấm bù) vẫn qua.
+- **Công bố** (`POST /sessions/:id/release { appealPeriodDays }`, chủ hoặc người được Ủy quyền): khóa dòng Phiên thi `FOR UPDATE` rồi dòng thiết lập chấm (nối đuôi với Hoàn tác, Hủy và chấm tay: chấm tay, Mức xử lý, Chấm ẩn tên, xem lại đề lấy khóa chia sẻ dòng thiết lập qua `GradingStatusService.lockForWrite` và bị `409 ALREADY_RELEASED` nếu đã Công bố). Lý do chặn theo thứ tự `ALREADY_RELEASED`, `SESSION_CANCELLED`, `SESSION_NOT_FINISHED`, `NO_ATTEMPTS`, `UNGRADED_ATTEMPTS`, `ESSAYS_PENDING` (hàm thuần `releaseBlockers`, `isSessionFinished` ở `@exam/shared`); lỗi trả kèm `blockers` và `pendingEssays`. `0` ngày thì Chốt ngay. Ghi `audit_logs` `session.released`, thông báo `results.released` cho mọi Người dự thi đã có Lượt.
+- **Kết quả của Người dự thi** (`GET /take/sessions/:id/result`): `CandidateResultService`; điểm thô, tối đa, sau Mức xử lý, quy đổi 0,1, `percent`; từng câu theo số họ đã thấy (`displayNumbers`), `verdict`, chùm "đúng k/n Mệnh đề" (chỉ số đếm), bài tự luận và nhận xét; Mức xử lý kèm lý do; xem lại đề (`reviewAfterRelease`) thêm nội dung câu và đáp án của chính họ qua `candidateViewOf`. 404 cho người ngoài Danh sách hoặc chưa làm bài, 409 `NOT_RELEASED` trước Công bố. `GET /take/sessions` thêm `resultReleased`, `resultAppealUntil` qua cổng `SESSION_GRADING_STATUS`.
+- **Chặn sau Công bố:** Hủy Phiên thi (`SESSION_RELEASED`), Hoàn tác Buộc nộp (cổng `AttemptGradeGuard` coi mọi Lượt của Phiên thi đã Công bố là đã chấm), đổi `reviewAfterRelease` ở form hay `PUT /sessions/:id/grading/review`.
+- **Xuất Excel** (`GET /sessions/:id/results.xlsx`): `ResultsExportService` (ExcelJS): *Tổng hợp* (Tên, Ngày diễn ra, Thời gian làm bài, Tổng số câu, Tổng điểm, "Chưa Công bố", lưu ý chờ chấm, bảng người) và *Chi tiết* (mỗi câu một cột); `safeCell` thêm dấu nháy cho ô bắt đầu `= + - @`. Chấm ẩn tên còn che điểm tự luận thì file cũng che như bảng Kết quả.
+- **Form Phiên thi** thêm ô "Cho xem lại đề sau Công bố" (mặc định tắt; sửa được ở mọi trạng thái trừ Đã hủy, và khóa sau Công bố).
+- **Test:** `grading-release.int.test.ts` 22 test (lý do chặn từng cái, hạn Phúc khảo 0 và 3 ngày, Công bố hai lần cùng lúc, Công bố xen chấm tay không để điểm lọt sau lúc Công bố, người được Ủy quyền Công bố, các chặn sau Công bố, trigger, Kết quả của Người dự thi và quét JSON không lộ đáp án, xem lại đề, Mức xử lý, cờ ở "Phiên thi của tôi", thông báo, Excel); `grading-release.test.ts` ở shared (blockers, kết thúc, dải màu).
+- **Để ngỏ (5c-2):** giao diện (khối Công bố, màn "Kết quả của tôi" tô màu theo mức đạt, nhãn ở "Phiên thi của tôi", nút Xuất Excel, chuông dẫn tới Kết quả).
+
+### PR 5c-2: ghi chú triển khai (7/11/2026)
+
+Làm cùng nhánh với 5c-1 nên hai phần đi chung một PR (API và giao diện), khác đề xuất chia hai PR vì phần giao diện nhỏ và API cần giao diện để dùng thử.
+
+- **"Kết quả của tôi"** (`/take/results/:sessionId`, `lib/ui/grading/my-result.tsx`): khối điểm lớn có vòng điểm (SVG), điểm quy đổi to, mức đạt %, lời nhận xét và biểu tượng riêng từng dải; rồi Mức xử lý (nếu có), từng câu theo số đã thấy (điểm/tối đa, kết luận; chùm "đúng k/n Mệnh đề"; bài tự luận mở ra thấy bài làm và nhận xét), hạn Phúc khảo. Mở rộng câu để xem lại đề khi Phiên thi bật (chỉ đánh dấu lựa chọn của chính họ, không có đáp án đúng).
+- **Dải màu theo mức đạt** (`resultBandOf` ở `@exam/shared`, kiểu ở `result-band.ts`), phối trên bộ màu giao diện hiện tại, cả sáng và tối: dưới 50 % → đỏ cảnh báo (`danger`, nền `danger-soft`); 50–<70 % → hổ phách (`warning`); 70–<90 % → màu chủ đạo (`primary`, nền `primary-soft`); từ 90 % → xanh lá đặc (`success`, chữ `on-success`, nổi nhất). Thêm token `--c-on-success` (có kiểm tương phản WCAG ở `tokens.test.ts`). Không chỉ dựa vào màu: mỗi dải có biểu tượng (CircleAlert, Gauge, ThumbsUp, Trophy) và nhãn ("Cần cố gắng thêm", "Đạt mức trung bình", "Khá tốt", "Xuất sắc"). Mức đạt tính theo điểm sau Mức xử lý chia tổng điểm.
+- **Người ra đề (màn Kết quả):** khối Công bố (`release-panel.tsx`): nút bật khi đủ điều kiện, nếu chưa thì liệt kê từng lý do (còn N bài tự luận chưa chấm, chưa kết thúc…); hộp xác nhận nêu số người nhận, Vi phạm chưa quyết, chọn hạn Phúc khảo (không nhận, 1–14 ngày, mặc định 3), cảnh báo không hoàn tác; sau Công bố hiện trạng thái Đã Công bố/Đã Chốt, khóa nút Chấm tự luận, Chấm ẩn tên, Mức xử lý và ô xem lại đề; nút **Xuất Excel**; ô "Cho xem lại đề sau Công bố" (cũng có ở form Phiên thi).
+- **"Phiên thi của tôi":** Phiên thi đã Công bố hiện "Kết quả đã được Công bố" và nút **Xem Kết quả** (xếp ở nhóm "Đã xong"); bấm chuông "Kết quả đã được Công bố" dẫn thẳng tới Kết quả.
+- **Test:** E2E `release.spec.ts` (desktop và mobile: Công bố qua giao diện, khóa chấm sau Công bố, xuất Excel, Người dự thi 100 % thấy "Xuất sắc" `data-band=excellent`, người 0 % thấy "Cần cố gắng thêm" `data-band=low`, không có đáp án trên màn); unit web (`entry`: hành động xem Kết quả; `tokens`: tương phản `on-success`); đã chụp ảnh bốn dải ở cả giao diện sáng và tối để kiểm bằng mắt.
+- **Sau review (7/11/2026):** trang *Chi tiết* của Excel che điểm tự luận khi Chấm ẩn tên còn che (trước đó lộ); "Ngày diễn ra" ghi khoảng ngày khi Khung giờ nhiều ngày; Mã định danh cũng qua `safeCell`; chữ ghi chú và tiêu đề Excel khớp Q304; **bế tắc** giữa "Cho xem lại đề" và Công bố được loại bằng thứ tự khóa thống nhất (dòng Phiên thi trước, dòng thiết lập chấm sau) và `FOR NO KEY UPDATE` ở khóa Phiên thi của Công bố (vẫn loại trừ Hoàn tác và Hủy); Công bố đẩy `monitor.changed`; "Phiên thi của tôi" chỉ báo có Kết quả cho người đã có Lượt; Kết quả của tôi chỉ tải Lượt và Vi phạm của chính người đó và chỉ dựng nội dung câu khi bật xem lại; nhãn **Đã Công bố/Đã Chốt** ở danh sách và chi tiết Phiên thi, nút Hủy khóa kèm lời giải thích; vòng điểm không còn ẩn điểm khỏi trình đọc màn hình, màu chữ dải đạt dùng màu đầy đủ (đã có kiểm tương phản). **Số đo (500 người):** Công bố 98 ms, Kết quả của một Người dự thi 14 ms, xuất Excel 145 ms. **Giới hạn:** ở chế độ xem lại đề, các Phương án hiện theo thứ tự gốc của Bộ đề (không phải thứ tự đã xáo của riêng người đó); nút Xuất Excel là liên kết tải trực tiếp nên lỗi quyền hiện như trang lỗi của trình duyệt.
+

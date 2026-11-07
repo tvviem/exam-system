@@ -23,6 +23,10 @@ export interface SessionSummary {
   shuffleItems: boolean;
   shuffleOptions: boolean;
   showScoringRules: boolean;
+  reviewAfterRelease: boolean;
+  /** Đã Công bố / đã Chốt kết quả (Q299); chỉ có ở danh sách và chi tiết. */
+  resultReleased: boolean;
+  resultFinalized: boolean;
   accessCode: string;
   entryClosedAt: string | null;
   cancelledAt: string | null;
@@ -45,6 +49,7 @@ export interface SessionInput {
   shuffleItems: boolean;
   shuffleOptions: boolean;
   showScoringRules: boolean;
+  reviewAfterRelease: boolean;
   accessCode?: string;
 }
 

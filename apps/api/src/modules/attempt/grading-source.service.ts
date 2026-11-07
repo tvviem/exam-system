@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray } from 'drizzle-orm';
 import type { GradableAttempt, GradingExecutor, GradingSource } from '../../common/grading-source';
 import { SESSION_ENTRY, type SessionEntry } from '../../common/session-entry';
 import { type Database, DB } from '../../db/db.module';
@@ -85,6 +85,45 @@ export class GradingSourceService implements GradingSource {
     return rows.flatMap((row) =>
       row.submittedAt ? [{ ...row, submittedAt: row.submittedAt }] : [],
     );
+  }
+
+  async attemptsOfUser(sessionId: string, userId: string, executor: GradingExecutor = this.db) {
+    const rows = await executor
+      .select({
+        attemptId: attempts.id,
+        userId: attempts.userId,
+        attemptNo: attempts.attemptNo,
+        submittedAt: attempts.submittedAt,
+      })
+      .from(attempts)
+      .where(
+        and(
+          eq(attempts.sessionId, sessionId),
+          eq(attempts.userId, userId),
+          eq(attempts.status, 'submitted'),
+        ),
+      )
+      .orderBy(attempts.attemptNo);
+    return rows.flatMap((row) =>
+      row.submittedAt ? [{ ...row, submittedAt: row.submittedAt }] : [],
+    );
+  }
+
+  async inProgressCount(sessionId: string, executor: GradingExecutor = this.db) {
+    const [row] = await executor
+      .select({ n: count() })
+      .from(attempts)
+      .where(and(eq(attempts.sessionId, sessionId), eq(attempts.status, 'in_progress')));
+    return row?.n ?? 0;
+  }
+
+  async sessionIdsOf(attemptIds: string[], executor: GradingExecutor = this.db) {
+    if (attemptIds.length === 0) return new Map<string, string>();
+    const rows = await executor
+      .select({ id: attempts.id, sessionId: attempts.sessionId })
+      .from(attempts)
+      .where(inArray(attempts.id, attemptIds));
+    return new Map(rows.map((row) => [row.id, row.sessionId]));
   }
 
   async displayNumbers(attemptIds: string[]) {

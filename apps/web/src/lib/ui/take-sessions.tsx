@@ -143,6 +143,12 @@ function ActionNote({ action, row }: { action: EntryAction; row: TakeSession }) 
           {t('take.list.waitingNote', { time: formatDateTime(row.opensAt) })}
         </p>
       );
+    case 'result':
+      return (
+        <p className="text-sm font-medium text-success">
+          {t('take.list.resultReady', { used: row.attemptsUsed, max: row.maxAttempts })}
+        </p>
+      );
     case 'wait':
       return (
         <p className="text-sm text-fg-muted">
@@ -182,6 +188,17 @@ function ActionButton({ action, row }: { action: EntryAction; row: TakeSession }
         className={buttonClass('primary')}
       >
         {t('take.list.start')}
+      </Link>
+    );
+  }
+  if (action === 'result') {
+    return (
+      <Link
+        to="/take/results/$sessionId"
+        params={{ sessionId: row.sessionId }}
+        className={buttonClass('primary')}
+      >
+        {t('take.list.viewResult')}
       </Link>
     );
   }

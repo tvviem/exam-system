@@ -52,6 +52,7 @@ const PAIRS: [string, string, number][] = [
   ['warning', 'warning-soft', TEXT],
   ['success', 'surface', TEXT],
   ['success', 'success-soft', TEXT],
+  ['on-success', 'success', TEXT],
   ['border-strong', 'surface', COMPONENT],
   ['border-strong', 'bg', COMPONENT],
   ['ring', 'surface', COMPONENT],

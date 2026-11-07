@@ -35,6 +35,15 @@ export class ViolationPenaltiesService implements ViolationPenalties {
     return rows.map(toRecord);
   }
 
+  async listForUser(sessionId: string, userId: string, executor: ViolationExecutor = this.db) {
+    const rows = await executor
+      .select()
+      .from(violations)
+      .where(and(eq(violations.sessionId, sessionId), eq(violations.userId, userId)))
+      .orderBy(asc(violations.recordedAt), asc(violations.id));
+    return rows.map(toRecord);
+  }
+
   async setPenalty(
     sessionId: string,
     violationId: string,

@@ -19,6 +19,8 @@ export interface TakeSession extends SessionRow {
   closesAt: string;
   /** Đã gồm giờ cộng sẵn. */
   durationMinutes: number;
+  /** Hạn gửi Phúc khảo của Phiên thi đã Công bố; `null` nếu không nhận. */
+  resultAppealUntil: string | null;
 }
 
 export const takeSessionsQuery = queryOptions({
