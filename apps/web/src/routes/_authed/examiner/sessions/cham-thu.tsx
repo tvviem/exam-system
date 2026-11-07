@@ -1,5 +1,5 @@
 // PROTOTYPE (Q110, Q290–Q293): màn Chấm Câu tự luận, ba phương án. Chạy bằng `pnpm dev`, đăng nhập tài khoản Người ra đề rồi mở
-//   /examiner/sessions/cham-thu?variant=A|B|C   (phím ← → đổi phương án; mọi dữ liệu giả, không gọi API)
+//   /examiner/sessions/cham-thu?variant=A|B|C|D   (phím ← → đổi phương án; mọi dữ liệu giả, không gọi API)
 // Route tĩnh này được ưu tiên hơn `$sessionId`, nên màn nằm trong khung ứng dụng thật.
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Breadcrumb } from '../../../../lib/ui/breadcrumb';
@@ -7,12 +7,12 @@ import { ENTRIES } from '../../../../prototype/cham-bai/data';
 import { PrototypeSwitcher, useGrading } from '../../../../prototype/cham-bai/grading';
 import { VARIANTS } from '../../../../prototype/cham-bai/variants';
 
-type Key = 'A' | 'B' | 'C';
+type Key = 'A' | 'B' | 'C' | 'D';
 
 export const Route = createFileRoute('/_authed/examiner/sessions/cham-thu')({
   staticData: { wide: true },
   validateSearch: (search: Record<string, unknown>): { variant?: Key } => ({
-    variant: ['A', 'B', 'C'].includes(search.variant as string)
+    variant: ['A', 'B', 'C', 'D'].includes(search.variant as string)
       ? (search.variant as Key)
       : undefined,
   }),

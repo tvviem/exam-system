@@ -364,8 +364,176 @@ export function VariantC({ g }: { g: GradingState }) {
   );
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// D. Kết hợp A + B: máy tính chia đôi (danh sách bên trái, bài và bảng điểm bên phải); điện thoại một bài mỗi màn với nút điểm
+// to cố định ở đáy. Cùng một trạng thái: nút điểm nhanh tự sang bài chưa chấm kế tiếp và có Hoàn tác; ô "Điểm khác" nhận 1,25.
+// ---------------------------------------------------------------------------------------------------------------------
+export function VariantD({ g }: { g: GradingState }) {
+  const [listOpen, setListOpen] = useState(false);
+  const [note, setNote] = useState(false);
+  const [custom, setCustom] = useState(false);
+  const current = g.current;
+  useGradingKeys(g, (e) => {
+    const n = Number(e.key);
+    if (current && n >= 1 && n <= 5) g.gradeAndNext(current.id, QUICK[n - 1]?.value ?? 0);
+  });
+  const list = (
+    <ul
+      className="flex max-h-[50vh] flex-col gap-1 overflow-y-auto lg:max-h-[calc(100vh-20rem)]"
+      aria-label="Danh sách bài"
+    >
+      {g.visible.map((e) => (
+        <li key={e.id}>
+          <button
+            type="button"
+            aria-current={current?.id === e.id}
+            onClick={() => {
+              g.select(e.id);
+              setListOpen(false);
+            }}
+            className={`flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-3 text-left text-sm ${
+              current?.id === e.id
+                ? 'bg-primary-soft font-semibold text-on-primary-soft'
+                : 'hover:bg-border/50'
+            }`}
+          >
+            <span className="truncate">{g.who(e)}</span>
+            <span className="tabular-nums text-fg-muted">
+              {dot(stateOf(g, e))}{' '}
+              {stateOf(g, e) === undefined || stateOf(g, e) === null
+                ? ''
+                : fmt(stateOf(g, e) as number)}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+  return (
+    <div className="grid gap-4 pb-44 lg:grid-cols-[17rem_1fr] lg:pb-0">
+      <aside className="flex flex-col gap-3">
+        <Progress g={g} />
+        <FilterChips g={g} />
+        <button
+          type="button"
+          onClick={() => setListOpen((o) => !o)}
+          aria-expanded={listOpen}
+          className="flex min-h-11 cursor-pointer items-center justify-between rounded-lg border border-border-strong bg-surface px-3 text-sm font-medium lg:hidden"
+        >
+          Danh sách bài ({g.visible.length})
+          {listOpen ? (
+            <ChevronUp aria-hidden className="size-4" />
+          ) : (
+            <ChevronDown aria-hidden className="size-4" />
+          )}
+        </button>
+        <div className={`${listOpen ? 'block' : 'hidden'} lg:block`}>{list}</div>
+      </aside>
+      <section className="flex min-w-0 flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <QuestionPanel />
+        </div>
+        {current ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">{g.who(current)}</h2>
+              <div className="flex items-center gap-3">
+                <SavedBadge saving={g.saving} />
+                <NavButtons g={g} />
+              </div>
+            </div>
+            <article className="rounded-xl border border-border bg-surface p-4 text-lg leading-relaxed whitespace-pre-wrap">
+              {current.text}
+            </article>
+            {note && (
+              <textarea
+                value={g.feedback[current.id] ?? ''}
+                onChange={(e) => g.setFeedback(current.id, e.target.value)}
+                placeholder="Nhận xét cho Người dự thi (không bắt buộc)"
+                rows={2}
+                maxLength={1000}
+                className="rounded-lg border border-border-strong bg-surface p-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-ring/40"
+              />
+            )}
+          </>
+        ) : (
+          <p className="rounded-xl border border-border bg-surface p-6 text-center">
+            Đã chấm hết các bài. Chuyển sang "Tất cả" để xem lại.
+          </p>
+        )}
+        {g.undo && (
+          <p
+            role="status"
+            className="flex items-center justify-between gap-2 rounded-lg bg-primary-soft px-3 py-2 text-sm text-on-primary-soft"
+          >
+            Đã chấm {g.undo.label}.
+            <button
+              type="button"
+              onClick={g.doUndo}
+              className="inline-flex min-h-9 cursor-pointer items-center gap-1 font-semibold underline"
+            >
+              <Undo2 aria-hidden className="size-4" />
+              Hoàn tác
+            </button>
+          </p>
+        )}
+        {/* Bảng điểm: cố định ở đáy trên điện thoại (một tay với tới), nằm ngay dưới bài trên máy tính. */}
+        <div className="fixed inset-x-0 bottom-[var(--app-tabbar-h,0px)] z-40 border-t border-border bg-surface/95 p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur lg:static lg:rounded-xl lg:border lg:shadow-none">
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-5 gap-2">
+              {QUICK.map((q, i) => (
+                <button
+                  key={q.label}
+                  type="button"
+                  disabled={!current}
+                  onClick={() => current && g.gradeAndNext(current.id, q.value)}
+                  className="flex min-h-12 cursor-pointer flex-col items-center justify-center rounded-xl border border-border-strong bg-surface text-base font-bold hover:bg-primary-soft disabled:opacity-40 lg:min-h-14"
+                >
+                  {q.label}
+                  <span className="text-[11px] font-normal text-fg-muted">{fmt(q.value)} đ</span>
+                  <span className="sr-only">phím {i + 1}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                aria-pressed={custom}
+                onClick={() => setCustom((c) => !c)}
+                className="min-h-11 cursor-pointer rounded-lg border border-border-strong px-3 text-sm pointer-fine:min-h-9"
+              >
+                Điểm khác…
+              </button>
+              <button
+                type="button"
+                aria-pressed={note}
+                onClick={() => setNote((n) => !n)}
+                className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-border-strong px-3 text-sm pointer-fine:min-h-9"
+              >
+                <MessageSquare aria-hidden className="size-4" />
+                <span className="hidden sm:inline">Nhận xét</span>
+              </button>
+              <BlindToggle g={g} />
+              {custom && current && (
+                <ScoreField
+                  autoFocus
+                  value={g.scores[current.id]}
+                  onCommit={(v) => v !== null && g.gradeAndNext(current.id, v)}
+                  onEnter={() => setCustom(false)}
+                />
+              )}
+            </div>
+            <KeyHint>1–5: chấm nhanh · J / K: chuyển bài · Điểm khác: gõ rồi Enter</KeyHint>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export const VARIANTS = [
   { key: 'A', name: 'Chia đôi (Q293)', Component: VariantA },
   { key: 'B', name: 'Một bài mỗi màn, nút điểm to', Component: VariantB },
   { key: 'C', name: 'Bảng, chấm ngay trong hàng', Component: VariantC },
+  { key: 'D', name: 'Kết hợp A + B', Component: VariantD },
 ] as const;
