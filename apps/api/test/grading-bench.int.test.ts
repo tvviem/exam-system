@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { AppealFinalizeService } from '../src/modules/grading/appeal-finalize.service';
+import { AppealsService } from '../src/modules/grading/appeals.service';
 import { AutogradeService } from '../src/modules/grading/autograde.service';
+import { CandidateAppealsService } from '../src/modules/grading/candidate-appeals.service';
 import { CandidateResultService } from '../src/modules/grading/candidate-result.service';
 import { ResultsExportService } from '../src/modules/grading/results-export.service';
 import { createTestApp, type TestApp } from './support/app';
@@ -166,5 +169,68 @@ describe.skipIf(!process.env.GRADING_BENCH)('đo chấm tự động', () => {
       `[đo] xuất Excel 500 người: ${exportMs.toFixed(0)} ms (${(book.file.length / 1024).toFixed(0)} KB)`,
     );
     expect(exportMs).toBeLessThan(1000);
+
+    // Phúc khảo với 500 người (PR 5d-1): 150 người mỗi người 4 Phúc khảo = 600 Phúc khảo chờ (dựng bằng SQL; hạn mức 3 do service
+    // kiểm, không phải cơ sở dữ liệu), rồi đo từng đường. Mọi đường chỉ đọc đúng Lượt liên quan, không nạp điểm cả Phiên thi.
+    await sql(
+      `insert into appeals (id, session_id, attempt_id, user_id, target, item_id, reason)
+       select gen_random_uuid(), a.session_id, a.id, a.user_id, 'response', ei.id, 'Tôi nghĩ câu này chấm chưa đúng'
+       from attempts a
+       join users u on u.id = a.user_id and u.username ~ '^bench[0-9]+$' and substring(u.username from 6)::int <= 150
+       join sessions s on s.id = a.session_id
+       join exam_items ei on ei.exam_id = s.exam_id
+       where a.session_id = $1`,
+      [live.sessionId],
+    );
+    const timedCall = async <T>(label: string, run: () => Promise<T>, limitMs: number) => {
+      const t0 = performance.now();
+      const out = await run();
+      const ms = performance.now() - t0;
+      console.log(`[đo] ${label}: ${ms.toFixed(0)} ms`);
+      expect(ms).toBeLessThan(limitMs);
+      return out;
+    };
+    const examinerActor = { id: gv, ip: null };
+    const appealsService = t.app.get(AppealsService);
+    const list = await timedCall(
+      'Phúc khảo: danh sách (500 dòng đầu của 600)',
+      () => appealsService.list(gv, live.sessionId),
+      300,
+    );
+    expect(list.items).toHaveLength(500);
+    const openAppeal = list.items[0] as { id: string };
+    await timedCall(
+      'Phúc khảo: mở một Phúc khảo để xử lý',
+      () => appealsService.detail(gv, live.sessionId, openAppeal.id),
+      300,
+    );
+    await timedCall(
+      'Phúc khảo: xử lý một Phúc khảo',
+      () =>
+        appealsService.resolve(examinerActor, live.sessionId, openAppeal.id, {
+          response: 'Đã xem lại',
+          score: 0.5,
+        }),
+      300,
+    );
+    const candidateAppeals = t.app.get(CandidateAppealsService);
+    await timedCall(
+      'Phúc khảo của tôi (Người dự thi có 4 Phúc khảo)',
+      () => candidateAppeals.mine(benchUser, live.sessionId),
+      300,
+    );
+    const fresh = (await sql<{ id: string }>(`select id from users where username = 'bench300'`))[0]
+      ?.id as string;
+    await timedCall(
+      'Phúc khảo: Người dự thi gửi một Phúc khảo',
+      () =>
+        candidateAppeals.create({ id: fresh, ip: null }, live.sessionId, {
+          target: 'response',
+          no: 1,
+          reason: 'Tôi nghĩ câu này chấm chưa đúng',
+        }),
+      300,
+    );
+    await timedCall('job Chốt: một lượt quét', () => t.app.get(AppealFinalizeService).sweep(), 100);
   }, 60_000);
 });

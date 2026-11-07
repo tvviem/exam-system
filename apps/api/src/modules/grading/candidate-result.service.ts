@@ -1,10 +1,14 @@
 import { countableAttempts, fromCenti, type PenaltyInput, resultOf, toCenti } from '@exam/scoring';
 import { type CandidateSource, candidateViewOf } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { inArray } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
-import { GRADING_SESSIONS, type GradingSessions } from '../../common/grading-sessions';
+import {
+  GRADING_SESSIONS,
+  type GradingSessionInfo,
+  type GradingSessions,
+} from '../../common/grading-sessions';
 import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
 import { VIOLATION_PENALTIES, type ViolationPenalties } from '../../common/violation-penalties';
 import { type Database, DB } from '../../db/db.module';
@@ -26,6 +30,42 @@ export class CandidateResultService {
     @Inject(VIOLATION_PENALTIES) private readonly violations: ViolationPenalties,
     private readonly status: GradingStatusService,
   ) {}
+
+  /**
+   * Lượt được tính của một Người dự thi (Q292): cùng cách chọn với `result()`. Phúc khảo về câu gửi cho Lượt này (Q300). Chỉ đọc
+   * tổng điểm của vài Lượt của người đó, không tải cả Phiên thi.
+   */
+  async countedAttempt(info: GradingSessionInfo, userId: string) {
+    const mine = await this.source.attemptsOfUser(info.sessionId, userId);
+    if (mine.length === 0) return null;
+    const countable = countableAttempts(mine, info.attemptScoring);
+    const totals = await this.db
+      .select({
+        attemptId: responseGrades.attemptId,
+        total: sql<string>`coalesce(sum(${responseGrades.score}), 0)`,
+      })
+      .from(responseGrades)
+      .where(
+        inArray(
+          responseGrades.attemptId,
+          countable.map((attempt) => attempt.attemptId),
+        ),
+      )
+      .groupBy(responseGrades.attemptId);
+    const totalOf = new Map(totals.map((row) => [row.attemptId, Number(row.total)]));
+    const result = resultOf({
+      attempts: countable.map((attempt) => ({
+        attemptId: attempt.attemptId,
+        attemptNo: attempt.attemptNo,
+        rawScore: totalOf.get(attempt.attemptId) ?? 0,
+        maxScore: 1,
+      })),
+      attemptScoring: info.attemptScoring,
+      penalties: [],
+    });
+    const counted = countable.find((attempt) => attempt.attemptId === result?.countedAttemptId);
+    return counted ? { attemptId: counted.attemptId, attemptNo: counted.attemptNo } : null;
+  }
 
   async result(userId: string, sessionId: string) {
     const info = await this.sessions.info(sessionId);
@@ -156,6 +196,7 @@ export class CandidateResultService {
           (violation) => violation.penaltyDecidedAt !== null && violation.penaltyType !== 'none',
         )
         .map((violation) => ({
+          id: violation.id,
           action: violation.action,
           reason: violation.reason,
           type: violation.penaltyType,

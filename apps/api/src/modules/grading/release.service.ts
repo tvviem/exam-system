@@ -1,4 +1,6 @@
 import {
+  APPEAL_HOURS_PER_DAY,
+  type ExtendAppealPeriodRequest,
   isSessionFinished,
   type ReleaseBlocker,
   type ReleaseRequest,
@@ -29,6 +31,8 @@ export interface ReleaseStatus {
   appealUntil: Date | null;
   finalizedAt: Date | null;
   reviewAfterRelease: boolean;
+  /** Phúc khảo chờ xử lý và đã xử lý (0 khi chưa Công bố). */
+  appeals: { open: number; resolved: number };
 }
 
 /** Công bố kết quả (docs/plan/slice-5.md, PR 5c; Q298, Q299, Q301, Q303): một lần cho cả Phiên thi, không hoàn tác. */
@@ -82,6 +86,9 @@ export class ReleaseService {
   async statusOf(info: GradingSessionInfo, ctx: GradingContext): Promise<ReleaseStatus> {
     const state = (await this.status.releaseStates([info.sessionId])).get(info.sessionId);
     const { blockers } = await this.blockersOf(info, ctx, state !== undefined);
+    const appeals = state
+      ? await this.status.appealCounts(info.sessionId)
+      : { open: 0, resolved: 0 };
     return {
       ready: blockers.length === 0,
       blockers,
@@ -89,6 +96,7 @@ export class ReleaseService {
       appealUntil: state?.appealUntil ?? null,
       finalizedAt: state?.finalizedAt ?? null,
       reviewAfterRelease: info.reviewAfterRelease,
+      appeals,
     };
   }
 
@@ -141,6 +149,61 @@ export class ReleaseService {
     const state = (await this.status.releaseStates([sessionId])).get(sessionId);
     return {
       sessionId: info.sessionId,
+      releasedAt: state?.releasedAt ?? null,
+      appealUntil: state?.appealUntil ?? null,
+      finalizedAt: state?.finalizedAt ?? null,
+    };
+  }
+
+  /**
+   * Gia hạn Thời hạn phúc khảo (Q314): chỉ khi chưa Chốt, chỉ tăng, tổng không quá 14 ngày kể từ lúc Công bố. Khóa độc quyền dòng
+   * thiết lập chấm nên nối đuôi với job Chốt: bên nào khóa trước thì thắng, bên sau thấy trạng thái mới.
+   */
+  async extendAppealPeriod(actor: Actor, sessionId: string, request: ExtendAppealPeriodRequest) {
+    const { info } = await this.access.require(actor.id, sessionId);
+    const hours = request.appealPeriodDays * APPEAL_HOURS_PER_DAY;
+    const now = this.clock.now();
+    await this.db.transaction(async (tx) => {
+      const row = await this.status.lockForRelease(tx, sessionId);
+      if (!row?.releasedAt) throw new ApiError('INVALID_STATE', { reason: 'NOT_RELEASED' });
+      if (row.finalizedAt) throw new ApiError('INVALID_STATE', { reason: 'ALREADY_FINALIZED' });
+      const current = row.appealPeriodHours ?? 0;
+      if (hours <= current) {
+        throw new ApiError('INVALID_STATE', {
+          reason: 'PERIOD_NOT_EXTENDED',
+          currentHours: current,
+        });
+      }
+      await this.status.extend(tx, sessionId, hours, now);
+      await this.audit.record(
+        {
+          actor,
+          action: 'session.appeal_period_extended',
+          entityType: 'session',
+          entityId: sessionId,
+          before: { appealPeriodHours: current },
+          after: { appealPeriodHours: hours },
+        },
+        tx,
+      );
+      const attempts = await this.source.attemptsOfSession(sessionId, tx);
+      await this.notifications.notify(
+        {
+          userIds: attempts.map((attempt) => attempt.userId),
+          type: 'appeal.period_extended',
+          data: {
+            sessionId,
+            title: info.title,
+            appealUntil: new Date(row.releasedAt.getTime() + hours * 3_600_000).toISOString(),
+          },
+        },
+        tx,
+      );
+    });
+    this.realtime.sessionChanged(sessionId);
+    const state = (await this.status.releaseStates([sessionId])).get(sessionId);
+    return {
+      sessionId,
       releasedAt: state?.releasedAt ?? null,
       appealUntil: state?.appealUntil ?? null,
       finalizedAt: state?.finalizedAt ?? null,

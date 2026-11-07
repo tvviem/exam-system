@@ -348,16 +348,22 @@ violations (                              -- Vi phạm (Q259, migration 0014)
   --   (lát cắt 5); không xóa.
 )
 
-appeals (                                 -- Phúc khảo: mỗi đối tượng 1 lần, trong 72 giờ sau Công bố
-  id, attempt_id,
+appeals (                                 -- Phúc khảo (migration 0020, module `grading`, Q300, Q309–Q317)
+  id, session_id → sessions, attempt_id → attempts, user_id → users,   -- session_id, user_id lặp lại từ Lượt (đếm hạn mức, liệt kê)
   target enum('response','penalty'),
-  item_id NULL,                           -- khi target = 'response'
-  violation_id NULL,                      -- khi target = 'penalty'
-  reason text NOT NULL, created_at,
-  status enum('open','resolved'),
-  previous_value jsonb, new_value jsonb, resolver_id → users, response text, resolved_at,
-  UNIQUE (attempt_id, item_id), UNIQUE (violation_id)
+  item_id → exam_items NULL,              -- khi target = 'response'
+  violation_id → violations NULL,         -- khi target = 'penalty'
+  reason text NOT NULL CHECK (10–1000 ký tự), created_at,
+  status enum('open','resolved') DEFAULT 'open',
+  previous_value jsonb, new_value jsonb,  -- {score, verdict} hoặc {type, percent}; chỉ có khi resolved
+  resolver_id → users, response text (1–1000), resolved_at,
+  CHECK target khớp item_id/violation_id; CHECK resolved đủ resolver_id, response, resolved_at, previous/new_value
 )
+-- UNIQUE từng phần (attempt_id, item_id) WHERE item_id IS NOT NULL và (violation_id) WHERE violation_id IS NOT NULL.
+-- INDEX (session_id, status, created_at) cho danh sách, số chờ và kiểm "còn Phúc khảo mở"; INDEX (session_id, user_id) cho hạn mức.
+-- Trigger appeals_guard: chỉ chèn khi đã Công bố và chưa Chốt, khớp Lượt/Bộ đề/Vi phạm; mỗi Phúc khảo xử lý một lần (open → resolved),
+--   đã xử lý thì bất biến; không xóa. Hạn mức (10 % số câu, tối thiểu 3) và giờ hạn do service kiểm (đồng hồ ứng dụng).
+-- Hạn mức Phúc khảo một Người dự thi trong một Phiên thi = max(3, ceil(10 % số câu của Bộ đề)); một Chùm tính là một câu.
 
 -- Kết quả của một Người dự thi trong Phiên thi:
 --   base  = max(raw_score) hoặc raw_score của lượt cuối (theo sessions.attempt_scoring)
@@ -384,7 +390,9 @@ session_gradings (
   blind bool DEFAULT true,                 -- Chấm ẩn tên (Q291); 0018 chỉ có blind, created_at, updated_at
   released_at NULL, released_by → users NULL,   -- thêm ở 5c
   appeal_period_hours int NULL CHECK (appeal_period_hours = 0 OR appeal_period_hours BETWEEN 24 AND 336),   -- 5c
-  finalized_at NULL                        -- 5c; released_at, finalized_at chỉ đặt một lần, không xóa
+  finalized_at NULL,                       -- 5c; released_at, finalized_at chỉ đặt một lần, không xóa
+  appeal_reminded_at NULL                  -- 5d-1: lần gần nhất job Chốt nhắc Phúc khảo quá hạn (nhắc lúc hết hạn rồi mỗi 24 giờ)
+  -- appeal_period_hours chỉ được tăng (gia hạn, Q314), chỉ khi chưa Chốt; INDEX (released_at) WHERE released_at NOT NULL AND finalized_at NULL
 )
 session_grading_delegates (                -- Ủy quyền chấm (Q307, migration 0018)
   id, session_id → sessions, user_id → users, granted_by → users, granted_at, revoked_at NULL

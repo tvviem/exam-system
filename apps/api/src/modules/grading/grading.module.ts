@@ -2,7 +2,11 @@ import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
 import { IdentityModule } from '../identity/identity.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AppealFinalizeService } from './appeal-finalize.service';
+import { AppealsController, CandidateAppealsController } from './appeals.controller';
+import { AppealsService } from './appeals.service';
 import { AutogradeService } from './autograde.service';
+import { CandidateAppealsService } from './candidate-appeals.service';
 import { CandidateResultController } from './candidate-result.controller';
 import { CandidateResultService } from './candidate-result.service';
 import { DelegationService } from './delegation.service';
@@ -28,6 +32,8 @@ import { ResultsExportService } from './results-export.service';
     OwnerDelegateController,
     AdminDelegateController,
     CandidateResultController,
+    CandidateAppealsController,
+    AppealsController,
   ],
   providers: [
     AutogradeService,
@@ -43,6 +49,9 @@ import { ResultsExportService } from './results-export.service';
     ReleaseService,
     CandidateResultService,
     ResultsExportService,
+    AppealsService,
+    CandidateAppealsService,
+    AppealFinalizeService,
   ],
   exports: [AutogradeService, GradingHooksService, GradingStatusService],
 })

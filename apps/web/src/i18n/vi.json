@@ -808,7 +808,11 @@
     "session.grading_delegated": "Bạn được ủy quyền chấm Phiên thi “{{title}}”.",
     "session.grading_delegate_revoked": "Quyền chấm Phiên thi “{{title}}” của bạn đã được thu hồi.",
     "account.password_reissued": "Mật khẩu tạm của bạn vừa được Người ra đề cấp lại. Đăng nhập bằng mật khẩu mới và đổi ngay.",
-    "results.released": "Kết quả Phiên thi “{{title}}” đã được Công bố. Xem điểm của bạn."
+    "results.released": "Kết quả Phiên thi “{{title}}” đã được Công bố. Xem điểm của bạn.",
+    "appeal.new": "Phiên thi “{{title}}” có {{count}} Phúc khảo chờ xử lý.",
+    "appeal.overdue": "Phiên thi “{{title}}” đã hết hạn Phúc khảo nhưng còn {{count}} Phúc khảo chờ xử lý.",
+    "appeal.resolved": "Phúc khảo của bạn ở Phiên thi “{{title}}” đã được xử lý. Xem câu trả lời.",
+    "appeal.period_extended": "Phiên thi “{{title}}” đã kéo dài thời hạn Phúc khảo. Xem hạn mới ở Kết quả của bạn."
   },
   "credentialSlips": {
     "heading": "Phiếu tài khoản",

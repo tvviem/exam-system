@@ -51,6 +51,60 @@ export const reviewAfterReleaseSchema = z.strictObject({ reviewAfterRelease: z.b
 
 export const APPEAL_HOURS_PER_DAY = 24;
 
+/** Số ngày tối đa của Thời hạn phúc khảo tính từ lúc Công bố, kể cả sau khi gia hạn (Q298, Q314). */
+export const APPEAL_MAX_DAYS = 14;
+export const APPEAL_REASON_MIN = 10;
+export const APPEAL_TEXT_MAX = 1000;
+
+/**
+ * Hạn mức Phúc khảo của mỗi Người dự thi trong một Phiên thi (Q311): 10 % số câu của Bộ đề làm tròn lên, ít nhất 3. Một Chùm
+ * đúng/sai tính là một câu. Phúc khảo về Mức xử lý tính chung vào hạn mức.
+ */
+export const appealLimitOf = (itemCount: number): number =>
+  Math.max(3, Math.ceil(Math.max(0, itemCount) * 0.1));
+
+const appealReasonSchema = z.string().trim().min(APPEAL_REASON_MIN).max(APPEAL_TEXT_MAX);
+
+/**
+ * Người dự thi gửi Phúc khảo (Q300, Q312): một câu (theo số "Câu N" họ đã thấy) hoặc một Mức xử lý Vi phạm của họ. Mỗi đối tượng
+ * một lần, không rút được.
+ */
+export const createAppealSchema = z.discriminatedUnion('target', [
+  z.strictObject({
+    target: z.literal('response'),
+    no: z.number().int().min(1),
+    reason: appealReasonSchema,
+  }),
+  z.strictObject({
+    target: z.literal('penalty'),
+    violationId: z.uuid(),
+    reason: appealReasonSchema,
+  }),
+]);
+export type CreateAppealRequest = z.infer<typeof createAppealSchema>;
+
+/**
+ * Người ra đề xử lý Phúc khảo (Q300, Q310): trả lời bắt buộc, kèm điểm mới của câu hoặc Mức xử lý mới (giữ điểm thì gửi lại điểm
+ * hiện tại).
+ */
+export const resolveAppealSchema = z.union([
+  z.strictObject({
+    response: z.string().trim().min(1).max(APPEAL_TEXT_MAX),
+    score: manualScoreSchema,
+  }),
+  z.strictObject({
+    response: z.string().trim().min(1).max(APPEAL_TEXT_MAX),
+    penalty: penaltySchema,
+  }),
+]);
+export type ResolveAppealRequest = z.infer<typeof resolveAppealSchema>;
+
+/** Gia hạn Thời hạn phúc khảo (Q314): tổng số ngày kể từ lúc Công bố, chỉ tăng, tối đa 14. */
+export const extendAppealPeriodSchema = z.strictObject({
+  appealPeriodDays: z.number().int().min(1).max(APPEAL_MAX_DAYS),
+});
+export type ExtendAppealPeriodRequest = z.infer<typeof extendAppealPeriodSchema>;
+
 /** Lý do chưa Công bố được (Q298), khớp `reason` của lỗi `409 INVALID_STATE`; theo thứ tự ưu tiên khi báo. */
 export const RELEASE_BLOCKERS = [
   'ALREADY_RELEASED',

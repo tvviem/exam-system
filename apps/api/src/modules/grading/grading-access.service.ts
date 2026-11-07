@@ -53,6 +53,20 @@ export class GradingAccessService {
     return { info, role: 'delegate' };
   }
 
+  /** Những người xử lý Phúc khảo và nhận nhắc việc: chủ Phiên thi và người đang được Ủy quyền (nếu có). */
+  async staffIds(info: GradingSessionInfo): Promise<string[]> {
+    const delegates = await this.db
+      .select({ userId: sessionGradingDelegates.userId })
+      .from(sessionGradingDelegates)
+      .where(
+        and(
+          eq(sessionGradingDelegates.sessionId, info.sessionId),
+          isNull(sessionGradingDelegates.revokedAt),
+        ),
+      );
+    return [info.ownerId, ...delegates.map((row) => row.userId)];
+  }
+
   /** Chấm ẩn tên đang bật? Mặc định bật khi Phiên thi chưa có thiết lập (Q291). */
   async isBlind(sessionId: string): Promise<boolean> {
     const [row] = await this.db

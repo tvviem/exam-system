@@ -4,6 +4,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -14,7 +15,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { idColumn } from '../../db/columns';
-import { attempts } from '../attempt/attempt.schema';
+import { attempts, violations } from '../attempt/attempt.schema';
 import { examItems } from '../exam/exam.schema';
 import { users } from '../identity/identity.schema';
 import { sessions } from '../session/session.schema';
@@ -97,10 +98,16 @@ export const sessionGradings = pgTable(
     appealPeriodHours: integer('appeal_period_hours'),
     /** Chốt kết quả (Q301); `0` giờ Phúc khảo thì Chốt ngay lúc Công bố. */
     finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+    /** Lần gần nhất job Chốt nhắc Người ra đề còn Phúc khảo chờ sau hạn (Q315): nhắc lúc hết hạn rồi mỗi 24 giờ. */
+    appealRemindedAt: timestamp('appeal_reminded_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    // Job Chốt chỉ nhìn Phiên thi đang chờ Chốt, không quét lịch sử.
+    index('session_gradings_finalize_idx')
+      .on(t.releasedAt)
+      .where(sql`${t.releasedAt} IS NOT NULL AND ${t.finalizedAt} IS NULL`),
     check(
       'session_gradings_appeal_hours',
       sql`${t.appealPeriodHours} IS NULL OR ${t.appealPeriodHours} = 0 OR ${t.appealPeriodHours} BETWEEN 24 AND 336`,
@@ -134,5 +141,65 @@ export const sessionGradingDelegates = pgTable(
       .on(t.sessionId)
       .where(sql`${t.revokedAt} IS NULL`),
     index('session_grading_delegates_user_idx').on(t.userId),
+  ],
+);
+
+export const appealTargetEnum = pgEnum('appeal_target', ['response', 'penalty']);
+export const appealStatusEnum = pgEnum('appeal_status', ['open', 'resolved']);
+
+/**
+ * Phúc khảo (Q300, Q309–Q317): Người dự thi đề nghị xem lại điểm một câu hoặc một Mức xử lý của Lượt được tính. Mỗi đối tượng một
+ * lần; Người ra đề trả lời bắt buộc và đặt điểm hay Mức xử lý mới. `session_id` và `user_id` lặp lại từ Lượt để đếm hạn mức và
+ * liệt kê theo Phiên thi không phải nối bảng (trigger `appeals_guard` kiểm khớp Lượt).
+ */
+export const appeals = pgTable(
+  'appeals',
+  {
+    id: idColumn(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'restrict' }),
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => attempts.id, { onDelete: 'restrict' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    target: appealTargetEnum('target').notNull(),
+    itemId: uuid('item_id').references(() => examItems.id, { onDelete: 'restrict' }),
+    violationId: uuid('violation_id').references(() => violations.id, { onDelete: 'restrict' }),
+    reason: text('reason').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    status: appealStatusEnum('status').notNull().default('open'),
+    /** Điểm hoặc Mức xử lý trước và sau khi xử lý; chỉ có khi `resolved`. */
+    previousValue: jsonb('previous_value').$type<Record<string, unknown>>(),
+    newValue: jsonb('new_value').$type<Record<string, unknown>>(),
+    resolverId: uuid('resolver_id').references(() => users.id),
+    response: text('response'),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  },
+  (t) => [
+    check(
+      'appeals_target_match',
+      sql`(${t.target} = 'response' AND ${t.itemId} IS NOT NULL AND ${t.violationId} IS NULL) OR (${t.target} = 'penalty' AND ${t.violationId} IS NOT NULL AND ${t.itemId} IS NULL)`,
+    ),
+    check('appeals_reason_len', sql`char_length(${t.reason}) BETWEEN 10 AND 1000`),
+    check(
+      'appeals_response_len',
+      sql`${t.response} IS NULL OR char_length(${t.response}) BETWEEN 1 AND 1000`,
+    ),
+    check(
+      'appeals_resolved_consistent',
+      sql`(${t.status} = 'open' AND ${t.resolverId} IS NULL AND ${t.response} IS NULL AND ${t.resolvedAt} IS NULL AND ${t.previousValue} IS NULL AND ${t.newValue} IS NULL) OR (${t.status} = 'resolved' AND ${t.resolverId} IS NOT NULL AND ${t.response} IS NOT NULL AND ${t.resolvedAt} IS NOT NULL AND ${t.previousValue} IS NOT NULL AND ${t.newValue} IS NOT NULL)`,
+    ),
+    // Mỗi đối tượng chỉ Phúc khảo một lần (Q300, Q312).
+    uniqueIndex('appeals_attempt_item_key')
+      .on(t.attemptId, t.itemId)
+      .where(sql`${t.itemId} IS NOT NULL`),
+    uniqueIndex('appeals_violation_key').on(t.violationId).where(sql`${t.violationId} IS NOT NULL`),
+    // Danh sách theo Phiên thi, số chờ xử lý và kiểm "còn Phúc khảo mở" của job Chốt.
+    index('appeals_session_status_idx').on(t.sessionId, t.status, t.createdAt),
+    // Hạn mức Phúc khảo của một người trong Phiên thi (Q311).
+    index('appeals_session_user_idx').on(t.sessionId, t.userId),
   ],
 );

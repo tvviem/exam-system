@@ -323,7 +323,7 @@ describe('Kết quả của Người dự thi (Q297)', () => {
       percent: 78.8,
     });
     expect(data.penalties).toEqual([
-      { action: 'warning', reason: 'Nhìn bài bạn', type: 'percent', percent: 10 },
+      { id: violationId, action: 'warning', reason: 'Nhìn bài bạn', type: 'percent', percent: 10 },
     ]);
   });
 

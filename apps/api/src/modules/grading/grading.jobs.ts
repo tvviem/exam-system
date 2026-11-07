@@ -4,11 +4,14 @@ import { CLOCK, type Clock } from '../../common/clock';
 import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
 import { type Database, DB } from '../../db/db.module';
 import { JobRegistry } from '../../queue/job-queue';
+import { AppealFinalizeService } from './appeal-finalize.service';
 import { AutogradeService } from './autograde.service';
 import { attemptGrades } from './grading.schema';
 
 // Mỗi 5 giây (Q286, đề xuất của PR 5a): lưới an toàn cho Lượt nộp mà tin báo chưa tới (Khóa tài khoản, job bị mất, Redis hỏng).
 const EVERY_5_SECONDS = '*/5 * * * * *';
+/** Job Chốt mỗi phút (Q301): kiểm hết hạn Phúc khảo và nhắc việc quá hạn (Q315). */
+const EVERY_MINUTE = '0 * * * * *';
 /** Lần quét nhanh chỉ nhìn Lượt vừa nộp, nên mỗi 5 giây chỉ tốn hai truy vấn nhẹ. */
 const RECENT_MS = 15 * 60_000;
 /** Lần quét sâu (24 giờ, phân trang) chạy thưa hơn, bắt Lượt bị bỏ sót lâu hơn 15 phút (job chết lâu). */
@@ -28,6 +31,7 @@ export class GradingJobs implements OnModuleInit {
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(GRADING_SOURCE) private readonly source: GradingSource,
     private readonly autograde: AutogradeService,
+    private readonly finalize: AppealFinalizeService,
     private readonly registry: JobRegistry,
   ) {}
 
@@ -37,6 +41,9 @@ export class GradingJobs implements OnModuleInit {
     );
     this.registry.register('grading.sweep', () => this.sweep().then(() => undefined), {
       cron: EVERY_5_SECONDS,
+    });
+    this.registry.register('grading.finalize', () => this.finalize.sweep().then(() => undefined), {
+      cron: EVERY_MINUTE,
     });
   }
 
