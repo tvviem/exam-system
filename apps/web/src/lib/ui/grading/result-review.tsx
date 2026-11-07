@@ -92,11 +92,13 @@ export function ResultReview({
   const next = stepIndex(items, index, filter, 1);
   const wrongNext = nextWrongIndex(items, index);
 
-  // Chuyển câu bằng nút, bản đồ hay phím: đưa thẻ câu lên đầu màn (trên điện thoại thẻ nằm dưới khối điểm).
+  // Chuyển câu bằng nút, bản đồ hay phím: giữ nguyên chỗ đang xem. Chỉ khi đầu thẻ câu đã trôi lên khỏi màn hình (đang đọc dở
+  // câu dài) mới cuộn để thấy lại đầu câu mới; không bao giờ nhảy về đầu trang.
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy khi đổi câu, không phụ thuộc phần còn lại
   useEffect(() => {
     if (!moved.current) return;
-    viewerRef.current?.scrollIntoView({ block: 'start' });
+    const node = viewerRef.current;
+    if (node && node.getBoundingClientRect().top < 0) node.scrollIntoView({ block: 'start' });
   }, [item?.no]);
 
   // Phím ← → duyệt câu (như phím J/K ở màn Chấm); bỏ qua khi đang gõ hay có phím bổ trợ.
@@ -151,7 +153,7 @@ export function ResultReview({
             />
           ))}
         </div>
-        <fieldset className="m-0 grid grid-cols-2 gap-2 border-0 p-0">
+        <fieldset className="m-0 grid grid-cols-4 gap-2 border-0 p-0 lg:grid-cols-2">
           <legend className="sr-only">{t('myResult.filterLabel')}</legend>
           {REVIEW_VERDICTS.map((verdict) => {
             const FilterIcon = STYLE[verdict].icon;
@@ -162,17 +164,20 @@ export function ResultReview({
                 aria-pressed={filter === verdict}
                 disabled={counts[verdict] === 0}
                 onClick={() => pickFilter(verdict)}
-                className={`inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-lg border-2 px-3 text-sm font-semibold disabled:cursor-default disabled:opacity-50 ${
+                className={`grid min-h-14 cursor-pointer grid-cols-[auto_auto] items-center justify-center gap-x-1.5 gap-y-0.5 rounded-lg border-2 px-1 text-sm font-semibold disabled:cursor-default disabled:opacity-50 lg:flex lg:min-h-12 lg:gap-2 lg:px-3 ${
                   filter === verdict
                     ? 'border-primary bg-primary text-on-primary'
                     : `${STYLE[verdict].cell} hover:brightness-95`
                 }`}
               >
                 <FilterIcon aria-hidden className="size-4 shrink-0" />
-                <span className="min-w-0 flex-1 text-left leading-tight">
-                  {t(`myResult.verdict.${verdict}`)}
+                {/* Nhãn ngắn ở nút lọc (dải kết quả đầu thẻ câu mới ghi đầy đủ): điện thoại xếp dưới biểu tượng và số. */}
+                <span className="col-span-2 row-start-2 min-w-0 text-center text-xs leading-tight lg:flex-1 lg:text-left lg:text-sm">
+                  {t(`myResult.verdictShort.${verdict}`)}
                 </span>
-                <span className="tabular-nums">{counts[verdict]}</span>
+                <span className="col-start-2 row-start-1 tabular-nums lg:ml-auto">
+                  {counts[verdict]}
+                </span>
               </button>
             );
           })}

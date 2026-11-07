@@ -1892,6 +1892,13 @@
     "noWrong": "Không có câu sai",
     "noReview": "Người ra đề không mở xem lại nội dung câu này.",
     "notAnswered": "Bạn không trả lời",
-    "yourChoiceTag": "Bạn đã chọn"
+    "yourChoiceTag": "Bạn đã chọn",
+    "scaleShort": "/10",
+    "verdictShort": {
+      "correct": "Đúng",
+      "partial": "Một phần",
+      "wrong": "Sai",
+      "blank": "Bỏ trống"
+    }
   }
 }
