@@ -33,6 +33,11 @@ export interface GradingSource {
     sessionId: string,
     executor?: GradingExecutor,
   ): Promise<{ attemptId: string; userId: string; attemptNo: number; submittedAt: Date }[]>;
+  /**
+   * Số thứ tự "Câu N" mà Người dự thi đã thấy trong từng Lượt (theo bố cục đã chốt lúc bắt đầu, đánh số từ 1 qua mọi Phần):
+   * `attemptId` → `itemId` → số. Lượt không có bố cục hợp lệ vắng trong kết quả.
+   */
+  displayNumbers(attemptIds: string[]): Promise<Map<string, Map<string, number>>>;
   /** Id các Lượt nộp từ `since`, mới nhất trước; phân trang bằng `offset`. */
   submittedSince(since: Date, limit: number, offset: number): Promise<string[]>;
 }

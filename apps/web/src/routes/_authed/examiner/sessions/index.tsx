@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
 import { formatDateTime } from '../../../../lib/format';
+import { delegatedSessionsQuery } from '../../../../lib/grading';
 import { PHASE_TONE } from '../../../../lib/session-phase';
 import { SESSION_PHASES, type SessionPhase, sessionsQuery } from '../../../../lib/sessions';
 import { Badge, buttonClass, ErrorMessage, SearchField } from '../../../../lib/ui';
@@ -30,6 +31,7 @@ function SessionsPage() {
   const { phase, q, page } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const sessions = useQuery(sessionsQuery({ phase, q, page }));
+  const delegated = useQuery(delegatedSessionsQuery);
   const [text, setText] = useState(q ?? '');
 
   // Chờ gõ xong một nhịp rồi mới đưa từ khóa lên địa chỉ (và hỏi api).
@@ -55,6 +57,30 @@ function SessionsPage() {
           </Link>
         }
       />
+      {(delegated.data?.items.length ?? 0) > 0 && (
+        <section aria-labelledby="delegated-heading" className="flex flex-col gap-2">
+          <h2 id="delegated-heading" className="text-base font-semibold">
+            {t('grading.delegated.heading')}
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {delegated.data?.items.map((item) => (
+              <li key={item.sessionId}>
+                <Link
+                  to="/examiner/sessions/$sessionId/results"
+                  params={{ sessionId: item.sessionId }}
+                  className="flex min-h-12 flex-col gap-1 rounded-xl border border-border bg-surface p-4 hover:bg-primary-soft"
+                >
+                  <span className="break-words font-medium">{item.title}</span>
+                  <span className="text-sm text-fg-muted">
+                    {t('grading.delegated.owner', { name: item.ownerName ?? '—' })} ·{' '}
+                    {formatDateTime(item.opensAt)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="grid gap-3 sm:grid-cols-[minmax(0,24rem)_1fr] sm:items-end">
         <SearchField
           id="session-search"

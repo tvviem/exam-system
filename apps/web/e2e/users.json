@@ -1188,5 +1188,91 @@
     "roleTags": ["candidate"],
     "code": "PC-M-002",
     "classLabel": "LOP-PC-M"
+  },
+  {
+    "username": "e2e-lb-cm-gv-desktop",
+    "fullName": "Người ra đề Chấm bài (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-cm-gv2-desktop",
+    "fullName": "Giám khảo Chấm thay (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-cm-qt-desktop",
+    "fullName": "Quản trị Chấm bài (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-lb-cm-sv1-desktop",
+    "fullName": "Thí sinh Chấm bài 1 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "CM-D-001",
+    "classLabel": "LOP-CM-D"
+  },
+  {
+    "username": "e2e-lb-cm-sv2-desktop",
+    "fullName": "Thí sinh Chấm bài 2 (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "CM-D-002",
+    "classLabel": "LOP-CM-D"
+  },
+  {
+    "username": "e2e-lb-cm-gv-mobile",
+    "fullName": "Người ra đề Chấm bài (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-cm-gv2-mobile",
+    "fullName": "Giám khảo Chấm thay (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-lb-cm-qt-mobile",
+    "fullName": "Quản trị Chấm bài (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-lb-cm-sv1-mobile",
+    "fullName": "Thí sinh Chấm bài 1 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "CM-M-001",
+    "classLabel": "LOP-CM-M"
+  },
+  {
+    "username": "e2e-lb-cm-sv2-mobile",
+    "fullName": "Thí sinh Chấm bài 2 (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "CM-M-002",
+    "classLabel": "LOP-CM-M"
   }
 ]

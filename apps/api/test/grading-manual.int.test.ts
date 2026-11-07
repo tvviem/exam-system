@@ -311,6 +311,34 @@ describe('Nhiều Lượt, chấm bù và hàng đợi', () => {
   });
 });
 
+describe('Ghi chú đối chiếu số câu khi đề được xáo', () => {
+  it('seenAs là số Người dự thi thấy, chỉ có khi khác số gốc; ẩn khi đang che danh tính', async () => {
+    await resetState();
+    live = await openLiveSession(t, ['an'], { shuffleItems: true });
+    const an = live.takers.an as Taker;
+    const view = (await an.call('GET', `/take/attempts/${live.attemptIds.an}`)).json();
+    const seenNo = new Map<string, number>(
+      view.sections
+        .flatMap((section: { items: { itemId: string; type: string }[] }) => section.items)
+        .map((item: { itemId: string }, index: number) => [item.itemId, index + 1]),
+    );
+    await an.call('POST', `/take/attempts/${live.attemptIds.an}/submit`);
+    await t.queue.drain();
+    await api('PUT', `${base()}/grading/blind`, { blind: false });
+    const detail = (await api('GET', `${base()}/results/people/${live.userIds.an}`)).json();
+    const rows = detail.attempts[0].items as {
+      itemId: string;
+      no: number;
+      seenAs: number | null;
+    }[];
+    expect(rows).toHaveLength(4);
+    for (const row of rows) {
+      const seen = seenNo.get(row.itemId) as number;
+      expect(row.seenAs, `câu gốc ${row.no}`).toBe(seen === row.no ? null : seen);
+    }
+  });
+});
+
 describe('Mức xử lý Vi phạm (Q294)', () => {
   // Vi phạm chỉ ghi được khi Lượt đang làm (lát cắt 4); ở đây dựng bằng SQL vì các Lượt đã nộp.
   const violation = async () => {

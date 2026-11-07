@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
+  UserCog,
   UserRound,
   Users,
 } from 'lucide-react';
@@ -49,6 +50,12 @@ export function navFor(me: Me): NavItem[] {
         icon: MailPlus,
       },
       { to: '/admin/units', label: 'admin.nav.units', short: 'nav.short.units', icon: Building2 },
+      {
+        to: '/admin/grading-delegates',
+        label: 'admin.nav.gradingDelegates',
+        short: 'nav.short.gradingDelegates',
+        icon: UserCog,
+      },
       {
         to: '/admin/login-events',
         label: 'admin.nav.loginEvents',

@@ -87,6 +87,24 @@ export class GradingSourceService implements GradingSource {
     );
   }
 
+  async displayNumbers(attemptIds: string[]) {
+    const result = new Map<string, Map<string, number>>();
+    if (attemptIds.length === 0) return result;
+    const rows = await this.db
+      .select({ id: attempts.id, layout: attempts.layout })
+      .from(attempts)
+      .where(inArray(attempts.id, attemptIds));
+    for (const row of rows) {
+      const numbers = new Map<string, number>();
+      let no = 0;
+      for (const section of row.layout?.sections ?? []) {
+        for (const item of section.items) numbers.set(item.itemId, ++no);
+      }
+      if (numbers.size > 0) result.set(row.id, numbers);
+    }
+    return result;
+  }
+
   async submittedSince(since: Date, limit: number, offset: number): Promise<string[]> {
     const rows = await this.db
       .select({ id: attempts.id })
