@@ -113,6 +113,7 @@ export const RELEASE_BLOCKERS = [
   'NO_ATTEMPTS',
   'UNGRADED_ATTEMPTS',
   'ESSAYS_PENDING',
+  'CORRECTION_RUNNING',
 ] as const;
 export type ReleaseBlocker = (typeof RELEASE_BLOCKERS)[number];
 
@@ -137,6 +138,8 @@ export function releaseBlockers(input: {
   submittedAttempts: number;
   ungradedAttempts: number;
   pendingEssays: number;
+  /** Đang chấm lại sau Đính chính đáp án (Q319): chưa Công bố để không lộ điểm nửa cũ nửa mới. */
+  correctionRunning?: boolean;
 }): ReleaseBlocker[] {
   const blockers: ReleaseBlocker[] = [];
   if (input.released) blockers.push('ALREADY_RELEASED');
@@ -145,6 +148,7 @@ export function releaseBlockers(input: {
   if (input.submittedAttempts === 0) blockers.push('NO_ATTEMPTS');
   if (input.ungradedAttempts > 0) blockers.push('UNGRADED_ATTEMPTS');
   if (input.pendingEssays > 0) blockers.push('ESSAYS_PENDING');
+  if (input.correctionRunning) blockers.push('CORRECTION_RUNNING');
   return blockers;
 }
 
@@ -156,4 +160,36 @@ export function resultBandOf(percent: number): ResultBand {
   if (percent < 70) return 'fair';
   if (percent < 90) return 'good';
   return 'excellent';
+}
+
+/** Số ký tự tối thiểu của lý do Đính chính đáp án (Q302, Q316). */
+export const KEY_CORRECTION_REASON_MIN = 10;
+
+/**
+ * Đáp án đúng mới của một câu (Q302), cùng dạng `KeyOverride` của `@exam/scoring`: danh sách id Phương án đúng (chọn một, chọn
+ * nhiều) hoặc giá trị đúng/sai của từng Mệnh đề (chùm). Sai dạng so với câu cụ thể do service kiểm.
+ */
+export const keyOverrideSchema = z.union([
+  z.array(z.string().min(1)).min(1).max(26),
+  z.record(z.string().min(1), z.boolean()),
+]);
+export type KeyOverrideInput = z.infer<typeof keyOverrideSchema>;
+
+export const keyCorrectionPreviewSchema = z.strictObject({ newKey: keyOverrideSchema });
+export type KeyCorrectionPreviewRequest = z.infer<typeof keyCorrectionPreviewSchema>;
+
+export const keyCorrectionSchema = z.strictObject({
+  newKey: keyOverrideSchema,
+  reason: z.string().trim().min(KEY_CORRECTION_REASON_MIN).max(APPEAL_TEXT_MAX),
+});
+export type KeyCorrectionRequest = z.infer<typeof keyCorrectionSchema>;
+
+/** Hai đáp án có như nhau không (thứ tự Phương án không quan trọng). */
+export function sameKey(a: KeyOverrideInput, b: KeyOverrideInput): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    return a.length === b.length && [...a].sort().every((id, i) => id === [...b].sort()[i]);
+  }
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((id) => a[id] === b[id]);
 }

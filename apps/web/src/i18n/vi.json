@@ -205,7 +205,15 @@
     "INVALID_STATE_APPEAL_LIMIT_REACHED": "Bạn đã dùng hết số lượt Phúc khảo của Phiên thi này.",
     "INVALID_STATE_ALREADY_APPEALED": "Bạn đã gửi Phúc khảo cho nội dung này rồi.",
     "INVALID_STATE_ALREADY_RESOLVED": "Phúc khảo này đã được xử lý.",
-    "INVALID_STATE_PERIOD_NOT_EXTENDED": "Hạn mới phải dài hơn hạn hiện tại."
+    "INVALID_STATE_PERIOD_NOT_EXTENDED": "Hạn mới phải dài hơn hạn hiện tại.",
+    "INVALID_STATE_KEY_UNCHANGED": "Đáp án mới trùng với đáp án hiện tại.",
+    "INVALID_STATE_CORRECTION_RUNNING": "Câu này đang được chấm lại sau một Đính chính khác, vài giây nữa hãy thử lại.",
+    "INVALID_STATE_NOT_FAILED": "Việc chấm lại không bị lỗi nên không cần thử lại.",
+    "VALIDATION_key_wrong_shape": "Đáp án mới không đúng dạng với loại câu này.",
+    "VALIDATION_key_unknown_option": "Đáp án mới có Phương án không thuộc câu này.",
+    "VALIDATION_key_single_needs_one": "Câu chọn một cần đúng một Phương án đúng.",
+    "VALIDATION_key_statements": "Đáp án mới cần đủ các Mệnh đề của chùm.",
+    "VALIDATION_essay_has_no_key": "Câu tự luận không có đáp án để đính chính."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -818,7 +826,8 @@
     "appeal.new": "Phiên thi “{{title}}” có {{count}} Phúc khảo chờ xử lý.",
     "appeal.overdue": "Phiên thi “{{title}}” đã hết hạn Phúc khảo nhưng còn {{count}} Phúc khảo chờ xử lý.",
     "appeal.resolved": "Phúc khảo của bạn ở Phiên thi “{{title}}” đã được xử lý. Xem câu trả lời.",
-    "appeal.period_extended": "Phiên thi “{{title}}” đã kéo dài thời hạn Phúc khảo. Xem hạn mới ở Kết quả của bạn."
+    "appeal.period_extended": "Phiên thi “{{title}}” đã kéo dài thời hạn Phúc khảo. Xem hạn mới ở Kết quả của bạn.",
+    "result.corrected": "Điểm Câu {{no}} của Phiên thi “{{title}}” đã được điều chỉnh do đính chính đáp án. Xem Kết quả."
   },
   "credentialSlips": {
     "heading": "Phiếu tài khoản",
@@ -1854,7 +1863,8 @@
         "SESSION_NOT_FINISHED": "Phiên thi chưa kết thúc: còn Lượt đang làm, hoặc chưa hết Khung giờ và chưa Đóng cửa vào thi.",
         "NO_ATTEMPTS": "Chưa có Lượt làm bài nào.",
         "UNGRADED_ATTEMPTS": "Còn Lượt chưa chấm tự động xong, hãy thử lại sau ít giây.",
-        "ESSAYS_PENDING": "Còn {{count}} bài tự luận chưa chấm."
+        "ESSAYS_PENDING": "Còn {{count}} bài tự luận chưa chấm.",
+        "CORRECTION_RUNNING": "Đang chấm lại sau Đính chính đáp án, vài giây nữa hãy thử lại."
       },
       "releasedUntil": "Đã Công bố lúc {{time}} · Phúc khảo đến {{until}}"
     },

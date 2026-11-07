@@ -4,6 +4,7 @@ import { AppealsService } from '../src/modules/grading/appeals.service';
 import { AutogradeService } from '../src/modules/grading/autograde.service';
 import { CandidateAppealsService } from '../src/modules/grading/candidate-appeals.service';
 import { CandidateResultService } from '../src/modules/grading/candidate-result.service';
+import { KeyCorrectionsService } from '../src/modules/grading/key-corrections.service';
 import { ResultsExportService } from '../src/modules/grading/results-export.service';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
@@ -232,5 +233,96 @@ describe.skipIf(!process.env.GRADING_BENCH)('đo chấm tự động', () => {
       300,
     );
     await timedCall('job Chốt: một lượt quét', () => t.app.get(AppealFinalizeService).sweep(), 100);
-  }, 60_000);
+
+    // Đính chính với 5.000 Lượt (PR 5d-3a): thêm 9 Phiên thi cùng Bộ đề, mỗi Phiên thi 500 Lượt đã nộp (qua SQL), chấm tự động rồi
+    // xem trước và chấm lại sau khi đổi đáp án câu chọn một từ o2 sang o1 (mọi Lượt bench đều chọn o2 nên đều giảm điểm).
+    const examId = (
+      await sql<{ exam_id: string }>(`select exam_id from sessions where id = $1`, [live.sessionId])
+    )[0]?.exam_id as string;
+    for (let k = 1; k <= 9; k++) {
+      const extra = (
+        await sql<{ id: string }>(
+          `insert into sessions (id, exam_id, owner_id, title, opens_at, closes_at, duration_minutes, access_code)
+           select gen_random_uuid(), exam_id, owner_id, 'Phien phu ' || $2::text, opens_at, closes_at, duration_minutes,
+                  'ZB' || translate(lpad($2::text, 4, 'Z'), '01', 'AB')
+           from sessions where id = $1 returning id`,
+          [live.sessionId, String(k)],
+        )
+      )[0]?.id as string;
+      await sql(
+        `insert into session_roster (session_id, user_id, added_by)
+         select $1, id, $2 from users where username like 'bench%'`,
+        [extra, gv],
+      );
+      await sql(
+        `insert into attempts (id, session_id, user_id, attempt_no, seed, layout, started_at, deadline, status)
+         select gen_random_uuid(), $1, u.id, 1, 1, a.layout, now() - interval '30 min', now() + interval '15 min', 'in_progress'
+         from users u, attempts a where u.username like 'bench%' and a.id = $2`,
+        [extra, live.attemptIds.an],
+      );
+      await sql(
+        `insert into responses (attempt_id, item_id, value, client_seq, saved_at)
+         select a.id, ei.id, case q.type when 'single_choice' then '{"optionId":"o2"}'::jsonb
+           when 'multiple_choice' then '{"optionIds":["o1","o3"]}'::jsonb
+           when 'true_false_cluster' then '{"answers":{"s1":true,"s2":false}}'::jsonb
+           else '{"text":"bài làm"}'::jsonb end, 1, now()
+         from attempts a join exam_items ei on ei.exam_id = $2 join questions q on q.id = ei.question_id
+         where a.session_id = $1 and a.user_id in (select id from users where username like 'bench%')`,
+        [extra, examId],
+      );
+      await sql(
+        `update attempts set status = 'submitted', submitted_at = now(), submit_reason = 'candidate'
+         where session_id = $1 and status = 'in_progress'`,
+        [extra],
+      );
+    }
+    const extraAttempts = (
+      await sql<{ id: string }>(
+        `select a.id from attempts a join sessions s on s.id = a.session_id
+         where s.title like 'Phien phu %' and a.status = 'submitted'`,
+      )
+    ).map((row) => row.id);
+    expect(extraAttempts).toHaveLength(9 * N);
+    const grader = t.app.get(AutogradeService, { strict: false });
+    for (let i = 0; i < extraAttempts.length; i += BATCH) {
+      await grader.gradeAttempts(extraAttempts.slice(i, i + BATCH));
+    }
+    const singleItem = (
+      await sql<{ id: string }>(
+        `select ei.id from exam_items ei where ei.exam_id = $1 and ei.snapshot->>'type' = 'single_choice'`,
+        [examId],
+      )
+    )[0]?.id as string;
+    const corrections = t.app.get(KeyCorrectionsService);
+    const impact = await timedCall(
+      'Đính chính: xem trước 5.000 Lượt',
+      () => corrections.preview(gv, examId, singleItem, { newKey: ['o1'] }),
+      3000,
+    );
+    expect(impact.attempts).toBeGreaterThanOrEqual(10 * N - 20);
+    // Lượt `an` bỏ trống câu này nên không đổi; một dòng đã sửa qua Phúc khảo ở phần trên (nguồn `appeal`) được giữ nguyên.
+    expect(impact.decrease).toBeGreaterThanOrEqual(10 * N - 1);
+    const created = await timedCall(
+      'Đính chính: xác nhận (trả lời ngay, chưa chấm lại)',
+      () =>
+        corrections.create(examinerActor, examId, singleItem, {
+          newKey: ['o1'],
+          reason: 'Nhập nhầm đáp án câu chọn một',
+        }),
+      300,
+    );
+    await timedCall(
+      'Đính chính: chấm lại 5.000 Lượt ở nền (có 500 thông báo)',
+      async () => {
+        await t.queue.drain();
+      },
+      8000,
+    );
+    const progress = await corrections.progress(gv, examId, created.id);
+    console.log(
+      `[đo] Đính chính: ${progress.processed}/${progress.total} Lượt, giảm ${progress.decrease}, tăng ${progress.increase}`,
+    );
+    expect(progress.status).toBe('done');
+    expect(progress.processed).toBe(progress.total);
+  }, 180_000);
 });

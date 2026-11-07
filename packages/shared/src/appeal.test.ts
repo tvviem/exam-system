@@ -3,7 +3,11 @@ import {
   appealLimitOf,
   createAppealSchema,
   extendAppealPeriodSchema,
+  keyCorrectionPreviewSchema,
+  keyCorrectionSchema,
+  releaseBlockers,
   resolveAppealSchema,
+  sameKey,
 } from './grading.js';
 
 describe('appealLimitOf: hạn mức Phúc khảo (Q311)', () => {
@@ -108,5 +112,51 @@ describe('extendAppealPeriodSchema (Q314)', () => {
     expect(extendAppealPeriodSchema.safeParse({ appealPeriodDays: 15 }).success).toBe(false);
     expect(extendAppealPeriodSchema.safeParse({ appealPeriodDays: 0 }).success).toBe(false);
     expect(extendAppealPeriodSchema.safeParse({ appealPeriodDays: 2.5 }).success).toBe(false);
+  });
+});
+
+describe('Đính chính đáp án: schema và sameKey (Q302, Q316, Q317)', () => {
+  it('đáp án mới là danh sách id hoặc Đúng/Sai từng Mệnh đề; lý do 10–1000 ký tự', () => {
+    expect(
+      keyCorrectionSchema.safeParse({ newKey: ['o2'], reason: 'Nhập nhầm đáp án B' }).success,
+    ).toBe(true);
+    expect(
+      keyCorrectionSchema.safeParse({ newKey: { s1: true, s2: false }, reason: 'Nhập nhầm đáp án' })
+        .success,
+    ).toBe(true);
+    expect(keyCorrectionSchema.safeParse({ newKey: [], reason: 'Nhập nhầm đáp án' }).success).toBe(
+      false,
+    );
+    expect(keyCorrectionSchema.safeParse({ newKey: ['o2'], reason: 'ngắn' }).success).toBe(false);
+    expect(
+      keyCorrectionSchema.safeParse({ newKey: ['o2'], reason: 'Nhập nhầm đáp án', extra: 1 })
+        .success,
+    ).toBe(false);
+    expect(keyCorrectionPreviewSchema.safeParse({ newKey: ['o2'] }).success).toBe(true);
+  });
+
+  it('sameKey không phụ thuộc thứ tự và phân biệt hai dạng', () => {
+    expect(sameKey(['o1', 'o3'], ['o3', 'o1'])).toBe(true);
+    expect(sameKey(['o1'], ['o2'])).toBe(false);
+    expect(sameKey(['o1'], ['o1', 'o2'])).toBe(false);
+    expect(sameKey({ s1: true, s2: false }, { s2: false, s1: true })).toBe(true);
+    expect(sameKey({ s1: true, s2: false }, { s1: true, s2: true })).toBe(false);
+    expect(sameKey(['o1'], { s1: true })).toBe(false);
+  });
+});
+
+describe('releaseBlockers: đang chấm lại sau Đính chính (Q319)', () => {
+  const base = {
+    released: false,
+    cancelled: false,
+    finished: true,
+    submittedAttempts: 3,
+    ungradedAttempts: 0,
+    pendingEssays: 0,
+  };
+  it('chặn Công bố khi đang chấm lại, xong thì hết chặn', () => {
+    expect(releaseBlockers({ ...base, correctionRunning: true })).toEqual(['CORRECTION_RUNNING']);
+    expect(releaseBlockers({ ...base, correctionRunning: false })).toEqual([]);
+    expect(releaseBlockers(base)).toEqual([]);
   });
 });

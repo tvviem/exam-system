@@ -46,6 +46,8 @@ export interface ExamContentProvider {
     illustrationId: string,
     executor?: ContentExecutor,
   ): Promise<boolean>;
+  /** Chủ của Bộ đề (Đính chính đáp án chỉ chủ Bộ đề làm được, Q302); `null` nếu không có Bộ đề này. */
+  ownerOf(examId: string, executor?: ContentExecutor): Promise<string | null>;
   /** Tên và số câu của các Bộ đề. */
   summariesOf(
     examIds: string[],

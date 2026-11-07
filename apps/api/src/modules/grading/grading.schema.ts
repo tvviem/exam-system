@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { idColumn } from '../../db/columns';
 import { attempts, violations } from '../attempt/attempt.schema';
-import { examItems } from '../exam/exam.schema';
+import { examItems, exams } from '../exam/exam.schema';
 import { users } from '../identity/identity.schema';
 import { sessions } from '../session/session.schema';
 
@@ -202,4 +202,66 @@ export const appeals = pgTable(
     // Hạn mức Phúc khảo của một người trong Phiên thi (Q311).
     index('appeals_session_user_idx').on(t.sessionId, t.userId),
   ],
+);
+
+export const keyCorrectionStatusEnum = pgEnum('key_correction_status', [
+  'running',
+  'done',
+  'failed',
+]);
+
+/**
+ * Đính chính đáp án (Q302, Q319–Q321): bản chụp `exam_items.snapshot` bất biến nên đáp án đúng mới nằm ở đây. Đáp án hiệu lực của
+ * một câu là bản đính chính mới nhất; có hiệu lực ngay khi ghi, việc chấm lại các Lượt đã nộp chạy ở nền (`status`).
+ */
+export const keyCorrections = pgTable(
+  'key_corrections',
+  {
+    id: idColumn(),
+    examId: uuid('exam_id')
+      .notNull()
+      .references(() => exams.id, { onDelete: 'restrict' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => examItems.id, { onDelete: 'restrict' }),
+    /** Đáp án hiệu lực trước và sau, dạng `KeyOverride` của `@exam/scoring`. */
+    oldKey: jsonb('old_key').$type<string[] | Record<string, boolean>>().notNull(),
+    newKey: jsonb('new_key').$type<string[] | Record<string, boolean>>().notNull(),
+    reason: text('reason').notNull(),
+    correctedBy: uuid('corrected_by')
+      .notNull()
+      .references(() => users.id),
+    correctedAt: timestamp('corrected_at', { withTimezone: true }).notNull().defaultNow(),
+    status: keyCorrectionStatusEnum('status').notNull().default('running'),
+    totalAttempts: integer('total_attempts').notNull().default(0),
+    processedAttempts: integer('processed_attempts').notNull().default(0),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => [
+    check('key_corrections_reason_len', sql`char_length(${t.reason}) BETWEEN 10 AND 1000`),
+    check(
+      'key_corrections_progress',
+      sql`${t.totalAttempts} >= 0 AND ${t.processedAttempts} BETWEEN 0 AND ${t.totalAttempts}`,
+    ),
+    // Đáp án hiệu lực của câu = bản mới nhất.
+    index('key_corrections_item_idx').on(t.itemId, t.correctedAt.desc()),
+    // Công bố và Chốt kiểm "Bộ đề này đang chấm lại sau Đính chính".
+    index('key_corrections_exam_status_idx').on(t.examId, t.status),
+  ],
+);
+
+/** Điểm đổi do mỗi Đính chính (Q302): chỉ ghi thêm, để giải thích vì sao điểm đổi và đếm "N người tăng, M người giảm". */
+export const keyCorrectionEffects = pgTable(
+  'key_correction_effects',
+  {
+    correctionId: uuid('correction_id')
+      .notNull()
+      .references(() => keyCorrections.id, { onDelete: 'restrict' }),
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => attempts.id, { onDelete: 'restrict' }),
+    oldScore: numeric('old_score', { precision: 6, scale: 2 }),
+    newScore: numeric('new_score', { precision: 6, scale: 2 }),
+  },
+  (t) => [primaryKey({ columns: [t.correctionId, t.attemptId] })],
 );

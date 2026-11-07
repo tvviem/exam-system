@@ -50,6 +50,15 @@ export class GradingSessionsService implements GradingSessions {
       .where(eq(sessions.id, sessionId));
   }
 
+  async byExam(examId: string, executor: GradingSessionExecutor = this.db) {
+    const rows = await executor
+      .select()
+      .from(sessions)
+      .where(eq(sessions.examId, examId))
+      .orderBy(desc(sessions.opensAt));
+    return rows.map(toInfo);
+  }
+
   async infoMany(sessionIds: string[]) {
     if (sessionIds.length === 0) return [];
     const rows = await this.db

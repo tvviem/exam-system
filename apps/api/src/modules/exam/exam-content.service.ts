@@ -106,6 +106,14 @@ export class ExamContentService implements ExamContentProvider {
     return row !== undefined;
   }
 
+  async ownerOf(examId: string, executor: ContentExecutor = this.db): Promise<string | null> {
+    const [row] = await executor
+      .select({ ownerId: exams.ownerId })
+      .from(exams)
+      .where(and(eq(exams.id, examId), ne(exams.status, 'draft')));
+    return row?.ownerId ?? null;
+  }
+
   async summariesOf(examIds: string[], executor: ContentExecutor = this.db) {
     if (examIds.length === 0) return new Map<string, { title: string; itemCount: number }>();
     const rows = await executor

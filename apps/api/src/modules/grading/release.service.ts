@@ -23,6 +23,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { GradingAccessService } from './grading-access.service';
 import { type GradingContext, GradingContextService } from './grading-context.service';
 import { GradingStatusService } from './grading-status.service';
+import { KeyCorrectionsService } from './key-corrections.service';
 
 export interface ReleaseStatus {
   ready: boolean;
@@ -48,6 +49,7 @@ export class ReleaseService {
     private readonly status: GradingStatusService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly corrections: KeyCorrectionsService,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
   ) {}
 
@@ -78,6 +80,7 @@ export class ReleaseService {
       submittedAttempts: ctx.submitted.length,
       ungradedAttempts: ctx.ungradedAttempts,
       pendingEssays: this.pendingEssays(ctx),
+      correctionRunning: await this.corrections.hasRunning(info.examId, executor),
     });
     return { blockers, pendingEssays: this.pendingEssays(ctx) };
   }
