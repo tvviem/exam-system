@@ -9,6 +9,7 @@ const row = (over: Partial<SessionRow> = {}): SessionRow => ({
   maxAttempts: 1,
   canWait: false,
   waitingRoom: false,
+  resultReleased: false,
   ...over,
 });
 
@@ -118,5 +119,21 @@ describe('Phòng chờ trong "Phiên thi của tôi" (Q284)', () => {
 
   it('sắp mở, còn xa giờ mở: chỉ chờ', () => {
     expect(entryActionOf(row({ phase: 'upcoming' }))).toBe('wait');
+  });
+});
+
+describe('Kết quả đã Công bố (PR 5c)', () => {
+  it('Phiên thi đã Công bố thì hành động chính là xem Kết quả, kể cả khi đã hết lượt', () => {
+    expect(entryActionOf(row({ phase: 'closed', attemptsUsed: 1, resultReleased: true }))).toBe(
+      'result',
+    );
+    expect(entryActionOf(row({ phase: 'closed', attemptsUsed: 1 }))).toBe('finished');
+  });
+  it('Lượt đang làm vẫn được làm tiếp trước khi nói tới Kết quả', () => {
+    expect(
+      entryActionOf(
+        row({ inProgressAttemptId: 'a1', deviceStatus: 'active', resultReleased: true }),
+      ),
+    ).toBe('resume');
   });
 });

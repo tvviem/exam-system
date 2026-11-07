@@ -17,6 +17,7 @@ import {
   type GradingContext,
   GradingContextService,
 } from './grading-context.service';
+import { GradingStatusService } from './grading-status.service';
 
 /** Hàng đợi trả tối đa chừng này dòng (Phiên thi tối đa 500 người). */
 const QUEUE_LIMIT = 500;
@@ -38,6 +39,7 @@ export class ManualGradingService {
     private readonly context: GradingContextService,
     private readonly autograde: AutogradeService,
     private readonly audit: AuditService,
+    private readonly status: GradingStatusService,
   ) {}
 
   /** Các bài tự luận có chữ của câu này, theo thứ tự ngẫu nhiên nhưng cố định (Q291); nhãn "Bài N" là hạng trong thứ tự đó. */
@@ -172,21 +174,24 @@ export class ManualGradingService {
       });
     }
     const score = centi === null ? null : fromCenti(centi);
-    const write = async () => {
-      const [row] = await this.db
-        .update(responseGrades)
-        .set({
-          score: score === null ? null : score.toFixed(2),
-          verdict: verdictOfScore(score, item.points),
-          source: 'manual',
-          gradedBy: actor.id,
-          gradedAt: this.clock.now(),
-          feedback: request.feedback?.trim() ? request.feedback.trim() : null,
-        })
-        .where(and(eq(responseGrades.attemptId, attemptId), eq(responseGrades.itemId, itemId)))
-        .returning();
-      return row;
-    };
+    // Cổng ghi: khóa chia sẻ dòng thiết lập chấm (Công bố nối đuôi) và từ chối nếu đã Công bố (Q299).
+    const write = () =>
+      this.db.transaction(async (tx) => {
+        await this.status.lockForWrite(tx, sessionId);
+        const [row] = await tx
+          .update(responseGrades)
+          .set({
+            score: score === null ? null : score.toFixed(2),
+            verdict: verdictOfScore(score, item.points),
+            source: 'manual',
+            gradedBy: actor.id,
+            gradedAt: this.clock.now(),
+            feedback: request.feedback?.trim() ? request.feedback.trim() : null,
+          })
+          .where(and(eq(responseGrades.attemptId, attemptId), eq(responseGrades.itemId, itemId)))
+          .returning();
+        return row;
+      });
     let saved = await write();
     if (!saved) {
       // Chưa chấm tự động xong (vừa nộp): chấm ngay rồi thử lại một lần.
@@ -209,6 +214,7 @@ export class ManualGradingService {
     const before = await this.access.isBlind(sessionId);
     const now = this.clock.now();
     await this.db.transaction(async (tx) => {
+      await this.status.lockForWrite(tx, sessionId);
       await tx
         .insert(sessionGradings)
         .values({ sessionId, blind, createdAt: now, updatedAt: now })

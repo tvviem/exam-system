@@ -23,6 +23,7 @@ export interface SessionSummary {
   shuffleItems: boolean;
   shuffleOptions: boolean;
   showScoringRules: boolean;
+  reviewAfterRelease: boolean;
   accessCode: string;
   entryClosedAt: string | null;
   cancelledAt: string | null;
@@ -45,6 +46,7 @@ export interface SessionInput {
   shuffleItems: boolean;
   shuffleOptions: boolean;
   showScoringRules: boolean;
+  reviewAfterRelease: boolean;
   accessCode?: string;
 }
 

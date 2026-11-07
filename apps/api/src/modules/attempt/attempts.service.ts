@@ -19,6 +19,7 @@ import { ATTEMPT_SUBMITTED_HOOKS, type AttemptSubmittedHooks } from '../../commo
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
 import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
+import { SESSION_GRADING_STATUS, type SessionGradingStatus } from '../../common/grading-status';
 import { uniqueViolationOf } from '../../common/pg-error';
 import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import type { SubmitReason } from '../../common/session-attempts';
@@ -114,6 +115,7 @@ export class AttemptsService {
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     @Inject(ATTEMPT_SUBMITTED_HOOKS) private readonly submitted: AttemptSubmittedHooks,
+    @Inject(SESSION_GRADING_STATUS) private readonly gradingStatus: SessionGradingStatus,
   ) {}
 
   // --- Vào thi (Q229) -----------------------------------------------------------------------------------------------
@@ -399,6 +401,8 @@ export class AttemptsService {
       .from(sessionDevices)
       .where(eq(sessionDevices.userId, userId));
     const hash = deviceKey ? hashDeviceKey(deviceKey) : undefined;
+    // Phiên thi đã Công bố: Người dự thi xem được Kết quả (PR 5c).
+    const released = await this.gradingStatus.releaseStates(gates.map((gate) => gate.sessionId));
     return {
       items: gates.map((gate) => {
         const own = mine.filter((attempt) => attempt.sessionId === gate.sessionId);
@@ -421,6 +425,8 @@ export class AttemptsService {
           inProgressAttemptId: own.find((attempt) => attempt.status === 'in_progress')?.id ?? null,
           deviceStatus,
           ...waitingFlags(phaseOf(gate, now), gate.opensAt, now, deviceStatus),
+          resultReleased: released.has(gate.sessionId),
+          resultAppealUntil: released.get(gate.sessionId)?.appealUntil ?? null,
         };
       }),
     };

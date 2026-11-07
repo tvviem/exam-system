@@ -19,11 +19,21 @@ export interface GradingSessionInfo {
   attemptScoring: 'highest' | 'latest';
   entryClosedAt: Date | null;
   cancelledAt: Date | null;
+  /** Cho Người dự thi xem lại đề sau Công bố (Q297). */
+  reviewAfterRelease: boolean;
 }
 
 export interface GradingSessions {
   /** Phiên thi này (của bất kỳ chủ nào), hoặc `null` nếu không có. */
   info(sessionId: string, executor?: GradingSessionExecutor): Promise<GradingSessionInfo | null>;
+  /** Như `info` nhưng khóa dòng Phiên thi `FOR UPDATE` đến hết giao dịch (Công bố nối đuôi với Hoàn tác, Hủy). */
+  lock(sessionId: string, executor: GradingSessionExecutor): Promise<GradingSessionInfo | null>;
+  /** Đổi "Cho xem lại đề sau Công bố" (Q297); tăng `version` như mọi lần sửa thiết lập. */
+  setReviewAfterRelease(
+    sessionId: string,
+    value: boolean,
+    executor: GradingSessionExecutor,
+  ): Promise<void>;
   /** Các Phiên thi có trong `sessionIds` (mới mở trước). */
   infoMany(sessionIds: string[]): Promise<GradingSessionInfo[]>;
   /** Mọi người trong Danh sách dự thi, kèm Lớp chụp lúc thêm. */

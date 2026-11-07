@@ -1,4 +1,4 @@
-import type { RichText } from '@exam/shared';
+import type { ReleaseBlocker, RichText } from '@exam/shared';
 import { queryOptions } from '@tanstack/react-query';
 import { apiFetch } from './api';
 
@@ -40,6 +40,14 @@ export interface ResultsData {
     pendingEssays: number;
     violationsUndecided: number;
     essayHidden: boolean;
+  };
+  release: {
+    ready: boolean;
+    blockers: ReleaseBlocker[];
+    releasedAt: string | null;
+    appealUntil: string | null;
+    finalizedAt: string | null;
+    reviewAfterRelease: boolean;
   };
   people: ResultRow[];
 }
@@ -286,4 +294,60 @@ export const adminSessionsQuery = (q: string) =>
     queryFn: () =>
       apiFetch<{ items: AdminSession[] }>(`/admin/sessions?q=${encodeURIComponent(q)}`),
     staleTime: 10_000,
+  });
+
+export const releaseSession = (sessionId: string, appealPeriodDays: number) =>
+  apiFetch<{ releasedAt: string; appealUntil: string | null; finalizedAt: string | null }>(
+    `${base(sessionId)}/release`,
+    { method: 'POST', body: { appealPeriodDays } },
+  );
+
+export const setReviewAfterRelease = (sessionId: string, reviewAfterRelease: boolean) =>
+  apiFetch<{ reviewAfterRelease: boolean }>(`${base(sessionId)}/grading/review`, {
+    method: 'PUT',
+    body: { reviewAfterRelease },
+  });
+
+/** Kết quả của chính Người dự thi sau Công bố (Q297). */
+export interface MyResultItem {
+  no: number;
+  type: PersonItem['type'];
+  points: number;
+  score: number | null;
+  verdict: Exclude<Verdict, 'pending'>;
+  cluster?: { correct: number; total: number };
+  essay?: { answer: string; feedback: string | null };
+  review?: { stem: RichText; payload: Record<string, unknown>; answer: unknown };
+}
+
+export interface MyResult {
+  session: { sessionId: string; title: string; opensAt: string; durationMinutes: number };
+  releasedAt: string;
+  appealUntil: string | null;
+  finalizedAt: string | null;
+  reviewAfterRelease: boolean;
+  attemptCount: number;
+  countedAttemptNo: number | null;
+  summary: {
+    rawScore: number;
+    maxScore: number;
+    finalScore: number;
+    scaledScore: number;
+    percent: number;
+    penaltyPercent: number;
+    voided: boolean;
+  };
+  penalties: {
+    action: 'warning' | 'disqualify';
+    reason: string;
+    type: 'percent' | 'void';
+    percent: number | null;
+  }[];
+  items: MyResultItem[];
+}
+
+export const myResultQuery = (sessionId: string) =>
+  queryOptions({
+    queryKey: ['take', 'result', sessionId],
+    queryFn: () => apiFetch<MyResult>(`/take/sessions/${sessionId}/result`),
   });

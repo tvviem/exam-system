@@ -35,6 +35,8 @@ export interface GradingContext {
   /** Các Lượt có thể được tính vào Kết quả (Q292). */
   countable: SubmittedAttempt[];
   rows: Map<string, GradeRow[]>;
+  /** Lượt đã nộp mà vẫn chưa chấm tự động được sau khi chấm bù (hiếm: bản chụp hỏng). */
+  ungradedAttempts: number;
 }
 
 /**
@@ -57,7 +59,7 @@ export class GradingContextService {
     ]);
     if (!content) throw new ApiError('NOT_FOUND');
     const items = itemsOf(content);
-    await this.gradeMissing(submitted.map((attempt) => attempt.attemptId));
+    const ungradedAttempts = await this.gradeMissing(submitted.map((attempt) => attempt.attemptId));
     const countable = countableAttempts(submitted, info.attemptScoring);
     const rows = new Map<string, GradeRow[]>();
     if (countable.length > 0) {
@@ -90,18 +92,21 @@ export class GradingContextService {
       submitted,
       countable,
       rows,
+      ungradedAttempts,
     };
   }
 
-  /** Chấm bù các Lượt chưa có dấu "đã chấm" (không làm gì nếu đã đủ). */
-  private async gradeMissing(attemptIds: string[]) {
-    if (attemptIds.length === 0) return;
+  /** Chấm bù các Lượt chưa có dấu "đã chấm"; trả số Lượt vẫn chưa chấm được. */
+  private async gradeMissing(attemptIds: string[]): Promise<number> {
+    if (attemptIds.length === 0) return 0;
     const done = await this.db
       .select({ id: attemptGrades.attemptId })
       .from(attemptGrades)
       .where(inArray(attemptGrades.attemptId, attemptIds));
     const doneIds = new Set(done.map((row) => row.id));
     const missing = attemptIds.filter((id) => !doneIds.has(id));
-    if (missing.length > 0) await this.autograde.gradeAttempts(missing);
+    if (missing.length === 0) return 0;
+    const graded = await this.autograde.gradeAttempts(missing);
+    return missing.length - graded;
   }
 }

@@ -24,6 +24,7 @@ export interface SessionDraft {
   shuffleItems: boolean;
   shuffleOptions: boolean;
   showScoringRules: boolean;
+  reviewAfterRelease: boolean;
   accessCode: string;
 }
 
@@ -39,6 +40,7 @@ export const emptySessionDraft: SessionDraft = {
   shuffleItems: false,
   shuffleOptions: false,
   showScoringRules: false,
+  reviewAfterRelease: false,
   accessCode: '',
 };
 
@@ -54,6 +56,7 @@ export const draftOf = (session: SessionSummary): SessionDraft => ({
   shuffleItems: session.shuffleItems,
   shuffleOptions: session.shuffleOptions,
   showScoringRules: session.showScoringRules,
+  reviewAfterRelease: session.reviewAfterRelease,
   accessCode: session.accessCode,
 });
 
@@ -69,6 +72,7 @@ export const inputOf = (draft: SessionDraft): SessionInput => ({
   shuffleItems: draft.shuffleItems,
   shuffleOptions: draft.shuffleOptions,
   showScoringRules: draft.showScoringRules,
+  reviewAfterRelease: draft.reviewAfterRelease,
   ...(draft.accessCode.trim() ? { accessCode: draft.accessCode } : {}),
 });
 
@@ -85,6 +89,7 @@ export const GROUP_FIELDS: Record<SessionGroup, SessionFieldName[]> = {
     'shuffleItems',
     'shuffleOptions',
     'showScoringRules',
+    'reviewAfterRelease',
     'accessCode',
   ],
 };
@@ -322,6 +327,14 @@ export function SessionFields({
         checked={draft.showScoringRules}
         disabled={!open('showScoringRules')}
         onChange={(showScoringRules) => patch({ showScoringRules })}
+      />
+      <Check
+        id="session-review-after-release"
+        label={t('session.field.reviewAfterRelease')}
+        hint={lockedHint('reviewAfterRelease') ?? t('session.field.reviewAfterReleaseHint')}
+        checked={draft.reviewAfterRelease}
+        disabled={!open('reviewAfterRelease')}
+        onChange={(reviewAfterRelease) => patch({ reviewAfterRelease })}
       />
       <div className="flex flex-col gap-2">
         <TextField

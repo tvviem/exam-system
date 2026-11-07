@@ -5,6 +5,7 @@ import { EXAM_CONTENT } from './common/exam-content';
 import { EXAMINER_DIRECTORY } from './common/examiner-directory';
 import { GRADING_SESSIONS } from './common/grading-sessions';
 import { GRADING_SOURCE } from './common/grading-source';
+import { SESSION_GRADING_STATUS } from './common/grading-status';
 import { SESSION_ATTEMPTS } from './common/session-attempts';
 import { SESSION_ENTRY } from './common/session-entry';
 import { USER_DEACTIVATION_HOOKS } from './common/user-deactivation';
@@ -18,6 +19,7 @@ import { ExamModule } from './modules/exam/exam.module';
 import { ExamContentService } from './modules/exam/exam-content.service';
 import { GradingModule } from './modules/grading/grading.module';
 import { GradingHooksService } from './modules/grading/grading-hooks.service';
+import { GradingStatusService } from './modules/grading/grading-status.service';
 import { ExaminerDirectoryService } from './modules/identity/examiner-directory.service';
 import { IdentityModule } from './modules/identity/identity.module';
 import { GradingSessionsService } from './modules/session/grading-sessions.service';
@@ -38,6 +40,7 @@ import { SessionEntryService } from './modules/session/session-entry.service';
     { provide: ATTEMPT_SUBMITTED_HOOKS, useExisting: GradingHooksService },
     { provide: ATTEMPT_GRADE_GUARD, useExisting: GradingHooksService },
     { provide: GRADING_SESSIONS, useExisting: GradingSessionsService },
+    { provide: SESSION_GRADING_STATUS, useExisting: GradingStatusService },
     { provide: EXAMINER_DIRECTORY, useExisting: ExaminerDirectoryService },
     { provide: VIOLATION_PENALTIES, useExisting: ViolationPenaltiesService },
   ],
@@ -51,6 +54,7 @@ import { SessionEntryService } from './modules/session/session-entry.service';
     ATTEMPT_SUBMITTED_HOOKS,
     ATTEMPT_GRADE_GUARD,
     GRADING_SESSIONS,
+    SESSION_GRADING_STATUS,
     EXAMINER_DIRECTORY,
     VIOLATION_PENALTIES,
   ],

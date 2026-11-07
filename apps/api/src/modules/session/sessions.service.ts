@@ -13,6 +13,7 @@ import { and, desc, eq, gt, isNotNull, isNull, lte, or, type SQL, sql } from 'dr
 import { ApiError, validationFailed } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
 import { EXAM_CATALOG, type ExamCatalog } from '../../common/exam-catalog';
+import { SESSION_GRADING_STATUS, type SessionGradingStatus } from '../../common/grading-status';
 import { type Page, paginate } from '../../common/pagination';
 import { exclusionViolationOf } from '../../common/pg-error';
 import { escapeLike } from '../../common/sql-like';
@@ -60,6 +61,7 @@ export class SessionsService {
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(EXAM_CATALOG) private readonly exams: ExamCatalog,
     private readonly notifications: NotificationsService,
+    @Inject(SESSION_GRADING_STATUS) private readonly gradingStatus: SessionGradingStatus,
   ) {}
 
   async create(ownerId: string, input: SessionSettings) {
@@ -90,6 +92,12 @@ export class SessionsService {
           issues: problems.map(({ path, code }) => ({ path, code })),
         });
       if (next.examId !== current.examId) await this.requireUsableExam(ownerId, next.examId);
+      // Đã Công bố thì không đổi "Cho xem lại đề" nữa (Q297).
+      if (next.reviewAfterRelease !== current.reviewAfterRelease) {
+        if ((await this.gradingStatus.releaseStates([id], tx)).has(id)) {
+          throw new ApiError('INVALID_STATE', { reason: 'ALREADY_RELEASED' });
+        }
+      }
 
       try {
         await tx
@@ -170,6 +178,7 @@ export class SessionsService {
       shuffleItems: sessions.shuffleItems,
       shuffleOptions: sessions.shuffleOptions,
       showScoringRules: sessions.showScoringRules,
+      reviewAfterRelease: sessions.reviewAfterRelease,
       accessCode: sessions.accessCode,
       entryClosedAt: sessions.entryClosedAt,
       cancelledAt: sessions.cancelledAt,

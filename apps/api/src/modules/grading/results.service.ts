@@ -11,6 +11,7 @@ import {
 } from '../../common/violation-penalties';
 import { GradingAccessService } from './grading-access.service';
 import { type GradingContext, GradingContextService } from './grading-context.service';
+import { ReleaseService } from './release.service';
 
 /** Dòng của bảng Kết quả (docs/plan/slice-5.md, PR 5b). */
 export interface ResultRow {
@@ -60,6 +61,7 @@ export class ResultsService {
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     @Inject(VIOLATION_PENALTIES) private readonly violations: ViolationPenalties,
     @Inject(GRADING_SOURCE) private readonly source: GradingSource,
+    private readonly release: ReleaseService,
   ) {}
 
   /** Chấm ẩn tên đang bật mà còn bài tự luận chờ chấm: che điểm tự luận (Q291). */
@@ -80,8 +82,18 @@ export class ResultsService {
   }
 
   async results(userId: string, sessionId: string) {
+    return (await this.compute(userId, sessionId, false)).payload;
+  }
+
+  /** Dữ liệu cho xuất Excel: như `results` nhưng luôn kèm mã Lượt được tính và trả cả bối cảnh để dựng trang Chi tiết. */
+  async exportData(userId: string, sessionId: string) {
+    return this.compute(userId, sessionId, true);
+  }
+
+  private async compute(userId: string, sessionId: string, withAttemptIds: boolean) {
     const access = await this.access.require(userId, sessionId);
     const ctx = await this.context.load(access.info);
+    const release = await this.release.statusOf(access.info, ctx);
     const [blind, violations, roster] = await Promise.all([
       this.access.isBlind(sessionId),
       this.violations.list(sessionId),
@@ -169,11 +181,12 @@ export class ResultsService {
         scaledScore: result.scaledScore,
         penaltyPercent: result.penaltyPercent,
         voided: result.voided,
-        ...(hide ? {} : { countedAttemptId: result.countedAttemptId }),
+        ...(hide && !withAttemptIds ? {} : { countedAttemptId: result.countedAttemptId }),
       };
     });
 
-    return {
+    const payload = {
+      release,
       session: {
         sessionId,
         title: access.info.title,
@@ -194,6 +207,7 @@ export class ResultsService {
       },
       people: rows,
     };
+    return { payload, ctx, access };
   }
 
   /** Điểm từng câu của một người (các Lượt có thể được tính). */

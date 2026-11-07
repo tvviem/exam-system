@@ -5,6 +5,7 @@ import { ApiError } from '../../common/api-error';
 import { ATTEMPT_SUBMITTED_HOOKS, type AttemptSubmittedHooks } from '../../common/attempt-grading';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
+import { SESSION_GRADING_STATUS, type SessionGradingStatus } from '../../common/grading-status';
 import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB } from '../../db/db.module';
@@ -28,6 +29,7 @@ export class SessionLifecycleService {
     private readonly notifications: NotificationsService,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     @Inject(ATTEMPT_SUBMITTED_HOOKS) private readonly submitted: AttemptSubmittedHooks,
+    @Inject(SESSION_GRADING_STATUS) private readonly gradingStatus: SessionGradingStatus,
   ) {}
 
   /** Hủy không hoàn tác (Q203); các Lượt đang làm được nộp ngay với lý do `session_cancelled`. */
@@ -38,6 +40,10 @@ export class SessionLifecycleService {
     await this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, id);
       if (session.cancelledAt) throw new ApiError('INVALID_STATE', { reason: 'SESSION_CANCELLED' });
+      // Đã Công bố thì không Hủy nữa: Hủy nghĩa là "không tính Kết quả" (Q299).
+      if ((await this.gradingStatus.releaseStates([id], tx)).has(id)) {
+        throw new ApiError('INVALID_STATE', { reason: 'SESSION_RELEASED' });
+      }
       await tx
         .update(sessions)
         .set({
@@ -103,6 +109,7 @@ export class SessionLifecycleService {
         shuffleItems: source.shuffleItems,
         shuffleOptions: source.shuffleOptions,
         showScoringRules: source.showScoringRules,
+        reviewAfterRelease: source.reviewAfterRelease,
       };
       const created = await this.sessions.createWithin(tx, ownerId, input);
       // Chỉ chép người còn đủ điều kiện dự thi; Lớp chụp lại theo hồ sơ hiện tại (như lúc thêm).

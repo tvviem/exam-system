@@ -125,6 +125,8 @@ const settingsShape = {
   shuffleItems: z.boolean().default(false),
   shuffleOptions: z.boolean().default(false),
   showScoringRules: z.boolean().default(false),
+  /** Cho Người dự thi xem lại đề sau Công bố (Q297); đổi được đến lúc Công bố. */
+  reviewAfterRelease: z.boolean().default(false),
   accessCode: accessCode.optional(),
 };
 const closesAfterOpens = {
@@ -164,11 +166,22 @@ const EDITABLE: Record<SessionPhase, Partial<Record<keyof SessionSettings, 'free
     shuffleItems: 'free',
     shuffleOptions: 'free',
     showScoringRules: 'free',
+    reviewAfterRelease: 'free',
     accessCode: 'free',
   },
-  open: { closesAt: 'grow', durationMinutes: 'grow', accessCode: 'free' },
-  entry_closed: { closesAt: 'grow', durationMinutes: 'grow', accessCode: 'free' },
-  closed: {},
+  open: {
+    closesAt: 'grow',
+    durationMinutes: 'grow',
+    accessCode: 'free',
+    reviewAfterRelease: 'free',
+  },
+  entry_closed: {
+    closesAt: 'grow',
+    durationMinutes: 'grow',
+    accessCode: 'free',
+    reviewAfterRelease: 'free',
+  },
+  closed: { reviewAfterRelease: 'free' },
   cancelled: {},
 };
 

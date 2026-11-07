@@ -192,7 +192,15 @@
     "INVALID_STATE_ROSTER_FULL": "Danh sách dự thi tối đa 500 người. Hãy bớt người hoặc chia thành nhiều Phiên thi.",
     "INVALID_STATE_ASK_ADMIN": "Chỉ cấp lại được cho tài khoản do chính bạn xin cấp và chủ tài khoản chưa đổi mật khẩu tạm. Trường hợp khác, hãy nhờ Quản trị viên.",
     "INVALID_STATE_EXTENSION_LIMIT": "Có người đã được cộng đủ giờ tối đa (600 phút). Bỏ họ ra khỏi nhóm rồi thử lại.",
-    "INVALID_STATE_BATCH_REUSED": "Yêu cầu này trùng mã với một yêu cầu khác. Đóng hộp thoại và mở lại."
+    "INVALID_STATE_BATCH_REUSED": "Yêu cầu này trùng mã với một yêu cầu khác. Đóng hộp thoại và mở lại.",
+    "INVALID_STATE_ALREADY_RELEASED": "Kết quả đã được Công bố nên không thay đổi được nữa. Điểm chỉ đổi qua Phúc khảo hoặc Đính chính đáp án.",
+    "INVALID_STATE_SESSION_RELEASED": "Phiên thi đã Công bố kết quả nên không Hủy được.",
+    "INVALID_STATE_NOT_RELEASED": "Kết quả chưa được Công bố.",
+    "INVALID_STATE_SESSION_NOT_FINISHED": "Phiên thi chưa kết thúc: còn Lượt đang làm, hoặc chưa hết Khung giờ và chưa Đóng cửa vào thi.",
+    "INVALID_STATE_NO_ATTEMPTS": "Chưa có Lượt làm bài nào để Công bố.",
+    "INVALID_STATE_UNGRADED_ATTEMPTS": "Còn Lượt chưa chấm tự động xong, hãy thử lại sau ít giây.",
+    "INVALID_STATE_ESSAYS_PENDING": "Còn bài tự luận chưa chấm.",
+    "INVALID_STATE_ALREADY_RELEASED_BLOCK": "Đã Công bố."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -361,7 +369,9 @@
         "cancelled": "Phiên thi đã bị hủy.",
         "entry_closed": "Phiên thi đã đóng cửa vào thi.",
         "closed": "Phiên thi đã đóng."
-      }
+      },
+      "resultReady": "Kết quả đã được Công bố ({{used}}/{{max}} lượt)",
+      "viewResult": "Xem Kết quả"
     },
     "submitted": {
       "title": "Đã nộp",
@@ -798,7 +808,8 @@
     "session.cancelled": "Phiên thi “{{title}}” đã bị Hủy.",
     "session.grading_delegated": "Bạn được ủy quyền chấm Phiên thi “{{title}}”.",
     "session.grading_delegate_revoked": "Quyền chấm Phiên thi “{{title}}” của bạn đã được thu hồi.",
-    "account.password_reissued": "Mật khẩu tạm của bạn vừa được Người ra đề cấp lại. Đăng nhập bằng mật khẩu mới và đổi ngay."
+    "account.password_reissued": "Mật khẩu tạm của bạn vừa được Người ra đề cấp lại. Đăng nhập bằng mật khẩu mới và đổi ngay.",
+    "results.released": "Kết quả Phiên thi “{{title}}” đã được Công bố. Xem điểm của bạn."
   },
   "credentialSlips": {
     "heading": "Phiếu tài khoản",
@@ -1350,7 +1361,9 @@
       "accessCodeHint": "4 đến 12 ký tự chữ và số, không phân biệt hoa thường. Người dự thi nhập mã này ở lần vào đầu tiên.",
       "suggestAnother": "Gợi ý mã khác",
       "locked": "Không sửa được khi Phiên thi đã mở",
-      "growOnly": "Chỉ kéo dài được"
+      "growOnly": "Chỉ kéo dài được",
+      "reviewAfterRelease": "Cho xem lại đề sau Công bố",
+      "reviewAfterReleaseHint": "Tắt: Người dự thi chỉ thấy điểm và kết luận từng câu. Bật: thấy thêm nội dung câu và lựa chọn của chính họ (không bao giờ thấy đáp án đúng). Nên tắt nếu bạn dùng lại đề."
     },
     "tabs": {
       "label": "Phiên thi",
@@ -1804,6 +1817,57 @@
       "name": "Theo tên",
       "high": "Điểm cao đến thấp",
       "low": "Điểm thấp đến cao"
+    },
+    "release": {
+      "open": "Công bố kết quả",
+      "title": "Công bố kết quả",
+      "summary": "{{count}} Người dự thi sẽ nhận được Kết quả và thông báo ngay.",
+      "undecided": "Còn {{count}} Vi phạm chưa quyết Mức xử lý (tính như không xử lý).",
+      "appealPeriod": "Thời hạn Phúc khảo",
+      "appealHint": "Sau khi hết hạn và xử lý xong mọi Phúc khảo, kết quả được Chốt.",
+      "noAppeal": "Không nhận Phúc khảo (Chốt ngay)",
+      "days": "{{count}} ngày",
+      "irreversible": "Công bố không hoàn tác được. Sau đó điểm chỉ đổi qua Phúc khảo hoặc Đính chính đáp án.",
+      "confirm": "Công bố",
+      "done": "Đã Công bố kết quả",
+      "released": "Đã Công bố lúc {{time}}",
+      "finalized": "Đã Chốt kết quả lúc {{time}}",
+      "locked": "Đã Công bố nên điểm tự luận, Mức xử lý và Chấm ẩn tên không đổi được nữa.",
+      "export": "Xuất Excel",
+      "blocker": {
+        "ALREADY_RELEASED": "Đã Công bố.",
+        "SESSION_CANCELLED": "Phiên thi đã bị Hủy.",
+        "SESSION_NOT_FINISHED": "Phiên thi chưa kết thúc: còn Lượt đang làm, hoặc chưa hết Khung giờ và chưa Đóng cửa vào thi.",
+        "NO_ATTEMPTS": "Chưa có Lượt làm bài nào.",
+        "UNGRADED_ATTEMPTS": "Còn Lượt chưa chấm tự động xong, hãy thử lại sau ít giây.",
+        "ESSAYS_PENDING": "Còn {{count}} bài tự luận chưa chấm."
+      },
+      "releasedUntil": "Đã Công bố lúc {{time}} · Phúc khảo đến {{until}}"
     }
+  },
+  "myResult": {
+    "heroLabel": "Điểm của bạn",
+    "releasedAt": "Công bố lúc {{time}}",
+    "countedAttempt": "tính theo lượt {{no}}",
+    "scaleHint": "trên thang 10",
+    "raw": "Điểm thô",
+    "afterPenalty": "Sau Mức xử lý",
+    "percent": "Mức đạt",
+    "band": {
+      "low": "Cần cố gắng thêm",
+      "fair": "Đạt mức trung bình",
+      "good": "Khá tốt",
+      "excellent": "Xuất sắc"
+    },
+    "penaltyTitle": "Mức xử lý áp lên điểm của bạn",
+    "items": "Từng câu",
+    "cluster": "đúng {{correct}}/{{total}} Mệnh đề",
+    "yourAnswer": "Bài làm của bạn",
+    "feedback": "Nhận xét của Người ra đề",
+    "yourChoice": " · bạn đã chọn",
+    "saidTrue": "Bạn chọn Đúng",
+    "saidFalse": "Bạn chọn Sai",
+    "appealUntil": "Bạn có thể gửi Phúc khảo đến {{time}}.",
+    "noAppeal": "Phiên thi này không nhận Phúc khảo; kết quả đã chốt."
   }
 }

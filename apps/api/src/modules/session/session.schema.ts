@@ -43,6 +43,8 @@ export const sessions = pgTable(
     shuffleItems: boolean('shuffle_items').notNull().default(false),
     shuffleOptions: boolean('shuffle_options').notNull().default(false),
     showScoringRules: boolean('show_scoring_rules').notNull().default(false),
+    /** Cho Người dự thi xem lại đề (câu và lựa chọn của chính họ, không đáp án) sau Công bố (Q297). */
+    reviewAfterRelease: boolean('review_after_release').notNull().default(false),
     accessCode: text('access_code').notNull(),
     entryClosedAt: timestamp('entry_closed_at', { withTimezone: true }),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),

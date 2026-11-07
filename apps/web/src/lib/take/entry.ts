@@ -12,6 +12,8 @@ export interface SessionRow {
   canWait: boolean;
   /** Đã nhập mã trên thiết bị này và đang chờ giờ mở. */
   waitingRoom: boolean;
+  /** Kết quả đã được Công bố cho Phiên thi này (PR 5c). */
+  resultReleased: boolean;
 }
 
 export type EntryAction =
@@ -20,6 +22,7 @@ export type EntryAction =
   | 'resume'
   | 'revoked'
   | 'waiting'
+  | 'result'
   | 'wait'
   | 'closed'
   | 'finished';
@@ -32,6 +35,8 @@ export function entryActionOf(row: SessionRow): EntryAction {
     if (row.deviceStatus === 'active') return 'resume';
     return row.deviceStatus === 'revoked' ? 'revoked' : 'enter-code';
   }
+  // Đã Công bố: ưu tiên mở Kết quả (không còn làm bài được nữa).
+  if (row.resultReleased) return 'result';
   if (row.phase === 'cancelled') return 'closed';
   if (row.phase === 'upcoming') {
     if (row.waitingRoom) return 'waiting';
@@ -67,6 +72,7 @@ export type SessionGroup = 'waiting' | 'open' | 'upcoming' | 'finished';
 
 export function groupOf(row: SessionRow): SessionGroup {
   if (row.inProgressAttemptId) return 'open';
+  if (row.resultReleased) return 'finished';
   if (row.phase === 'upcoming') return row.waitingRoom ? 'waiting' : 'upcoming';
   if (row.phase === 'open' && row.attemptsUsed < row.maxAttempts) return 'open';
   return 'finished';
