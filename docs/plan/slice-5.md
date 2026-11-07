@@ -510,9 +510,10 @@ Chủ dự án duyệt từng Q; nội dung dưới đây ghi theo thứ tự du
 ### Điểm tôi tự quyết (chờ chủ dự án xem; phản đối ý nào thì sửa ý đó)
 
 **Cơ sở dữ liệu (migration 0020, 5d-1; bảng Đính chính ở 5d-3).**
-- `appeals`: như data-model, thêm `session_id` (truy vấn nhanh theo Phiên thi), lý do 10–1000 ký tự, trả lời 1–1000 ký tự khi `resolved`, CHECK `target` khớp `item_id`/`violation_id`, UNIQUE `(attempt_id, item_id)` và `(violation_id)`. Trigger `appeals_guard`: chỉ INSERT khi Phiên thi đã Công bố, chưa Chốt và còn trong hạn (so giờ cơ sở dữ liệu, không tin client); `open → resolved` một lần, đã `resolved` thì không sửa, không xóa.
+- `appeals`: như data-model, thêm `session_id` và `user_id` (lặp lại từ Lượt để đếm hạn mức và liệt kê theo Phiên thi không phải nối bảng; trigger kiểm khớp Lượt như `violations_guard`), lý do 10–1000 ký tự, trả lời 1–1000 ký tự khi `resolved`, CHECK `target` khớp `item_id`/`violation_id`. Chỉ mục: UNIQUE từng phần `(attempt_id, item_id) WHERE item_id IS NOT NULL` và `(violation_id) WHERE violation_id IS NOT NULL`; `(session_id, status, created_at)` cho danh sách, số chờ và kiểm Chốt; `(session_id, user_id)` cho hạn mức. Trigger `appeals_guard`: chỉ INSERT khi Phiên thi đã Công bố, chưa Chốt và còn trong hạn (so giờ cơ sở dữ liệu, không tin client); `open → resolved` một lần, đã `resolved` thì không sửa, không xóa.
 - `session_gradings` thêm `appeal_reminded_at` (job nhắc Q315 dùng để biết đã nhắc lúc nào; không suy từ bảng thông báo).
 - `response_grades_guard` và `violations_guard` (Mức xử lý): sau Công bố chỉ cho ghi nguồn `appeal` khi có Phúc khảo `open` đúng đối tượng; sau Chốt vẫn chặn mọi ghi.
+- Chỉ mục khác của 0020: `session_gradings (released_at) WHERE released_at IS NOT NULL AND finalized_at IS NULL` (job Chốt chỉ nhìn Phiên thi đang chờ Chốt, không quét lịch sử); `notifications (user_id, type) WHERE read_at IS NULL` (gộp chuông chỉ tìm trong chuông chưa đọc).
 - Số câu của Bộ đề để tính hạn mức (Q311) đọc từ `exam_items`; đếm Phúc khảo của người đó dưới khóa tư vấn theo `(session, user)` để hai lần gửi cùng lúc không vượt hạn mức.
 
 **API (5d-1).**
@@ -536,3 +537,32 @@ Chủ dự án duyệt từng Q; nội dung dưới đây ghi theo thứ tự du
 **Test (seam).** S1 hàm thuần: `appealLimitOf`, trạng thái hạn (còn hạn, hết hạn, đã gia hạn). S2 HTTP + PostgreSQL: gửi → xử lý → điểm và Kết quả đổi; hết hạn / vượt hạn mức / trùng đối tượng đều bị chặn; Chốt ngay khi xử lý xong Phúc khảo cuối sau hạn. S3 trigger: ghi sau Chốt, ghi `appeal` khi không có Phúc khảo mở, sửa Phúc khảo đã `resolved`. S4 đồng thời: hai lần gửi cùng lúc ở sát hạn mức, gia hạn xen job Chốt, hai người xử lý cùng một Phúc khảo. S5 bảo mật: response cho Người dự thi không có đáp án; Người dự thi khác không đọc/ gửi Phúc khảo của người khác (404); Người ra đề khác chủ và không được Ủy quyền nhận 404. S6 Playwright desktop và mobile: Người dự thi gửi, Người ra đề xử lý, Người dự thi thấy câu trả lời; gia hạn; nhắc.
 
 **5d-3 (Đính chính)** sẽ có thiết kế chi tiết riêng (chấm lại theo lô, `key_correction_effects`, xem trước, thông báo `result.corrected`) trước khi code, vì còn vài quyết định về chấm lại hàng loạt.
+
+### Kiểm tra thiết kế cơ sở dữ liệu với số dòng lớn (7/11/2026, chủ dự án yêu cầu)
+
+Dựng cơ sở dữ liệu thử PostgreSQL 17: **100 000 Lượt đã nộp** (200 Phiên thi × 500 Người dự thi, 20 Bộ đề × 50 câu), **5 triệu dòng `responses`**, **5 triệu dòng `response_grades`** (771 MB, khoảng 150 byte mỗi dòng gồm cả chỉ mục), 50 000 Phúc khảo, 40 000 thông báo; áp bản nháp 0020. Đo `EXPLAIN ANALYZE` trên Phiên thi 500 Lượt (máy dev, nguội sau khi nạp):
+
+| Truy vấn | Kế hoạch | Thời gian |
+|---|---|---|
+| Lượt đã nộp của một Phiên thi (500 dòng) | quét chỉ mục `attempts_session_user_no_unique` | 0,2 ms |
+| Điểm từng câu của 500 Lượt (25 000 dòng) | 500 lần tra khóa chính `response_grades` | 25 ms |
+| Dấu "đã chấm" của 500 Lượt | quét chỉ mục `attempt_grades_pkey` | 2,5 ms |
+| Kết quả của một Người dự thi (Lượt + 50 điểm) | tra chỉ mục | 0,2 ms |
+| "Phiên thi của tôi" (200 Lượt của một người + trạng thái Công bố) | `attempts_user_idx` | 0,4 ms |
+| Job Chốt: Phiên thi quá hạn chưa Chốt | bảng 200 dòng | 0,07 ms |
+| Hạn mức Phúc khảo của một người | `appeals_session_user_idx` (chỉ quét chỉ mục) | 0,03 ms |
+| Danh sách Phúc khảo chờ của Phiên thi, kiểm "còn Phúc khảo mở" | `appeals_session_status_idx` | 0,03 ms |
+| Đếm Phúc khảo chờ trên toàn bộ danh sách Phiên thi (12 500 dòng) | quét bảng (khớp 25 %) | 10 ms |
+| Job quét chấm bù, cửa sổ 15 phút | `attempts_submitted_idx` | 0,04 ms |
+| Job quét chấm bù, toàn bộ 31 ngày (cả 100 000 Lượt, trường hợp xấu nhất) | quét bảng | 68 ms |
+| Đính chính: một câu của 1 000 Lượt (Phiên thi chưa Chốt của một Bộ đề) | `sessions.exam_id` → `attempts` → khóa chính `response_grades` | 32 ms |
+| Đính chính: một câu của cả 5 000 Lượt (10 Phiên thi) | như trên | 67 ms |
+| Gộp chuông: chuông chưa đọc của một người theo loại | `notifications_unread_idx` | 2,6 ms (đã gồm tra người dùng bằng quét bảng của phép thử) |
+
+**Kết luận:**
+- Mọi truy vấn của 5d đều đi theo `attempt_id` hoặc `session_id` nên thời gian không phụ thuộc tổng số dòng của bảng; mỗi Phiên thi thêm vào chỉ thêm đúng 25 000 dòng điểm (khoảng 4 GB cho 1 000 Phiên thi, 25 triệu dòng). Chưa cần chia bảng (partition); xem lại khi bảng điểm vượt khoảng 100 triệu dòng.
+- **Không thêm chỉ mục `response_grades (item_id)`** cho Đính chính: đi từ Bộ đề → Phiên thi → Lượt rồi tra khóa chính nhanh hơn và không làm chậm mỗi lần ghi điểm.
+- **Phúc khảo không được dùng `GradingContextService.load`** (nạp điểm cả Phiên thi, 25 000 dòng mỗi lần gọi): gửi và xử lý một Phúc khảo chỉ đọc đúng một Lượt bằng khóa chính (dưới 1 ms ở cơ sở dữ liệu). Đây là ràng buộc cho code 5d-1.
+- Đính chính chấm lại theo lô (ví dụ 100 Lượt mỗi lô), mỗi lô một giao dịch, để không giữ khóa lâu và không chặn Chấm tay của Phiên thi khác.
+- `notifications` và `attempts_submitted_idx` lớn dần theo thời gian (mỗi Lượt đã nộp mãi nằm trong chỉ mục từng phần); truy vấn dùng khoảng thời gian gần nên không chậm. Việc dọn thông báo đã đọc cũ hơn 90 ngày để backlog.
+- 5d-1 thêm một bản đo nạp dữ liệu lớn vào `grading-bench.int.test.ts` (đã có cờ `GRADING_BENCH`): nạp nền 20 Phiên thi trước khi đo Phúc khảo để bắt chậm do bảng lớn.
