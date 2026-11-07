@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { idColumn } from '../../db/columns';
 import { users } from '../identity/identity.schema';
@@ -15,5 +16,9 @@ export const notifications = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     readAt: timestamp('read_at', { withTimezone: true }),
   },
-  (t) => [index('notifications_user_created_idx').on(t.userId, t.createdAt)],
+  (t) => [
+    index('notifications_user_created_idx').on(t.userId, t.createdAt),
+    // Gộp chuông (Q303): chỉ tìm trong các thông báo chưa đọc của một người.
+    index('notifications_unread_idx').on(t.userId, t.type).where(sql`${t.readAt} IS NULL`),
+  ],
 );

@@ -26,6 +26,8 @@ export interface JobPayloads {
   'grading.autograde': { attemptIds: string[] };
   /** Lưới an toàn: chấm các Lượt đã nộp mà chưa có dấu "đã chấm", mỗi 5 giây (Q286). */
   'grading.sweep': Record<string, never>;
+  /** Chốt kết quả khi hết Thời hạn phúc khảo và nhắc Phúc khảo quá hạn (Q301, Q315), mỗi phút. */
+  'grading.finalize': Record<string, never>;
   /** Tự nộp các Lượt làm bài quá hạn, mỗi 10 giây (Q212). */
   'attempt.sweep': Record<string, never>;
   /** Dọn dẹp định kỳ hằng ngày (Q96). */

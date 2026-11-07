@@ -40,6 +40,23 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
       await navigate({ to: '/take/results/$sessionId', params: { sessionId: n.data.sessionId } });
       return;
     }
+    if (
+      (n.type === 'appeal.resolved' || n.type === 'appeal.period_extended') &&
+      typeof n.data.sessionId === 'string'
+    ) {
+      await navigate({ to: '/take/results/$sessionId', params: { sessionId: n.data.sessionId } });
+      return;
+    }
+    if (
+      (n.type === 'appeal.new' || n.type === 'appeal.overdue') &&
+      typeof n.data.sessionId === 'string'
+    ) {
+      await navigate({
+        to: '/examiner/sessions/$sessionId/results',
+        params: { sessionId: n.data.sessionId },
+      });
+      return;
+    }
     if (n.type === 'session.grading_delegated' && typeof n.data.sessionId === 'string') {
       await navigate({
         to: '/examiner/sessions/$sessionId/results',
