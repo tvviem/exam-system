@@ -68,8 +68,11 @@ test('duyệt từng câu: bản đồ, bộ lọc, câu sai kế tiếp, giữ 
   await page.goto('/take');
   await page.getByRole('link', { name: 'Xem Kết quả' }).first().click();
   await expect(page.getByTestId('result-hero')).toBeVisible();
+  // Nút lọc dùng nhãn ngắn ("Một phần"); dải kết quả đầu thẻ câu mới ghi "Chưa đúng hoàn toàn".
   const chip = (name: string, count: number) =>
-    page.getByRole('button', { name: new RegExp(`^${name}\\s*${count}$`) });
+    page.getByRole('button', {
+      name: new RegExp(`^${name === 'Chưa đúng hoàn toàn' ? 'Một phần' : name}\\s*${count}$`),
+    });
   await expect(chip('Đúng', 1)).toBeVisible();
   await expect(chip('Chưa đúng hoàn toàn', 1)).toBeVisible();
   await expect(chip('Sai', 1)).toBeVisible();
@@ -77,6 +80,20 @@ test('duyệt từng câu: bản đồ, bộ lọc, câu sai kế tiếp, giữ 
 
   // Chỉ một thẻ câu mỗi lần, không còn danh sách dài.
   await expect(page.getByTestId('result-item')).toHaveCount(1);
+
+  // Chuyển câu không được nhảy về đầu trang: cuộn xuống một đoạn (tối đa 150 px, tùy trang dài bao nhiêu), bấm Câu sau,
+  // vị trí cuộn vẫn giữ.
+  const scrolled = await page.evaluate(() => {
+    const y = Math.min(150, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo(0, y);
+    return y;
+  });
+  expect(scrolled).toBeGreaterThan(20);
+  await page.getByRole('button', { name: 'Câu sau' }).filter({ visible: true }).click();
+  await expect(page.getByTestId('result-item')).toContainText('Câu 2');
+  await page.waitForTimeout(300); // đủ thời gian để một lần cuộn về đầu trang (nếu có) xảy ra
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(scrolled / 2);
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   // Lọc "Sai": nhảy tới câu sai, thấy nội dung và lựa chọn của mình, không có đáp án đúng.
   const started = performance.now();

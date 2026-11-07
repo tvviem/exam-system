@@ -61,51 +61,56 @@ export function ResultView({
   const style = BAND_STYLE[band];
   const Icon = BAND_ICON[band];
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-      <div className="mx-auto w-full max-w-2xl">
-        <h1 className="text-xl font-semibold">{data.session.title}</h1>
-        <p className="text-sm text-fg-muted">
-          {t('myResult.releasedAt', { time: formatDateTime(data.releasedAt) })}
-          {data.attemptCount > 1 && data.countedAttemptNo
-            ? ` · ${t('myResult.countedAttempt', { no: data.countedAttemptNo })}`
-            : ''}
-        </p>
-      </div>
-
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
       <section
         data-testid="result-hero"
         data-band={band}
         aria-label={t('myResult.heroLabel')}
-        className={`mx-auto flex w-full max-w-2xl flex-col items-center gap-3 rounded-2xl border-2 p-5 text-center shadow-sm ${style.hero}`}
+        className={`flex items-center gap-4 rounded-2xl border border-t-4 border-border bg-surface-raised p-4 shadow-sm ${style.accent}`}
       >
         <ScoreRing percent={summary.percent} style={style}>
-          <span className="text-5xl leading-none font-bold tabular-nums">
+          <span className="text-3xl leading-none font-bold text-fg tabular-nums">
             {fmt(summary.scaledScore, 1)}
           </span>
-          <span className={`text-sm ${style.muted}`}>{t('myResult.scaleHint')}</span>
+          <span className="text-xs text-fg-muted">{t('myResult.scaleShort')}</span>
         </ScoreRing>
-        <p className="flex items-center gap-2 text-lg font-semibold">
-          <Icon aria-hidden className="size-6" />
-          {t(`myResult.band.${band}`)}
-        </p>
-        <dl className={`grid grid-cols-2 gap-x-6 gap-y-1 text-sm ${style.muted}`}>
-          <dt>{t('myResult.raw')}</dt>
-          <dd className="text-right font-semibold tabular-nums">
-            {fmt(summary.rawScore)}/{fmt(summary.maxScore)}
-          </dd>
-          {(summary.penaltyPercent > 0 || summary.voided) && (
-            <>
-              <dt>{t('myResult.afterPenalty')}</dt>
-              <dd className="text-right font-semibold tabular-nums">{fmt(summary.finalScore)}</dd>
-            </>
-          )}
-          <dt>{t('myResult.percent')}</dt>
-          <dd className="text-right font-semibold tabular-nums">{fmt(summary.percent, 1)}%</dd>
-        </dl>
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <h1 className="text-lg leading-tight font-semibold">{data.session.title}</h1>
+          <p className="text-sm text-fg-muted">
+            {t('myResult.releasedAt', { time: formatDateTime(data.releasedAt) })}
+            {data.attemptCount > 1 && data.countedAttemptNo
+              ? ` · ${t('myResult.countedAttempt', { no: data.countedAttemptNo })}`
+              : ''}
+          </p>
+          <p
+            className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${style.pill}`}
+          >
+            <Icon aria-hidden className="size-4" />
+            {t(`myResult.band.${band}`)}
+          </p>
+          <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-fg-muted">
+            <div className="flex gap-1.5">
+              <dt>{t('myResult.raw')}</dt>
+              <dd className="font-semibold text-fg tabular-nums">
+                {fmt(summary.rawScore)}/{fmt(summary.maxScore)}
+              </dd>
+            </div>
+            {(summary.penaltyPercent > 0 || summary.voided) && (
+              <div className="flex gap-1.5">
+                <dt>{t('myResult.afterPenalty')}</dt>
+                <dd className="font-semibold text-fg tabular-nums">{fmt(summary.finalScore)}</dd>
+              </div>
+            )}
+            <div className="flex gap-1.5">
+              <dt>{t('myResult.percent')}</dt>
+              <dd className="font-semibold text-fg tabular-nums">{fmt(summary.percent, 1)}%</dd>
+            </div>
+          </dl>
+        </div>
       </section>
 
       {data.penalties.length > 0 && (
-        <section className="mx-auto flex w-full max-w-2xl flex-col gap-1 rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm text-danger">
+        <section className="flex flex-col gap-1 rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm text-danger">
           <h2 className="font-semibold">{t('myResult.penaltyTitle')}</h2>
           <ul className="flex flex-col gap-1">
             {data.penalties.map((p) => (
@@ -126,7 +131,7 @@ export function ResultView({
         onCurrentNo={onCurrentNo ?? setLocalNo}
       />
 
-      <p className="mx-auto w-full max-w-2xl text-sm text-fg-muted">
+      <p className="text-sm text-fg-muted">
         {data.appealUntil
           ? t('myResult.appealUntil', { time: formatDateTime(data.appealUntil) })
           : t('myResult.noAppeal')}
@@ -149,15 +154,15 @@ function ScoreRing({
   const circumference = 2 * Math.PI * radius;
   const filled = (Math.min(100, Math.max(0, percent)) / 100) * circumference;
   return (
-    <div className="relative size-40">
+    <div className="relative size-24 shrink-0">
       <svg viewBox="0 0 128 128" className="size-full -rotate-90" aria-hidden>
-        <circle cx="64" cy="64" r={radius} fill="none" strokeWidth="10" className={style.track} />
+        <circle cx="64" cy="64" r={radius} fill="none" strokeWidth="10" className="stroke-border" />
         <circle
           cx="64"
           cy="64"
           r={radius}
           fill="none"
-          strokeWidth="10"
+          strokeWidth="12"
           strokeLinecap="round"
           strokeDasharray={`${filled} ${circumference}`}
           className={`${style.stroke} motion-safe:transition-[stroke-dasharray] motion-safe:duration-700`}

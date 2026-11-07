@@ -24,7 +24,7 @@ function MyResultPage() {
       <MyResultScreen
         sessionId={sessionId}
         currentNo={cau}
-        onCurrentNo={(no) => navigate({ search: { cau: no }, replace: true })}
+        onCurrentNo={(no) => navigate({ search: { cau: no }, replace: true, resetScroll: false })}
       />
       <Link to="/take" className={buttonClass('secondary', 'mx-auto')}>
         {t('take.backToList')}

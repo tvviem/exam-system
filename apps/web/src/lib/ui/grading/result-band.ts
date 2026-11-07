@@ -1,41 +1,38 @@
 import type { ResultBand } from '@exam/shared';
 
-// Tô màu Kết quả theo mức đạt (PR 5c): bốn dải trên bộ màu hiện tại của giao diện, đi từ cảnh báo (đỏ) qua hổ phách và màu
-// chủ đạo đến xanh lá đậm nhất. Không chỉ dựa vào màu: mỗi dải có biểu tượng và lời nhận xét riêng.
+// Tô màu Kết quả theo mức đạt (PR 5c, thiết kế lại ở Q318): bốn dải đi từ cảnh báo (đỏ) qua hổ phách và màu chủ đạo đến xanh lá.
+// Số điểm luôn dùng chữ `fg` trên nền thẻ trung tính nên đủ tương phản ở cả chế độ sáng và tối; màu của dải chỉ nằm ở vạch trên
+// thẻ, nét vòng điểm và nhãn mức đạt (mỗi cặp nền/chữ nằm trong `tokens.test.ts`). Không chỉ dựa vào màu: mỗi dải có biểu tượng
+// và lời nhận xét riêng.
 
 export interface BandStyle {
-  /** Nền và viền của khối điểm lớn. */
-  hero: string;
-  /** Màu nét của vòng điểm và thanh phần trăm (dùng cho `stroke`/`bg`). */
+  /** Vạch màu trên cùng của thẻ điểm. */
+  accent: string;
+  /** Màu nét của vòng điểm. */
   stroke: string;
-  track: string;
-  /** Chữ phụ trong khối điểm. */
-  muted: string;
+  /** Nhãn mức đạt (nền và chữ cùng một cặp token). */
+  pill: string;
 }
 
 export const BAND_STYLE: Record<ResultBand, BandStyle> = {
   low: {
-    hero: 'border-danger/50 bg-danger-soft text-danger',
+    accent: 'border-t-danger',
     stroke: 'stroke-danger',
-    track: 'stroke-danger/20',
-    muted: 'text-danger',
+    pill: 'bg-danger-soft text-danger',
   },
   fair: {
-    hero: 'border-warning/50 bg-warning-soft text-warning',
+    accent: 'border-t-warning',
     stroke: 'stroke-warning',
-    track: 'stroke-warning/20',
-    muted: 'text-warning',
+    pill: 'bg-warning-soft text-warning',
   },
   good: {
-    hero: 'border-primary/40 bg-primary-soft text-on-primary-soft',
+    accent: 'border-t-primary',
     stroke: 'stroke-primary',
-    track: 'stroke-primary/20',
-    muted: 'text-on-primary-soft',
+    pill: 'bg-primary-soft text-on-primary-soft',
   },
   excellent: {
-    hero: 'border-success bg-success text-on-success',
-    stroke: 'stroke-on-success',
-    track: 'stroke-on-success/25',
-    muted: 'text-on-success',
+    accent: 'border-t-success',
+    stroke: 'stroke-success',
+    pill: 'bg-success text-on-success',
   },
 };
