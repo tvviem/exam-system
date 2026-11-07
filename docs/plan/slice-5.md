@@ -490,3 +490,79 @@ Làm cùng nhánh với 5c-1 nên hai phần đi chung một PR (API và giao di
 - **Test:** E2E `release.spec.ts` (desktop và mobile: Công bố qua giao diện, khóa chấm sau Công bố, xuất Excel, Người dự thi 100 % thấy "Xuất sắc" `data-band=excellent`, người 0 % thấy "Cần cố gắng thêm" `data-band=low`, không có đáp án trên màn); unit web (`entry`: hành động xem Kết quả; `tokens`: tương phản `on-success`); đã chụp ảnh bốn dải ở cả giao diện sáng và tối để kiểm bằng mắt.
 - **Sau review (7/11/2026):** trang *Chi tiết* của Excel che điểm tự luận khi Chấm ẩn tên còn che (trước đó lộ); "Ngày diễn ra" ghi khoảng ngày khi Khung giờ nhiều ngày; Mã định danh cũng qua `safeCell`; chữ ghi chú và tiêu đề Excel khớp Q304; **bế tắc** giữa "Cho xem lại đề" và Công bố được loại bằng thứ tự khóa thống nhất (dòng Phiên thi trước, dòng thiết lập chấm sau) và `FOR NO KEY UPDATE` ở khóa Phiên thi của Công bố (vẫn loại trừ Hoàn tác và Hủy); Công bố đẩy `monitor.changed`; "Phiên thi của tôi" chỉ báo có Kết quả cho người đã có Lượt; Kết quả của tôi chỉ tải Lượt và Vi phạm của chính người đó và chỉ dựng nội dung câu khi bật xem lại; nhãn **Đã Công bố/Đã Chốt** ở danh sách và chi tiết Phiên thi, nút Hủy khóa kèm lời giải thích; vòng điểm không còn ẩn điểm khỏi trình đọc màn hình, màu chữ dải đạt dùng màu đầy đủ (đã có kiểm tương phản). **Số đo (500 người):** Công bố 98 ms, Kết quả của một Người dự thi 14 ms, xuất Excel 145 ms. **Giới hạn:** ở chế độ xem lại đề, các Phương án hiện theo thứ tự gốc của Bộ đề (không phải thứ tự đã xáo của riêng người đó); nút Xuất Excel là liên kết tải trực tiếp nên lỗi quyền hiện như trang lỗi của trình duyệt.
 
+
+## PR 5d: thiết kế chi tiết (Q309–Q317 đã duyệt 7/11/2026; phần "Điểm tôi tự quyết" chờ chủ dự án xem; Q308 đã bỏ)
+
+Chủ dự án duyệt từng Q; nội dung dưới đây ghi theo thứ tự duyệt. Chưa có dòng code nào.
+
+| # | Quyết định |
+|---|---|
+| Q309 | **[đã duyệt 7/11/2026]** Chia 3 PR: **5d-1** API Phúc khảo và job Chốt (migration 0020); **5d-2** giao diện Phúc khảo cho cả Người dự thi và Người ra đề; **5d-3** Đính chính đáp án (API, giao diện, chấm lại hàng loạt). Tách Đính chính vì rủi ro nhất (chấm lại nhiều bài cùng lúc) |
+| Q310 | **[đã duyệt 7/11/2026]** Phúc khảo một câu trắc nghiệm (chấm tự động): Người ra đề chọn **Giữ điểm** hoặc **Đặt điểm khác** (0 đến điểm của câu, chỉ áp cho riêng Người dự thi đó, nguồn `appeal`). Nếu nghi đáp án sai cho cả lớp: đường tắt sang Đính chính đáp án (5d-3), chỉ chủ Bộ đề thấy; người được Ủy quyền chỉ thấy gợi ý "Báo chủ Bộ đề để đính chính" |
+| Q311 | **[đã duyệt 7/11/2026, sửa theo đề nghị của chủ dự án]** Hạn mức Phúc khảo của mỗi Người dự thi trong một Phiên thi = **10 % số câu của Bộ đề, làm tròn lên, ít nhất 3** (đề 5 hoặc 10 câu: 3; 50 câu: 5; 100 câu: 10). "Số câu" là số câu của Bộ đề: một Chùm đúng/sai tính là 1 câu. Phúc khảo về Mức xử lý tính chung vào hạn mức. Server tính bằng một hàm thuần ở `@exam/shared` (`appealLimitOf(itemCount)`), không thêm cột, Người ra đề không chỉnh được; màn Kết quả của Người dự thi hiện "đã dùng 3/5" |
+| Q312 | **[đã duyệt 7/11/2026]** Người dự thi **không rút được** Phúc khảo đã gửi. Trước khi gửi có hộp xác nhận nêu câu và số lượt còn lại ("Gửi Phúc khảo Câu 7? Bạn còn 4/5 lượt.") để tránh bấm nhầm. Không có trạng thái "đã rút" |
+| Q313 | **[đã duyệt 7/11/2026, đồng ý cả ba ý]** Màn xử lý Phúc khảo của Người ra đề: (1) tab **Phúc khảo** trong màn Kết quả, có số chờ xử lý, chờ xử lý lên đầu, lọc theo trạng thái và theo câu; (2) bấm một dòng thì mở màn **một Phúc khảo một màn** như màn Chấm: bài làm, điểm cũ, lý do, nút nhanh ¼ ½ ¾ tối đa, ô trả lời bắt buộc, phím J/K sang Phúc khảo kế tiếp, ghi chú đối chiếu ngắn "Câu 4 · Người dự thi thấy: Câu 7"; (3) **hiện tên** Người dự thi (không ẩn danh: Phúc khảo do chính họ yêu cầu; Chấm ẩn tên chỉ cho vòng chấm đầu) |
+| Q314 | **[đã duyệt 7/11/2026]** **Gia hạn Thời hạn phúc khảo**: Người ra đề (chủ Phiên thi hoặc người được Ủy quyền) gia hạn khi Phiên thi **chưa Chốt**; chỉ tăng, không rút ngắn; tổng không quá 14 ngày kể từ lúc Công bố; mỗi lần gia hạn gửi chuông cho Người dự thi ("Thời hạn Phúc khảo kéo dài đến …"). Phiên thi "không nhận Phúc khảo" đã Chốt ngay nên không gia hạn được. Cài đặt: khóa dòng Phiên thi rồi dòng `session_gradings` như Công bố, so `finalized_at` trong cùng giao dịch (gia hạn xen job Chốt: bên nào khóa trước thì thắng, bên sau nhận 409 `ALREADY_FINALIZED`); trigger cho phép đổi `appeal_period_hours` chỉ khi tăng và còn trong 336 giờ |
+| Q315 | **[đã duyệt 7/11/2026]** **Nhắc Phúc khảo bị bỏ quên**: khi quá Thời hạn phúc khảo mà còn Phúc khảo chờ, job Chốt gửi chuông cho Người ra đề và người được Ủy quyền **một lần lúc hết hạn rồi mỗi 24 giờ** cho đến khi xử lý hết. Chuông gộp một dòng và cập nhật số ("Còn 3 Phúc khảo chờ xử lý", như Q303), không thêm dòng mới mỗi ngày. Hệ thống không tự bác. Xử lý xong Phúc khảo cuối thì dừng nhắc và Chốt ngay |
+| Q316 | **[đã duyệt 7/11/2026, đồng ý cả bốn ý]** **Đính chính đáp án, lối vào và xem trước**: (1) hai lối vào, chỉ chủ Bộ đề thấy (người được Ủy quyền không, theo Q307): nút *Đính chính đáp án* ở hàng câu của tab Thống kê câu, và ở trang Bộ đề đã Phát hành cạnh từng câu; (2) hộp thoại: chọn đáp án mới bằng giao diện chọn đáp án như lúc soạn câu, lý do bắt buộc, bảng **xem trước** ("12 người tăng điểm, 3 người giảm, 20 không đổi; 2 Phiên thi đã Chốt giữ nguyên"); (3) bấm xác nhận mới chấm lại; (4) câu tự luận không có đáp án nên không đính chính được |
+| Q317 | **[đã duyệt 7/11/2026]** **Đính chính nhiều lần một câu**: được Đính chính lại nhiều lần, lần mới nhất là đáp án hiệu lực và hệ thống chấm lại theo đó; mỗi lần đều có vết (đáp án cũ → mới, người sửa, lúc nào, lý do). **Không có nút hoàn tác riêng** (muốn quay lại thì Đính chính lại). Phiên thi đã Chốt giữ nguyên điểm kể cả khi đính chính lại |
+
+### Điểm tôi tự quyết (chờ chủ dự án xem; phản đối ý nào thì sửa ý đó)
+
+**Cơ sở dữ liệu (migration 0020, 5d-1; bảng Đính chính ở 5d-3).**
+- `appeals`: như data-model, thêm `session_id` và `user_id` (lặp lại từ Lượt để đếm hạn mức và liệt kê theo Phiên thi không phải nối bảng; trigger kiểm khớp Lượt như `violations_guard`), lý do 10–1000 ký tự, trả lời 1–1000 ký tự khi `resolved`, CHECK `target` khớp `item_id`/`violation_id`. Chỉ mục: UNIQUE từng phần `(attempt_id, item_id) WHERE item_id IS NOT NULL` và `(violation_id) WHERE violation_id IS NOT NULL`; `(session_id, status, created_at)` cho danh sách, số chờ và kiểm Chốt; `(session_id, user_id)` cho hạn mức. Trigger `appeals_guard`: chỉ INSERT khi Phiên thi đã Công bố, chưa Chốt và còn trong hạn (so giờ cơ sở dữ liệu, không tin client); `open → resolved` một lần, đã `resolved` thì không sửa, không xóa.
+- `session_gradings` thêm `appeal_reminded_at` (job nhắc Q315 dùng để biết đã nhắc lúc nào; không suy từ bảng thông báo).
+- `response_grades_guard` và `violations_guard` (Mức xử lý): sau Công bố chỉ cho ghi nguồn `appeal` khi có Phúc khảo `open` đúng đối tượng; sau Chốt vẫn chặn mọi ghi.
+- Chỉ mục khác của 0020: `session_gradings (released_at) WHERE released_at IS NOT NULL AND finalized_at IS NULL` (job Chốt chỉ nhìn Phiên thi đang chờ Chốt, không quét lịch sử); `notifications (user_id, type) WHERE read_at IS NULL` (gộp chuông chỉ tìm trong chuông chưa đọc).
+- Số câu của Bộ đề để tính hạn mức (Q311) đọc từ `exam_items`; đếm Phúc khảo của người đó dưới khóa tư vấn theo `(session, user)` để hai lần gửi cùng lúc không vượt hạn mức.
+
+**API (5d-1).**
+| Phương thức | Đường dẫn | Việc |
+|---|---|---|
+| POST | `/take/sessions/:id/appeals` | Gửi `{ target, itemId \| violationId, reason }`; 409 hết hạn / đã Chốt / vượt hạn mức / đã Phúc khảo đối tượng này |
+| GET | `/take/sessions/:id/appeals` | Phúc khảo của tôi + `{ used, limit }` + hạn còn lại |
+| GET | `/sessions/:id/appeals?status=&itemId=` | Danh sách cho Người ra đề (chủ hoặc người được Ủy quyền) + số chờ |
+| GET | `/sessions/:id/appeals/:appealId` | Chi tiết: lý do, nội dung câu và bài làm từ `exam_items.snapshot`, điểm hiện tại, `seenAs` ("Người dự thi thấy Câu 7") |
+| POST | `/sessions/:id/appeals/:appealId/resolve` | `{ score? \| penalty?, response }`; ghi `response_grades` nguồn `appeal` hoặc Mức xử lý mới; kiểm Chốt ngay nếu là Phúc khảo cuối sau hạn |
+| POST | `/sessions/:id/appeal-period/extend` | Gia hạn `{ appealPeriodDays }` (tổng ≤ 14 ngày, chỉ tăng; Q314) |
+
+**Job Chốt (`grading.finalize`, lặp 60 giây).** Chọn Phiên thi có `released_at`, chưa `finalized_at`, đã quá hạn; dùng `FOR UPDATE SKIP LOCKED`, kiểm lại không còn Phúc khảo `open` rồi đặt `finalized_at`. Cùng lượt quét: Phiên thi quá hạn mà còn Phúc khảo chờ và `appeal_reminded_at` null hoặc cách đây ≥ 24 giờ thì gửi chuông nhắc rồi đặt `appeal_reminded_at`. Chỉ mục riêng cho phần chọn để quét 1.000 Phiên thi dưới 100 ms.
+
+**Thông báo (loại mới, `type` là text nên không đổi bảng).** Người ra đề: `appeal.new` (gộp theo Phiên thi, cập nhật số), `appeal.overdue` (nhắc, gộp). Người dự thi: `appeal.resolved`, `appeal.period_extended`; `result.corrected` ở 5d-3. Nhãn thêm vào `vi.json`.
+
+**Giao diện (5d-2).** Người dự thi: nút *Phúc khảo* cạnh từng câu và từng Mức xử lý trong "Kết quả của tôi" khi còn hạn (đếm ngược), hộp thoại gõ lý do kèm "Điểm có thể tăng hoặc giảm sau khi xem xét lại" và "Bạn còn 4/5 lượt", mục *Phúc khảo của tôi* hiện trạng thái và câu trả lời. Người ra đề: tab *Phúc khảo* và màn xử lý như Q313; khối Công bố ở tab Kết quả thêm nút *Gia hạn*; thanh bước hiện "Phúc khảo (N chờ)". Hết hạn thì nút Phúc khảo biến mất, không để nút bấm rồi báo lỗi.
+
+**Ngân sách phản hồi (đo và ghi ở 5d-1/5d-2).** Gửi Phúc khảo, mở danh sách, xử lý một Phúc khảo: mỗi việc dưới 300 ms với 500 Người dự thi; job Chốt quét 1.000 Phiên thi dưới 100 ms; E2E đo từ lúc bấm đến lúc thấy trạng thái đổi.
+
+**Test (seam).** S1 hàm thuần: `appealLimitOf`, trạng thái hạn (còn hạn, hết hạn, đã gia hạn). S2 HTTP + PostgreSQL: gửi → xử lý → điểm và Kết quả đổi; hết hạn / vượt hạn mức / trùng đối tượng đều bị chặn; Chốt ngay khi xử lý xong Phúc khảo cuối sau hạn. S3 trigger: ghi sau Chốt, ghi `appeal` khi không có Phúc khảo mở, sửa Phúc khảo đã `resolved`. S4 đồng thời: hai lần gửi cùng lúc ở sát hạn mức, gia hạn xen job Chốt, hai người xử lý cùng một Phúc khảo. S5 bảo mật: response cho Người dự thi không có đáp án; Người dự thi khác không đọc/ gửi Phúc khảo của người khác (404); Người ra đề khác chủ và không được Ủy quyền nhận 404. S6 Playwright desktop và mobile: Người dự thi gửi, Người ra đề xử lý, Người dự thi thấy câu trả lời; gia hạn; nhắc.
+
+**5d-3 (Đính chính)** sẽ có thiết kế chi tiết riêng (chấm lại theo lô, `key_correction_effects`, xem trước, thông báo `result.corrected`) trước khi code, vì còn vài quyết định về chấm lại hàng loạt.
+
+### Kiểm tra thiết kế cơ sở dữ liệu với số dòng lớn (7/11/2026, chủ dự án yêu cầu)
+
+Dựng cơ sở dữ liệu thử PostgreSQL 17: **100 000 Lượt đã nộp** (200 Phiên thi × 500 Người dự thi, 20 Bộ đề × 50 câu), **5 triệu dòng `responses`**, **5 triệu dòng `response_grades`** (771 MB, khoảng 150 byte mỗi dòng gồm cả chỉ mục), 50 000 Phúc khảo, 40 000 thông báo; áp bản nháp 0020. Đo `EXPLAIN ANALYZE` trên Phiên thi 500 Lượt (máy dev, nguội sau khi nạp):
+
+| Truy vấn | Kế hoạch | Thời gian |
+|---|---|---|
+| Lượt đã nộp của một Phiên thi (500 dòng) | quét chỉ mục `attempts_session_user_no_unique` | 0,2 ms |
+| Điểm từng câu của 500 Lượt (25 000 dòng) | 500 lần tra khóa chính `response_grades` | 25 ms |
+| Dấu "đã chấm" của 500 Lượt | quét chỉ mục `attempt_grades_pkey` | 2,5 ms |
+| Kết quả của một Người dự thi (Lượt + 50 điểm) | tra chỉ mục | 0,2 ms |
+| "Phiên thi của tôi" (200 Lượt của một người + trạng thái Công bố) | `attempts_user_idx` | 0,4 ms |
+| Job Chốt: Phiên thi quá hạn chưa Chốt | bảng 200 dòng | 0,07 ms |
+| Hạn mức Phúc khảo của một người | `appeals_session_user_idx` (chỉ quét chỉ mục) | 0,03 ms |
+| Danh sách Phúc khảo chờ của Phiên thi, kiểm "còn Phúc khảo mở" | `appeals_session_status_idx` | 0,03 ms |
+| Đếm Phúc khảo chờ trên toàn bộ danh sách Phiên thi (12 500 dòng) | quét bảng (khớp 25 %) | 10 ms |
+| Job quét chấm bù, cửa sổ 15 phút | `attempts_submitted_idx` | 0,04 ms |
+| Job quét chấm bù, toàn bộ 31 ngày (cả 100 000 Lượt, trường hợp xấu nhất) | quét bảng | 68 ms |
+| Đính chính: một câu của 1 000 Lượt (Phiên thi chưa Chốt của một Bộ đề) | `sessions.exam_id` → `attempts` → khóa chính `response_grades` | 32 ms |
+| Đính chính: một câu của cả 5 000 Lượt (10 Phiên thi) | như trên | 67 ms |
+| Gộp chuông: chuông chưa đọc của một người theo loại | `notifications_unread_idx` | 2,6 ms (đã gồm tra người dùng bằng quét bảng của phép thử) |
+
+**Kết luận:**
+- Mọi truy vấn của 5d đều đi theo `attempt_id` hoặc `session_id` nên thời gian không phụ thuộc tổng số dòng của bảng; mỗi Phiên thi thêm vào chỉ thêm đúng 25 000 dòng điểm (khoảng 4 GB cho 1 000 Phiên thi, 25 triệu dòng). Chưa cần chia bảng (partition); xem lại khi bảng điểm vượt khoảng 100 triệu dòng.
+- **Không thêm chỉ mục `response_grades (item_id)`** cho Đính chính: đi từ Bộ đề → Phiên thi → Lượt rồi tra khóa chính nhanh hơn và không làm chậm mỗi lần ghi điểm.
+- **Phúc khảo không được dùng `GradingContextService.load`** (nạp điểm cả Phiên thi, 25 000 dòng mỗi lần gọi): gửi và xử lý một Phúc khảo chỉ đọc đúng một Lượt bằng khóa chính (dưới 1 ms ở cơ sở dữ liệu). Đây là ràng buộc cho code 5d-1.
+- Đính chính chấm lại theo lô (ví dụ 100 Lượt mỗi lô), mỗi lô một giao dịch, để không giữ khóa lâu và không chặn Chấm tay của Phiên thi khác.
+- `notifications` và `attempts_submitted_idx` lớn dần theo thời gian (mỗi Lượt đã nộp mãi nằm trong chỉ mục từng phần); truy vấn dùng khoảng thời gian gần nên không chậm. Việc dọn thông báo đã đọc cũ hơn 90 ngày để backlog.
+- 5d-1 thêm một bản đo nạp dữ liệu lớn vào `grading-bench.int.test.ts` (đã có cờ `GRADING_BENCH`): nạp nền 20 Phiên thi trước khi đo Phúc khảo để bắt chậm do bảng lớn.
