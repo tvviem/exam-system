@@ -1,4 +1,4 @@
-import { fromCenti, stableOrder, toCenti, verdictOfScore } from '@exam/scoring';
+import { countableAttempts, fromCenti, stableOrder, toCenti, verdictOfScore } from '@exam/scoring';
 import { blindLabelOf, type SaveGradeRequest } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
@@ -10,6 +10,7 @@ import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source'
 import { type Database, DB } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
 import { AutogradeService } from './autograde.service';
+import { EffectiveContentService } from './effective-content.service';
 import { responseGrades, sessionGradings } from './grading.schema';
 import { GradingAccessService } from './grading-access.service';
 import {
@@ -17,6 +18,7 @@ import {
   type GradingContext,
   GradingContextService,
 } from './grading-context.service';
+import { type GradingItem, itemsOf } from './grading-layout';
 import { GradingStatusService } from './grading-status.service';
 
 /** Hàng đợi trả tối đa chừng này dòng (Phiên thi tối đa 500 người). */
@@ -37,6 +39,7 @@ export class ManualGradingService {
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     private readonly access: GradingAccessService,
     private readonly context: GradingContextService,
+    private readonly content: EffectiveContentService,
     private readonly autograde: AutogradeService,
     private readonly audit: AuditService,
     private readonly status: GradingStatusService,
@@ -60,7 +63,7 @@ export class ManualGradingService {
     return ordered.map((entry, index) => ({ ...entry, label: blindLabelOf(index + 1) }));
   }
 
-  private essayItem(ctx: GradingContext, itemId: string) {
+  private essayItem(ctx: { items: GradingItem[] }, itemId: string) {
     const item = ctx.items.find((i) => i.itemId === itemId);
     if (item?.type !== 'essay') throw new ApiError('NOT_FOUND');
     return item;
@@ -160,10 +163,16 @@ export class ManualGradingService {
     request: SaveGradeRequest,
   ) {
     const { info } = await this.access.require(actor.id, sessionId);
-    const ctx = await this.context.load(info);
-    const item = this.essayItem(ctx, itemId);
+    // Chỉ đọc nội dung Bộ đề và các Lượt của đúng người này: không nạp cả Phiên thi (điểm mọi bài), nên lưu điểm vẫn cỡ chục mili giây
+    // dù lớp đông (đo tải 500 người: 85 ms khi nạp cả Phiên thi, PR 5e).
+    const content = await this.content.contentOf(info.examId);
+    if (!content) throw new ApiError('NOT_FOUND');
+    const item = this.essayItem({ items: itemsOf(content) }, itemId);
     // Chỉ chấm Lượt có thể được tính (Q292), như hàng đợi.
-    if (!ctx.countable.some((attempt) => attempt.attemptId === attemptId)) {
+    const [target] = await this.source.loadSubmitted([attemptId]);
+    if (!target || target.sessionId !== sessionId) throw new ApiError('NOT_FOUND');
+    const mine = await this.source.attemptsOfUser(sessionId, target.userId);
+    if (!countableAttempts(mine, info.attemptScoring).some((a) => a.attemptId === attemptId)) {
       throw new ApiError('NOT_FOUND');
     }
     const points = toCenti(item.points);
