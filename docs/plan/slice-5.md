@@ -603,3 +603,9 @@ Chủ dự án thử "Kết quả của tôi" thấy danh sách thu gọn dọc 
 - **Test:** E2E `appeals.spec.ts` (desktop và mobile): Người dự thi mở câu sai, hộp xác nhận (nút khóa khi lý do ngắn), gửi (166–183 ms đến lúc thấy trạng thái), mỗi câu một lần, Người ra đề thấy số chờ, mở màn xử lý, đặt tối đa và trả lời (138–209 ms), Gia hạn 3 → 5 ngày, Người dự thi thấy điểm 9/9 và câu trả lời. `grading.spec`, `release.spec`, `result-review.spec` vẫn xanh.
 - **Chưa làm:** đường tắt sang Đính chính đáp án ở màn xử lý (cần 5d-3); thanh bước "Phúc khảo (N chờ)".
 - **Ghi chú cho hướng dẫn sử dụng (Người dự thi):** mở Kết quả của tôi, chọn câu muốn xem lại rồi bấm *Phúc khảo Câu N*; ghi lý do cụ thể (ít nhất 10 ký tự); sau khi gửi không rút lại được. Câu trả lời của Người ra đề hiện ngay dưới câu đó và trong mục "Phúc khảo của tôi", bạn cũng nhận thông báo. **(Người ra đề):** vào tab *Phúc khảo* hoặc bấm *Xử lý Phúc khảo*; mỗi Phúc khảo cần câu trả lời; nút đổi nhãn "Giữ nguyên" khi bạn không đổi điểm; dùng J/K để sang Phúc khảo kế tiếp.
+
+## PR 5d-3: thiết kế chi tiết Đính chính đáp án (hỏi đáp 7/11/2026, Q319 trở đi; Q302, Q316, Q317 đã duyệt trước)
+
+| # | Quyết định |
+|---|---|
+| Q319 | **[đã duyệt 7/11/2026]** Chấm lại sau Đính chính: bấm xác nhận thì **đáp án mới có hiệu lực ngay** (Lượt nộp sau đó chấm theo đáp án mới); **chấm lại các Lượt đã nộp chạy ở nền** theo lô nhỏ (thường vài giây), hộp thoại hiện tiến độ ("Đang chấm lại… 1.200/5.000") rồi kết quả ("Xong: 12 người tăng, 3 người giảm"); trong lúc chấm lại, các Phiên thi bị ảnh hưởng **chưa Công bố được** (nút Công bố báo "Đang chấm lại sau Đính chính") để không Công bố điểm nửa cũ nửa mới |
