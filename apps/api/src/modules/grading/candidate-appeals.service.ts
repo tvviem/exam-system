@@ -132,7 +132,8 @@ export class CandidateAppealsService {
           .where(and(eq(appeals.sessionId, sessionId), eq(appeals.status, 'open')));
         await this.notifications.upsertUnread(
           {
-            userIds: await this.access.staffIds(info),
+            // Truyền `tx`: xin kết nối từ nhóm trong giao dịch thì nhiều người gửi cùng lúc giữ hết kết nối để chờ nhau (đo tải 500 người, PR 5e).
+            userIds: await this.access.staffIds(info, tx),
             type: 'appeal.new',
             sessionId,
             data: { title: info.title, count: open?.total ?? 1 },

@@ -328,7 +328,7 @@ export class AppealsService {
         .from(appeals)
         .where(and(eq(appeals.sessionId, sessionId), eq(appeals.status, 'open')));
       if ((open?.total ?? 0) === 0) {
-        const staff = await this.access.staffIds(info);
+        const staff = await this.access.staffIds(info, tx); // truyền `tx`: không xin thêm kết nối trong giao dịch
         for (const type of ['appeal.new', 'appeal.overdue']) {
           await this.notifications.clearUnread({ userIds: staff, type, sessionId }, tx);
         }

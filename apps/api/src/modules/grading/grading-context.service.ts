@@ -96,6 +96,17 @@ export class GradingContextService {
     };
   }
 
+  /**
+   * Lượt này có thể được tính vào Kết quả không (Q292)? Chỉ đọc các Lượt của đúng người đó, không nạp cả Phiên thi: dùng cho thao tác
+   * trên MỘT Lượt (lưu điểm một bài) vốn phải chạy cỡ chục mili giây dù lớp đông. Cùng quy tắc `countableAttempts` với `load`.
+   */
+  async isCountable(info: GradingSessionInfo, attemptId: string): Promise<boolean> {
+    const [target] = await this.source.loadSubmitted([attemptId]);
+    if (!target || target.sessionId !== info.sessionId) return false;
+    const mine = await this.source.attemptsOfUser(info.sessionId, target.userId);
+    return countableAttempts(mine, info.attemptScoring).some((a) => a.attemptId === attemptId);
+  }
+
   /** Chấm bù các Lượt chưa có dấu "đã chấm"; trả số Lượt vẫn chưa chấm được. */
   private async gradeMissing(attemptIds: string[]): Promise<number> {
     if (attemptIds.length === 0) return 0;

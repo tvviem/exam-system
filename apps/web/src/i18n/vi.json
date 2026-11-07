@@ -2035,7 +2035,7 @@
     "retry": "Thử lại",
     "warnTitle": "Điểm tự động của câu này vừa đổi do Đính chính",
     "warnBody": "Điểm tự động đã đổi từ {{from}} thành {{to}} sau khi Người dự thi gửi Phúc khảo. Hãy xem điểm hiện tại trước khi đặt điểm mới.",
-    "viaAppeal": "Đính chính cho cả lớp",
-    "askOwner": "Nếu nghi đáp án nhập sai cho cả lớp, hãy báo chủ Bộ đề để Đính chính đáp án."
+    "viaAppeal": "Đính chính cho cả Phiên thi",
+    "askOwner": "Nếu nghi Đáp án đúng bị nhập sai, hãy báo chủ Bộ đề để Đính chính đáp án."
   }
 }
