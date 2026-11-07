@@ -27,6 +27,7 @@ import {
 } from '../../../../lib/ui';
 import { ListSkeleton } from '../../../../lib/ui/admin';
 import { Breadcrumb } from '../../../../lib/ui/breadcrumb';
+import { ResultsScreen } from '../../../../lib/ui/grading/results-screen';
 import { MonitorScreen } from '../../../../lib/ui/monitor/screen';
 import { PageHeader } from '../../../../lib/ui/page-header';
 import { RowMenu } from '../../../../lib/ui/row-menu';
@@ -42,11 +43,14 @@ import { StickyActionBar } from '../../../../lib/ui/sticky-action-bar';
 import { Tabs } from '../../../../lib/ui/tabs';
 import { useToast } from '../../../../lib/ui/toast';
 
-type Tab = 'overview' | 'roster' | 'monitor';
+type Tab = 'overview' | 'roster' | 'monitor' | 'results';
 
 export const Route = createFileRoute('/_authed/examiner/sessions/$sessionId')({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } => ({
-    tab: search.tab === 'roster' || search.tab === 'monitor' ? search.tab : undefined,
+    tab:
+      search.tab === 'roster' || search.tab === 'monitor' || search.tab === 'results'
+        ? search.tab
+        : undefined,
   }),
   // Tab Theo dõi cần chỗ rộng cho Bảng và Lưới (Q107).
   staticData: { wide: true },
@@ -170,7 +174,9 @@ function SessionDetail({ session }: { session: SessionSummary }) {
         label={t('session.tabs.label')}
         value={tab}
         onChange={(id) =>
-          navigate({ search: id === 'roster' || id === 'monitor' ? { tab: id } : {} })
+          navigate({
+            search: id === 'roster' || id === 'monitor' || id === 'results' ? { tab: id } : {},
+          })
         }
         items={[
           {
@@ -192,6 +198,12 @@ function SessionDetail({ session }: { session: SessionSummary }) {
             label: t('session.tabs.monitor'),
             // Chỉ dựng khi đang xem: tab ẩn vẫn nằm trong cây, nhưng không được hỏi lại số liệu mỗi 5 giây.
             content: tab === 'monitor' ? <MonitorScreen sessionId={session.id} /> : null,
+          },
+          {
+            id: 'results',
+            label: t('session.tabs.results'),
+            // Chỉ dựng khi đang xem: mở màn Kết quả là chấm bù Lượt thiếu và đọc điểm cả Phiên thi.
+            content: tab === 'results' ? <ResultsScreen sessionId={session.id} /> : null,
           },
         ]}
       />

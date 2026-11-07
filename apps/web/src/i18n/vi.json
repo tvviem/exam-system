@@ -33,7 +33,8 @@
       "exams": "Bộ đề",
       "sessions": "Phiên thi",
       "take": "Phiên thi",
-      "account": "Tài khoản"
+      "account": "Tài khoản",
+      "gradingDelegates": "Ủy quyền"
     },
     "questionBank": "Ngân hàng câu hỏi",
     "exams": "Bộ đề",
@@ -465,7 +466,8 @@
       "units": "Đơn vị",
       "loginEvents": "Lịch sử đăng nhập",
       "auditLogs": "Nhật ký thao tác",
-      "invitations": "Lời mời"
+      "invitations": "Lời mời",
+      "gradingDelegates": "Ủy quyền chấm"
     },
     "users": {
       "heading": "Người dùng",
@@ -620,6 +622,14 @@
       "doneRemove": "Đã chuyển giao {{topics}} Chủ đề cho {{name}} và xóa tài khoản.",
       "renameNote": "Chủ đề trùng tên với Chủ đề của người nhận sẽ được thêm “(từ {{name}})” vào tên.",
       "close": "Đóng"
+    },
+    "gradingDelegates": {
+      "heading": "Ủy quyền chấm",
+      "hint": "Cấp hoặc thu hồi quyền chấm Câu tự luận thay chủ Phiên thi khi chủ gặp sự cố. Mọi thao tác được ghi nhật ký.",
+      "search": "Tìm Phiên thi theo tên",
+      "empty": "Không tìm thấy Phiên thi nào.",
+      "owner": "Chủ Phiên thi: {{name}}",
+      "manage": "Ủy quyền"
     }
   },
   "auditAction": {
@@ -1346,7 +1356,8 @@
       "label": "Phiên thi",
       "overview": "Tổng quan",
       "roster": "Danh sách dự thi",
-      "monitor": "Theo dõi"
+      "monitor": "Theo dõi",
+      "results": "Kết quả"
     },
     "crumb": {
       "list": "Phiên thi",
@@ -1651,5 +1662,148 @@
     "showing": "Đang hiện {{shown}} / {{total}} người",
     "live": "Cập nhật trực tiếp",
     "polling": "Cập nhật mỗi 5 giây"
+  },
+  "grading": {
+    "title": "Chấm Câu tự luận",
+    "noEssay": "Bộ đề này không có Câu tự luận.",
+    "questions": "Chọn câu tự luận",
+    "questionTab": "Câu {{no}} · {{graded}}/{{total}}",
+    "overall": "Tổng cộng đã chấm {{graded}}/{{total}} bài",
+    "progress": "Đã chấm {{graded}}/{{total}}",
+    "filter": "Lọc bài",
+    "filterPending": "Chưa chấm ({{count}})",
+    "filterAll": "Tất cả ({{count}})",
+    "list": "Danh sách bài ({{count}})",
+    "questionPanel": "Câu {{no}} · {{points}} điểm · đề và hướng dẫn chấm",
+    "rubric": "Hướng dẫn chấm",
+    "saving": "Đang lưu…",
+    "saved": "Đã lưu",
+    "prev": "Bài trước",
+    "next": "Bài sau",
+    "emptyAnswer": "(Người dự thi không viết gì)",
+    "feedback": "Nhận xét cho Người dự thi",
+    "feedbackShort": "Nhận xét",
+    "feedbackHint": "Nhận xét cho Người dự thi (không bắt buộc)",
+    "undoNote": "Đã chấm {{label}}.",
+    "undo": "Hoàn tác",
+    "max": "Tối đa",
+    "pointsShort": "{{value}} đ",
+    "key": "phím {{n}}",
+    "custom": "Điểm khác…",
+    "score": "Điểm",
+    "errorRange": "Nhập điểm từ 0 đến {{max}}.",
+    "errorDecimals": "Điểm tối đa 2 chữ số thập phân.",
+    "keyHint": "1–5: chấm nhanh · J / K: chuyển bài · Điểm khác: gõ rồi Enter",
+    "blindOn": "Chấm ẩn tên: bật",
+    "blindOff": "Chấm ẩn tên: tắt",
+    "itemDone": "Đã chấm hết Câu {{no}}.",
+    "nextItem": "Sang Câu {{no}} (còn {{count}} bài)",
+    "backToResults": "Về Kết quả",
+    "results": {
+      "title": "Kết quả",
+      "tabs": "Kết quả",
+      "meta": "{{date}} · {{minutes}} phút · {{items}} câu",
+      "delegateRole": "Được ủy quyền chấm",
+      "grade": "Chấm tự luận",
+      "hidden": "Chấm ẩn tên đang che điểm các câu tự luận cho đến khi chấm xong mọi bài; điểm đang hiện chỉ gồm phần trắc nghiệm.",
+      "undecided": "Còn {{count}} Vi phạm chưa quyết Mức xử lý (tính như không xử lý cho đến khi quyết).",
+      "people": "Người dự thi",
+      "stats": "Thống kê câu",
+      "violations": "Vi phạm ({{count}} chưa quyết)",
+      "search": "Tìm theo tên hoặc Mã định danh",
+      "filter": "Lọc",
+      "empty": "Không có ai khớp.",
+      "cardScore": "Điểm thô {{raw}}/{{max}} · quy đổi {{scaled}}",
+      "person": "Chi tiết",
+      "sort": "Sắp xếp"
+    },
+    "filters": {
+      "all": "Tất cả",
+      "waiting": "Chờ chấm tự luận",
+      "none": "Chưa làm bài"
+    },
+    "col": {
+      "code": "Mã",
+      "name": "Họ và tên",
+      "attempts": "Số lượt",
+      "raw": "Điểm thô",
+      "scaled": "Điểm quy đổi",
+      "note": "Ghi chú"
+    },
+    "note": {
+      "none": "Chưa làm bài",
+      "waiting": "Chờ chấm {{count}} câu",
+      "hidden": "Đang ẩn điểm tự luận",
+      "void": "Hủy kết quả",
+      "penalty": "Trừ {{percent}}%"
+    },
+    "person": {
+      "attempt": "Lượt {{no}}",
+      "item": "Câu {{no}}",
+      "seenAs": "(thấy là Câu {{no}})",
+      "violations": "Vi phạm"
+    },
+    "type": {
+      "single_choice": "Chọn một",
+      "multiple_choice": "Chọn nhiều",
+      "true_false_cluster": "Chùm đúng/sai",
+      "essay": "Tự luận"
+    },
+    "verdict": {
+      "correct": "đúng",
+      "partial": "một phần",
+      "wrong": "sai",
+      "blank": "bỏ trống",
+      "pending": "chờ chấm"
+    },
+    "violation": {
+      "warning": "Cảnh cáo",
+      "disqualify": "Đình chỉ"
+    },
+    "penalty": {
+      "undecided": "Chưa quyết Mức xử lý",
+      "none": "Không xử lý",
+      "void": "Hủy kết quả",
+      "percent": "Trừ {{percent}}%",
+      "setNone": "Không xử lý",
+      "setVoid": "Hủy kết quả",
+      "setPercent": "Trừ",
+      "percentLabel": "Phần trăm bị trừ",
+      "saved": "Đã lưu Mức xử lý"
+    },
+    "violations": {
+      "empty": "Chưa có Vi phạm nào được ghi.",
+      "hint": "Mức xử lý áp lên Kết quả cả Phiên thi của người đó: nhiều Vi phạm bị trừ phần trăm thì cộng dồn, tối đa 100%; \"Hủy kết quả\" cho điểm 0. Đổi lại được cho đến khi Công bố."
+    },
+    "stats": {
+      "hint": "Câu có tỷ lệ đúng thấp bất thường có thể do nhập nhầm đáp án: kiểm tra trước khi Công bố.",
+      "hardFirst": "Câu khó nhất trước",
+      "suspect": "Nên kiểm tra đáp án",
+      "rate": "Đúng {{rate}}%",
+      "bar": "Tỷ lệ đúng, một phần, sai, bỏ trống",
+      "counts": "đúng {{correct}} · một phần {{partial}} · sai {{wrong}} · bỏ trống {{blank}} · chờ chấm {{pending}}"
+    },
+    "delegate": {
+      "open": "Ủy quyền chấm",
+      "title": "Ủy quyền chấm",
+      "hint": "Người được ủy quyền chấm, quyết Mức xử lý và xem Kết quả thay bạn khi bạn có sự cố. Chỉ chọn được Người ra đề khác không có tên trong Danh sách dự thi của Phiên thi này.",
+      "current": "Đang ủy quyền cho",
+      "none": "Chưa ủy quyền cho ai.",
+      "revoke": "Thu hồi",
+      "search": "Tìm Người ra đề",
+      "grant": "Ủy quyền",
+      "granted": "Đã ủy quyền chấm",
+      "revoked": "Đã thu hồi ủy quyền",
+      "noCandidates": "Không có Người ra đề phù hợp."
+    },
+    "delegated": {
+      "heading": "Được ủy quyền chấm",
+      "owner": "Chủ Phiên thi: {{name}}"
+    },
+    "sort": {
+      "name": "Theo tên",
+      "high": "Điểm cao đến thấp",
+      "low": "Điểm thấp đến cao"
+    }
   }
 }

@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ApiError } from '../../common/api-error';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { GRADING_SESSIONS, type GradingSessions } from '../../common/grading-sessions';
+import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
 import {
   VIOLATION_PENALTIES,
   type ViolationPenalties,
@@ -41,6 +42,10 @@ function withoutAttemptId<T extends { attemptId: string }>({
   return rest;
 }
 
+/** Số Người dự thi thấy, chỉ khi khác số thứ tự gốc của Bộ đề (Q xáo trộn). */
+const seenAsOf = (seen: number | undefined, original: number) =>
+  seen !== undefined && seen !== original ? seen : null;
+
 const penaltyInput = (violation: ViolationRecord): PenaltyInput => ({
   type: violation.penaltyType,
   percent: violation.penaltyPercent,
@@ -54,6 +59,7 @@ export class ResultsService {
     @Inject(GRADING_SESSIONS) private readonly sessions: GradingSessions,
     @Inject(CANDIDATE_DIRECTORY) private readonly directory: CandidateDirectory,
     @Inject(VIOLATION_PENALTIES) private readonly violations: ViolationPenalties,
+    @Inject(GRADING_SOURCE) private readonly source: GradingSource,
   ) {}
 
   /** Chấm ẩn tên đang bật mà còn bài tự luận chờ chấm: che điểm tự luận (Q291). */
@@ -206,6 +212,10 @@ export class ResultsService {
     if (!profile) throw new ApiError('NOT_FOUND');
     const hide = this.hideEssays(ctx, blind);
     const essays = this.essayIds(ctx);
+    // Số câu Người dự thi đã thấy (đã xáo): chỉ hiện khi Chấm ẩn tên tắt (bật thì đối chiếu số câu với một người sẽ lộ bài nào của ai).
+    const seen = blind
+      ? new Map<string, Map<string, number>>()
+      : await this.source.displayNumbers(attempts.map((attempt) => attempt.attemptId));
 
     return {
       person: {
@@ -229,6 +239,10 @@ export class ResultsService {
             return {
               itemId: item.itemId,
               no: item.no,
+              // Chỉ khi khác số gốc mới có giá trị (đề không xáo thì không cần ghi chú).
+              seenAs: blind
+                ? null
+                : seenAsOf(seen.get(attempt.attemptId)?.get(item.itemId), item.no),
               type: item.type,
               points: item.points,
               score: hidden || !row || row.scoreCenti === null ? null : fromCenti(row.scoreCenti),

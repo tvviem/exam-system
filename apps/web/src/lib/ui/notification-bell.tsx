@@ -36,6 +36,17 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
       await navigate({ to: '/examiner/questions' });
       return;
     }
+    if (n.type === 'session.grading_delegated' && typeof n.data.sessionId === 'string') {
+      await navigate({
+        to: '/examiner/sessions/$sessionId/results',
+        params: { sessionId: n.data.sessionId },
+      });
+      return;
+    }
+    if (n.type === 'session.grading_delegate_revoked') {
+      await navigate({ to: '/examiner/sessions' });
+      return;
+    }
     if (n.type === 'sessions.transferred') {
       await navigate({ to: '/examiner/sessions' });
       return;
