@@ -18,7 +18,16 @@ import {
   type ViolationItem,
   violationsQuery,
 } from '../../grading';
-import { Badge, Button, buttonClass, Card, Dialog, ErrorMessage, SearchField } from '..';
+import {
+  Badge,
+  Button,
+  buttonClass,
+  Card,
+  Dialog,
+  ErrorMessage,
+  SearchField,
+  SelectField,
+} from '..';
 import { EmptyState, ListSkeleton } from '../admin';
 import { Chip, ChipGroup } from '../chips';
 import { type Column, DataList } from '../data-list';
@@ -148,10 +157,11 @@ function PeopleList({ sessionId, rows }: { sessionId: string; rows: ResultRow[] 
   const { t } = useTranslation();
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<'name' | 'high' | 'low'>('name');
   const [openId, setOpenId] = useState<string | null>(null);
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return rows.filter((row) => {
+    const matched = rows.filter((row) => {
       if (filter === 'waiting' && row.state !== 'waiting_essay' && row.state !== 'hidden')
         return false;
       if (filter === 'none' && row.state !== 'no_attempt') return false;
@@ -161,7 +171,17 @@ function PeopleList({ sessionId, rows }: { sessionId: string; rows: ResultRow[] 
         (row.code ?? '').toLowerCase().includes(needle)
       );
     });
-  }, [rows, q, filter]);
+    if (sort === 'name') return matched; // API đã xếp theo tên gọi tiếng Việt
+    // Người chưa có điểm xuống cuối dù xếp chiều nào.
+    const score = (row: ResultRow) =>
+      row.scaledScore === null ? null : row.voided ? 0 : row.scaledScore;
+    return [...matched].sort((a, b) => {
+      const x = score(a);
+      const y = score(b);
+      if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+      return sort === 'high' ? y - x : x - y;
+    });
+  }, [rows, q, filter, sort]);
   const columns: Column<ResultRow>[] = [
     { key: 'code', header: t('grading.col.code'), cell: (r) => r.code ?? '—' },
     {
@@ -204,13 +224,25 @@ function PeopleList({ sessionId, rows }: { sessionId: string; rows: ResultRow[] 
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <ChipGroup label={t('grading.results.filter')}>
-          {(['all', 'waiting', 'none'] as const).map((f) => (
-            <Chip key={f} active={filter === f} onClick={() => setFilter(f)}>
-              {t(`grading.filters.${f}`)}
-            </Chip>
-          ))}
-        </ChipGroup>
+        <div className="flex flex-wrap items-end gap-3">
+          <SelectField
+            id="results-sort"
+            label={t('grading.results.sort')}
+            value={sort}
+            onChange={(e) => setSort(e.target.value as typeof sort)}
+          >
+            <option value="name">{t('grading.sort.name')}</option>
+            <option value="high">{t('grading.sort.high')}</option>
+            <option value="low">{t('grading.sort.low')}</option>
+          </SelectField>
+          <ChipGroup label={t('grading.results.filter')}>
+            {(['all', 'waiting', 'none'] as const).map((f) => (
+              <Chip key={f} active={filter === f} onClick={() => setFilter(f)}>
+                {t(`grading.filters.${f}`)}
+              </Chip>
+            ))}
+          </ChipGroup>
+        </div>
       </div>
       {shown.length === 0 ? (
         <EmptyState>{t('grading.results.empty')}</EmptyState>
@@ -320,7 +352,7 @@ function PersonDialog({
               <li key={item.itemId} className="flex items-baseline justify-between gap-3 py-2">
                 <span className="min-w-0">
                   <span className="font-medium">{t('grading.person.item', { no: item.no })}</span>
-                  {item.seenAs !== null && (
+                  {item.seenAs != null && (
                     <span className="ml-1 text-sm text-fg-muted">
                       {t('grading.person.seenAs', { no: item.seenAs })}
                     </span>
@@ -455,11 +487,14 @@ function ViolationsPanel({ sessionId }: { sessionId: string }) {
   if (violations.data.items.length === 0)
     return <EmptyState>{t('grading.violations.empty')}</EmptyState>;
   return (
-    <ul className="flex flex-col gap-3">
-      {violations.data.items.map((v) => (
-        <ViolationRow key={v.id} sessionId={sessionId} violation={v} />
-      ))}
-    </ul>
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-fg-muted">{t('grading.violations.hint')}</p>
+      <ul className="flex flex-col gap-3">
+        {violations.data.items.map((v) => (
+          <ViolationRow key={v.id} sessionId={sessionId} violation={v} />
+        ))}
+      </ul>
+    </div>
   );
 }
 

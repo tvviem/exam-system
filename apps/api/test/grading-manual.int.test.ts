@@ -324,6 +324,11 @@ describe('Ghi chú đối chiếu số câu khi đề được xáo', () => {
     );
     await an.call('POST', `/take/attempts/${live.attemptIds.an}/submit`);
     await t.queue.drain();
+    // Chấm ẩn tên đang bật: không có số đối chiếu nào (ghép số câu với một người sẽ lộ bài nào của ai).
+    const hidden = (await api('GET', `${base()}/results/people/${live.userIds.an}`)).json();
+    expect(
+      hidden.attempts[0].items.every((i: { seenAs: number | null }) => i.seenAs === null),
+    ).toBe(true);
     await api('PUT', `${base()}/grading/blind`, { blind: false });
     const detail = (await api('GET', `${base()}/results/people/${live.userIds.an}`)).json();
     const rows = detail.attempts[0].items as {

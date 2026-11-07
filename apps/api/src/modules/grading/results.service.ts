@@ -212,8 +212,8 @@ export class ResultsService {
     if (!profile) throw new ApiError('NOT_FOUND');
     const hide = this.hideEssays(ctx, blind);
     const essays = this.essayIds(ctx);
-    // Số câu Người dự thi đã thấy (đã xáo): chỉ cho Người ra đề đối chiếu khi chấm không còn che danh tính.
-    const seen = hide
+    // Số câu Người dự thi đã thấy (đã xáo): chỉ hiện khi Chấm ẩn tên tắt (bật thì đối chiếu số câu với một người sẽ lộ bài nào của ai).
+    const seen = blind
       ? new Map<string, Map<string, number>>()
       : await this.source.displayNumbers(attempts.map((attempt) => attempt.attemptId));
 
@@ -240,7 +240,7 @@ export class ResultsService {
               itemId: item.itemId,
               no: item.no,
               // Chỉ khi khác số gốc mới có giá trị (đề không xáo thì không cần ghi chú).
-              seenAs: hide
+              seenAs: blind
                 ? null
                 : seenAsOf(seen.get(attempt.attemptId)?.get(item.itemId), item.no),
               type: item.type,

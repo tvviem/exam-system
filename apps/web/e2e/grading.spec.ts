@@ -63,18 +63,28 @@ test('chấm tự luận bằng nút và phím, Kết quả, Mức xử lý, Ủ
   await examiner.getByRole('link', { name: /Chấm tự luận/ }).click();
 
   // Màn Chấm: nhãn "Bài N" (không tên), bấm nút ½ rồi phím 5.
-  await expect(examiner.getByText('Đã chấm 0/2')).toBeVisible();
+  await expect(examiner.getByText('Đã chấm 0/2', { exact: true })).toBeVisible();
   await expect(examiner.getByTestId('answer')).toContainText('Bài tự luận số');
   await expect(examiner.getByText(/Thí sinh Chấm bài/)).toHaveCount(0);
   const started = performance.now();
   await examiner.getByTestId('quick-3').click(); // ½ của 5 điểm = 2,5
-  await expect(examiner.getByText('Đã chấm 1/2')).toBeVisible();
+  await expect(examiner.getByText('Đã chấm 1/2', { exact: true })).toBeVisible();
   console.log(
     `[${project}] bấm điểm → tiến độ đổi: ${(performance.now() - started).toFixed(0)} ms`,
   );
   await expect(examiner.getByRole('status').filter({ hasText: 'Hoàn tác' })).toBeVisible();
+  // Hoàn tác: bài vừa chấm về chờ chấm, rồi chấm lại.
+  await examiner.getByRole('button', { name: 'Hoàn tác' }).click();
+  await expect(examiner.getByText('Đã chấm 0/2', { exact: true })).toBeVisible();
+  await examiner.getByTestId('quick-3').click();
+  await expect(examiner.getByText('Đã chấm 1/2', { exact: true })).toBeVisible();
+  // Chấm ẩn tên: tắt thì hiện tên Người dự thi ở bài đang xem (trước đó không có tên nào trên màn).
+  await examiner.getByRole('button', { name: 'Chấm ẩn tên: bật' }).click();
+  await expect(examiner.getByRole('heading', { name: /Thí sinh Chấm bài/ })).toBeVisible();
+  await examiner.getByRole('button', { name: 'Chấm ẩn tên: tắt' }).click();
+  await expect(examiner.getByRole('heading', { name: /^Bài \d+$/ })).toBeVisible();
   await examiner.keyboard.press('5'); // tối đa = 5 điểm
-  await expect(examiner.getByText('Đã chấm 2/2')).toBeVisible();
+  await expect(examiner.getByText('Đã chấm 2/2', { exact: true })).toBeVisible();
   await expect(examiner.getByText('Đã chấm hết Câu 4')).toBeVisible();
 
   // Về Kết quả: điểm tự luận đã hiện (2,5 và 5), Cảnh cáo chưa quyết.

@@ -1714,7 +1714,8 @@
       "filter": "Lọc",
       "empty": "Không có ai khớp.",
       "cardScore": "Điểm thô {{raw}}/{{max}} · quy đổi {{scaled}}",
-      "person": "Chi tiết"
+      "person": "Chi tiết",
+      "sort": "Sắp xếp"
     },
     "filters": {
       "all": "Tất cả",
@@ -1771,7 +1772,8 @@
       "saved": "Đã lưu Mức xử lý"
     },
     "violations": {
-      "empty": "Chưa có Vi phạm nào được ghi."
+      "empty": "Chưa có Vi phạm nào được ghi.",
+      "hint": "Mức xử lý áp lên Kết quả cả Phiên thi của người đó: nhiều Vi phạm bị trừ phần trăm thì cộng dồn, tối đa 100%; \"Hủy kết quả\" cho điểm 0. Đổi lại được cho đến khi Công bố."
     },
     "stats": {
       "hint": "Câu có tỷ lệ đúng thấp bất thường có thể do nhập nhầm đáp án: kiểm tra trước khi Công bố.",
@@ -1797,6 +1799,11 @@
     "delegated": {
       "heading": "Được ủy quyền chấm",
       "owner": "Chủ Phiên thi: {{name}}"
+    },
+    "sort": {
+      "name": "Theo tên",
+      "high": "Điểm cao đến thấp",
+      "low": "Điểm thấp đến cao"
     }
   }
 }

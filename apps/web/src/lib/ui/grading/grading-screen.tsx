@@ -12,7 +12,7 @@ import {
   MessageSquare,
   Undo2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../errors';
 import {
@@ -50,12 +50,17 @@ export function parseScore(
   const clean = text.trim().replace(',', '.');
   if (clean === '') return { value: null };
   const value = Number(clean);
-  if (!Number.isFinite(value) || value < 0 || value > points)
+  if (!Number.isFinite(value) || value < 0 || value > points) {
     return { value: null, error: 'range' };
-  if (Math.abs(value * 100 - Math.round(value * 100)) > 1e-9)
+  }
+  if (Math.abs(value * 100 - Math.round(value * 100)) > 1e-9) {
     return { value: null, error: 'decimals' };
+  }
   return { value };
 }
+
+const touchButton =
+  'inline-flex min-h-11 cursor-pointer items-center justify-center gap-1 rounded-lg border border-border-strong bg-surface px-3 text-sm pointer-fine:min-h-9';
 
 export function GradingScreen({
   sessionId,
@@ -66,14 +71,13 @@ export function GradingScreen({
   sessionId: string;
   itemId?: string;
   onItem: (itemId: string) => void;
-  backTo: React.ReactNode;
+  backTo: ReactNode;
 }) {
   const { t } = useTranslation();
   const items = useQuery(essayItemsQuery(sessionId));
   if (items.isPending) return <ListSkeleton rows={4} />;
   if (items.isError) return <ErrorMessage>{errorMessage(t, items.error)}</ErrorMessage>;
-  const list = items.data.items;
-  if (list.length === 0) {
+  if (items.data.items.length === 0) {
     return (
       <div className="flex flex-col gap-3">
         <p className="rounded-xl border border-border bg-surface p-6 text-center">
@@ -83,10 +87,41 @@ export function GradingScreen({
       </div>
     );
   }
+  return (
+    <GradingLoaded
+      sessionId={sessionId}
+      list={items.data.items}
+      itemId={itemId}
+      blind={items.data.blind}
+      onItem={onItem}
+      backTo={backTo}
+    />
+  );
+}
+
+function GradingLoaded({
+  sessionId,
+  list,
+  itemId,
+  blind,
+  onItem,
+  backTo,
+}: {
+  sessionId: string;
+  list: EssayItem[];
+  itemId?: string;
+  blind: boolean;
+  onItem: (itemId: string) => void;
+  backTo: ReactNode;
+}) {
   const current =
     list.find((i) => i.itemId === itemId) ??
     list.find((i) => i.pending > 0) ??
     (list[0] as EssayItem);
+  // Ghim câu đang chấm lên địa chỉ ngay lần đầu: chấm hết bài cuối thì câu không tự nhảy sang câu khác làm mất bảng "đã chấm hết".
+  useEffect(() => {
+    if (!itemId) onItem(current.itemId);
+  }, [itemId, current.itemId, onItem]);
   return (
     <div className="flex flex-col gap-3">
       {list.length > 1 && <QuestionBar items={list} current={current.itemId} onPick={onItem} />}
@@ -94,7 +129,7 @@ export function GradingScreen({
         key={current.itemId}
         sessionId={sessionId}
         item={current}
-        blind={items.data.blind}
+        blind={blind}
         others={list}
         onItem={onItem}
         backTo={backTo}
@@ -117,32 +152,27 @@ function QuestionBar({
   const done = items.reduce((sum, i) => sum + i.graded, 0);
   return (
     <div className="flex flex-col gap-1">
-      <div
-        role="tablist"
+      <nav
         aria-label={t('grading.questions')}
         className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0"
       >
-        {items.map((i) => {
-          const selected = i.itemId === current;
-          return (
-            <button
-              key={i.itemId}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => onPick(i.itemId)}
-              className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium whitespace-nowrap pointer-fine:min-h-9 ${
-                selected
-                  ? 'border-primary bg-primary-soft text-on-primary-soft'
-                  : 'border-border-strong bg-surface'
-              }`}
-            >
-              {t('grading.questionTab', { no: i.no, graded: i.graded, total: i.total })}
-              {i.pending === 0 && <Check aria-hidden className="size-4 text-success" />}
-            </button>
-          );
-        })}
-      </div>
+        {items.map((i) => (
+          <button
+            key={i.itemId}
+            type="button"
+            aria-current={i.itemId === current ? 'true' : undefined}
+            onClick={() => onPick(i.itemId)}
+            className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium whitespace-nowrap pointer-fine:min-h-9 ${
+              i.itemId === current
+                ? 'border-primary bg-primary-soft text-on-primary-soft'
+                : 'border-border-strong bg-surface'
+            }`}
+          >
+            {t('grading.questionTab', { no: i.no, graded: i.graded, total: i.total })}
+            {i.pending === 0 && <Check aria-hidden className="size-4 text-success" />}
+          </button>
+        ))}
+      </nav>
       <p className="text-sm text-fg-muted">{t('grading.overall', { graded: done, total })}</p>
     </div>
   );
@@ -167,7 +197,7 @@ function ItemGrading({
   blind: boolean;
   others: EssayItem[];
   onItem: (id: string) => void;
-  backTo: React.ReactNode;
+  backTo: ReactNode;
 }) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -177,6 +207,11 @@ function ItemGrading({
   const [listOpen, setListOpen] = useState(false);
   const [undo, setUndo] = useState<Undo | null>(null);
   const [saving, setSaving] = useState(0);
+  const pendingSaves = useRef(0);
+  // Nhận xét đang gõ theo từng bài: giữ khi chuyển bài, gửi kèm điểm dù chấm bằng nút, phím hay "Điểm khác".
+  const drafts = useRef(new Map<string, string>());
+  const advanced = useRef(false);
+  const queueKey = queueQuery(sessionId, item.itemId, 'all').queryKey;
   const queue = useQuery(queueQuery(sessionId, item.itemId, 'all'));
 
   const entries = queue.data?.entries ?? [];
@@ -188,8 +223,7 @@ function ItemGrading({
   // Bài đầu tiên cần chấm khi mở câu; giữ nguyên bài đang xem khi dữ liệu làm mới.
   useEffect(() => {
     if (currentId && entries.some((e) => e.attemptId === currentId)) return;
-    const first = entries.find((e) => !e.graded) ?? entries[0];
-    setCurrentId(first?.attemptId);
+    setCurrentId((entries.find((e) => !e.graded) ?? entries[0])?.attemptId);
   }, [entries, currentId]);
 
   const index = Math.max(
@@ -200,26 +234,40 @@ function ItemGrading({
     ...entryQuery(sessionId, item.itemId, currentId ?? ''),
     enabled: Boolean(currentId),
   });
-  // Nạp trước bài kế để chuyển bài gần như tức thì.
-  const nextId = visible[index + 1]?.attemptId;
+
+  const nextPendingAfter = useCallback(
+    (attemptId: string) => {
+      const all = queryClient.getQueryData<QueueData>(queueKey)?.entries ?? [];
+      const from = all.findIndex((e) => e.attemptId === attemptId);
+      for (let step = 1; step < all.length; step++) {
+        const e = all[(from + step) % all.length];
+        if (e && !e.graded) return e.attemptId;
+      }
+      return undefined;
+    },
+    [queryClient, queueKey],
+  );
+
+  // Nạp trước bài liền kề và bài chưa chấm kế tiếp (nơi nút điểm sẽ nhảy tới) để chuyển bài gần như tức thì.
+  const adjacentId = visible[index + 1]?.attemptId;
+  const pendingNextId = currentId ? nextPendingAfter(currentId) : undefined;
   useEffect(() => {
-    if (nextId) void queryClient.prefetchQuery(entryQuery(sessionId, item.itemId, nextId));
-  }, [nextId, queryClient, sessionId, item.itemId]);
+    for (const id of new Set([adjacentId, pendingNextId])) {
+      if (id) void queryClient.prefetchQuery(entryQuery(sessionId, item.itemId, id));
+    }
+  }, [adjacentId, pendingNextId, queryClient, sessionId, item.itemId]);
 
   const patchQueue = useCallback(
     (attemptId: string, score: number | null) =>
-      queryClient.setQueryData<QueueData>(
-        queueQuery(sessionId, item.itemId, 'all').queryKey,
-        (data) => {
-          if (!data) return data;
-          const entries = data.entries.map((e) =>
-            e.attemptId === attemptId ? { ...e, graded: score !== null, score } : e,
-          );
-          const graded = entries.filter((e) => e.graded).length;
-          return { ...data, entries, graded, pending: entries.length - graded };
-        },
-      ),
-    [queryClient, sessionId, item.itemId],
+      queryClient.setQueryData<QueueData>(queueKey, (data) => {
+        if (!data) return data;
+        const next = data.entries.map((e) =>
+          e.attemptId === attemptId ? { ...e, graded: score !== null, score } : e,
+        );
+        const graded = next.filter((e) => e.graded).length;
+        return { ...data, entries: next, graded, pending: next.length - graded };
+      }),
+    [queryClient, queueKey],
   );
 
   const save = useMutation({
@@ -228,65 +276,79 @@ function ItemGrading({
         score: vars.score,
         feedback: vars.feedback,
       }),
-    onMutate: () => setSaving((n) => n + 1),
+    onMutate: () => {
+      pendingSaves.current += 1;
+      setSaving((n) => n + 1);
+    },
     onSettled: () => {
+      pendingSaves.current -= 1;
       setSaving((n) => n - 1);
-      void queryClient.invalidateQueries({ queryKey: ['grading', sessionId, 'items'] });
-      void queryClient.invalidateQueries({ queryKey: ['grading', sessionId, 'results'] });
+      // Chỉ làm tươi tiến độ khi hết lượt lưu đang bay: bấm liên tiếp không kéo theo một lần hỏi lại mỗi phím.
+      if (pendingSaves.current === 0) {
+        void queryClient.invalidateQueries({ queryKey: ['grading', sessionId, 'items'] });
+        void queryClient.invalidateQueries({ queryKey: ['grading', sessionId, 'results'] });
+      }
     },
     onError: (error, vars) => {
       toast(errorMessage(t, error), 'error');
-      // Lưu lỗi: trả bài về trạng thái cũ và quay lại bài đó.
-      void queryClient.invalidateQueries({
-        queryKey: queueQuery(sessionId, item.itemId, 'all').queryKey,
+      // Lưu lỗi: bỏ điểm lạc quan của bài đó (hàng đợi và bài), rồi quay lại bài đó.
+      void queryClient.invalidateQueries({ queryKey: queueKey });
+      queryClient.removeQueries({
+        queryKey: entryQuery(sessionId, item.itemId, vars.attemptId).queryKey,
       });
       setCurrentId(vars.attemptId);
     },
   });
 
-  const nextPendingAfter = (attemptId: string) => {
-    const all =
-      queryClient.getQueryData<QueueData>(queueQuery(sessionId, item.itemId, 'all').queryKey)
-        ?.entries ?? [];
-    const from = all.findIndex((e) => e.attemptId === attemptId);
-    for (let step = 1; step < all.length; step++) {
-      const e = all[(from + step) % all.length];
-      if (e && !e.graded) return e.attemptId;
-    }
-    return undefined;
-  };
-
-  /** Lưu điểm của bài đang xem rồi sang bài chưa chấm kế tiếp (lạc quan: không chờ server). */
-  const grade = (score: number, feedback: string | null | undefined, advance: boolean) => {
+  /**
+   * Lưu điểm của bài đang xem (lạc quan: giao diện đổi trước, không chờ server). `advance`: chấm xong sang bài chưa chấm kế tiếp
+   * và nhớ để Hoàn tác; sửa nhận xét thì không chuyển bài và không đụng Hoàn tác.
+   */
+  const grade = (score: number, advance: boolean) => {
     const target = entry.data;
     if (!target) return;
-    const label = entries.find((e) => e.attemptId === target.attemptId)?.label ?? target.label;
-    setUndo({
-      attemptId: target.attemptId,
-      label,
-      previous: { score: target.score, feedback: target.feedback },
-    });
+    const feedback = drafts.current.get(target.attemptId) ?? target.feedback;
+    const feedbackValue = feedback?.trim() ? feedback.trim() : null;
+    if (advance) {
+      const label = entries.find((e) => e.attemptId === target.attemptId)?.label ?? target.label;
+      setUndo({
+        attemptId: target.attemptId,
+        label,
+        previous: { score: target.score, feedback: target.feedback },
+      });
+      advanced.current = true;
+    }
     patchQueue(target.attemptId, score);
     queryClient.setQueryData<EntryData>(
       entryQuery(sessionId, item.itemId, target.attemptId).queryKey,
-      { ...target, score, graded: true, feedback: feedback ?? target.feedback },
+      { ...target, score, graded: true, feedback: feedbackValue },
     );
-    save.mutate({ attemptId: target.attemptId, score, feedback });
+    save.mutate({ attemptId: target.attemptId, score, feedback: feedbackValue });
     if (advance) setCurrentId(nextPendingAfter(target.attemptId) ?? target.attemptId);
   };
 
   const doUndo = () => {
     if (!undo) return;
-    patchQueue(undo.attemptId, undo.previous.score);
-    queryClient.removeQueries({
-      queryKey: entryQuery(sessionId, item.itemId, undo.attemptId).queryKey,
-    });
-    save.mutate({
-      attemptId: undo.attemptId,
-      score: undo.previous.score,
-      feedback: undo.previous.feedback,
-    });
-    setCurrentId(undo.attemptId);
+    const { attemptId, previous } = undo;
+    patchQueue(attemptId, previous.score);
+    const entryKey = entryQuery(sessionId, item.itemId, attemptId).queryKey;
+    queryClient.setQueryData<EntryData>(entryKey, (data) =>
+      data
+        ? {
+            ...data,
+            score: previous.score,
+            graded: previous.score !== null,
+            feedback: previous.feedback,
+          }
+        : data,
+    );
+    drafts.current.delete(attemptId);
+    save.mutate(
+      { attemptId, score: previous.score, feedback: previous.feedback },
+      // Hỏi lại bài sau khi lưu xong để chắc khớp với server, không bắt chuyển bài chờ mạng.
+      { onSettled: () => queryClient.invalidateQueries({ queryKey: entryKey }) },
+    );
+    setCurrentId(attemptId);
     setUndo(null);
   };
 
@@ -297,19 +359,19 @@ function ItemGrading({
 
   const blindMutation = useMutation({
     mutationFn: (next: boolean) => setBlind(sessionId, next),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['grading', sessionId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['grading', sessionId] }),
     onError: (error) => toast(errorMessage(t, error), 'error'),
   });
 
-  // Phím tắt (Q293): J/K chuyển bài, 1–5 chấm nhanh; bỏ qua khi đang gõ.
+  // Phím tắt (Q293): J/K chuyển bài, 1–5 chấm nhanh; bỏ qua khi đang gõ hoặc giữ phím.
   const quick = quickScores(item.points);
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e) => {
     if ((e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.defaultPrevented) return;
     if (e.key === 'j' || e.key === 'J') go(1);
     else if (e.key === 'k' || e.key === 'K') go(-1);
-    else if (/^[1-5]$/.test(e.key)) grade(quick[Number(e.key) - 1] as number, undefined, true);
+    else if (/^[1-5]$/.test(e.key)) grade(quick[Number(e.key) - 1] as number, true);
   };
   useEffect(() => {
     const on = (e: KeyboardEvent) => keyHandler.current(e);
@@ -327,6 +389,10 @@ function ItemGrading({
 
   return (
     <div className="grid gap-4 pb-44 lg:grid-cols-[17rem_1fr] lg:pb-0">
+      {/* Vùng báo cho trình đọc màn hình: nằm ngoài phần bị dựng lại mỗi lần sang bài nên không bị ngắt. */}
+      <div className="sr-only" aria-live="polite">
+        {saving > 0 ? t('grading.saving') : t('grading.saved')}
+      </div>
       <aside className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline justify-between text-sm">
@@ -431,21 +497,43 @@ function ItemGrading({
             key={entry.data.attemptId}
             entry={entry.data}
             blind={blind}
+            blindPending={blindMutation.isPending}
             points={item.points}
             quick={quick}
             index={index}
             count={visible.length}
             saving={saving > 0}
+            initialFeedback={drafts.current.get(entry.data.attemptId) ?? entry.data.feedback ?? ''}
+            focusAnswer={advanced.current}
+            onFocused={() => {
+              advanced.current = false;
+            }}
+            onDraft={(text) => drafts.current.set(entry.data.attemptId, text)}
             onGrade={grade}
             onPrev={() => go(-1)}
             onNext={() => go(1)}
             onBlind={() => blindMutation.mutate(!blind)}
-            undo={undo}
-            onUndo={doUndo}
           />
         ) : currentId ? (
           <ListSkeleton rows={3} />
         ) : null}
+
+        {/* Dấu Hoàn tác nằm ngoài phần dựng lại mỗi lần sang bài: vùng `status` luôn có mặt nên được đọc ra. */}
+        <div role="status">
+          {undo && (
+            <p className="flex items-center justify-between gap-2 rounded-lg bg-primary-soft px-3 py-2 text-sm text-on-primary-soft">
+              {t('grading.undoNote', { label: undo.label })}
+              <button
+                type="button"
+                onClick={doUndo}
+                className="inline-flex min-h-11 cursor-pointer items-center gap-1 font-semibold underline pointer-fine:min-h-9"
+              >
+                <Undo2 aria-hidden className="size-4" />
+                {t('grading.undo')}
+              </button>
+            </p>
+          )}
+        </div>
 
         {done && (
           <div
@@ -470,40 +558,60 @@ function ItemGrading({
 function EntryPane({
   entry,
   blind,
+  blindPending,
   points,
   quick,
   index,
   count,
   saving,
+  initialFeedback,
+  focusAnswer,
+  onFocused,
+  onDraft,
   onGrade,
   onPrev,
   onNext,
   onBlind,
-  undo,
-  onUndo,
 }: {
   entry: EntryData;
   blind: boolean;
+  blindPending: boolean;
   points: number;
   quick: number[];
   index: number;
   count: number;
   saving: boolean;
-  onGrade: (score: number, feedback: string | null | undefined, advance: boolean) => void;
+  initialFeedback: string;
+  focusAnswer: boolean;
+  onFocused: () => void;
+  onDraft: (text: string) => void;
+  onGrade: (score: number, advance: boolean) => void;
   onPrev: () => void;
   onNext: () => void;
   onBlind: () => void;
-  undo: Undo | null;
-  onUndo: () => void;
 }) {
   const { t } = useTranslation();
-  const [note, setNote] = useState(Boolean(entry.feedback));
-  const [feedback, setFeedback] = useState(entry.feedback ?? '');
+  const [note, setNote] = useState(initialFeedback !== '');
+  const [feedback, setFeedback] = useState(initialFeedback);
   const [custom, setCustom] = useState(false);
   const [text, setText] = useState('');
   const [error, setError] = useState<'range' | 'decimals' | null>(null);
-  const feedbackValue = feedback.trim() === '' ? null : feedback.trim();
+  const answerRef = useRef<HTMLElement>(null);
 
+  // Sau khi chấm và sang bài kế, đưa tiêu điểm về bài mới (nút vừa bấm đã bị thay) để bàn phím và trình đọc không mất chỗ.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy lúc dựng bài
+  useEffect(() => {
+    onDraft(initialFeedback);
+    if (focusAnswer) {
+      answerRef.current?.focus({ preventScroll: true });
+      onFocused();
+    }
+  }, []);
+
+  const changeFeedback = (value: string) => {
+    setFeedback(value);
+    onDraft(value);
+  };
   const commitCustom = () => {
     const parsed = parseScore(text, points);
     if (parsed.error) return setError(parsed.error);
@@ -511,11 +619,13 @@ function EntryPane({
     setError(null);
     setCustom(false);
     setText('');
-    onGrade(parsed.value, feedbackValue, true);
+    onGrade(parsed.value, true);
   };
   const saveFeedbackOnly = () => {
-    if (entry.graded && entry.score !== null && feedbackValue !== (entry.feedback ?? null)) {
-      onGrade(entry.score, feedbackValue, false);
+    const value = feedback.trim() === '' ? null : feedback.trim();
+    // Bài chưa có điểm: nhận xét nằm trong bản nháp và đi kèm điểm lúc chấm (không tạo điểm chấm tay rỗng).
+    if (entry.graded && entry.score !== null && value !== (entry.feedback ?? null)) {
+      onGrade(entry.score, false);
     }
   };
 
@@ -529,10 +639,10 @@ function EntryPane({
         </h2>
         <div className="flex items-center gap-3">
           <span
+            aria-hidden
             className={`inline-flex items-center gap-1 text-sm ${saving ? 'text-fg-muted' : 'text-success'}`}
-            aria-live="polite"
           >
-            <Check aria-hidden className="size-4" />
+            <Check className="size-4" />
             {saving ? t('grading.saving') : t('grading.saved')}
           </span>
           <div className="flex items-center gap-2">
@@ -541,7 +651,7 @@ function EntryPane({
               aria-label={t('grading.prev')}
               onClick={onPrev}
               disabled={index === 0}
-              className="inline-flex size-11 cursor-pointer items-center justify-center rounded-lg border border-border-strong bg-surface disabled:opacity-40 pointer-fine:size-9"
+              className={`${touchButton} size-11 px-0 disabled:opacity-40 pointer-fine:size-9`}
             >
               <ArrowLeft aria-hidden className="size-4" />
             </button>
@@ -553,7 +663,7 @@ function EntryPane({
               aria-label={t('grading.next')}
               onClick={onNext}
               disabled={index >= count - 1}
-              className="inline-flex size-11 cursor-pointer items-center justify-center rounded-lg border border-border-strong bg-surface disabled:opacity-40 pointer-fine:size-9"
+              className={`${touchButton} size-11 px-0 disabled:opacity-40 pointer-fine:size-9`}
             >
               <ArrowRight aria-hidden className="size-4" />
             </button>
@@ -561,8 +671,11 @@ function EntryPane({
         </div>
       </div>
       <article
+        ref={answerRef}
+        tabIndex={-1}
         data-testid="answer"
-        className="rounded-xl border border-border bg-surface p-4 text-lg leading-relaxed whitespace-pre-wrap break-words"
+        aria-label={entry.label}
+        className="rounded-xl border border-border bg-surface p-4 text-lg leading-relaxed whitespace-pre-wrap break-words outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         {entry.answer || t('grading.emptyAnswer')}
       </article>
@@ -570,7 +683,7 @@ function EntryPane({
         <textarea
           aria-label={t('grading.feedback')}
           value={feedback}
-          onChange={(e) => setFeedback(e.target.value)}
+          onChange={(e) => changeFeedback(e.target.value)}
           onBlur={saveFeedbackOnly}
           placeholder={t('grading.feedbackHint')}
           rows={2}
@@ -578,23 +691,7 @@ function EntryPane({
           className="rounded-lg border border-border-strong bg-surface p-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-ring/40"
         />
       )}
-      {undo && (
-        <p
-          role="status"
-          className="flex items-center justify-between gap-2 rounded-lg bg-primary-soft px-3 py-2 text-sm text-on-primary-soft"
-        >
-          {t('grading.undoNote', { label: undo.label })}
-          <button
-            type="button"
-            onClick={onUndo}
-            className="inline-flex min-h-9 cursor-pointer items-center gap-1 font-semibold underline"
-          >
-            <Undo2 aria-hidden className="size-4" />
-            {t('grading.undo')}
-          </button>
-        </p>
-      )}
-      <div className="fixed inset-x-0 bottom-[var(--app-tabbar-h,0px)] z-40 border-t border-border bg-surface/95 p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur lg:static lg:rounded-xl lg:border lg:shadow-none">
+      <div className="fixed inset-x-0 bottom-[var(--app-tabbar-h,0px)] z-40 border-t border-border bg-surface/95 p-3 shadow-lg backdrop-blur lg:static lg:rounded-xl lg:border lg:shadow-none">
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-5 gap-2">
             {quick.map((value, i) => (
@@ -603,7 +700,7 @@ function EntryPane({
                 type="button"
                 data-testid={`quick-${i + 1}`}
                 aria-pressed={entry.graded && entry.score === value}
-                onClick={() => onGrade(value, feedbackValue, true)}
+                onClick={() => onGrade(value, true)}
                 className={`flex min-h-12 cursor-pointer flex-col items-center justify-center rounded-xl border text-base font-bold hover:bg-primary-soft lg:min-h-14 ${
                   entry.graded && entry.score === value
                     ? 'border-primary bg-primary-soft'
@@ -611,7 +708,7 @@ function EntryPane({
                 }`}
               >
                 {QUICK_LABELS[i] === 'max' ? t('grading.max') : QUICK_LABELS[i]}
-                <span className="text-[11px] font-normal text-fg-muted">
+                <span className="text-xs font-normal text-fg-muted">
                   {t('grading.pointsShort', { value: fmt(value) })}
                 </span>
                 <span className="sr-only">{t('grading.key', { n: i + 1 })}</span>
@@ -623,7 +720,7 @@ function EntryPane({
               type="button"
               aria-pressed={custom}
               onClick={() => setCustom((c) => !c)}
-              className="min-h-11 cursor-pointer rounded-lg border border-border-strong px-3 text-sm pointer-fine:min-h-9"
+              className={touchButton}
             >
               {t('grading.custom')}
             </button>
@@ -632,16 +729,16 @@ function EntryPane({
               aria-pressed={note}
               aria-label={t('grading.feedback')}
               onClick={() => setNote((n) => !n)}
-              className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg border border-border-strong px-3 text-sm pointer-fine:min-h-9"
+              className={touchButton}
             >
               <MessageSquare aria-hidden className="size-4" />
               <span className="hidden sm:inline">{t('grading.feedbackShort')}</span>
             </button>
             <button
               type="button"
-              aria-pressed={blind}
+              disabled={blindPending}
               onClick={onBlind}
-              className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 text-sm font-medium pointer-fine:min-h-9"
+              className={`${touchButton} gap-2 font-medium`}
             >
               {blind ? (
                 <EyeOff aria-hidden className="size-4" />
