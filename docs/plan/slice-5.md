@@ -566,3 +566,15 @@ Dựng cơ sở dữ liệu thử PostgreSQL 17: **100 000 Lượt đã nộp** 
 - Đính chính chấm lại theo lô (ví dụ 100 Lượt mỗi lô), mỗi lô một giao dịch, để không giữ khóa lâu và không chặn Chấm tay của Phiên thi khác.
 - `notifications` và `attempts_submitted_idx` lớn dần theo thời gian (mỗi Lượt đã nộp mãi nằm trong chỉ mục từng phần); truy vấn dùng khoảng thời gian gần nên không chậm. Việc dọn thông báo đã đọc cũ hơn 90 ngày để backlog.
 - 5d-1 thêm một bản đo nạp dữ liệu lớn vào `grading-bench.int.test.ts` (đã có cờ `GRADING_BENCH`): nạp nền 20 Phiên thi trước khi đo Phúc khảo để bắt chậm do bảng lớn.
+
+### Giao diện duyệt Kết quả từng câu của Người dự thi (Q318, đã duyệt và làm 7/11/2026)
+
+Chủ dự án thử "Kết quả của tôi" thấy danh sách thu gọn dọc 40–50 câu khó duyệt, nhất là khi Người ra đề cho xem lại đề. Thiết kế lại theo khung màn làm bài, chỉ xem, không chọn được:
+
+- **Bản đồ câu**: mỗi ô có số, biểu tượng và màu (✓ Đúng, ◐ Chưa đúng hoàn toàn, ✗ Sai, – Bỏ trống; không chỉ dựa vào màu). Máy tính (từ 1024 px): cột trái dính khi cuộn, ô 40 px. Điện thoại: mở từ thanh dưới, ô 48 px như bảng chọn câu ở màn làm bài.
+- **Dải tổng quan** một vạch mỗi câu và **bốn nút lọc có đếm** (Đúng, Chưa đúng hoàn toàn, Sai, Bỏ trống). Bật lọc thì nhảy tới câu khớp đầu tiên; nút câu trước/sau chỉ đi qua các câu khớp; ô ngoài bộ lọc mờ đi (không ẩn, để vị trí không nhảy). Nút **Câu sai kế tiếp** quay vòng.
+- **Một câu một màn**: đầu thẻ là dải kết quả to (biểu tượng, chữ, màu, điểm, "đúng 3/4 Mệnh đề"). Khi Người ra đề cho xem lại đề: nội dung câu và Phương án/Mệnh đề giống màn làm bài nhưng không bấm được, đánh dấu "Bạn đã chọn", **không bao giờ hiện Đáp án đúng**. Mặc định (không xem lại đề): thẻ chỉ có kết quả và dòng "Người ra đề không mở xem lại nội dung câu này"; câu tự luận hiện bài làm và nhận xét.
+- **Điều hướng**: phím ← →; `?cau=` trên địa chỉ để tải lại hay Back vẫn đúng câu (thay thế, không đẩy lịch sử). Bỏ hẳn chế độ danh sách dọc.
+- Mã: `lib/result-review.ts` (hàm thuần: đếm, bước theo bộ lọc, câu sai kế tiếp; 11 test), `lib/ui/grading/result-review.tsx`, `my-result.tsx` chỉ còn khối điểm. E2E `result-review.spec.ts` (desktop và mobile): bốn kết quả, lọc, câu sai kế tiếp, tải lại giữ chỗ, bản đồ, phím, không có ô chọn, không lộ đáp án; lọc → đổi thẻ câu 87–113 ms. Chừa chỗ nút Phúc khảo từng câu cho 5d-2.
+
+**Ghi chú cho hướng dẫn sử dụng (Người dự thi):** mở *Kết quả của tôi*, nhìn dải màu và các nút đếm để biết bao nhiêu câu đúng, sai; bấm nút lọc rồi dùng mũi tên hoặc "Câu sai kế tiếp" để xem lại từng câu; trên điện thoại bấm ô vuông ở thanh dưới để chọn nhanh một câu.

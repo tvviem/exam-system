@@ -1,17 +1,17 @@
 import { resultBandOf } from '@exam/shared';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, CircleAlert, Gauge, ThumbsUp, Trophy } from 'lucide-react';
-import type { ComponentType } from 'react';
+import { CircleAlert, Gauge, ThumbsUp, Trophy } from 'lucide-react';
+import { type ComponentType, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../errors';
 import { formatDateTime } from '../../format';
-import { type MyResult, type MyResultItem, myResultQuery } from '../../grading';
-import { Badge, ErrorMessage } from '..';
+import { type MyResult, myResultQuery } from '../../grading';
+import { ErrorMessage } from '..';
 import { ListSkeleton } from '../admin';
-import { RichTextView } from '../rich-text-view';
 import { BAND_STYLE } from './result-band';
+import { ResultReview } from './result-review';
 
-// Màn "Kết quả của tôi" (PR 5c; Q297): khối điểm tô màu theo mức đạt, rồi từng câu theo thứ tự Người dự thi đã thấy.
+// Màn "Kết quả của tôi" (PR 5c; Q297): khối điểm tô màu theo mức đạt, rồi duyệt từng câu theo thứ tự Người dự thi đã thấy (Q318).
 
 const fmt = (n: number | null | undefined, digits = 2) =>
   n === null || n === undefined
@@ -28,23 +28,41 @@ const BAND_ICON: Record<
   excellent: Trophy,
 };
 
-export function MyResultScreen({ sessionId }: { sessionId: string }) {
+export function MyResultScreen({
+  sessionId,
+  currentNo,
+  onCurrentNo,
+}: {
+  sessionId: string;
+  /** Câu đang xem, lấy từ địa chỉ (`?cau=`); không truyền thì giữ trong bộ nhớ của màn. */
+  currentNo?: number;
+  onCurrentNo?: (no: number) => void;
+}) {
   const { t } = useTranslation();
   const result = useQuery(myResultQuery(sessionId));
   if (result.isPending) return <ListSkeleton rows={4} />;
   if (result.isError) return <ErrorMessage>{errorMessage(t, result.error)}</ErrorMessage>;
-  return <ResultView data={result.data} />;
+  return <ResultView data={result.data} currentNo={currentNo} onCurrentNo={onCurrentNo} />;
 }
 
-export function ResultView({ data }: { data: MyResult }) {
+export function ResultView({
+  data,
+  currentNo,
+  onCurrentNo,
+}: {
+  data: MyResult;
+  currentNo?: number;
+  onCurrentNo?: (no: number) => void;
+}) {
   const { t } = useTranslation();
+  const [localNo, setLocalNo] = useState<number | undefined>(currentNo);
   const { summary } = data;
   const band = resultBandOf(summary.percent);
   const style = BAND_STYLE[band];
   const Icon = BAND_ICON[band];
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
-      <div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+      <div className="mx-auto w-full max-w-2xl">
         <h1 className="text-xl font-semibold">{data.session.title}</h1>
         <p className="text-sm text-fg-muted">
           {t('myResult.releasedAt', { time: formatDateTime(data.releasedAt) })}
@@ -58,7 +76,7 @@ export function ResultView({ data }: { data: MyResult }) {
         data-testid="result-hero"
         data-band={band}
         aria-label={t('myResult.heroLabel')}
-        className={`flex flex-col items-center gap-3 rounded-2xl border-2 p-5 text-center shadow-sm ${style.hero}`}
+        className={`mx-auto flex w-full max-w-2xl flex-col items-center gap-3 rounded-2xl border-2 p-5 text-center shadow-sm ${style.hero}`}
       >
         <ScoreRing percent={summary.percent} style={style}>
           <span className="text-5xl leading-none font-bold tabular-nums">
@@ -87,7 +105,7 @@ export function ResultView({ data }: { data: MyResult }) {
       </section>
 
       {data.penalties.length > 0 && (
-        <section className="flex flex-col gap-1 rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm text-danger">
+        <section className="mx-auto flex w-full max-w-2xl flex-col gap-1 rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm text-danger">
           <h2 className="font-semibold">{t('myResult.penaltyTitle')}</h2>
           <ul className="flex flex-col gap-1">
             {data.penalties.map((p) => (
@@ -102,18 +120,13 @@ export function ResultView({ data }: { data: MyResult }) {
         </section>
       )}
 
-      <section className="flex flex-col gap-2" aria-labelledby="my-items">
-        <h2 id="my-items" className="text-base font-semibold">
-          {t('myResult.items')}
-        </h2>
-        <ul className="flex flex-col gap-2">
-          {data.items.map((item) => (
-            <ItemRow key={item.no} item={item} />
-          ))}
-        </ul>
-      </section>
+      <ResultReview
+        items={data.items}
+        currentNo={onCurrentNo ? currentNo : localNo}
+        onCurrentNo={onCurrentNo ?? setLocalNo}
+      />
 
-      <p className="text-sm text-fg-muted">
+      <p className="mx-auto w-full max-w-2xl text-sm text-fg-muted">
         {data.appealUntil
           ? t('myResult.appealUntil', { time: formatDateTime(data.appealUntil) })
           : t('myResult.noAppeal')}
@@ -153,111 +166,5 @@ function ScoreRing({
       <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
       <span className="sr-only">{`${fmt(percent, 1)}%`}</span>
     </div>
-  );
-}
-
-const VERDICT_TONE = {
-  correct: 'success',
-  partial: 'warning',
-  wrong: 'danger',
-  blank: 'neutral',
-} as const;
-
-function ItemRow({ item }: { item: MyResultItem }) {
-  const { t } = useTranslation();
-  const detail = item.essay ?? item.review;
-  return (
-    <li className="rounded-xl border border-border bg-surface">
-      <details className="group">
-        <summary
-          className={`flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 p-3 ${detail ? '' : 'pointer-events-none'}`}
-        >
-          <span className="min-w-0">
-            <span className="font-medium">{t('grading.person.item', { no: item.no })}</span>
-            <span className="block text-sm text-fg-muted">
-              {t(`grading.type.${item.type}`)}
-              {item.cluster ? ` · ${t('myResult.cluster', item.cluster)}` : ''}
-            </span>
-          </span>
-          <span className="flex shrink-0 items-center gap-2">
-            <span className="tabular-nums">
-              {fmt(item.score)}/{fmt(item.points)}
-            </span>
-            <Badge tone={VERDICT_TONE[item.verdict]}>{t(`grading.verdict.${item.verdict}`)}</Badge>
-            {detail && (
-              <ChevronDown
-                aria-hidden
-                className="size-4 text-fg-muted transition-transform group-open:rotate-180"
-              />
-            )}
-          </span>
-        </summary>
-        {detail && (
-          <div className="flex flex-col gap-2 border-t border-border p-3 text-sm">
-            {item.review && (
-              <div>
-                <RichTextView doc={item.review.stem} />
-                <ReviewAnswer item={item} />
-              </div>
-            )}
-            {item.essay && (
-              <>
-                <p className="font-medium">{t('myResult.yourAnswer')}</p>
-                <p className="rounded-lg bg-bg p-3 whitespace-pre-wrap break-words">
-                  {item.essay.answer || t('grading.emptyAnswer')}
-                </p>
-                {item.essay.feedback && (
-                  <p className="rounded-lg bg-primary-soft p-3 text-on-primary-soft">
-                    <span className="font-medium">{t('myResult.feedback')}: </span>
-                    {item.essay.feedback}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </details>
-    </li>
-  );
-}
-
-/** Lựa chọn của chính Người dự thi (không có đáp án đúng): chỉ đánh dấu những gì họ đã chọn. */
-function ReviewAnswer({ item }: { item: MyResultItem }) {
-  const { t } = useTranslation();
-  const review = item.review;
-  if (!review) return null;
-  const options = (review.payload.options ?? review.payload.statements) as
-    | { id: string; content: Parameters<typeof RichTextView>[0]['doc'] }[]
-    | undefined;
-  if (!options) return null;
-  const answer = review.answer as {
-    optionId?: string;
-    optionIds?: string[];
-    answers?: Record<string, boolean>;
-  } | null;
-  const chosen = new Set(answer?.optionId ? [answer.optionId] : (answer?.optionIds ?? []));
-  return (
-    <ul className="mt-2 flex flex-col gap-1">
-      {options.map((option) => {
-        const said = answer?.answers?.[option.id];
-        const mine = chosen.has(option.id) || said !== undefined;
-        return (
-          <li
-            key={option.id}
-            className={`rounded-lg border px-3 py-2 ${mine ? 'border-primary bg-primary-soft text-on-primary-soft' : 'border-border'}`}
-          >
-            <RichTextView doc={option.content} />
-            {said !== undefined && (
-              <span className="text-xs font-medium">
-                {said ? t('myResult.saidTrue') : t('myResult.saidFalse')}
-              </span>
-            )}
-            {chosen.has(option.id) && (
-              <span className="text-xs font-medium">{t('myResult.yourChoice')}</span>
-            )}
-          </li>
-        );
-      })}
-    </ul>
   );
 }
