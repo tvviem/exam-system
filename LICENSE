@@ -1,9 +1,9 @@
 Copyright (c) 2026 TRIỆU VĨNH VIÊM. Bảo lưu mọi quyền.
 Copyright (c) 2026 TRIỆU VĨNH VIÊM. All rights reserved.
 
-Mã nguồn, tài liệu và dữ liệu mẫu trong kho này là tài sản của TRIỆU VĨNH VIÊM. Không ai được sao chép, sửa, phân phối, cấp phép lại, bán hoặc dùng cho mục đích nào (kể cả nội bộ và thương mại) nếu chưa được chủ sở hữu cho phép bằng văn bản.
+Mã nguồn, tài liệu và dữ liệu mẫu trong kho này là tài sản của TRIỆU VĨNH VIÊM. Kho công khai chỉ để xem (và fork trên GitHub theo điều khoản của GitHub); đây không phải giấy phép mã nguồn mở. Không ai được sao chép, sửa, phân phối, cấp phép lại, bán hoặc dùng cho mục đích nào (kể cả nội bộ và thương mại) nếu chưa được chủ sở hữu cho phép bằng văn bản.
 
-The source code, documentation and sample data in this repository are the property of TRIỆU VĨNH VIÊM. No one may copy, modify, distribute, sublicense, sell or use them for any purpose (including internal and commercial use) without prior written permission from the owner.
+The source code, documentation and sample data in this repository are the property of TRIỆU VĨNH VIÊM. The repository is public for viewing only (and forking on GitHub under GitHub's terms of service); this is not an open-source license. No one may copy, modify, distribute, sublicense, sell or use them for any purpose (including internal and commercial use) without prior written permission from the owner.
 
-Lưu ý: các bản sao đã lấy dưới giấy phép MIT từ khi giấy phép này được thêm (7/11/2026) đến khi kho chuyển sang riêng tư (8/11/2026) vẫn theo giấy phép MIT đó; thay đổi này chỉ áp dụng cho các phiên bản từ nay về sau.
-Note: copies obtained under the MIT license between its addition (7 November 2026) and the repository becoming private (8 November 2026) remain under that license; this change applies only to versions from now on.
+Lưu ý: các bản sao đã lấy dưới giấy phép MIT trong khoảng từ khi giấy phép MIT được thêm (7/11/2026) đến khi giấy phép này thay thế nó (8/11/2026) vẫn theo giấy phép MIT đó; thay đổi này chỉ áp dụng cho các phiên bản từ nay về sau.
+Note: copies obtained under the MIT license between its addition (7 November 2026) and its replacement by this notice (8 November 2026) remain under that license; this change applies only to versions from now on.
