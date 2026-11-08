@@ -200,17 +200,23 @@ Pull request / push ──► lint · typecheck · unit test · integration (Pod
                      ──► build SPA · Playwright e2e (desktop + mobile viewport)
                      ──► kiểm tra migration drift · quét bảo mật (pnpm audit; CodeQL khi có GitHub Advanced Security)
 
-push main ──► build + push image lên GHCR (tag = commit SHA)
-          ──► job deploy chạy trên runner [self-hosted, wsl-exam]
-                1. kiểm tra pod, env file, container đang chạy
-                2. đóng băng: dừng deploy nếu đang có Phiên thi diễn ra
-                3. pg_dump trước khi deploy
+push main ──► build + push image lên GHCR (tag = commit SHA), chỉ khi kiểm tra và integration xanh
+
+bấm tay "Deploy (bấm tay)" (workflow_dispatch, Environment production: chủ dự án Approve, chỉ nhánh main)
+          ──► job chạy trên runner [self-hosted, wsl-exam], gọi infra/scripts/exam-ctl.sh deploy
+                1. chọn tag (trống = main mới nhất; dán mã cũ = lùi bản), kiểm là commit của main và ảnh đã có trên GHCR
+                2. chốt chặn: dừng nếu đang có Phiên thi (FORCE_REASON để ép, có ghi lại)
+                3. pg_dump -Fc trước khi deploy, kiểm đọc được; hỏng thì dừng
                 4. chạy migration
                 5. thay lần lượt api → worker → web, đợi health check
-                6. smoke test qua https://exam.<tên-miền>/api/health
+                6. kiểm /api/health trong máy (version đúng tag); lỗi thì tự lùi về bản trước một lần
+                7. kiểm qua https://exam.<tên-miền>/api/health (trượt chỉ cảnh báo)
+                8. ghi audit_logs (ops.deploy), dọn ảnh cũ, tóm tắt lần chạy
 ```
 
-- Runner hiện có ở `~/actions-runner` đăng ký cho repo plo-tracker. Tài khoản GitHub cá nhân không có runner dùng chung nhiều repo, nên cần **đăng ký thêm một runner** (ví dụ `~/actions-runner-exam`, nhãn `wsl-exam`).
+Deploy không chạy tự động sau mỗi lần push main: chủ dự án quyết định thời điểm (Q331). Thiết kế và lý do ở [docs/plan/slice-6.md](plan/slice-6.md) (Q342–Q350), hướng dẫn bấm ở [docs/ops/trien-khai.md](ops/trien-khai.md).
+
+- Runner `wsl-exam` (`~/actions-runner-exam-sys`, dịch vụ hệ thống) đăng ký riêng cho repo này, vì tài khoản GitHub cá nhân không có runner dùng chung nhiều repo; runner của plo-tracker ở `~/actions-runner` là runner khác. Repo công khai nên **chỉ** workflow deploy được dùng runner `wsl-exam` (`ci.yml` chỉ dùng `ubuntu-latest`); PR từ người ngoài phải chờ chủ dự án duyệt mới chạy workflow.
 - Migration chỉ được thêm, không phá vỡ dữ liệu cũ (expand → migrate → contract).
 - Hạ tầng dev và CI dùng chung `infra/Makefile` (`make -C infra dev-up`, `ci-up`, ...) theo ADR Podman pod của plo-tracker, với tên pod/volume khác nhau cho từng môi trường.
 

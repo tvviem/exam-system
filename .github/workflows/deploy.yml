@@ -1,0 +1,108 @@
+# Deploy bản đã build lên pod `prod-exam` trên máy WSL của chủ dự án (docs/plan/slice-6.md, PR 6b, Q342–Q350).
+#
+# Chạy lệnh thật trên máy của chủ dự án nên bị khóa chặt:
+#   - chỉ bấm tay (workflow_dispatch); không có sự kiện nào khác người ngoài kích hoạt được;
+#   - Environment `production` bắt chủ dự án bấm Approve và chỉ cho vào từ nhánh `main` (Q343);
+#   - quyền token chỉ đọc, không dùng secret của GitHub (khóa hệ thống nằm sẵn trên máy);
+#   - ci.yml chỉ dùng ubuntu-latest, không bao giờ dùng runner `wsl-exam`.
+# Hướng dẫn bấm từng bước: docs/ops/trien-khai.md, mục "Deploy bằng GitHub".
+name: Deploy (bấm tay)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Mã commit cần deploy (để trống = commit mới nhất của main; dán mã cũ để lùi bản)'
+        required: false
+        default: ''
+        type: string
+      force_reason:
+        description: 'Chỉ khi khẩn cấp: lý do ép deploy dù có Phiên thi đang diễn ra hoặc sao lưu hỏng (để trống = không ép)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+# Không hủy lần đang chạy (hủy giữa chừng có thể bỏ dở migration); lần bấm sau xếp hàng chờ.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy lên prod-exam
+    runs-on: [self-hosted, wsl-exam]
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - name: Chỉ chạy từ nhánh main
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Workflow deploy chỉ chạy từ nhánh main (đang là $GITHUB_REF)."
+            exit 1
+          fi
+
+      # Script vận hành luôn lấy từ commit main lúc bấm; chỉ ảnh theo tag (Q349).
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          sparse-checkout: infra
+
+      - name: Chuẩn bị Podman cho người dùng của runner
+        run: |
+          set -euo pipefail
+          uid="$(id -u)"
+          # Dịch vụ runner không có phiên đăng nhập; Podman cần hai biến này để dùng đúng kho ảnh và cgroup của người dùng.
+          echo "XDG_RUNTIME_DIR=/run/user/$uid" >>"$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus" >>"$GITHUB_ENV"
+          export XDG_RUNTIME_DIR="/run/user/$uid"
+          podman pod exists prod-exam || { echo "::error::Chưa có pod prod-exam. Chạy 'make -C infra prod-bootstrap' một lần trước (docs/ops/trien-khai.md, mục 2)."; exit 1; }
+
+      - name: Chọn và kiểm tra tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+          input="${INPUT_TAG//[[:space:]]/}"
+          if [ -z "$input" ]; then
+            tag="$GITHUB_SHA"
+            origin='mặc định: commit mới nhất của main lúc bấm'
+          else
+            [[ "$input" =~ ^[0-9a-f]{7,40}$ ]] || fail "Tag phải là mã commit gồm 7–40 ký tự 0-9 a-f (nhận: '$input')."
+            tag="$(git rev-parse --verify --quiet "$input^{commit}")" || fail "Không tìm thấy commit '$input' trong repo."
+            origin='tự nhập (lùi bản hoặc chọn bản cụ thể)'
+          fi
+          # Chỉ deploy commit của main, không deploy nhầm mã từ nhánh khác.
+          git merge-base --is-ancestor "$tag" origin/main || fail "Commit $tag không nằm trong nhánh main."
+          repo="${IMAGE_REPO:-ghcr.io/${GITHUB_REPOSITORY_OWNER,,}}"
+          # Ảnh chỉ được đẩy lên khi kiểm tra và integration của CI xanh; chưa có ảnh nghĩa là CI chưa xong hoặc đỏ.
+          for image in exam-api exam-web; do
+            podman manifest inspect "$repo/$image:$tag" >/dev/null 2>&1 \
+              || fail "Chưa có ảnh $repo/$image:$tag. CI của commit này chưa xong hoặc đỏ: kiểm tab Actions rồi bấm lại."
+          done
+          title="$(git log -1 --format=%s "$tag")"
+          {
+            echo "TAG=$tag"
+            echo "COMMIT_TITLE=$title"
+            echo "IMAGE_REPO=$repo"
+          } >>"$GITHUB_ENV"
+          echo "Tag: $tag ($origin)"
+
+      - name: Deploy
+        env:
+          EXAM_STAGE: prod
+          FORCE_REASON: ${{ inputs.force_reason }}
+          TRIGGERED_BY: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          SUMMARY_FILE="$GITHUB_STEP_SUMMARY" bash infra/scripts/exam-ctl.sh deploy
+
+      - name: Dọn thư mục làm việc
+        if: always()
+        continue-on-error: true
+        run: find "$GITHUB_WORKSPACE" -mindepth 1 -delete

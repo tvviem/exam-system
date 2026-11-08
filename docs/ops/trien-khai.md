@@ -2,7 +2,7 @@
 
 Tài liệu cho người vận hành hệ thống trên máy WSL Ubuntu (ADR-0006). Thiết kế và các quyết định ở [docs/plan/slice-6.md](../plan/slice-6.md). Mọi lệnh chạy ở thư mục gốc của repo, qua `make -C infra …`; logic nằm ở [`infra/scripts/exam-ctl.sh`](../../infra/scripts/exam-ctl.sh).
 
-> **Phạm vi hiện tại (PR 6a):** dựng lần đầu, đưa bản mới lên bằng tay, một hoặc hai bản api, dừng/bật, khôi phục Quản trị viên, tự dựng lại khi mở WSL. **Chưa có:** workflow deploy trên GitHub (6b), sao lưu và khôi phục dữ liệu (6c, 6d), diễn tập và checklist đưa lên chạy thật (6e). Trước khi có sao lưu **không dùng cho Phiên thi thật**.
+> **Phạm vi hiện tại (PR 6a, 6b):** dựng lần đầu, đưa bản mới lên bằng tay hoặc bằng workflow GitHub bấm tay (có sao lưu trước, kiểm sau, tự lùi), một hoặc hai bản api, dừng/bật, khôi phục Quản trị viên, tự dựng lại khi mở WSL. **Chưa có:** sao lưu định kỳ và khôi phục dữ liệu (6c, 6d), diễn tập và checklist đưa lên chạy thật (6e). Trước khi có sao lưu định kỳ **không dùng cho Phiên thi thật**.
 
 ## 1. Có gì trong pod
 
@@ -124,7 +124,63 @@ make -C infra prod-scale N=1     # sau khi xong (bị chốt chặn nếu còn P
 make -C infra prod-up TAG=<TAG>
 ```
 
-Lệnh tải ảnh, chạy migration, thay api (rồi api thứ hai nếu có), worker, web, đợi `/api/health`, ghi bản đang chạy vào `~/.local/state/exam-prod/tag`. Api thay lần lượt, đợi từng bản sẵn sàng nên không có khoảng hở; riêng web (một container giữ cổng) mất khoảng 1 giây không kết nối được lúc thay. Lỗi thì in log và thoát khác 0. **Quay lui** là chạy lại với TAG cũ (migration chỉ thêm theo kiểu expand, nên bản cũ vẫn chạy trên cơ sở dữ liệu mới). Workflow GitHub bấm tay sẽ bọc lệnh này ở PR 6b.
+Lệnh tải ảnh, chạy migration, thay api (rồi api thứ hai nếu có), worker, web, đợi `/api/health`, ghi bản đang chạy vào `~/.local/state/exam-prod/tag`. Api thay lần lượt, đợi từng bản sẵn sàng nên không có khoảng hở; riêng web (một container giữ cổng) mất khoảng 1 giây không kết nối được lúc thay. Lỗi thì in log và thoát khác 0. **Quay lui** là chạy lại với TAG cũ (migration chỉ thêm theo kiểu expand, nên bản cũ vẫn chạy trên cơ sở dữ liệu mới). `prod-up` chỉ làm phần thay bản; **đủ quy trình** (sao lưu trước, kiểm sau, tự lùi, ghi `audit_logs`, dọn ảnh cũ) là `prod-deploy` hoặc workflow GitHub ở mục bên dưới.
+
+### Deploy bằng GitHub (cách dùng hằng ngày, PR 6b)
+
+Workflow `Deploy (bấm tay)` ([`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml)) chạy trên máy WSL này (runner `wsl-exam`), gọi `exam-ctl.sh deploy`. Đây là cách nên dùng: có đủ chốt chặn và để lại dấu vết.
+
+**Điều kiện (làm một lần, đã xong nếu theo mục 2):**
+- Pod `prod-exam` đã `prod-bootstrap`.
+- **WSL đang mở** và runner `wsl-exam` đang chạy. Kiểm: GitHub → repo → Settings → Actions → Runners: `wsl-exam` phải là **Idle** (xanh). Kiểm trong máy: `systemctl status actions.runner.tvviem-exam-system.wsl-exam.service` thấy `active (running)`. Runner tắt khi tắt WSL, nên deploy chỉ làm được lúc bạn đang mở Ubuntu.
+- Environment `production` đã có (người duyệt là bạn, chỉ cho nhánh `main`), và chính sách duyệt PR từ fork là `all_external_contributors`. Kiểm bằng:
+  ```bash
+  gh api repos/tvviem/exam-system/environments/production --jq '{rules:[.protection_rules[]|.type],policy:.deployment_branch_policy}'
+  gh api repos/tvviem/exam-system/actions/permissions/fork-pr-contributor-approval
+  ```
+  Kết quả đúng: có `required_reviewers` và `branch_policy`; `approval_policy` là `all_external_contributors`.
+
+**Các bước mỗi lần deploy:**
+
+1. **Chờ CI của commit cần deploy xanh đủ.** Ảnh chỉ được đẩy lên GHCR khi kiểm tra và integration xanh, và chỉ ở lần chạy sau khi merge vào `main`. Vừa merge xong thì đợi vài phút cho job "Image api" và "Image web" của lần chạy trên `main` xanh.
+2. Vào GitHub → tab **Actions** → chọn **Deploy (bấm tay)** ở cột trái → **Run workflow**.
+3. Ô **Branch** để `main`. Ô **Mã commit** để **trống** (= commit mới nhất của `main`). Ô **lý do ép** để **trống** (chỉ điền khi khẩn cấp, xem bên dưới). Bấm **Run workflow** màu xanh.
+4. Lần chạy hiện trạng thái vàng "Waiting" kèm **Review deployments**. Mở lần chạy, bấm **Review deployments**, tick `production`, bấm **Approve and deploy**. (Bước này có chủ đích: để bạn xem lại trước khi chạy lệnh thật trên máy.)
+5. Theo dõi log. Bình thường mất khoảng 30–60 giây. Xong thì mở **Summary** của lần chạy để đọc tóm tắt (bảng dưới).
+6. Kiểm bằng trình duyệt: mở địa chỉ hệ thống, đăng nhập Quản trị viên, vào **Nhật ký** (Nhật ký thao tác): có dòng **Đưa bản mới lên** với bản cũ → bản mới, người bấm và đường dẫn lần chạy.
+
+**Đọc tóm tắt (Summary):**
+
+| Dòng | Ý nghĩa | Cần làm |
+|---|---|---|
+| ✅ Chốt chặn Phiên thi | Không có Phiên thi đang diễn ra hay sắp bắt đầu (trong 60 phút) | không |
+| ⚠️ Chốt chặn Phiên thi: ép | Bạn đã điền lý do ép | đảm bảo thật sự cần |
+| ✅ Sao lưu trước deploy | Đã chụp `pg_dump` vào `~/exam-prod-backups/truoc-deploy-…dump` và kiểm đọc được | giữ nguyên |
+| ✅ Kiểm trong máy | `/api/health` ok, PostgreSQL và Redis up, `version` đúng bằng bản vừa chọn | không |
+| ✅ / ⚠️ Địa chỉ công khai | ✅ người dự thi vào được bằng tên miền; ⚠️ chưa vào được (thường do tunnel Cloudflare), **không phải lỗi của bản mới** | ⚠️: xem mục 2 (tunnel) và bảng lỗi bên dưới |
+| ✅ Đã ghi `audit_logs` | Có dòng lịch sử trong cơ sở dữ liệu | không |
+| ❌ Bản mới lỗi … ✅ Đã **lùi về bản …** | Bản mới không lên, workflow đã **tự lùi một lần** về bản trước; lần chạy báo đỏ để bạn không bỏ sót | đọc log cuối trong Summary, sửa lỗi rồi deploy lại bản mới |
+| 🛑 Lùi … cũng lỗi | Cả hai bản đều không lên: hệ thống có thể đang ngừng | xem bảng lỗi bên dưới |
+
+**Lùi bản (rollback) có chủ đích:**
+1. Tìm mã của bản tốt trước đó: trong **Summary** của lần chạy trước, dòng "Tag đang chạy trước đó"; hoặc trên máy `cat ~/.local/state/exam-prod/deployed-tags` (mỗi dòng một bản, dòng cuối là bản đang chạy).
+2. **Run workflow** như trên nhưng điền mã đó vào ô **Mã commit** (7–40 ký tự `0-9a-f`; mã rút gọn được). Workflow từ chối nếu mã không thuộc `main` hoặc ảnh không còn.
+3. Chỉ lùi **mã** ứng dụng, không lùi dữ liệu. Migration chỉ thêm (kiểu expand) nên bản cũ vẫn chạy trên cơ sở dữ liệu mới. Ảnh của 3 bản gần nhất được giữ sẵn trên máy nên lùi rất nhanh; bản cũ hơn sẽ được tải lại từ GHCR.
+
+**Ép khi khẩn cấp:** điền **lý do ép** (một dòng) khi có lỗi nghiêm trọng cần sửa ngay mà đang có Phiên thi, hoặc sao lưu trước deploy hỏng nhưng bắt buộc phải deploy. Lý do được ghi vào Summary, `operations.log` và `audit_logs`. Deploy lúc có Phiên thi làm thí sinh gián đoạn vài giây đến khoảng 25 giây (Socket.IO tự nối lại, bài đã lưu không mất); chỉ dùng khi lợi hơn hại.
+
+**Chạy từ terminal (khi GitHub hoặc runner không dùng được):**
+```bash
+make -C infra prod-deploy TAG=<mã commit đầy đủ>        # đủ quy trình như workflow
+FORCE_REASON="lý do" make -C infra prod-deploy TAG=...   # ép khẩn cấp
+```
+Tóm tắt ghi ở `~/.local/state/exam-prod/last-deploy-summary.md`, log lỗi ở `last-failure.log`.
+
+**Sao lưu trước deploy:** file `~/exam-prod-backups/truoc-deploy-<ngày-giờ>-<bản cũ>.dump` (định dạng `pg_dump -Fc`), mỗi lần deploy một file, giữ 10 file mới nhất. Chỉ chống được lỗi phần mềm/migration, **không** chống hỏng ổ đĩa; sao lưu định kỳ ngoài máy là việc của PR 6c. Cách khôi phục từ file này viết ở `docs/ops/khoi-phuc.md` (PR 6c).
+
+**Quy ước cho người sửa script (Q349):** workflow luôn dùng `infra/scripts/exam-ctl.sh` của commit `main` lúc bấm, kể cả khi lùi ảnh về bản cũ. Vì vậy script vận hành chỉ được gọi những lệnh mà **ảnh cũ cũng có** (hiện: `node dist/db/migrate.js`, `node dist/cli/main.js bootstrap-admin|recover-admin`). Cần lệnh mới trong ảnh thì phát hành lệnh đó trước một lần rồi mới dùng trong script, hoặc script dò xem có lệnh rồi mới gọi. Mỗi lần sửa script, chạy thử `prod-deploy` trên pod `drill` (mục 7) với một ảnh cũ.
+
+**Ba lớp bảo vệ máy (vì repo công khai và runner chạy lệnh thật trên máy này):** (1) workflow chỉ có sự kiện bấm tay, `ci.yml` không dùng runner `wsl-exam`; (2) PR từ người ngoài phải chờ bạn duyệt mới chạy CI; (3) mỗi lần deploy cần bạn bấm Approve, và Environment chỉ nhận lần chạy từ nhánh `main`. Giải thích và lý do ở [docs/plan/slice-6.md](../plan/slice-6.md), Q342–Q343. Đừng nới các lớp này; nếu thêm người cộng tác, bật `prevent_self_review` cho Environment.
 
 ## 4. Mở WSL thì hệ thống tự dựng lại (Q334)
 
@@ -162,8 +218,10 @@ EXAM_STAGE=drill EXAM_ADMIN_FULL_NAME="Thử" EXAM_ADMIN_PASSWORD="mat-khau-thu-
   make -C infra prod-bootstrap TAG=<TAG>
 # …thử…
 EXAM_STAGE=drill make -C infra prod-down
-podman volume rm drill_exam_pgdata drill_exam_media && rm -rf ~/exam-drill-secrets ~/.local/state/exam-drill
+podman volume rm drill_exam_pgdata drill_exam_media && rm -rf ~/exam-drill-secrets ~/.local/state/exam-drill ~/exam-drill-backups
 ```
+
+Thử quy trình deploy đủ bước (không đụng dữ liệu thật): `EXAM_STAGE=drill make -C infra prod-deploy TAG=<TAG>`. Muốn thử ca bản mới lỗi thì dựng một ảnh cố tình hỏng (ví dụ `FROM <ảnh api tốt>` rồi `CMD ["node","-e","process.exit(1)"]`), gắn tên cùng kho với ảnh tốt (`localhost/exam-api:bad` và `localhost/exam-api:good`) và chạy `API_IMAGE=… WEB_IMAGE=… EXAM_STAGE=drill make -C infra prod-deploy`: workflow phải báo đỏ và tự lùi về bản trước. Thư mục sao lưu của pod thử là `~/exam-drill-backups`.
 
 ## 8. Lỗi thường gặp
 
@@ -177,3 +235,10 @@ podman volume rm drill_exam_pgdata drill_exam_media && rm -rf ~/exam-drill-secre
 | `prod-bootstrap` lỗi giữa chừng | Lần dựng đầu chưa có dữ liệu thật nên làm lại được: `make -C infra prod-down`, `podman volume rm exam_pgdata exam_media`, chạy lại `prod-bootstrap` (các file bí mật cũ được giữ, **không** sinh lại). Đã có dữ liệu thật thì **không** xóa volume |
 | Mở WSL mà hệ thống không lên | `systemctl --user status exam-prod.service`; chạy tay `make -C infra prod-start` |
 | Hết chỗ đĩa | `podman system df`; log container giới hạn 10 MB mỗi cái |
+| Workflow deploy kẹt ở "Waiting" mãi | Chưa bấm **Review deployments → Approve**; hoặc runner `wsl-exam` đang offline (WSL tắt): mở Ubuntu rồi `systemctl status actions.runner.tvviem-exam-system.wsl-exam.service` |
+| Workflow báo "Chưa có ảnh …" | CI của commit đó chưa xong hoặc đỏ; chờ job "Image api/web" trên `main` xanh rồi bấm lại |
+| Workflow báo "Commit … không nằm trong nhánh main" | Chỉ deploy được commit của `main`; dán mã đúng hoặc để trống ô mã |
+| "Không sao lưu được trước deploy nên dừng" | Hệ thống đang chạy chưa bị đụng. Kiểm chỗ đĩa (`df -h ~`, `du -sh ~/exam-prod-backups`) và `make -C infra prod-status`; xử lý xong thì bấm lại. Khẩn cấp thì điền lý do ép |
+| Summary ⚠️ "Địa chỉ công khai chưa trả lời" | Hệ thống trong máy chạy tốt; lỗi nằm ở đường ra ngoài: kiểm tunnel (`systemctl status cloudflared`, `/etc/cloudflared/config.yml` có host `exam.…`), rồi `curl -fsS https://<tên miền>/api/health` |
+| Summary 🛑 "Lùi … cũng lỗi" | `make -C infra prod-status`, `prod-logs C=api`, `C=postgres`. Thường do PostgreSQL hoặc Redis chết: `podman pod restart prod-exam`. Dữ liệu còn nguyên; bản sao lưu trước deploy nằm ở `~/exam-prod-backups` |
+| Workflow đỏ ở bước "Chuẩn bị Podman" | Không thấy pod `prod-exam`: chưa bootstrap hoặc runner chạy bằng người dùng khác `tvviem` |

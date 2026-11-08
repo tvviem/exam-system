@@ -197,7 +197,7 @@ Chọn **phương án A**: 5 PR nhỏ, làm theo thứ tự dưới đây. **Sao
 
 **Dọn máy trước khi bắt đầu (8/11/2026):** máy 16 GB RAM, đang dùng khoảng 2 GB. Pod đang chạy: `dev-exam` (dev của dự án này) và `prod-plotracker`. Pod đã dừng: `devadh` (11 ngày), `devplotracker` (4 tháng), `devapp` (8 tháng). Pod dừng không tốn RAM, chỉ tốn đĩa. Ổ WSL còn 859 GB trống. Phần đáng dọn nhất là ảnh không dùng (khoảng 25 GB) và volume Ollama (`ollamadata` 8 GB, `prod_ollamadata` 2,8 GB). Chủ dự án tự quyết xóa gì; thao tác xóa không hoàn tác.
 
-## PR 6a: thiết kế chi tiết (đang duyệt từng câu)
+## PR 6a: thiết kế chi tiết (đã duyệt, đã merge #78)
 
 Khung (8/11/2026): 6a thay các bước gõ tay ở `docs/ops/demo-wsl.md` mục 6 và 7 bằng lệnh `make`, thử trước trên pod tạm (cổng khác), không đụng `prod-exam` thật.
 
@@ -277,7 +277,242 @@ Lần chạy đầu phát hiện: thay api thứ hai khi api thứ nhất chưa 
 
 **Chưa thử (cần máy thật, ghi vào checklist 6e):** tunnel Cloudflare thật và tên `exam.plotrackerbluni.site`; `wsl --shutdown` thật rồi mở Ubuntu; WSL có tự tắt khi đóng hết cửa sổ terminal không; ảnh minh họa qua X-Accel từ api thật; Socket.IO qua hai bản api bằng trình duyệt.
 
+## PR 6b: thiết kế chi tiết (đã duyệt Q342–Q350)
+
+PR 6a đã merge (#78). PR 6b thêm workflow GitHub để chủ dự án bấm tay deploy lên máy WSL (Q331), gọi lại `exam-ctl.sh` của 6a.
+
+### Q342: bảo vệ máy khi repo công khai và runner tự dựng (ĐÃ DUYỆT: phương án A)
+
+**Bối cảnh.** Workflow deploy phải chạy trên runner `wsl-exam`, tức là chạy lệnh thật trên máy WSL của chủ dự án, nơi có dữ liệu thi và `~/exam-prod-secrets/`. Repo đang công khai (ai cũng xem và fork được).
+
+**Rủi ro.** Một người lạ fork repo rồi gửi Pull Request có sửa file workflow, ghi `runs-on: self-hosted`. Nếu GitHub tự chạy workflow đó thì người lạ chạy được lệnh bất kỳ trên máy chủ dự án. Chính sách cũ `first_time_contributors` chỉ bắt chủ dự án duyệt tay người đóng góp **lần đầu**; người đã được duyệt một lần thì các PR sau chạy tự động.
+
+**Quyết định (hai lớp bảo vệ):**
+1. Workflow deploy chỉ có sự kiện `workflow_dispatch` (bấm tay). Người không có quyền ghi vào repo không bấm được. `ci.yml` giữ `ubuntu-latest`, không bao giờ dùng runner `wsl-exam`.
+2. Chính sách "Fork pull request workflows" đổi từ `first_time_contributors` sang `all_external_contributors`: mọi PR từ người ngoài đều phải chờ chủ dự án bấm duyệt mới chạy workflow. Đã đổi ngày 8/11/2026 bằng `gh api -X PUT repos/tvviem/exam-system/actions/permissions/fork-pr-contributor-approval -f approval_policy=all_external_contributors` (đọc lại cho kết quả `all_external_contributors`).
+
+**Phương án đã bỏ:** chỉ lớp 1 (giữ chính sách cũ): còn lỗ hổng người đã được duyệt một lần rồi gửi PR sửa workflow.
+
+**Ghi chú để tự học (vì sao cẩn thận với runner tự dựng):**
+- Runner của GitHub (`ubuntu-latest`) là máy ảo dùng một lần, chạy xong bị hủy, nên workflow lạ chạy ở đó không hại máy của mình. Runner tự dựng (`self-hosted`) là máy thật của mình, giữ nguyên ổ đĩa, khóa, mạng nội bộ giữa các lần chạy: workflow lạ chạy ở đó là chạy mã lạ trên máy của mình.
+- Vì vậy GitHub khuyến cáo không dùng runner tự dựng cho repo công khai nếu chưa chặn PR từ fork. Hai lớp trên là cách chặn: (1) chỉ cho kích hoạt bằng sự kiện mà người ngoài không bấm được; (2) mọi PR người ngoài phải qua tay người duyệt.
+- Sự kiện `pull_request` từ fork vốn bị GitHub giới hạn (không đọc được secret, token chỉ đọc), nhưng giới hạn đó không cứu được runner tự dựng vì lệnh vẫn chạy trên máy thật. Nên chặn từ gốc là việc nên làm.
+- Lớp thứ ba (xác nhận trước mỗi lần deploy) ở Q343 bên dưới.
+
+### Q343: Environment `production` bắt xác nhận trước mỗi lần deploy (ĐÃ DUYỆT: phương án A)
+
+**Hai tình huống lớp 1 và 2 chưa che:** (1) bấm nhầm "Run workflow" với tag sai; (2) chạy `workflow_dispatch` từ một nhánh chưa duyệt có sửa file workflow, mã đó sẽ chạy trên máy WSL.
+
+**Quyết định:** workflow deploy khai báo `environment: production`. Environment `production` đã tạo ngày 8/11/2026 với:
+- người duyệt bắt buộc: `tvviem` (chủ dự án tự duyệt, `prevent_self_review: false` vì dự án một người);
+- chỉ cho vào từ nhánh `main` (chính sách nhánh tùy chỉnh, một mục `main`).
+
+Mỗi lần deploy: bấm "Run workflow", rồi bấm "Review deployments → Approve". Nhánh khác `main` bị GitHub từ chối trước khi job chạy.
+
+**Phương án đã bỏ:** không dùng Environment (bấm một lần là deploy, không chốt chặn nhánh).
+
+**Tạo bằng lệnh (để dựng lại khi cần):**
+```bash
+UID_=$(gh api user --jq .id)
+echo "{\"reviewers\":[{\"type\":\"User\",\"id\":$UID_}],\"prevent_self_review\":false,\"deployment_branch_policy\":{\"protected_branches\":false,\"custom_branch_policies\":true}}" > env.json
+gh api -X PUT repos/tvviem/exam-system/environments/production --input env.json
+gh api -X POST repos/tvviem/exam-system/environments/production/deployment-branch-policies -f name=main -f type=branch
+```
+
+**Ghi chú để tự học:**
+- Environment là "cổng" gắn tên cho một nơi triển khai. Job khai báo `environment: production` sẽ dừng ở trạng thái chờ cho đến khi người duyệt bấm Approve; chỉ khi đó runner mới nhận job và chạy lệnh.
+- Giới hạn nhánh bảo vệ khỏi việc sửa workflow ở nhánh phụ rồi chạy: nhánh đó không vào được `production`, nên runner `wsl-exam` không nhận job. Mã vào `main` thì đã qua PR, CI và lệnh merge của chủ dự án.
+- Nếu về sau thêm người cộng tác: bật `prevent_self_review` để người bấm chạy không tự duyệt cho mình.
+
+### Q344: chọn phiên bản (tag) để deploy (ĐÃ DUYỆT: phương án A)
+
+**Vấn đề.** Ảnh trên GHCR gắn nhãn bằng mã commit đầy đủ (40 ký tự). Gõ tay dễ sai; nhưng "tự đoán" phiên bản cũng nguy hiểm nếu đoán nhầm.
+
+**Quyết định.** Workflow có ô nhập `tag`:
+- **Để trống** = commit mới nhất của `main` (`origin/main` lúc chạy). Đây là đường deploy thường ngày.
+- **Dán mã commit** = deploy đúng bản đó. Đây là đường **rollback** (lùi bản): dán mã của lần deploy tốt trước đó (xem `previous tag` ở tóm tắt lần chạy trước hoặc `~/.local/state/exam-prod/tag` trên máy).
+- Mã có thể là rút gọn (từ 7 ký tự); workflow đổi ra mã đầy đủ bằng `git rev-parse` và dùng mã đầy đủ ở mọi bước sau.
+
+**Kiểm tra trước khi đụng vào hệ thống đang chạy (dừng ngay nếu trượt, nói rõ lý do):**
+1. Mã là commit của `main`: `git merge-base --is-ancestor <tag> origin/main`. Chặn deploy nhầm mã từ nhánh khác.
+2. Cả hai ảnh `ghcr.io/tvviem/exam-api:<tag>` và `exam-web:<tag>` có trên GHCR (`podman manifest inspect` hoặc `skopeo inspect`). Vì ảnh chỉ được đẩy khi cả `check` và `integration` xanh (`images` có `needs`), ảnh tồn tại nghĩa là mã đó đã qua kiểm thử. Chưa có ảnh thường nghĩa là CI chưa xong hoặc đỏ.
+3. Phần tóm tắt lần chạy (job summary) luôn ghi: tag đã chọn, tag trước đó, tiêu đề commit, và nguồn của tag (mặc định hay tự nhập).
+
+**Phương án đã bỏ:** luôn bắt gõ mã (không có mặc định): an toàn kiểu không đoán hộ nhưng dễ dán sai; đã có bước Approve của Environment (Q343) để xem lại tag trước khi chạy thật nên mặc định đủ an toàn.
+
+**Ghi chú để tự học (deploy bằng "mã bất biến"):**
+- Dùng mã commit làm nhãn ảnh (thay vì `latest`) nghĩa là một nhãn luôn trỏ tới đúng một bản dựng, không bao giờ đổi. Nhờ vậy "bản đang chạy" và "bản cần lùi về" đều chỉ ra chính xác được, và rollback chỉ là chạy lại cùng lệnh với mã cũ.
+- Nhãn `latest` có thể bị ghi đè nên không biết bản nào đang chạy; vì thế không dùng cho sản phẩm thật.
+- Nguyên tắc chung khi deploy an toàn: kiểm điều kiện trước (kiểm thử, ảnh có chưa, đúng nhánh), chỉ khi qua hết mới đụng vào hệ thống đang chạy; và luôn giữ được đường lùi bản.
+- Rollback chỉ lùi **mã**, không lùi dữ liệu. Dự án giữ quy ước migration chỉ **thêm** (kiểu expand: thêm cột/bảng, không xóa hay đổi nghĩa), nên bản mã cũ vẫn chạy được trên cơ sở dữ liệu đã lên bản mới (đã ghi ở `docs/ops/trien-khai.md`, mục "Đưa bản mới lên"). Nếu một migration tương lai phá quy ước này thì không được lùi bằng cách chạy lại mã cũ mà phải khôi phục từ bản sao lưu trước deploy (xem `khoi-phuc.md`, PR 6c); khi đó chốt chặn ở Q345 trở đi cần ghi rõ.
+
+### Q345: sao lưu trước mỗi lần deploy; sao lưu hỏng thì dừng (ĐÃ DUYỆT: phương án A)
+
+**Vì sao có bước này.** Migration chạy ngay trong lần deploy và là bước dễ gây hại dữ liệu nhất. Dữ liệu bài thi không làm lại được, máy chỉ có một. Nên trước khi đụng vào hệ thống đang chạy phải có một bản chụp kiểm được (lớp 1 của thiết kế sao lưu).
+
+**Quyết định.** Trước migration, `exam-ctl.sh up` (do workflow gọi):
+1. `pg_dump -Fc` vào `~/exam-prod-backups/truoc-deploy-<ngày-giờ>-<tag cũ>.dump` (tag cũ lấy từ `~/.local/state/exam-prod/tag`).
+2. Kiểm bằng `pg_restore --list`: file rỗng hoặc hỏng thì đọc không ra.
+3. Qua kiểm mới chạy migration và thay api; trượt thì **dừng**, báo rõ "không sao lưu được, chưa đụng vào hệ thống", hệ thống đang chạy giữ nguyên.
+4. Lần deploy đầu tiên (chưa có cơ sở dữ liệu, tức `prod-bootstrap`) bỏ qua bước này.
+5. Lối thoát khi buộc phải deploy khẩn mà sao lưu hỏng: `FORCE_REASON` (cùng cơ chế chốt chặn Phiên thi của Q332): ghi lý do vào nhật ký rồi mới cho qua.
+6. PR 6c thay bước tối thiểu này bằng script sao lưu chính thức (cùng một chỗ gọi, thêm bản sao sang D: và R2).
+
+**Phương án đã bỏ:** sao lưu hỏng chỉ cảnh báo rồi vẫn deploy: không bao giờ kẹt vì lỗi sao lưu, nhưng nếu migration hỏng đúng lúc đó thì không có bản để quay lại.
+
+**Ghi chú để tự học (thay đổi nguy hiểm thì phải có đường lùi trước khi bước):**
+- Nguyên tắc "đường lùi đi trước": trước một thao tác không đảo ngược được (migration thay đổi cơ sở dữ liệu thật), phải chắc chắn đã có thứ để quay lại, và chắc chắn bằng cách **kiểm** (đọc được bản sao), không phải bằng niềm tin "chắc đã sao lưu rồi".
+- Dừng sớm khi điều kiện an toàn trượt ("fail closed") tốn thời gian hơn (bạn phải dọn ổ rồi chạy lại) nhưng không làm hỏng gì. Cho qua khi trượt ("fail open") nhanh hơn nhưng đẩy rủi ro sang lần sau. Với dữ liệu không làm lại được thì chọn dừng.
+- Lối thoát có ghi lý do (`FORCE_REASON`) cho phép người có trách nhiệm vượt chốt trong tình huống khẩn nhưng để lại dấu vết, giống cách các hệ thống thật dùng "break-glass".
+- Bản sao nằm cùng ổ đĩa với dữ liệu chỉ chống được lỗi phần mềm (migration hỏng), không chống được hỏng ổ. Chống hỏng ổ là việc của các bản sao ngoài máy ở 6c (D: và R2).
+
+### Q346: ghi mọi lần deploy vào `audit_logs` (ĐÃ DUYỆT: phương án A)
+
+**Vì sao.** `operations.log` trên máy mất khi mất ổ đĩa; `audit_logs` đi theo bản sao lưu và Quản trị viên xem được. Cần một dòng thời gian đầy đủ "ai đưa bản nào lên lúc nào" để tìm nguyên nhân sự cố ("lỗi bắt đầu từ sau lần deploy nào?").
+
+**Quyết định.**
+- Mỗi lần deploy **thành công** (sau khi `/api/health` trả lời) thêm một dòng `audit_logs` với `action = 'ops.deploy'`, ép hay không đều ghi.
+- `actor_id` để trống (thao tác của hệ thống, như `cli.*`); `entity_type = 'system'`, `entity_id` trống.
+- `before` = `{"tag": "<tag cũ>"}`; `after` = `{"tag": "<tag mới>", "commit_title": "...", "triggered_by": "<tài khoản GitHub bấm>", "run_url": "<đường dẫn lần chạy>", "forced": true|false, "force_reason": "..."}`.
+- Dòng do `exam-ctl.sh` chèn trực tiếp bằng `psql` trong container postgres (tham số truyền qua biến, không ghép chuỗi SQL từ lý do do người nhập).
+- Ghi thất bại thì chỉ cảnh báo trong tóm tắt lần chạy, **không** làm hỏng lần deploy đã xong.
+- Lần ép vẫn ghi cả vào `operations.log` như 6a (đường dự phòng khi cơ sở dữ liệu hỏng).
+
+**Phương án đã bỏ:** chỉ ghi lần ép (mất lịch sử các lần thường); không ghi vào cơ sở dữ liệu (không đi theo bản sao lưu, không xem được trong ứng dụng).
+
+**Ghi chú để tự học (nhật ký kiểm toán cho thao tác vận hành):**
+- Nhật ký kiểm toán trả lời "ai, làm gì, khi nào, trên cái gì, trước và sau ra sao". Ở đây "trên cái gì" là hệ thống, "trước/sau" là tag cũ và mới.
+- Chèn bằng tham số (`psql -v` rồi dùng `:'biến'`), không nối lý do vào câu SQL, để tránh SQL injection ngay cả khi người nhập là chính mình hoặc người sau này được thêm quyền.
+- Ghi **sau** khi thành công để nhật ký không nói dối ("đã deploy" khi thực ra chưa lên); đổi lại lần deploy hỏng giữa chừng không có dòng nào, và lúc đó dấu vết nằm ở log lần chạy trên GitHub và `operations.log`.
+- Bảng chỉ cho thêm (không sửa, không xóa) nên đây là bằng chứng đáng tin khi cần tra lại.
+
+### Q347: deploy lỗi thì tự lùi về bản cũ một lần (ĐÃ DUYỆT: phương án A)
+
+**Vấn đề.** Với một bản api, `up` phải dừng bản cũ rồi mới chạy bản mới (cùng cổng trong pod). Bản mới lỗi lúc khởi động thì hệ thống ngừng phục vụ cho đến khi có người xử lý.
+
+**Quyết định.**
+- Workflow đọc tag đang chạy (`~/.local/state/exam-prod/tag`) **trước** khi bắt đầu, giữ làm tag lùi.
+- Nếu `up` thất bại (không qua `/api/health` trong 60 giây, hoặc migration/thay container lỗi), workflow tự chạy lại `up` với tag cũ **đúng một lần**. Hệ thống trở lại sau khoảng 25 giây.
+- Lần chạy vẫn **đỏ**. Tóm tắt ghi "bản mới lỗi, đã lùi về bản cũ", kèm 50 dòng log cuối của container lỗi (lấy **trước** khi lùi vì lùi sẽ thay mất container).
+- Lùi cũng lỗi thì dừng và in hướng dẫn xử lý tay (`docs/ops/trien-khai.md`, mục lỗi thường gặp). Không lùi lần hai.
+- Lùi thành công **không** ghi `ops.deploy` (không có bản mới nào lên); ghi `ops.deploy-failed` vào `audit_logs` (`before` = tag cũ, `after` = tag lỗi, `rolled_back: true`, lý do lỗi ngắn) và vào `operations.log`.
+- Lần ép bằng `FORCE_REASON` cũng đi qua cùng đường lùi.
+- Điều kiện để lùi an toàn: migration chỉ thêm (kiểu expand), bản mã cũ chạy được trên cơ sở dữ liệu đã lên bản mới. Nếu phát hiện một migration phá quy ước này thì **không** tự lùi, phải khôi phục từ bản sao lưu trước deploy (Q345).
+
+**Phương án đã bỏ:** chỉ báo lỗi, không tự lùi. Đơn giản, dễ đoán, nhưng hệ thống ngừng cho đến khi chủ dự án ngồi xử lý, có thể cả giờ nếu bấm deploy rồi đi làm việc khác.
+
+**Ghi chú để tự học (tự phục hồi khi deploy lỗi):**
+- "Rollback tự động" nhằm rút ngắn thời gian ngừng phục vụ (MTTR: thời gian khôi phục trung bình), không nhằm che lỗi: lần chạy vẫn đỏ để bạn không bỏ sót.
+- Chỉ lùi **một lần**: lùi vô hạn dễ thành vòng lặp (bản cũ cũng hỏng vì nguyên nhân môi trường, workflow cứ lùi qua lại). Một lần thất bại thì cần con người.
+- Lấy log lỗi **trước** khi lùi vì lùi sẽ dọn mất container lỗi và mất bằng chứng. Thứ tự chuẩn: thu bằng chứng → khôi phục → báo cáo.
+- Lùi tự động chỉ an toàn khi mọi thay đổi cơ sở dữ liệu tương thích ngược. Đó là lý do dự án giữ quy ước migration "chỉ thêm" (expand/contract: thêm trước, chỉ xóa phần cũ ở một lần phát hành sau khi không còn mã nào dùng).
+- Người dùng chạm vào hệ thống đúng lúc deploy lỗi chỉ thấy ngừng khoảng 25 giây; chốt chặn Phiên thi (Q332) làm cho trường hợp này gần như không xảy ra trong giờ thi.
+
+### Q348: kiểm tra sau deploy (smoke test): lỗi trong máy thì lùi, lỗi địa chỉ công khai chỉ cảnh báo (ĐÃ DUYỆT: phương án A)
+
+**Dữ kiện.** `/api/health` trả `status` (`ok`/`degraded`), `version` (mã commit nhúng lúc build qua `APP_VERSION`) và `checks.postgres`/`checks.redis` (`up`/`down`); HTTP 200 khi `ok`, 503 khi `degraded` (`apps/api/src/health/health.controller.ts`, `packages/shared/src/health.ts`).
+
+**Quyết định.** Sau `up`, workflow kiểm hai nơi:
+1. **Trong máy** (`http://127.0.0.1:<cổng web>/api/health`): phải `status: ok`, `postgres` và `redis` đều `up`, và `version` **bằng đúng tag vừa deploy**. Trượt thì coi là deploy lỗi và đi đường tự lùi (Q347).
+2. **Địa chỉ công khai** (`https://<tên miền>/api/health`, đường người dự thi đi qua Cloudflare tunnel): thử 3 lần cách nhau 5 giây. Trượt thì **chỉ cảnh báo** trong tóm tắt (lần chạy vẫn xanh), ghi rõ "Địa chỉ công khai chưa trả lời: kiểm tunnel (xem `docs/ops/trien-khai.md` mục 2)", **không** lùi.
+- Tên miền công khai lấy từ `APP_ORIGINS` (phần tử đầu) trong `~/exam-prod-secrets/api.env`, không viết cứng trong workflow, nên đổi tên miền sau này không phải sửa workflow.
+
+**Phương án đã bỏ:** coi cả hai đều bắt buộc, trượt chỗ nào cũng lùi. Chặt hơn nhưng dễ lùi nhầm vì lỗi hạ tầng nằm ngoài pod (tunnel chưa chạy, DNS chưa lan, WSL vừa mở), và không deploy nổi lần nào trước khi tunnel xong.
+
+**Ghi chú để tự học (phân biệt "lỗi của mình" với "lỗi của môi trường"):**
+- Smoke test là phép kiểm nhanh, nông nhưng đủ để biết hệ thống còn sống sau thay đổi. Nó không thay kiểm thử đầy đủ (đã chạy ở CI trước khi có ảnh).
+- Điều kiện `version == tag` bắt được một lỗi âm thầm: container cũ vẫn trả lời `ok` nhưng thực ra bản mới chưa lên. Nếu chỉ kiểm `status: ok` thì lần deploy "thành công giả" vẫn qua.
+- Quy tắc chọn hành động khi kiểm trượt: lùi chỉ có ích khi **nguyên nhân nằm ở bản mới**. Lỗi ngoài pod thì lùi không sửa được gì mà còn tốn thêm một lần thay container, nên chỉ cảnh báo.
+- Thử lại vài lần (3 lần × 5 giây) trước khi báo lỗi là cách chống cảnh báo giả do độ trễ ngắn, thường dùng cho các kiểm tra qua mạng.
+
+### Q349: script lấy từ `main` mới nhất, chỉ ảnh theo tag (ĐÃ DUYỆT: phương án A)
+
+**Vấn đề.** Workflow cần `infra/scripts/exam-ctl.sh`, `infra/Makefile`, `nginx.conf`... Khi lùi về tag cũ (chưa có sao lưu trước deploy, chốt chặn mới, ghi nhật ký) phải chọn lấy script từ commit nào.
+
+**Quyết định.**
+- Workflow checkout nhánh `main` (đúng nhánh Environment `production` cho phép, Q343) và chạy `exam-ctl.sh` **mới nhất** với `TAG=<tag đã chọn>`. Cái lùi là **ảnh** api và web; cách vận hành luôn là bản mới nhất, đã qua thử nghiệm.
+- Lùi bản vì vậy vẫn có sao lưu trước deploy, chốt chặn Phiên thi và ghi `audit_logs`.
+- **Quy ước tương thích ngược** (ghi vào `docs/ops/trien-khai.md`): script vận hành chỉ gọi những lệnh trong ảnh mà ảnh cũ cũng có (hiện: `node dist/db/migrate.js`, `node dist/cli/main.js bootstrap-admin|recover-admin`). Khi một thay đổi script cần lệnh mới trong ảnh thì script phải dò xem có lệnh đó không rồi mới gọi, hoặc thêm lệnh trước một phát hành rồi mới dùng ở phát hành sau.
+
+**Phương án đã bỏ:** script theo đúng tag. Nhất quán "y như hôm đó" nhưng lùi bản lại mất sao lưu trước deploy, chốt chặn và nhật ký mới, tức là đúng lúc rủi ro cao lại dùng quy trình kém an toàn.
+
+**Ghi chú để tự học (tách "quy trình" khỏi "hàng hóa"):**
+- Phiên bản của **thứ được triển khai** (ảnh) và phiên bản của **cách triển khai** (script, workflow) là hai thứ khác nhau. Ở đây chọn cho cái đầu theo tag, cái sau luôn mới nhất.
+- Khi quy trình luôn mới nhất thì lỗi quy trình đã được sửa sẽ không bị "sống lại" khi lùi ảnh.
+- Đổi lại, quy trình mới phải chạy được với ảnh cũ. Đây là tương thích ngược giữa script và ảnh, giống nguyên tắc migration chỉ thêm (Q344, Q347): thay đổi ở một đầu không được làm hỏng đầu kia.
+- Thử bằng cách: mỗi khi sửa script, chạy `make prod-up` với một ảnh cũ trên pod `drill` để chắc nó vẫn chạy.
+
+### Q350: thiết lập kỹ thuật còn lại của workflow (ĐÃ DUYỆT: đồng ý cả 8 điểm)
+
+1. **Không chạy chồng:** `concurrency: group: deploy-production, cancel-in-progress: false`. Lần bấm thứ hai xếp hàng chờ, không hủy lần đang chạy (hủy giữa chừng có thể bỏ dở migration hoặc thay container).
+2. **Giới hạn thời gian:** `timeout-minutes: 15` cho cả job (bình thường khoảng 1 phút).
+3. **Quyền tối thiểu:** `permissions: contents: read`, không dùng secret của GitHub. Mọi khóa của hệ thống nằm sẵn ở `~/exam-prod-secrets/`; workflow chỉ gọi script trên máy.
+4. **Runner:** `runs-on: [self-hosted, wsl-exam]`, `environment: production`; checkout nhánh `main` chỉ lấy `infra/` (`sparse-checkout`), dọn thư mục làm việc sau khi chạy.
+5. **Chỉ gõ tay:** sự kiện duy nhất là `workflow_dispatch`, hai ô nhập `tag` (Q344) và `force_reason` (để trống = không ép; Q332).
+6. **Tóm tắt lần chạy (job summary)** luôn hiện: tag đã chọn và nguồn (mặc định hay tự nhập), tag trước đó, tiêu đề commit, kết quả chốt chặn Phiên thi, đường dẫn bản sao lưu trước deploy, kết quả smoke test hai nơi (Q348), và nếu có lùi thì 50 dòng log lỗi (Q347).
+7. **Dọn ảnh cũ** sau deploy thành công: giữ ảnh bản đang chạy và **2 bản gần nhất trước đó** (để lùi nhanh không phải tải lại); xóa ảnh `exam-api` / `exam-web` đời cũ hơn của chính dự án, không đụng ảnh khác trên máy (như `plo-backend-baseline`).
+8. **Tài liệu cùng PR:** `docs/ops/trien-khai.md` thêm mục "Deploy bằng GitHub" từng bước (bấm ở đâu, Approve, đọc tóm tắt, lùi bản, xử lý khi lỗi, quy ước tương thích ngược của Q349).
+
+**Ghi chú để tự học:**
+- `cancel-in-progress: false` cho deploy khác với CI (`ci.yml` hủy lần cũ khi có commit mới): CI hủy được vì không để lại gì; deploy hủy giữa chừng có thể để hệ thống ở trạng thái nửa vời.
+- Giới hạn thời gian chống job treo giữ runner (và cổng deploy) mãi.
+- Quyền tối thiểu (`contents: read`) nghĩa là dù ai đó chèn được mã vào workflow thì `GITHUB_TOKEN` cũng không ghi được gì lên repo.
+
+### Tổng kết thiết kế PR 6b (đã duyệt Q342–Q350)
+
+Luồng một lần deploy, theo thứ tự:
+```
+bấm "Run workflow" (main)  →  Approve (Environment production, Q343)
+ → checkout infra/ từ main (Q349)
+ → chọn tag: để trống = main mới nhất; kiểm là commit của main (Q344)
+ → kiểm ảnh api + web có trên GHCR
+ → chốt chặn Phiên thi (FORCE_REASON nếu ép) (Q332)
+ → đọc tag đang chạy (để lùi)
+ → pg_dump -Fc + pg_restore --list; trượt thì dừng (Q345)
+ → migration → thay api / worker / web
+ → smoke test trong máy (version == tag): trượt thì thu log, tự lùi một lần, báo đỏ (Q347, Q348)
+ → smoke test địa chỉ công khai: trượt chỉ cảnh báo (Q348)
+ → ghi audit_logs "ops.deploy" (Q346), dọn ảnh cũ (Q350)
+ → tóm tắt lần chạy
+```
+Đã làm ngoài mã: chính sách duyệt PR từ fork `all_external_contributors` (Q342) và Environment `production` (Q343).
+
+## PR 6b: ghi chú triển khai
+
+**Đã làm:**
+- `.github/workflows/deploy.yml`: `workflow_dispatch` hai ô nhập (`tag`, `force_reason`), `environment: production`, `concurrency` không hủy, `timeout-minutes: 15`, `permissions: contents: read`, chạy trên `[self-hosted, wsl-exam]`. Các bước: chỉ nhánh `main` → checkout `infra/` (sparse, đúng commit lúc bấm) → đặt `XDG_RUNTIME_DIR` và `DBUS_SESSION_BUS_ADDRESS` cho Podman (dịch vụ runner không có phiên đăng nhập) và kiểm pod `prod-exam` có → chọn và kiểm tag (định dạng, thuộc `main`, ảnh api + web có trên GHCR bằng `podman manifest inspect`) → deploy → dọn thư mục làm việc.
+- `infra/scripts/exam-ctl.sh deploy` (lệnh mới) chứa toàn bộ luồng, workflow chỉ gọi. Lý do: thử được ngay trên pod `drill` bằng `make -C infra prod-deploy`, và dùng được từ terminal khi GitHub hay runner hỏng. Có thêm các hàm `backup_before_deploy`, `audit_deploy`, `smoke_inside`, `smoke_public`, `prune_old_images`, `collect_failure_logs`; `die` ghi lý do vào tóm tắt; file có thể `source` để thử từng hàm (không chạy lệnh khi được `source`).
+- `infra/Makefile`: `prod-deploy`.
+- Giao diện Quản trị viên, trang Nhật ký: thêm nhãn tiếng Việt cho `ops.deploy` ("Đưa bản mới lên") và `ops.deploy-failed` và hai mục trong bộ lọc hành động (hành động lạ vẫn hiện mã thô nên đây chỉ là cho dễ đọc).
+- Tài liệu: `docs/ops/trien-khai.md` mục "Deploy bằng GitHub" từng bước, đọc tóm tắt, lùi bản, ép khẩn cấp, ba lớp bảo vệ, quy ước script–ảnh, bảng lỗi mới; `docs/architecture.md` mục 9 (luồng deploy và runner); `README.md`.
+
+**Khác với khung đã duyệt (cần biết):**
+- Tag mặc định (ô để trống) là `github.sha` của lần bấm, tức commit `main` **lúc bấm**, không phải `origin/main` lúc job bắt đầu chạy. Hai giá trị khác nhau chỉ khi có commit mới vào `main` trong lúc chờ Approve; dùng commit lúc bấm để script và ảnh khớp với cái bạn đã thấy, và ảnh của commit mới hơn có thể chưa build xong.
+- Chốt chặn Phiên thi chạy **sau** bước tải ảnh (thiếu ảnh thì dừng sớm, rẻ hơn), nhưng vẫn trước sao lưu và trước mọi thay đổi.
+- Thêm một chi tiết nhỏ chưa hỏi: giữ 10 file `truoc-deploy-*.dump` mới nhất trong `~/exam-prod-backups/` để ổ đĩa không đầy dần; 6c sẽ thay bằng retention chính thức.
+- Dọn ảnh theo lịch sử `~/.local/state/exam-prod/deployed-tags` (bản đang chạy và 2 bản trước đó); chỉ xét đúng tên kho `ghcr.io/<chủ>/exam-api` và `exam-web`, không xóa tên khác của cùng ảnh (phát hiện ở lần thử đầu: `podman images` liệt kê mọi tên của ảnh khớp).
+- Bản không có tag trước (`?`) hoặc trùng tag mới thì không tự lùi được; tóm tắt nói rõ và trỏ sang bảng lỗi.
+
+**Đã thử** trên pod tạm `drill-exam` (ảnh `good` / `good2` / `bad` cùng kho `localhost/exam-api`, và ảnh thật của commit `6c9d186` từ GHCR), có chạy dưới `env -i` để giống dịch vụ runner:
+
+| Ca | Kết quả |
+|---|---|
+| Deploy thường (có sao lưu, kiểm, audit) | 18–26 giây; tóm tắt đủ 5 dấu ✅; `audit_logs` có `ops.deploy` (before/after, người bấm, đường dẫn) |
+| Bản mới lỗi (container thoát ngay) | api không sẵn sàng sau 60 giây → thu log → tự lùi → hệ thống chạy lại bản cũ, `version` đúng; tổng khoảng 2 phút 10 giây; thoát mã 1; `audit_logs` có `ops.deploy-failed` với `rolled_back: true` |
+| Sao lưu hỏng, không ép | dừng ngay ở bước sao lưu, nói rõ "chưa đụng vào hệ thống", bản đang chạy giữ nguyên |
+| Sao lưu hỏng, có `FORCE_REASON` | đi tiếp, ghi `operations.log` và `audit_logs` `forced: true` |
+| Ảnh không tồn tại | dừng ở bước tải ảnh, chưa đụng hệ thống |
+| Có Phiên thi (5 người dự thi giả đang làm) | từ chối, thoát mã 1; có `FORCE_REASON` thì chạy và ghi lại |
+| Chọn tag và kiểm trong workflow (chạy lại đúng đoạn script của workflow trên máy) | để trống → `main` mới nhất; mã rút gọn `cd436ad` → mã đầy đủ; `abc; rm -rf` → từ chối; mã không tồn tại → từ chối; ảnh api/web của `6c9d186` và `c348cc6` có trên GHCR |
+| `podman` dưới `env -i` (giống dịch vụ runner) | chạy được cả khi thiếu và khi có `XDG_RUNTIME_DIR` |
+
+**Chưa thử được (cần chạy thật trên GitHub sau khi merge; ghi vào checklist 6e):** lần bấm thật đầu tiên (Approve của Environment, runner nhận job, quyền thư mục `_work`), `actions/checkout` với `sparse-checkout` trên runner này, smoke test địa chỉ công khai qua tunnel thật, ⚠️ khi tunnel chưa có. Hướng dẫn lần chạy thật đầu tiên:
+1. Merge PR 6b vào `main`, chờ job "Image api/web" xanh.
+2. Chưa bootstrap `prod-exam` thì làm theo `docs/ops/trien-khai.md` mục 2 trước (đó là điều kiện của workflow).
+3. Bấm **Run workflow** (ô để trống), Approve, đọc Summary; kiểm Nhật ký trong ứng dụng.
+4. Bấm lần hai với mã cũ để thử đường lùi bản.
+
 ## Câu hỏi còn mở
 
-- PR 6a đã mở, chờ chủ dự án duyệt và merge.
-- Sau 6a: 6b (workflow deploy), 6c (script sao lưu), 6d (phần trong ứng dụng), 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.
+- PR 6b: thiết kế Q342–Q350 đã duyệt, mã đã viết và thử trên pod `drill`; chờ PR được mở, CI xanh và chủ dự án duyệt.
+- Sau 6b: 6c (script sao lưu), 6d (phần trong ứng dụng), 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.
