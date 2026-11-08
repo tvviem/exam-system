@@ -5,5 +5,5 @@ Mã nguồn, tài liệu và dữ liệu mẫu trong kho này là tài sản c�
 
 The source code, documentation and sample data in this repository are the property of TRIỆU VĨNH VIÊM. No one may copy, modify, distribute, sublicense, sell or use them for any purpose (including internal and commercial use) without prior written permission from the owner.
 
-Lưu ý: các bản sao đã được phát hành dưới giấy phép MIT trước ngày 8/11/2026 (khi kho còn công khai, từ commit đầu tiên tới thời điểm chuyển sang riêng tư) vẫn theo giấy phép MIT đó; thay đổi này chỉ áp dụng cho các phiên bản từ nay về sau.
-Note: copies obtained under the MIT license before 8 November 2026 (while this repository was public) remain under that license; this change applies only to versions from now on.
+Lưu ý: các bản sao đã lấy dưới giấy phép MIT từ khi giấy phép này được thêm (7/11/2026) đến khi kho chuyển sang riêng tư (8/11/2026) vẫn theo giấy phép MIT đó; thay đổi này chỉ áp dụng cho các phiên bản từ nay về sau.
+Note: copies obtained under the MIT license between its addition (7 November 2026) and the repository becoming private (8 November 2026) remain under that license; this change applies only to versions from now on.

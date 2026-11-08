@@ -352,4 +352,4 @@ Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, r
 
 ## Bản quyền
 
-© 2026 TRIỆU VĨNH VIÊM. **Bảo lưu mọi quyền** (xem [LICENSE](LICENSE)): kho riêng tư, không ai được sao chép, sửa, phân phối hay dùng nếu chưa được chủ sở hữu cho phép bằng văn bản. Các bản sao đã lấy theo giấy phép MIT khi kho còn công khai (trước 8/11/2026) vẫn theo giấy phép đó.
+© 2026 TRIỆU VĨNH VIÊM. **Bảo lưu mọi quyền** (xem [LICENSE](LICENSE)): kho riêng tư, không ai được sao chép, sửa, phân phối hay dùng nếu chưa được chủ sở hữu cho phép bằng văn bản. Các bản sao đã lấy theo giấy phép MIT khi kho còn công khai (7–8/11/2026) vẫn theo giấy phép đó.
