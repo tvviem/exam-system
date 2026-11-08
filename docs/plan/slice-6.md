@@ -183,7 +183,21 @@ Chọn **phương án A**: mặc định **một bản api**; chủ dự án b�
 - Cơ sở: ca đo 500 người (`docs/hieu-nang.md`) cho thấy lúc làm bài một bản vẫn nhanh; chỉ ca 500 người cùng mở kết quả một khoảnh khắc vượt 1 giây. Mỗi bản api thêm khoảng 0,5 GB bộ nhớ, máy còn chia cho plo-tracker.
 - Khi chạy hai bản, nginx của pod phải chia tải giữa hai bản và Socket.IO phải chạy đúng qua cả hai (tin đẩy đi qua kênh Redis đã có). Kiểm bằng ca đo hai bản khi viết code.
 
+### Q336: chia lát cắt 6 thành 5 PR (đã duyệt 8/11/2026)
+
+Chọn **phương án A**: 5 PR nhỏ, làm theo thứ tự dưới đây. **Sao lưu (6c, 6d) phải xong trước Phiên thi thật đầu tiên.** Mỗi PR cập nhật tài liệu vận hành liên quan trong cùng PR (Q331); thử nghiệm dùng pod tạm, không đụng dữ liệu thật.
+
+| PR | Nội dung |
+|---|---|
+| 6a | `prod-bootstrap` (tự sinh khóa, Q333), `prod-up`, `prod-scale` (Q335), dịch vụ systemd dựng lại khi bật WSL (Q334), cấu hình tunnel (Q330) |
+| 6b | Workflow deploy bấm tay (Q331): kiểm Phiên thi, chặn và ép khẩn cấp (Q332), sao lưu trước deploy, migration, thay lần lượt, quay lui, đăng ký runner |
+| 6c | Script sao lưu: `pg_dump`, WAL, bản nền, ảnh và khóa, mã hóa, đẩy sang D: và R2, giữ theo bảng Q325, khôi phục thử, báo ngoài máy (Q323–Q328) |
+| 6d | Trong ứng dụng: bảng ghi kết quả sao lưu, màn hình chỉ đọc cho Quản trị viên, chuông khi quá 26 giờ, xóa thông báo đã đọc quá 90 ngày |
+| 6e | Hoàn tất: `trien-khai.md`, `khoi-phuc.md`, diễn tập khôi phục sang máy khác, đo hai bản api, checklist đưa lên chạy thật, cập nhật README và số đo |
+
+**Dọn máy trước khi bắt đầu (8/11/2026):** máy 16 GB RAM, đang dùng khoảng 2 GB. Pod đang chạy: `dev-exam` (dev của dự án này) và `prod-plotracker`. Pod đã dừng: `devadh` (11 ngày), `devplotracker` (4 tháng), `devapp` (8 tháng). Pod dừng không tốn RAM, chỉ tốn đĩa. Ổ WSL còn 859 GB trống. Phần đáng dọn nhất là ảnh không dùng (khoảng 25 GB) và volume Ollama (`ollamadata` 8 GB, `prod_ollamadata` 2,8 GB). Chủ dự án tự quyết xóa gì; thao tác xóa không hoàn tác.
+
 ## Câu hỏi còn mở
 
-- Q336: chia lát cắt 6 thành các PR và thứ tự làm.
+- Sau khi dọn máy: bắt đầu code PR 6a (cần thiết kế chi tiết của 6a trước).
 - Sau đó: `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
