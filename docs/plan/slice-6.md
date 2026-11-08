@@ -175,7 +175,15 @@ Chủ dự án chọn: **hệ thống chỉ dựng lại khi chủ dự án bậ
 - Tắt WSL (hoặc `wsl --shutdown`) là tắt hệ thống. Hướng dẫn vận hành nhắc: kiểm tra không có Phiên thi đang diễn ra hoặc sắp bắt đầu trước khi tắt, tắt chế độ ngủ và đặt giờ hoạt động cho Windows Update (đã có ở `architecture.md` mục 8).
 - **Việc kiểm khi làm code:** (1) pod tự dựng lại sau `wsl --shutdown` rồi mở Ubuntu; (2) WSL không tự tắt khi đóng hết cửa sổ terminal (hiện máy chạy liên tục 20 giờ với container đang chạy, `.wslconfig` chưa đặt `vmIdleTimeout`); nếu có tự tắt thì cấu hình giữ WSL chạy và ghi vào hướng dẫn. (3) Thời gian từ lúc mở Ubuntu đến khi hệ thống phục vụ được, ghi vào tài liệu.
 
+### Q335: hai bản api cho phòng đông người (đã duyệt 8/11/2026)
+
+Chọn **phương án A**: mặc định **một bản api**; chủ dự án bật **hai bản** khi có Phiên thi từ 300 người trở lên.
+
+- Lệnh `make prod-scale 2` và `make prod-scale 1`, kèm hướng dẫn trong `docs/ops/trien-khai.md`. Quyết định theo số người dự thi của từng buổi.
+- Cơ sở: ca đo 500 người (`docs/hieu-nang.md`) cho thấy lúc làm bài một bản vẫn nhanh; chỉ ca 500 người cùng mở kết quả một khoảnh khắc vượt 1 giây. Mỗi bản api thêm khoảng 0,5 GB bộ nhớ, máy còn chia cho plo-tracker.
+- Khi chạy hai bản, nginx của pod phải chia tải giữa hai bản và Socket.IO phải chạy đúng qua cả hai (tin đẩy đi qua kênh Redis đã có). Kiểm bằng ca đo hai bản khi viết code.
+
 ## Câu hỏi còn mở
 
-- Q335: hai bản api cho phòng từ 300 người (khi nào bật, ai quyết định).
+- Q336: chia lát cắt 6 thành các PR và thứ tự làm.
 - Sau đó: `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
