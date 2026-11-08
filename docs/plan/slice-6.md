@@ -150,7 +150,15 @@ Chọn **phương án A: bấm tay**. Merge vào `main` chỉ build image, **kh�
 - **Quay lui** là chạy lại workflow với mã commit cũ (migration chỉ thêm theo kiểu expand, contract, nên bản cũ vẫn chạy được trên cơ sở dữ liệu mới).
 - **Yêu cầu về tài liệu:** hướng dẫn vận hành phải đủ chi tiết để làm nguồn tham khảo lâu dài, viết bằng tiếng Việt, từng bước, kèm lệnh cụ thể, kết quả mong đợi và cách xử lý khi lỗi. Dự kiến `docs/ops/trien-khai.md` (lần đầu và các lần sau, kiểm tra trước giờ thi, quay lui, đổi khóa, đổi địa chỉ, chuyển sang VPS) cùng `docs/ops/khoi-phuc.md`; `docs/ops/demo-wsl.md` được thay hoặc trỏ về hai tài liệu này khi lát cắt 6 có code. Mỗi PR của lát cắt 6 đổi cách vận hành phải cập nhật các tài liệu đó trong cùng PR.
 
+### Q332: chốt chặn khi deploy gặp Phiên thi (đã duyệt 8/11/2026)
+
+Chọn **phương án B**:
+
+- Script deploy **từ chối chạy** nếu có Phiên thi đang diễn ra hoặc sẽ bắt đầu trong 60 phút tới.
+- Có tùy chọn **ép khẩn cấp**: mặc định vẫn chặn; muốn ép, người bấm chạy phải nhập lý do. Lý do được ghi vào nhật ký (`audit_logs`) và hiện ở đầu báo cáo deploy. Dùng cho lỗi bảo mật nghiêm trọng cần vá ngay giữa giờ thi.
+- Hướng dẫn trong `docs/ops/trien-khai.md` nói rõ khi nào nên và không nên ép, và việc báo cho Người dự thi đang thi.
+
 ## Câu hỏi còn mở
 
-- Q332: chốt chặn khi deploy gặp Phiên thi (chặn đang diễn ra hay cả sắp bắt đầu, có cho ép khẩn cấp không).
+- Q333: khởi tạo môi trường lần đầu (`prod-bootstrap`): ai tạo các khóa bí mật.
 - Sau đó: `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
