@@ -3,6 +3,8 @@
 #
 #   exam-ctl.sh bootstrap        Dựng lần đầu: bí mật, volume, pod, PostgreSQL, Redis, ứng dụng, Quản trị viên, dịch vụ systemd
 #   exam-ctl.sh up               Đưa bản mới (TAG=<mã commit>) lên: migration, thay api, worker, web
+#   exam-ctl.sh deploy           Như up nhưng đủ quy trình của workflow GitHub (PR 6b): chốt chặn, sao lưu trước, kiểm
+#                                sau deploy, tự lùi một lần nếu lỗi, ghi audit_logs, dọn ảnh cũ, tóm tắt lần chạy
 #   exam-ctl.sh scale 1|2        Tắt hoặc bật bản api thứ hai
 #   exam-ctl.sh status           Tình trạng pod
 #   exam-ctl.sh logs [tên]       Log container (api, api-2, worker, web, postgres, redis)
@@ -41,6 +43,8 @@ esac
 
 PODMAN="${PODMAN:-podman}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/exam-$EXAM_STAGE"
+BACKUP_DIR="${EXAM_BACKUP_DIR:-$HOME/exam-$EXAM_STAGE-backups}"
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 IMAGE_REPO="${IMAGE_REPO:-ghcr.io/tvviem}"
 POSTGRES_IMAGE="${POSTGRES_IMAGE:-docker.io/library/postgres:17}"
 REDIS_IMAGE="${REDIS_IMAGE:-docker.io/library/redis:7}"
@@ -49,7 +53,12 @@ C_PG="$POD-postgres" C_REDIS="$POD-redis" C_API="$POD-api" C_API2="$POD-api-2" C
 LOG_OPTS=(--log-driver k8s-file --log-opt max-size=10m)
 
 say() { printf '>>> %s\n' "$*"; }
-die() { printf 'LỖI: %s\n' "$*" >&2; exit 1; }
+die() {
+  printf 'LỖI: %s\n' "$*" >&2
+  # Trong `deploy` (có DEPLOY_PHASE) ghi luôn lý do vào tóm tắt lần chạy.
+  if [ -n "${DEPLOY_PHASE:-}" ] && [ -n "${SUMMARY_FILE:-}" ]; then printf '\n❌ %s\n' "$*" >>"$SUMMARY_FILE"; fi
+  exit 1
+}
 pod_exists() { "$PODMAN" pod exists "$POD"; }
 container_exists() { "$PODMAN" container exists "$1"; }
 pod_state() { "$PODMAN" pod inspect -f '{{.State}}' "$POD" 2>/dev/null || echo "không có"; }
@@ -364,6 +373,237 @@ cmd_up() {
   say "Đã chạy bản $VERSION_LABEL (api x$two)."
 }
 
+# ---------- Deploy đủ quy trình (PR 6b, docs/plan/slice-6.md Q342–Q350) ----------
+# Biến môi trường: TAG (hoặc API_IMAGE + WEB_IMAGE), FORCE_REASON, TRIGGERED_BY, RUN_URL, COMMIT_TITLE,
+# SUMMARY_FILE (workflow truyền $GITHUB_STEP_SUMMARY; không có thì ghi $STATE_DIR/last-deploy-summary.md),
+# SMOKE_PUBLIC_WAIT (giây giữa các lần thử địa chỉ công khai, mặc định 5).
+sum_add() { printf '%s\n' "$*" >>"$SUMMARY_FILE"; }
+
+# Chụp cơ sở dữ liệu trước migration và kiểm file đọc được (Q345). Trả khác 0 nếu hỏng.
+backup_before_deploy() { # tag cũ
+  local prev="${1//[^A-Za-z0-9._-]/_}" file
+  file="$BACKUP_DIR/truoc-deploy-$(date +%Y%m%d-%H%M%S)-${prev:0:12}.dump"
+  mkdir -p "$BACKUP_DIR"
+  chmod 700 "$BACKUP_DIR"
+  say "Sao lưu trước deploy: $file"
+  if (umask 077 && "$PODMAN" exec "$C_PG" sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' >"$file") &&
+    [ -s "$file" ] &&
+    "$PODMAN" exec -i "$C_PG" pg_restore --list <"$file" >/dev/null; then
+    BACKUP_FILE="$file"
+    # Giữ 10 bản "trước deploy" mới nhất; sao lưu chính thức (retention riêng) là việc của PR 6c.
+    # shellcheck disable=SC2012
+    ls -1t "$BACKUP_DIR"/truoc-deploy-*.dump 2>/dev/null | tail -n +11 | xargs -r rm -f --
+    return 0
+  fi
+  rm -f "$file"
+  return 1
+}
+
+# Ghi một dòng audit_logs (thao tác của hệ thống nên actor_id trống). Giá trị đi qua biến psql, không ghép vào SQL (Q346).
+audit_deploy() { # action, tag cũ, tag mới, forced, rolled_back, ghi chú
+  "$PODMAN" exec -i "$C_PG" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q -v ON_ERROR_STOP=1 \
+    -v action="$1" -v prev="$2" -v tag="$3" -v forced="$4" -v rolled="$5" -v note="$6" \
+    -v title="$7" -v by="$8" -v url="$9" -v reason="${10}"' _ \
+    "$1" "$2" "$3" "$4" "$5" "$6" "${COMMIT_TITLE:-}" "${TRIGGERED_BY:-${USER:-?}}" "${RUN_URL:-}" "${FORCE_REASON:-}" <<'SQL'
+INSERT INTO audit_logs (actor_id, action, entity_type, before, after, at)
+VALUES (NULL, :'action', 'system', jsonb_build_object('tag', :'prev'),
+  jsonb_build_object('tag', :'tag', 'commit_title', :'title', 'triggered_by', :'by', 'run_url', :'url',
+    'forced', (:'forced')::boolean, 'force_reason', nullif(:'reason', ''),
+    'rolled_back', (:'rolled')::boolean, 'note', nullif(:'note', '')),
+  now());
+SQL
+}
+
+# /api/health phải ok, postgres và redis up, và version đúng bằng bản vừa chọn (bắt "thành công giả": container cũ vẫn trả lời ok).
+health_matches() { # nội dung JSON, version mong đợi
+  case "$1" in *'"status":"ok"'*) ;; *) return 1 ;; esac
+  case "$1" in *'"postgres":"up"'*) ;; *) return 1 ;; esac
+  case "$1" in *'"redis":"up"'*) ;; *) return 1 ;; esac
+  case "$1" in *"\"version\":\"$2\""*) ;; *) return 1 ;; esac
+}
+
+smoke_inside() { # version mong đợi
+  local body
+  body="$(curl -fsS --max-time 3 "http://127.0.0.1:$WEB_PORT/api/health" 2>/dev/null)" || return 1
+  health_matches "$body" "$1"
+}
+
+# Địa chỉ người dự thi thật sự đi qua (tunnel); lỗi ở đây thường nằm ngoài pod nên chỉ cảnh báo (Q348).
+smoke_public() { # version mong đợi
+  local url body i
+  url="$(env_value "$SECRETS_DIR/api.env" APP_ORIGINS | cut -d, -f1)"
+  PUBLIC_URL="$url"
+  [ -n "$url" ] || return 1
+  for i in 1 2 3; do
+    if body="$(curl -fsS --max-time 5 "$url/api/health" 2>/dev/null)" && health_matches "$body" "$1"; then return 0; fi
+    [ "$i" = 3 ] || sleep "${SMOKE_PUBLIC_WAIT:-5}"
+  done
+  return 1
+}
+
+# Giữ ảnh của bản đang chạy và 2 bản trước đó (Q350); chỉ đụng ảnh api/web của chính dự án.
+prune_old_images() { # tag mới, tag cũ
+  local history="$STATE_DIR/deployed-tags" keep repo ref tag
+  [ -f "$history" ] || { [ "$2" = '?' ] || printf '%s\n' "$2" >"$history"; }
+  printf '%s\n' "$1" >>"$history"
+  keep="$(tac "$history" | awk '!seen[$0]++' | head -3)"
+  for repo in "${API_IMAGE%:*}" "${WEB_IMAGE%:*}"; do
+    while read -r ref; do
+      # `podman images` liệt kê mọi tên của ảnh khớp; chỉ xét đúng kho của dự án, không đụng tên khác của cùng ảnh.
+      case "$ref" in "$repo":*) ;; *) continue ;; esac
+      tag="${ref##*:}"
+      [ "$tag" = '<none>' ] && continue
+      printf '%s\n' "$keep" | grep -qxF -- "$tag" && continue
+      say "Xóa ảnh cũ $ref"
+      "$PODMAN" rmi "$ref" >/dev/null 2>&1 || true
+    done < <("$PODMAN" images --filter "reference=$repo" --format '{{.Repository}}:{{.Tag}}')
+  done
+}
+
+collect_failure_logs() { # file đích
+  local c
+  : >"$1"
+  for c in "$C_API" "$C_API2" "$C_WORKER" "$C_WEB"; do
+    container_exists "$c" || continue
+    { echo "===== $c ====="; "$PODMAN" logs --tail 50 "$c" 2>&1 || true; } >>"$1"
+  done
+}
+
+deploy_exit() { # mã thoát
+  if [ "$1" != 0 ] && [ "${DEPLOY_REPORTED:-0}" != 1 ]; then
+    sum_add ""
+    if [ "${DEPLOY_TOUCHED:-0}" = 1 ]; then
+      sum_add "**Dừng ở bước: ${DEPLOY_PHASE:-?}.** Hệ thống có thể đã bị thay một phần: xem log lần chạy và \`docs/ops/trien-khai.md\`, mục lỗi thường gặp."
+    else
+      sum_add "**Dừng ở bước: ${DEPLOY_PHASE:-?}.** Chưa đụng vào hệ thống đang chạy."
+    fi
+  fi
+}
+
+cmd_deploy() {
+  resolve_images
+  pod_exists || die "Chưa có pod $POD. Chạy prod-bootstrap trước."
+  mkdir -p "$STATE_DIR"
+  if [ -z "${SUMMARY_FILE:-}" ]; then
+    SUMMARY_FILE="$STATE_DIR/last-deploy-summary.md"
+    : >"$SUMMARY_FILE"
+  fi
+  local new="$VERSION_LABEL" prev forced=false failure_log="$STATE_DIR/last-failure.log"
+  prev="$(cat "$STATE_DIR/tag" 2>/dev/null || echo '?')"
+  BACKUP_FILE=''
+  DEPLOY_TOUCHED=0
+  DEPLOY_PHASE='khởi động'
+  trap 'deploy_exit $?' EXIT
+
+  sum_add "## Deploy $EXAM_STAGE: bản \`${new:0:12}\`"
+  sum_add ""
+  sum_add "| Mục | Giá trị |"
+  sum_add "|---|---|"
+  sum_add "| Tag đã chọn | \`$new\` |"
+  sum_add "| Tag đang chạy trước đó | \`$prev\` |"
+  sum_add "| Commit | ${COMMIT_TITLE:-(không rõ)} |"
+  sum_add "| Người bấm | ${TRIGGERED_BY:-${USER:-?}} |"
+  sum_add ""
+
+  if [ "$prev" = "$new" ]; then sum_add "ℹ️ Bản này đang chạy sẵn; chạy lại để thay container."; fi
+
+  DEPLOY_PHASE='bật pod'
+  if [ "$(pod_state)" != Running ]; then
+    "$PODMAN" pod start "$POD" >/dev/null
+    wait_postgres
+  fi
+
+  DEPLOY_PHASE='tải ảnh (ảnh chưa có thì CI của commit này chưa xong hoặc đỏ)'
+  pull_images
+
+  DEPLOY_PHASE='chốt chặn Phiên thi'
+  guard "đưa bản $new lên"
+  if [ -n "${FORCE_REASON:-}" ] && ! cmd_active_sessions >/dev/null 2>&1; then
+    forced=true
+    sum_add "- ⚠️ Chốt chặn Phiên thi: **ép** vì \"$FORCE_REASON\"."
+  else
+    sum_add "- ✅ Chốt chặn Phiên thi: không có Phiên thi đang diễn ra hoặc sắp bắt đầu."
+  fi
+
+  DEPLOY_PHASE='sao lưu trước deploy'
+  if backup_before_deploy "$prev"; then
+    sum_add "- ✅ Sao lưu trước deploy: \`$BACKUP_FILE\` ($(du -h "$BACKUP_FILE" | cut -f1)), đã kiểm đọc được."
+  elif [ -n "${FORCE_REASON:-}" ]; then
+    forced=true
+    ops_log "ÉP KHẨN CẤP deploy $new KHÔNG sao lưu được: $FORCE_REASON"
+    sum_add "- ⚠️ Sao lưu trước deploy **thất bại** nhưng vẫn đi tiếp vì có FORCE_REASON: \"$FORCE_REASON\"."
+  else
+    die "Không sao lưu được trước deploy nên dừng. Hệ thống đang chạy chưa bị đụng. Kiểm dung lượng ổ ($BACKUP_DIR) và container $C_PG; nếu thật sự khẩn cấp: FORCE_REASON=\"lý do\"."
+  fi
+
+  DEPLOY_PHASE='đưa bản mới lên'
+  DEPLOY_TOUCHED=1
+  local ok=1 reason=''
+  if ! SKIP_GUARD=1 bash "$SELF" up; then
+    ok=0
+    reason='up thất bại (migration, thay container hoặc /api/health quá 60 giây)'
+  elif ! smoke_inside "$new"; then
+    ok=0
+    reason="kiểm sau deploy trong máy trượt: /api/health không ok hoặc version khác $new"
+  fi
+
+  if [ "$ok" = 0 ]; then
+    DEPLOY_REPORTED=1
+    collect_failure_logs "$failure_log"
+    say "LỖI: $reason"
+    sum_add ""
+    sum_add "### ❌ Bản mới lỗi: $reason"
+    local rolled=false
+    if [ "$prev" = '?' ] || [ "$prev" = "$new" ]; then
+      sum_add "Không có bản khác để lùi về (tag trước: \`$prev\`). Hệ thống có thể đang ngừng: xem \`docs/ops/trien-khai.md\`, mục lỗi thường gặp."
+    else
+      say "Tự lùi về bản $prev (một lần)"
+      if env -u TAG API_IMAGE="${API_IMAGE%:*}:$prev" WEB_IMAGE="${WEB_IMAGE%:*}:$prev" SKIP_GUARD=1 bash "$SELF" up && smoke_inside "$prev"; then
+        rolled=true
+        sum_add "✅ Đã **lùi về bản \`$prev\`**, hệ thống đang chạy lại (api, worker, web đã thay)."
+      else
+        sum_add "🛑 **Lùi về \`$prev\` cũng lỗi.** Hệ thống có thể đang ngừng: xem \`docs/ops/trien-khai.md\`, mục lỗi thường gặp."
+      fi
+    fi
+    audit_deploy ops.deploy-failed "$prev" "$new" "$forced" "$rolled" "$reason" ||
+      sum_add "⚠️ Không ghi được audit_logs (cơ sở dữ liệu không trả lời)."
+    ops_log "deploy $new THẤT BẠI ($reason); lùi=$rolled"
+    sum_add ""
+    sum_add "<details><summary>Log 50 dòng cuối của các container (lấy trước khi lùi)</summary>"
+    sum_add ""
+    sum_add '```'
+    cat "$failure_log" >>"$SUMMARY_FILE"
+    sum_add '```'
+    sum_add "</details>"
+    exit 1
+  fi
+  sum_add "- ✅ Kiểm trong máy: \`/api/health\` ok, postgres và redis up, version = \`${new:0:12}\`."
+
+  DEPLOY_PHASE='kiểm địa chỉ công khai'
+  PUBLIC_URL=''
+  if smoke_public "$new"; then
+    sum_add "- ✅ Địa chỉ công khai \`$PUBLIC_URL\` trả lời đúng bản này."
+  else
+    sum_add "- ⚠️ Địa chỉ công khai \`${PUBLIC_URL:-?}\` chưa trả lời đúng bản này. Nguyên nhân thường nằm ngoài pod: kiểm Cloudflare tunnel (\`docs/ops/trien-khai.md\`, mục 2). **Không lùi bản** vì hệ thống trong máy chạy tốt."
+  fi
+
+  DEPLOY_PHASE='ghi audit_logs'
+  if audit_deploy ops.deploy "$prev" "$new" "$forced" false ''; then
+    sum_add "- ✅ Đã ghi \`audit_logs\` (ops.deploy)."
+  else
+    sum_add "- ⚠️ Không ghi được \`audit_logs\`; lần deploy vẫn thành công."
+  fi
+  ops_log "deploy $new (trước: $prev) forced=$forced"
+
+  DEPLOY_PHASE='dọn ảnh cũ'
+  prune_old_images "$new" "$prev" || true
+
+  DEPLOY_REPORTED=1
+  sum_add ""
+  sum_add "### ✅ Đã deploy bản \`${new:0:12}\`"
+  say "Xong: đang chạy bản $new (trước đó $prev)."
+}
+
 cmd_scale() {
   local n="${1:-}"
   [ "$n" = 1 ] || [ "$n" = 2 ] || die "Cách dùng: scale 1|2"
@@ -442,22 +682,28 @@ cmd_recover_admin() {
   ops_log "recover-admin $name"
 }
 
-command="${1:-}"
-[ $# -gt 0 ] && shift
-case "$command" in
-  bootstrap) cmd_bootstrap "$@" ;;
-  up) cmd_up "$@" ;;
-  scale) cmd_scale "$@" ;;
-  status) cmd_status "$@" ;;
-  logs) cmd_logs "$@" ;;
-  stop) cmd_stop "$@" ;;
-  start) cmd_start "$@" ;;
-  install-service) cmd_install_service "$@" ;;
-  down) cmd_down "$@" ;;
-  recover-admin) cmd_recover_admin "$@" ;;
-  active-sessions) cmd_active_sessions "$@" ;;
-  *)
-    sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//' >&2
-    exit 2
-    ;;
-esac
+main() {
+  local command="${1:-}"
+  [ $# -gt 0 ] && shift
+  case "$command" in
+    bootstrap) cmd_bootstrap "$@" ;;
+    up) cmd_up "$@" ;;
+    deploy) cmd_deploy "$@" ;;
+    scale) cmd_scale "$@" ;;
+    status) cmd_status "$@" ;;
+    logs) cmd_logs "$@" ;;
+    stop) cmd_stop "$@" ;;
+    start) cmd_start "$@" ;;
+    install-service) cmd_install_service "$@" ;;
+    down) cmd_down "$@" ;;
+    recover-admin) cmd_recover_admin "$@" ;;
+    active-sessions) cmd_active_sessions "$@" ;;
+    *)
+      sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' >&2
+      exit 2
+      ;;
+  esac
+}
+
+# Chạy khi gọi trực tiếp; `source` file này (để thử từng hàm) thì không chạy gì.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then main "$@"; fi

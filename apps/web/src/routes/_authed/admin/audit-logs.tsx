@@ -7,7 +7,7 @@ import { formatDateTime } from '../../../lib/format';
 import { ErrorMessage, SelectField } from '../../../lib/ui';
 import { EmptyState, FilterChip, ListSkeleton, Pagination } from '../../../lib/ui/admin';
 
-// Hành động đã có ở lát cắt 1; thêm vào đây (và vi.json) khi có hành động mới.
+// Hành động đã có ở lát cắt 1 và 6 (ops.*, do exam-ctl.sh ghi khi deploy); thêm vào đây (và vi.json) khi có hành động mới.
 const ACTIONS = [
   'user.update',
   'user.lock',
@@ -21,6 +21,8 @@ const ACTIONS = [
   'unit.update',
   'cli.bootstrap-admin',
   'cli.recover-admin',
+  'ops.deploy',
+  'ops.deploy-failed',
 ];
 
 const str = (value: unknown) => (typeof value === 'string' && value ? value : undefined);

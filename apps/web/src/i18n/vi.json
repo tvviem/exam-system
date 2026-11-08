@@ -670,6 +670,8 @@
     "unit.update": "Sửa Đơn vị",
     "cli.bootstrap-admin": "Khởi tạo Quản trị viên đầu tiên (CLI)",
     "cli.recover-admin": "Khôi phục Quản trị viên (CLI)",
+    "ops.deploy": "Đưa bản mới lên",
+    "ops.deploy-failed": "Đưa bản mới lên thất bại",
     "invitation.create": "Tạo Lời mời",
     "invitation.revoke": "Thu hồi Lời mời",
     "invitation.regenerate": "Tạo lại link Lời mời",

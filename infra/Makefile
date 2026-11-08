@@ -23,7 +23,7 @@ REDIS_CONTAINER ?= $(STAGE)-exam-redis
 PG_DATA_VOLUME ?= $(STAGE)_exam_pgdata
 
 .PHONY: help pod postgres redis up wait down stop logs psql redis-cli dev-up dev-down ci-up ci-wait ci-down
-.PHONY: prod-bootstrap prod-up prod-scale prod-status prod-logs prod-stop prod-start prod-down prod-recover-admin prod-active-sessions prod-install-service
+.PHONY: prod-bootstrap prod-up prod-deploy prod-scale prod-status prod-logs prod-stop prod-start prod-down prod-recover-admin prod-active-sessions prod-install-service
 
 help:
 	@echo "make dev-up     Tạo và chạy pod dev-exam (PostgreSQL :$(POSTGRES_PORT), Redis :$(REDIS_PORT))"
@@ -38,6 +38,7 @@ help:
 	@echo "Vận hành pod prod-exam (docs/ops/trien-khai.md); thêm EXAM_STAGE=drill để thử trên pod drill-exam:"
 	@echo "make prod-bootstrap TAG=<mã commit>   Dựng lần đầu (bí mật, pod, ứng dụng, Quản trị viên, dịch vụ systemd)"
 	@echo "make prod-up TAG=<mã commit>          Đưa bản mới lên (từ chối nếu có Phiên thi; FORCE_REASON=\"lý do\" để ép)"
+	@echo "make prod-deploy TAG=<mã commit>      Như prod-up nhưng đủ quy trình: sao lưu trước, kiểm sau, tự lùi, audit_logs (workflow GitHub gọi lệnh này)"
 	@echo "make prod-scale N=1|2                 Một hoặc hai bản api"
 	@echo "make prod-status                      Tình trạng pod"
 	@echo "make prod-logs C=api                  Log (api, api-2, worker, web, postgres, redis)"
@@ -132,6 +133,8 @@ prod-bootstrap:
 	@$(EXAM_CTL) bootstrap
 prod-up:
 	@$(EXAM_CTL) up
+prod-deploy:
+	@$(EXAM_CTL) deploy
 prod-scale:
 	@$(EXAM_CTL) scale $(N)
 prod-status:
