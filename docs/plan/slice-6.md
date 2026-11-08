@@ -141,7 +141,16 @@ Chọn **phương án C**: bản MVP dùng một tên phụ của tên miền hi
 - Quy trình dự kiến: không có Phiên thi → dừng ghi → `pg_dump` cuối → khôi phục trên VPS → chép `exam_media` → chuyển tunnel/DNS → giữ nguyên dữ liệu trên WSL một thời gian để quay lại. Thử khôi phục sang máy khác là một lần diễn tập trước khi chuyển thật; thử khôi phục hằng tháng cũng chứng minh bản `pg_dump` còn dùng được.
 - Ảnh sau `MediaStore` có thể chuyển sang R2/S3 khi lên VPS mà không sửa nghiệp vụ (ADR-0006).
 
+### Q331: cách kích hoạt deploy (đã duyệt 8/11/2026)
+
+Chọn **phương án A: bấm tay**. Merge vào `main` chỉ build image, **không** tự deploy.
+
+- Chủ dự án vào GitHub, bấm "Run workflow" của workflow deploy và chọn bản cần đưa lên (mã commit đã build xanh).
+- Workflow chạy trên runner riêng của exam-system (`~/actions-runner-exam-sys`, nhãn `wsl-exam`; kiểm đã đăng ký chưa khi làm pipeline) và làm các bước ở `architecture.md` mục 9: kiểm tra pod và env file, chặn nếu có Phiên thi, `pg_dump` trước khi deploy, migration, thay lần lượt api, worker, web kèm kiểm tra sức khỏe, smoke test qua địa chỉ công khai.
+- **Quay lui** là chạy lại workflow với mã commit cũ (migration chỉ thêm theo kiểu expand, contract, nên bản cũ vẫn chạy được trên cơ sở dữ liệu mới).
+- **Yêu cầu về tài liệu:** hướng dẫn vận hành phải đủ chi tiết để làm nguồn tham khảo lâu dài, viết bằng tiếng Việt, từng bước, kèm lệnh cụ thể, kết quả mong đợi và cách xử lý khi lỗi. Dự kiến `docs/ops/trien-khai.md` (lần đầu và các lần sau, kiểm tra trước giờ thi, quay lui, đổi khóa, đổi địa chỉ, chuyển sang VPS) cùng `docs/ops/khoi-phuc.md`; `docs/ops/demo-wsl.md` được thay hoặc trỏ về hai tài liệu này khi lát cắt 6 có code. Mỗi PR của lát cắt 6 đổi cách vận hành phải cập nhật các tài liệu đó trong cùng PR.
+
 ## Câu hỏi còn mở
 
-- Q331: cách kích hoạt deploy (tự động khi merge `main` hay bấm tay).
+- Q332: chốt chặn khi deploy gặp Phiên thi (chặn đang diễn ra hay cả sắp bắt đầu, có cho ép khẩn cấp không).
 - Sau đó: `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
