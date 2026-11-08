@@ -122,6 +122,26 @@ Chọn **phương án A: có dùng** một dịch vụ kiểu healthchecks.io (g
 
 Đã duyệt xong Q323–Q328: mức mất dữ liệu, ai làm, nơi lưu, thời gian giữ, người khôi phục, nơi cất khóa, báo ngoài máy. Chưa có code.
 
+## Thiết kế deploy
+
+### Q330: địa chỉ công khai (đã duyệt 8/11/2026)
+
+Chọn **phương án C**: bản MVP dùng một tên phụ của tên miền hiện có (`plotrackerbluni.site`, qua tunnel Cloudflare sẵn có, cổng `:8180`); mua tên miền riêng sau khi hệ thống ổn định. Tên phụ cụ thể chốt khi cấu hình tunnel.
+
+**Đổi địa chỉ về sau (đã kiểm trong code 8/11/2026):**
+- Địa chỉ chỉ xuất hiện ở biến `APP_ORIGINS` của api (chống CSRF, kiểm Origin của Socket.IO, địa chỉ trang đăng nhập trong mã QR của Phiếu tài khoản). **Không có địa chỉ nào được lưu trong PostgreSQL**, nên dữ liệu thật không bị ảnh hưởng.
+- Các bước: thêm tên mới vào tunnel (cả hai tên cùng chạy được), đặt `APP_ORIGINS` gồm cả hai địa chỉ (cách nhau dấu phẩy), khởi động lại api; sau vài tuần bỏ tên cũ.
+- Hệ quả cần biết: người dùng phải **đăng nhập lại** ở địa chỉ mới (cookie gắn theo tên miền); ai đã thêm trang vào màn hình chính điện thoại phải thêm lại; Phiếu tài khoản đã in trước đó có mã QR trỏ về địa chỉ cũ (phiếu chỉ sống 7 ngày, và nhờ giữ cả hai tên cùng chạy nên vẫn dùng được). `APP_ORIGINS[0]` là địa chỉ in vào phiếu mới, nên đặt địa chỉ mới đứng đầu.
+- Nên đổi vào lúc không có Phiên thi.
+
+**Chuyển từ WSL sang VPS về sau:**
+- Khôi phục bản `pg_dump` (lớp 1) sang máy mới được: đây là bản **logic**, chạy được trên máy khác kiến trúc CPU hay hệ điều hành, miễn PostgreSQL mới **cùng bản chính hoặc mới hơn** (hiện là 17).
+- Bản nền cộng WAL (lớp 2) là bản **vật lý**: chỉ khôi phục được trên máy cùng bản chính PostgreSQL và cùng kiến trúc CPU. Dùng cho sự cố trên chính máy này, không dựa vào để chuyển máy.
+- Mang theo: `exam_media`, `SLIP_ENCRYPTION_KEY` (nếu mất chỉ các Phiếu tài khoản còn hạn không mở lại được), các env file. Phiên đăng nhập nằm ở Redis nên người dùng đăng nhập lại.
+- Quy trình dự kiến: không có Phiên thi → dừng ghi → `pg_dump` cuối → khôi phục trên VPS → chép `exam_media` → chuyển tunnel/DNS → giữ nguyên dữ liệu trên WSL một thời gian để quay lại. Thử khôi phục sang máy khác là một lần diễn tập trước khi chuyển thật; thử khôi phục hằng tháng cũng chứng minh bản `pg_dump` còn dùng được.
+- Ảnh sau `MediaStore` có thể chuyển sang R2/S3 khi lên VPS mà không sửa nghiệp vụ (ADR-0006).
+
 ## Câu hỏi còn mở
 
-- Phần deploy của lát cắt 6: pipeline, `prod-bootstrap`, hai bản api cho phòng từ 300 người.
+- Q331: cách kích hoạt deploy (tự động khi merge `main` hay bấm tay).
+- Sau đó: `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
