@@ -23,6 +23,7 @@ REDIS_CONTAINER ?= $(STAGE)-exam-redis
 PG_DATA_VOLUME ?= $(STAGE)_exam_pgdata
 
 .PHONY: help pod postgres redis up wait down stop logs psql redis-cli dev-up dev-down ci-up ci-wait ci-down
+.PHONY: prod-bootstrap prod-up prod-scale prod-status prod-logs prod-stop prod-start prod-down prod-recover-admin prod-active-sessions prod-install-service
 
 help:
 	@echo "make dev-up     Tạo và chạy pod dev-exam (PostgreSQL :$(POSTGRES_PORT), Redis :$(REDIS_PORT))"
@@ -33,6 +34,18 @@ help:
 	@echo "make stop       Dừng pod (STAGE=dev|ci)"
 	@echo "make logs       Xem log PostgreSQL và Redis (STAGE=dev|ci)"
 	@echo "make psql       Mở psql trong container PostgreSQL (STAGE=dev|ci)"
+	@echo ""
+	@echo "Vận hành pod prod-exam (docs/ops/trien-khai.md); thêm EXAM_STAGE=drill để thử trên pod drill-exam:"
+	@echo "make prod-bootstrap TAG=<mã commit>   Dựng lần đầu (bí mật, pod, ứng dụng, Quản trị viên, dịch vụ systemd)"
+	@echo "make prod-up TAG=<mã commit>          Đưa bản mới lên (từ chối nếu có Phiên thi; FORCE_REASON=\"lý do\" để ép)"
+	@echo "make prod-scale N=1|2                 Một hoặc hai bản api"
+	@echo "make prod-status                      Tình trạng pod"
+	@echo "make prod-logs C=api                  Log (api, api-2, worker, web, postgres, redis)"
+	@echo "make prod-stop / prod-start           Dừng hoặc bật lại pod (giữ dữ liệu)"
+	@echo "make prod-down                        Xóa pod và container, GIỮ volume dữ liệu"
+	@echo "make prod-recover-admin ADMIN=<tên>   Khôi phục tài khoản Quản trị viên"
+	@echo "make prod-install-service          Cài lại dịch vụ systemd (mở WSL thì dựng lại pod)"
+	@echo "make prod-active-sessions             Có Phiên thi đang diễn ra hoặc sắp bắt đầu không"
 
 dev-up:
 	@$(MAKE) --no-print-directory up wait STAGE=dev
@@ -110,3 +123,30 @@ psql:
 
 redis-cli:
 	@$(PODMAN) exec -it $(REDIS_CONTAINER) redis-cli
+
+# ---------- Vận hành pod prod-exam (PR 6a). Logic nằm ở scripts/exam-ctl.sh ----------
+EXAM_STAGE ?= prod
+EXAM_CTL = EXAM_STAGE=$(EXAM_STAGE) bash scripts/exam-ctl.sh
+
+prod-bootstrap:
+	@$(EXAM_CTL) bootstrap
+prod-up:
+	@$(EXAM_CTL) up
+prod-scale:
+	@$(EXAM_CTL) scale $(N)
+prod-status:
+	@$(EXAM_CTL) status
+prod-logs:
+	@$(EXAM_CTL) logs $(C)
+prod-stop:
+	@$(EXAM_CTL) stop
+prod-start:
+	@$(EXAM_CTL) start
+prod-down:
+	@$(EXAM_CTL) down
+prod-install-service:
+	@$(EXAM_CTL) install-service
+prod-recover-admin:
+	@$(EXAM_CTL) recover-admin $(ADMIN)
+prod-active-sessions:
+	@$(EXAM_CTL) active-sessions

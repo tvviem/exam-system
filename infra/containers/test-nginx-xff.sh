@@ -13,7 +13,8 @@ JS
 node "$work/echo.cjs" &
 echo_pid=$!
 podman run -d --name nginx-xff-test --network host \
-  -v "$work/default.conf:/etc/nginx/conf.d/default.conf:ro" docker.io/library/nginx:1.29-alpine >/dev/null
+  -v "$work/default.conf:/etc/nginx/conf.d/default.conf:ro" \
+  -v "$here/upstream.conf:/etc/exam-nginx/upstream.conf:ro" docker.io/library/nginx:1.29-alpine >/dev/null
 sleep 3
 
 fail=0

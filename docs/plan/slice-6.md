@@ -248,7 +248,36 @@ Chọn **A: không có lệnh `make` nào xóa dữ liệu**.
 - `make prod-recover-admin ADMIN=<tên>` bọc lệnh đó trong pod `prod-exam`; hướng dẫn từng bước trong `docs/ops/trien-khai.md`.
 - Khuyến nghị trong hướng dẫn: tạo thêm một **Quản trị viên thứ hai** (chức năng "Tạo Quản trị viên" có sẵn) để có người dự phòng; người dự phòng của Q326 là ứng viên.
 
+### PR 6a: ghi chú triển khai (8/11/2026)
+
+**Đã làm:** `infra/scripts/exam-ctl.sh` (một script, nhiều lệnh) và các mục `make -C infra prod-*` ở `infra/Makefile`; nginx chia tải qua file `upstream` mount từ máy chủ; `docs/ops/trien-khai.md` (hướng dẫn vận hành); `demo-wsl.md` mục 6 và 7 được thay bằng tài liệu mới.
+
+**Khác với khung đã duyệt (cần biết):**
+- Dịch vụ systemd gọi `podman pod start prod-exam` (lệnh `prod-start` tương đương), **không** gọi `make prod-up`: `prod-up` cần `TAG` và chạy migration, còn mở WSL chỉ cần bật lại pod đã có. Dịch vụ cũng dừng pod êm (`pod stop --time 30`) khi tắt WSL.
+- Chốt chặn Phiên thi (Q332) đặt ngay trong `prod-up`, `prod-stop`, `prod-down` và `prod-scale N=1`, để mọi đường vào đều được bảo vệ (6b chỉ gọi lại). Có `FORCE_REASON` thì cho qua và ghi `~/.local/state/exam-prod/operations.log` trên máy (còn khi cơ sở dữ liệu hỏng). Ghi vào `audit_logs` để dành cho 6b, khi có workflow.
+- "Có Phiên thi" = Phiên thi chưa hủy có `opens_at - 60 phút <= now < closes_at`, **hoặc** còn Lượt làm bài `in_progress` (Lượt chưa hết hạn sau giờ đóng Khung giờ vẫn tính).
+- Thêm lệnh `prod-install-service` (cài lại dịch vụ), `prod-start`, `prod-active-sessions`.
+- Ảnh web đổi: nginx worker chạy `user node` (uid 1000, cùng uid với api) để đọc ảnh `0600` trên volume dùng chung; nginx dùng hai `upstream` (`/api/` chia vòng tròn, `/ws/` chia theo địa chỉ khách bằng `hash $client_ip consistent` để Socket.IO polling luôn vào cùng một bản api). `test-nginx-xff.sh` cập nhật theo.
+
+**Đã thử** trên pod tạm `drill-exam` (ảnh api của commit `c348cc6`, ảnh web build tay từ nhánh này), có Phiên thi thật do `demo:room` dựng với 10 người dự thi giả:
+
+| Kiểm | Kết quả |
+|---|---|
+| `prod-bootstrap` từ đầu (tải ảnh, migration, Quản trị viên) | 20 giây |
+| Chốt chặn khi có Phiên thi | `prod-up`, `prod-stop`, `prod-down` từ chối; `prod-scale N=1` khi chỉ có một bản thì không cần chặn; ép bằng `FORCE_REASON` chạy và ghi log |
+| `prod-scale N=2` | 8 giây; 40 yêu cầu chia 19 / 21 cho hai bản |
+| Một bản api dừng giữa chừng | 30/30 yêu cầu vẫn thành công (nginx chuyển sang bản còn lại), cả hai chiều |
+| `prod-up` khi chạy hai bản api, 24–27 giây | thay lần lượt có đợi từng bản sẵn sàng: 0 lỗi 502; chỉ khi thay web có khoảng 0,6 giây không kết nối được (6 yêu cầu trong 240) |
+| Dừng một container (SIGTERM) | dưới 1,2 giây |
+| Dịch vụ systemd: dừng, bật | dừng 0,8 giây; bật đến khi `/api/health` trả lời 2,8 giây |
+| Ảnh `0600` do api ghi | nginx worker (`user node`) đọc được |
+| `prod-recover-admin` | in mật khẩu tạm một lần |
+
+Lần chạy đầu phát hiện: thay api thứ hai khi api thứ nhất chưa sẵn sàng làm 8 lần 502 (đã sửa bằng đợi từng bản).
+
+**Chưa thử (cần máy thật, ghi vào checklist 6e):** tunnel Cloudflare thật và tên `exam.plotrackerbluni.site`; `wsl --shutdown` thật rồi mở Ubuntu; WSL có tự tắt khi đóng hết cửa sổ terminal không; ảnh minh họa qua X-Accel từ api thật; Socket.IO qua hai bản api bằng trình duyệt.
+
 ## Câu hỏi còn mở
 
-- Q342: bắt đầu code 6a (đề xuất merge #77 trước để 6a tách từ `main`).
+- PR 6a đã mở, chờ chủ dự án duyệt và merge.
 - Sau 6a: 6b (workflow deploy), 6c (script sao lưu), 6d (phần trong ứng dụng), 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.

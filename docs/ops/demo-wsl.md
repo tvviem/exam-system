@@ -115,6 +115,8 @@ Nếu xóa pod plo, nhớ dừng luôn runner `~/actions-runner` của plo và b
 
 ## 6. Tạo bí mật, volume và pod
 
+> **Đã thay bằng [trien-khai.md](./trien-khai.md) (PR 6a).** `make -C infra prod-bootstrap` làm toàn bộ mục này (kể cả sinh khóa, migration, Quản trị viên, dịch vụ systemd). Phần dưới giữ lại để tham khảo từng lệnh, **đừng chạy tay**: bản nháp thiếu biến `BOOTSTRAP_ADMIN_FULL_NAME` và vẫn đòi `podman login` dù ảnh đã công khai.
+
 ```bash
 mkdir -p ~/exam-prod-secrets ~/exam-prod-backups
 chmod 700 ~/exam-prod-secrets ~/exam-prod-backups
@@ -209,6 +211,8 @@ unset BOOT_PW
 > **Ảnh minh họa:** api ghi file với quyền `0600` còn nginx đọc volume `exam_media`; nếu hai bên chạy khác uid thì ảnh trả 403 (xem chú thích trong `infra/containers/nginx.conf`). Mục 9 có bước kiểm; nếu lỗi, chạy hai container cùng uid hoặc đặt ACL cho volume.
 
 ## 7. Cloudflare Tunnel
+
+> Các bước thật nằm ở [trien-khai.md](./trien-khai.md) mục 2, bước 4 (tên `exam.plotrackerbluni.site`, dùng chung tunnel với plo-tracker, `sudo` do chủ dự án chạy).
 
 `cloudflared` đã chạy như dịch vụ systemd với `/etc/cloudflared/config.yml`. Thêm một quy tắc ingress **trước** dòng chốt chặn `http_status:404`:
 

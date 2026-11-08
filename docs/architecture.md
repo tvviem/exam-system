@@ -177,7 +177,7 @@ Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pu
 
 ## 8. Triển khai (giai đoạn 1: Podman pod trên WSL)
 
-Làm theo cùng mô hình đã chạy ổn định ở `plo-tracker-bluni` ([ADR-0006](./adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)). Các bước chi tiết, số đo sức chứa và checklist ở [ops/demo-wsl.md](./ops/demo-wsl.md):
+Làm theo cùng mô hình đã chạy ổn định ở `plo-tracker-bluni` ([ADR-0006](./adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)). Hướng dẫn vận hành (lệnh `make -C infra prod-*`) ở [ops/trien-khai.md](./ops/trien-khai.md); số đo sức chứa và checklist ở [ops/demo-wsl.md](./ops/demo-wsl.md):
 
 | Thành phần | Container trong pod `prod-exam` | Ghi chú |
 |---|---|---|
