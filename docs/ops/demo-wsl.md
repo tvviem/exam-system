@@ -232,6 +232,8 @@ sudo systemctl status cloudflared --no-pager
 
 ## 8. Sao lưu
 
+> **Bản nháp tạm cho lần dùng thử.** Phương án sao lưu chính thức (4 lớp, lưu liên tục, ổ D: và Cloudflare R2, giữ theo bảng đã duyệt) nằm ở [docs/plan/slice-6.md](../plan/slice-6.md) và sẽ thay mục này khi lát cắt 6 có code.
+
 Sao lưu hằng ngày và ngay trước mỗi lần deploy, giữ 14 bản, thỉnh thoảng thử khôi phục:
 
 ```bash

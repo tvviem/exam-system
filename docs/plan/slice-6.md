@@ -1,0 +1,254 @@
+# Lát cắt 6: đưa bản MVP đầu tiên lên chạy thật
+
+Trạng thái: **đang thiết kế** (chưa có code). Mỗi quyết định được chủ dự án duyệt từng câu một và ghi lại ở đây.
+
+Phạm vi dự kiến: pipeline deploy lên pod `prod-exam` (Podman trên WSL, Cloudflare Tunnel, xem ADR-0006), khởi tạo môi trường chạy thật, **sao lưu và khôi phục**, khuyến nghị chạy hai bản api cho phòng từ 300 người (xem `docs/hieu-nang.md`).
+
+## Thiết kế sao lưu và khôi phục
+
+Lý do: đề thi và bài làm của Người dự thi là dữ liệu không làm lại được. Bất biến của hệ thống là Câu trả lời được ghi vào PostgreSQL trước khi báo lưu thành công, nên mất cơ sở dữ liệu là mất bài thi.
+
+### Cần sao lưu những gì
+
+| Thành phần | Sao lưu | Ghi chú |
+|---|---|---|
+| PostgreSQL (volume `exam_pgdata`) | Có, quan trọng nhất | Đề thi, Lượt làm bài, Câu trả lời, điểm, Phúc khảo, nhật ký |
+| Volume `exam_media` (ảnh) | Có | Chỉ thêm file mới, đồng bộ theo kiểu chỉ chép phần mới |
+| Khóa bí mật (`SLIP_ENCRYPTION_KEY`, các file env trong `~/exam-prod-secrets/`) | Có, tách riêng | Mất khóa thì Phiếu tài khoản cũ không đọc được |
+| Redis | Không | Chỉ chứa dữ liệu tạm (phiên, hàng đợi) |
+
+### Q323: mức mất dữ liệu tối đa chấp nhận được (đã duyệt 8/11/2026)
+
+Chọn **phương án A: khoảng 1 đến 5 phút**. Dùng đủ 4 lớp:
+
+1. **Bản đầy đủ**: `pg_dump -Fc` hằng ngày lúc 2 giờ sáng, thêm một bản ngay trước mỗi lần deploy và ngay sau mỗi lần Công bố; kiểm tra file mở được; giữ 14 bản hằng ngày, 8 bản hằng tuần, 12 bản hằng tháng.
+2. **Lưu liên tục**: lưu nhật ký ghi của PostgreSQL (WAL) theo từng phút, kèm bản nền định kỳ, để khôi phục về một thời điểm bất kỳ (PITR).
+3. **Bản ngoài máy, đã mã hóa**: mỗi đêm mã hóa rồi đẩy sang nơi khác máy; chép cả `exam_media` và khóa bí mật.
+4. **Thử khôi phục định kỳ**: mỗi tháng tự khôi phục bản gần nhất vào cơ sở dữ liệu tạm, kiểm tra số dòng, khởi động thử api, ghi lại thời gian khôi phục.
+
+Thêm: chuông báo cho Quản trị viên nếu bản sao lưu mới nhất cũ hơn 26 giờ hoặc bị lỗi; sách hướng dẫn khôi phục `docs/ops/khoi-phuc.md`.
+
+### Ai làm việc sao lưu và khôi phục (đã trao đổi 8/11/2026)
+
+- Sao lưu, đẩy ra ngoài máy, thử khôi phục: **script chạy tự động** theo bộ hẹn giờ trên server (systemd timer), không có nút trong giao diện.
+- Sao lưu thêm trước việc lớn: người vận hành gõ lệnh trên server.
+- Khôi phục thật: **thủ công**, người vận hành làm theo sách hướng dẫn. Không làm nút "Khôi phục" trong ứng dụng (ghi đè cơ sở dữ liệu đang chạy, khóa và tài khoản kho ngoài máy không nên nằm trong ứng dụng, giao diện cũng hỏng khi hệ thống hỏng).
+- Quản trị viên chỉ có màn hình **chỉ đọc** về tình trạng sao lưu (script ghi kết quả mỗi lần chạy vào một bảng nhỏ) và nhận chuông khi quá hạn.
+
+### Cách tổ chức dữ liệu sao lưu và dung lượng (đã trao đổi 8/11/2026)
+
+- Lớp 1 là bản đầy đủ mỗi lần, mỗi file đứng độc lập, dung lượng mỗi file tăng theo kho dữ liệu.
+- Lớp 2 là kiểu cộng dồn (WAL) nhưng **không để chuỗi kéo dài vô hạn**: mỗi tuần làm một bản nền mới, xóa nhật ký cũ hơn bản nền cũ nhất còn giữ.
+- `exam_media` đồng bộ theo kiểu chỉ chép file mới.
+- Ước tính (chưa đo): năm đầu khoảng 1–2 GB cho 34 bản `pg_dump` và khoảng 1–2 GB cho bản nền cùng WAL một tuần; ba năm khoảng 7 GB và 3–5 GB. Trước khi chạy thật đo lại bằng ca đo tải 500 người và ghi số vào `docs/hieu-nang.md`.
+- Gói miễn phí 10 GB của R2 đủ khoảng 1–2 năm; sau đó trả phí nhỏ hoặc giảm số bản giữ ở ngoài máy.
+
+### Q324: nơi lưu bản sao (đã duyệt 8/11/2026)
+
+Chọn **R2 cộng thêm một bản tại ổ D: của Windows**:
+
+- **Bản ngoài máy:** Cloudflare R2, tận dụng 10 GB miễn phí. Dữ liệu mã hóa trước khi đẩy lên. Dùng một khóa R2 riêng chỉ được ghi, không được xóa; khóa dùng để đọc lại khi khôi phục cất riêng.
+- **Bản tại chỗ:** thư mục trên ổ D: của máy Windows (WSL thấy qua `/mnt/d`), bên cạnh bản trong WSL.
+- Lưu ý: nếu D: chỉ là một phân vùng của cùng một ổ cứng vật lý thì bản này chống được xóa nhầm và hỏng hệ thống tập tin WSL, nhưng **không** chống được hỏng ổ cứng. Phần đó do bản R2 đảm nhiệm. Khi viết script sẽ kiểm tra D: nằm trên ổ vật lý nào và ghi vào sách hướng dẫn.
+
+### Q325: thời gian giữ bản sao ở từng nơi (đã duyệt 8/11/2026)
+
+| Nơi | Giữ gì | Vì sao |
+|---|---|---|
+| WSL (trên máy) | 14 bản hằng ngày, 4 bản hằng tuần, WAL 7 ngày | Khôi phục nhanh nhất khi xóa nhầm hoặc deploy hỏng |
+| Ổ D: (còn khoảng 82 GB) | 14 bản hằng ngày, 8 bản hằng tuần, 12 bản hằng tháng, WAL 14 ngày | Rộng chỗ, giữ lâu nhất để quay về mốc cũ |
+| R2 (10 GB miễn phí) | 7 bản hằng ngày, 4 bản hằng tuần, 6 bản hằng tháng, WAL 7 ngày, bản nền gần nhất | Giữ gọn để nằm trong gói miễn phí; là chỗ cứu khi mất cả máy |
+
+Mốc quay về xa nhất: 12 tháng ở D:, 6 tháng ở R2. Nếu R2 gần đầy thì giảm số bản hằng tháng trước, không giảm WAL và bản nền.
+
+**Cách hiểu chữ "bản"** (làm rõ 8/11/2026): một bản là một file `pg_dump` đầy đủ, ứng với một thời điểm, có thể khôi phục độc lập. Script chỉ tạo **một bản mỗi đêm**. "Hằng tuần" và "hằng tháng" không phải bản làm thêm, mà là bản của đêm Chủ nhật (hằng tuần) và đêm mùng 1 (hằng tháng) được **giữ lại lâu hơn** thay vì bị xóa sau 14 ngày. Vì vậy tổng số file ở D: chỉ khoảng 14 + 8 + 12 = 34, không nhân đôi. Ngày không có ai thao tác vẫn có một bản, nội dung gần như giống bản hôm trước; chấp nhận vì file nhỏ, và bản đó còn chứng minh script vẫn chạy (quy tắc báo chuông 26 giờ dựa vào đó). Lưu liên tục (WAL) vào ngày không hoạt động gần như không phát sinh gì.
+
+## Tóm tắt phương án sao lưu (để theo dõi và xem lại)
+
+Mục tiêu: mất tối đa 1 đến 5 phút thao tác của Người dự thi khi máy hỏng giữa giờ thi (Q323).
+
+```text
+PostgreSQL ──┬─ pg_dump hằng ngày 02:00, trước deploy, sau Công bố   (lớp 1)
+             ├─ WAL từng phút + bản nền hằng tuần                    (lớp 2, khôi phục về một thời điểm)
+exam_media ──┤  chỉ chép file mới
+khóa bí mật ─┘  chép riêng
+                     │ mã hóa
+        ┌────────────┼────────────┐
+      WSL         Ổ D: (Windows)   Cloudflare R2     (lớp 3, Q324, Q325)
+                     │
+   mỗi tháng: khôi phục thử vào CSDL tạm, kiểm tra, ghi thời gian   (lớp 4)
+   quá 26 giờ chưa có bản mới → chuông báo Quản trị viên
+```
+
+| Quyết định | Nội dung | Câu |
+|---|---|---|
+| Mức mất dữ liệu tối đa | 1 đến 5 phút, dùng đủ 4 lớp | Q323 |
+| Ai làm | Script tự động theo systemd timer; khôi phục thật làm thủ công theo sách hướng dẫn; Quản trị viên chỉ xem tình trạng | trao đổi 8/11 |
+| Nơi lưu | WSL, ổ D: của Windows, Cloudflare R2 (khóa chỉ ghi, không xóa) | Q324 |
+| Thời gian giữ | Theo bảng Q325 | Q325 |
+
+Việc cần làm khi viết code lát cắt 6 (chưa làm):
+- Script sao lưu, đẩy ra ngoài máy, khôi phục, thử khôi phục; timer systemd; thiết lập lưu WAL cho PostgreSQL trong pod.
+- Bảng nhỏ ghi kết quả mỗi lần sao lưu; màn hình chỉ đọc cho Quản trị viên; job báo chuông khi quá 26 giờ.
+- `docs/ops/khoi-phuc.md`: sách hướng dẫn khôi phục từng bước, gồm cả khôi phục về một thời điểm.
+- Đo dung lượng thật bằng ca đo tải 500 người, ghi vào `docs/hieu-nang.md`; kiểm D: nằm trên ổ vật lý nào.
+- Cập nhật `docs/architecture.md` mục 6 và 8, `docs/ops/demo-wsl.md` mục 8 theo phương án này.
+
+### Q326: ai khôi phục khi sự cố (đã duyệt 8/11/2026)
+
+Chọn **phương án A**: chủ dự án là người khôi phục chính, thêm **một người dự phòng**. Người dự phòng được đưa `docs/ops/khoi-phuc.md` (viết cho người biết dòng lệnh Linux cơ bản) và một bản chép các khóa cần để khôi phục (khóa đọc R2, khóa giải mã bản sao lưu, `SLIP_ENCRYPTION_KEY`). Nơi cất các khóa này sẽ chốt ở câu sau.
+
+### Q327: nơi cất bản chép các khóa (đã duyệt 8/11/2026)
+
+Chọn **phương án C: cả hai**.
+
+- **Trình quản lý mật khẩu dùng chung** (ví dụ Bitwarden, gói miễn phí cho hai người): chủ dự án và người dự phòng cùng mở được từ điện thoại, không phụ thuộc máy WSL. Dùng hằng ngày.
+- **Bản giấy trong phong bì niêm phong** cất ở nhà: dự phòng khi không vào được trình quản lý mật khẩu.
+- Các khóa cần chép: khóa đọc R2, khóa giải mã bản sao lưu, `SLIP_ENCRYPTION_KEY`, thông tin đăng nhập R2 và mật khẩu cơ sở dữ liệu. Không đưa khóa vào repo, vào chat hay vào tài liệu.
+- `docs/ops/khoi-phuc.md` ghi **tên** từng khóa và chỗ tìm, không ghi giá trị.
+- Mỗi lần đổi khóa phải cập nhật cả hai nơi; việc này nằm trong checklist thử khôi phục hằng tháng.
+
+### Q328: dịch vụ báo ngoài máy (đã duyệt 8/11/2026)
+
+Chọn **phương án A: có dùng** một dịch vụ kiểu healthchecks.io (gói miễn phí).
+
+- Một địa chỉ báo cho sao lưu hằng đêm: script gọi sau khi sao lưu và đẩy ra ngoài máy thành công; gọi địa chỉ "thất bại" khi lỗi.
+- Một địa chỉ báo hệ thống còn trả lời, để biết khi cả máy tắt, ngủ, mất điện hoặc mất mạng.
+- Email báo về hộp thư của chủ dự án, thêm người dự phòng nếu muốn.
+- Chỉ gửi tín hiệu "còn sống", **không** gửi dữ liệu thi hay tên người dùng. Địa chỉ báo là bí mật nhỏ, cất trong env file như các khóa khác.
+- Quyết định cuối cùng về nhà cung cấp cụ thể và hạn chờ (ví dụ quá 26 giờ thì báo) chốt khi viết script.
+
+## Trạng thái thiết kế sao lưu
+
+Đã duyệt xong Q323–Q328: mức mất dữ liệu, ai làm, nơi lưu, thời gian giữ, người khôi phục, nơi cất khóa, báo ngoài máy. Chưa có code.
+
+## Thiết kế deploy
+
+### Q330: địa chỉ công khai (đã duyệt 8/11/2026)
+
+Chọn **phương án C**: bản MVP dùng một tên phụ của tên miền hiện có (`plotrackerbluni.site`, qua tunnel Cloudflare sẵn có, cổng `:8180`); mua tên miền riêng sau khi hệ thống ổn định. Tên phụ cụ thể chốt khi cấu hình tunnel.
+
+**Đổi địa chỉ về sau (đã kiểm trong code 8/11/2026):**
+- Địa chỉ chỉ xuất hiện ở biến `APP_ORIGINS` của api (chống CSRF, kiểm Origin của Socket.IO, địa chỉ trang đăng nhập trong mã QR của Phiếu tài khoản). **Không có địa chỉ nào được lưu trong PostgreSQL**, nên dữ liệu thật không bị ảnh hưởng.
+- Các bước: thêm tên mới vào tunnel (cả hai tên cùng chạy được), đặt `APP_ORIGINS` gồm cả hai địa chỉ (cách nhau dấu phẩy), khởi động lại api; sau vài tuần bỏ tên cũ.
+- Hệ quả cần biết: người dùng phải **đăng nhập lại** ở địa chỉ mới (cookie gắn theo tên miền); ai đã thêm trang vào màn hình chính điện thoại phải thêm lại; Phiếu tài khoản đã in trước đó có mã QR trỏ về địa chỉ cũ (phiếu chỉ sống 7 ngày, và nhờ giữ cả hai tên cùng chạy nên vẫn dùng được). `APP_ORIGINS[0]` là địa chỉ in vào phiếu mới, nên đặt địa chỉ mới đứng đầu.
+- Nên đổi vào lúc không có Phiên thi.
+
+**Chuyển từ WSL sang VPS về sau:**
+- Khôi phục bản `pg_dump` (lớp 1) sang máy mới được: đây là bản **logic**, chạy được trên máy khác kiến trúc CPU hay hệ điều hành, miễn PostgreSQL mới **cùng bản chính hoặc mới hơn** (hiện là 17).
+- Bản nền cộng WAL (lớp 2) là bản **vật lý**: chỉ khôi phục được trên máy cùng bản chính PostgreSQL và cùng kiến trúc CPU. Dùng cho sự cố trên chính máy này, không dựa vào để chuyển máy.
+- Mang theo: `exam_media`, `SLIP_ENCRYPTION_KEY` (nếu mất chỉ các Phiếu tài khoản còn hạn không mở lại được), các env file. Phiên đăng nhập nằm ở Redis nên người dùng đăng nhập lại.
+- Quy trình dự kiến: không có Phiên thi → dừng ghi → `pg_dump` cuối → khôi phục trên VPS → chép `exam_media` → chuyển tunnel/DNS → giữ nguyên dữ liệu trên WSL một thời gian để quay lại. Thử khôi phục sang máy khác là một lần diễn tập trước khi chuyển thật; thử khôi phục hằng tháng cũng chứng minh bản `pg_dump` còn dùng được.
+- Ảnh sau `MediaStore` có thể chuyển sang R2/S3 khi lên VPS mà không sửa nghiệp vụ (ADR-0006).
+
+### Q331: cách kích hoạt deploy (đã duyệt 8/11/2026)
+
+Chọn **phương án A: bấm tay**. Merge vào `main` chỉ build image, **không** tự deploy.
+
+- Chủ dự án vào GitHub, bấm "Run workflow" của workflow deploy và chọn bản cần đưa lên (mã commit đã build xanh).
+- Workflow chạy trên runner riêng của exam-system (`~/actions-runner-exam-sys`, nhãn `wsl-exam`; kiểm đã đăng ký chưa khi làm pipeline) và làm các bước ở `architecture.md` mục 9: kiểm tra pod và env file, chặn nếu có Phiên thi, `pg_dump` trước khi deploy, migration, thay lần lượt api, worker, web kèm kiểm tra sức khỏe, smoke test qua địa chỉ công khai.
+- **Quay lui** là chạy lại workflow với mã commit cũ (migration chỉ thêm theo kiểu expand, contract, nên bản cũ vẫn chạy được trên cơ sở dữ liệu mới).
+- **Yêu cầu về tài liệu:** hướng dẫn vận hành phải đủ chi tiết để làm nguồn tham khảo lâu dài, viết bằng tiếng Việt, từng bước, kèm lệnh cụ thể, kết quả mong đợi và cách xử lý khi lỗi. Dự kiến `docs/ops/trien-khai.md` (lần đầu và các lần sau, kiểm tra trước giờ thi, quay lui, đổi khóa, đổi địa chỉ, chuyển sang VPS) cùng `docs/ops/khoi-phuc.md`; `docs/ops/demo-wsl.md` được thay hoặc trỏ về hai tài liệu này khi lát cắt 6 có code. Mỗi PR của lát cắt 6 đổi cách vận hành phải cập nhật các tài liệu đó trong cùng PR.
+
+### Q332: chốt chặn khi deploy gặp Phiên thi (đã duyệt 8/11/2026)
+
+Chọn **phương án B**:
+
+- Script deploy **từ chối chạy** nếu có Phiên thi đang diễn ra hoặc sẽ bắt đầu trong 60 phút tới.
+- Có tùy chọn **ép khẩn cấp**: mặc định vẫn chặn; muốn ép, người bấm chạy phải nhập lý do. Lý do được ghi vào nhật ký (`audit_logs`) và hiện ở đầu báo cáo deploy. Dùng cho lỗi bảo mật nghiêm trọng cần vá ngay giữa giờ thi.
+- Hướng dẫn trong `docs/ops/trien-khai.md` nói rõ khi nào nên và không nên ép, và việc báo cho Người dự thi đang thi.
+
+### Q333: ai tạo các khóa bí mật lần đầu (đã duyệt 8/11/2026)
+
+Chọn **phương án A**: `make prod-bootstrap` tự sinh ngẫu nhiên.
+
+- Tạo `~/exam-prod-secrets/*.env` (quyền `600`, thư mục `700`) với giá trị ngẫu nhiên đủ mạnh: `SLIP_ENCRYPTION_KEY`, mật khẩu PostgreSQL, khóa mã hóa bản sao lưu, địa chỉ báo ngoài máy (điền tay vì do dịch vụ cấp), các giá trị tương tự.
+- Hiện các khóa **một lần duy nhất** lên màn hình để người vận hành chép vào trình quản lý mật khẩu và bản giấy (Q327). Không ghi khóa vào log, vào repo hay vào báo cáo của workflow.
+- Chạy lại **không ghi đè** khóa đã có (ghi đè `SLIP_ENCRYPTION_KEY` hay mật khẩu cơ sở dữ liệu làm hỏng hệ thống đang chạy); muốn đổi khóa phải theo quy trình đổi khóa trong `docs/ops/trien-khai.md`.
+
+### Q334: khi nào hệ thống tự dựng lại (đã duyệt 8/11/2026)
+
+Chủ dự án chọn: **hệ thống chỉ dựng lại khi chủ dự án bật WSL Ubuntu lên**. Quyền chủ động mở hệ thống cho người dùng thuộc về lúc bật WSL.
+
+- Làm bằng một dịch vụ systemd của user chạy `make prod-up` (phương án A đã đề xuất, bỏ phần Windows). Máy đã có systemd bật, `Linger=yes`, Podman 4.9.3; `prod-bootstrap` cài dịch vụ này.
+- **Không** tạo tác vụ Windows (Task Scheduler) tự bật WSL khi máy khởi động. Windows tự khởi động lại thì hệ thống ngừng cho đến khi chủ dự án mở Ubuntu.
+- Tắt WSL (hoặc `wsl --shutdown`) là tắt hệ thống. Hướng dẫn vận hành nhắc: kiểm tra không có Phiên thi đang diễn ra hoặc sắp bắt đầu trước khi tắt, tắt chế độ ngủ và đặt giờ hoạt động cho Windows Update (đã có ở `architecture.md` mục 8).
+- **Việc kiểm khi làm code:** (1) pod tự dựng lại sau `wsl --shutdown` rồi mở Ubuntu; (2) WSL không tự tắt khi đóng hết cửa sổ terminal (hiện máy chạy liên tục 20 giờ với container đang chạy, `.wslconfig` chưa đặt `vmIdleTimeout`); nếu có tự tắt thì cấu hình giữ WSL chạy và ghi vào hướng dẫn. (3) Thời gian từ lúc mở Ubuntu đến khi hệ thống phục vụ được, ghi vào tài liệu.
+
+### Q335: hai bản api cho phòng đông người (đã duyệt 8/11/2026)
+
+Chọn **phương án A**: mặc định **một bản api**; chủ dự án bật **hai bản** khi có Phiên thi từ 300 người trở lên.
+
+- Lệnh `make prod-scale 2` và `make prod-scale 1`, kèm hướng dẫn trong `docs/ops/trien-khai.md`. Quyết định theo số người dự thi của từng buổi.
+- Cơ sở: ca đo 500 người (`docs/hieu-nang.md`) cho thấy lúc làm bài một bản vẫn nhanh; chỉ ca 500 người cùng mở kết quả một khoảnh khắc vượt 1 giây. Mỗi bản api thêm khoảng 0,5 GB bộ nhớ, máy còn chia cho plo-tracker.
+- Khi chạy hai bản, nginx của pod phải chia tải giữa hai bản và Socket.IO phải chạy đúng qua cả hai (tin đẩy đi qua kênh Redis đã có). Kiểm bằng ca đo hai bản khi viết code.
+
+### Q336: chia lát cắt 6 thành 5 PR (đã duyệt 8/11/2026)
+
+Chọn **phương án A**: 5 PR nhỏ, làm theo thứ tự dưới đây. **Sao lưu (6c, 6d) phải xong trước Phiên thi thật đầu tiên.** Mỗi PR cập nhật tài liệu vận hành liên quan trong cùng PR (Q331); thử nghiệm dùng pod tạm, không đụng dữ liệu thật.
+
+| PR | Nội dung |
+|---|---|
+| 6a | `prod-bootstrap` (tự sinh khóa, Q333), `prod-up`, `prod-scale` (Q335), dịch vụ systemd dựng lại khi bật WSL (Q334), cấu hình tunnel (Q330) |
+| 6b | Workflow deploy bấm tay (Q331): kiểm Phiên thi, chặn và ép khẩn cấp (Q332), sao lưu trước deploy, migration, thay lần lượt, quay lui, đăng ký runner |
+| 6c | Script sao lưu: `pg_dump`, WAL, bản nền, ảnh và khóa, mã hóa, đẩy sang D: và R2, giữ theo bảng Q325, khôi phục thử, báo ngoài máy (Q323–Q328) |
+| 6d | Trong ứng dụng: bảng ghi kết quả sao lưu, màn hình chỉ đọc cho Quản trị viên, chuông khi quá 26 giờ, xóa thông báo đã đọc quá 90 ngày |
+| 6e | Hoàn tất: `trien-khai.md`, `khoi-phuc.md`, diễn tập khôi phục sang máy khác, đo hai bản api, checklist đưa lên chạy thật, cập nhật README và số đo |
+
+**Dọn máy trước khi bắt đầu (8/11/2026):** máy 16 GB RAM, đang dùng khoảng 2 GB. Pod đang chạy: `dev-exam` (dev của dự án này) và `prod-plotracker`. Pod đã dừng: `devadh` (11 ngày), `devplotracker` (4 tháng), `devapp` (8 tháng). Pod dừng không tốn RAM, chỉ tốn đĩa. Ổ WSL còn 859 GB trống. Phần đáng dọn nhất là ảnh không dùng (khoảng 25 GB) và volume Ollama (`ollamadata` 8 GB, `prod_ollamadata` 2,8 GB). Chủ dự án tự quyết xóa gì; thao tác xóa không hoàn tác.
+
+## PR 6a: thiết kế chi tiết (đang duyệt từng câu)
+
+Khung (8/11/2026): 6a thay các bước gõ tay ở `docs/ops/demo-wsl.md` mục 6 và 7 bằng lệnh `make`, thử trước trên pod tạm (cổng khác), không đụng `prod-exam` thật.
+
+| Phần | Việc | Dựa trên |
+|---|---|---|
+| `make prod-bootstrap` | Chạy một lần: thư mục bí mật, sinh khóa và in một lần, volume, pod `prod-exam` (web `:8180`, PostgreSQL `127.0.0.1:5436`), hỏi mật khẩu Quản trị viên đầu tiên, cài dịch vụ systemd | Q333, Q334 |
+| `make prod-up TAG=<mã commit>` | Chạy migration, dựng api, worker, web từ ảnh GHCR của đúng mã commit | Q331 |
+| Dịch vụ systemd | Mở Ubuntu thì dựng lại pod | Q334 |
+| `make prod-scale 1\|2` | Bật hoặc tắt bản api thứ hai, nginx chia tải | Q335 |
+| `make prod-status`, `prod-logs`, `prod-stop` | Xem tình trạng, log; dừng có kiểm Phiên thi | Q332 |
+
+### Q338: tên phụ (đã duyệt 8/11/2026)
+
+Chọn **A**: `exam.plotrackerbluni.site`. `APP_ORIGINS=https://exam.plotrackerbluni.site`.
+
+Sự thật đã kiểm về tunnel: dịch vụ `cloudflared` chạy bằng `/etc/cloudflared/config.yml` (thuộc root, cần `sudo` để sửa và khởi động lại; `~/.cloudflared/config.yml` là bản giống hệt nhưng dịch vụ **không** đọc). Tunnel hiện chỉ có `demo.plotrackerbluni.site` → `localhost:8080`. `~/.cloudflared/cert.pem` có sẵn nên `cloudflared tunnel route dns` có thể tạo bản ghi DNS cho tên mới.
+
+### Q339: cách thêm tên vào tunnel (đã duyệt 8/11/2026)
+
+Chọn **A: dùng chung tunnel hiện có** (đúng ADR-0006).
+
+- Thêm vào `/etc/cloudflared/config.yml`, **trước** dòng chốt chặn `http_status:404`: `exam.plotrackerbluni.site` → `http://127.0.0.1:8180`.
+- Tạo DNS: `cloudflared tunnel route dns <tên-hoặc-id-tunnel> exam.plotrackerbluni.site`.
+- Kiểm: `cloudflared tunnel ingress validate`, rồi `sudo systemctl restart cloudflared`. Lúc khởi động lại, `demo.plotrackerbluni.site` bị ngắt vài giây.
+- Các lệnh cần `sudo` do **chủ dự án** chạy (tác nhân không có quyền `sudo`), nên chọn lúc plo-tracker ít người dùng. `docs/ops/trien-khai.md` viết từng lệnh và kết quả mong đợi, kèm cách quay lui (khôi phục `config.yml` cũ).
+
+### Q340: lệnh có xóa dữ liệu thật hay không (đã duyệt 8/11/2026)
+
+Chọn **A: không có lệnh `make` nào xóa dữ liệu**.
+
+- `make prod-down` chỉ xóa container và pod, **giữ nguyên** volume `exam_pgdata` và `exam_media`; `prod-up` dựng lại là có đủ dữ liệu.
+- Xóa volume chỉ làm tay bằng `podman volume rm`, theo một mục riêng trong `docs/ops/trien-khai.md` có cảnh báo: kiểm tra bản sao lưu mở được (khôi phục thử thành công) trước khi xóa.
+
+### Q341: các mặc định kỹ thuật của 6a (đã duyệt 8/11/2026)
+
+| Mục | Mặc định |
+|---|---|
+| Tên container | `prod-exam-postgres`, `prod-exam-redis`, `prod-exam-api` (bản thứ hai `prod-exam-api-2`), `prod-exam-worker`, `prod-exam-web` |
+| Giới hạn tài nguyên | PostgreSQL 3 GB, api 1 GB mỗi bản, worker 512 MB, web 256 MB, Redis 256 MB (tổng khoảng 5 GB với một api, 6 GB với hai api) |
+| Khi container lỗi | Tự khởi động lại (`--restart always`) |
+| Log container | Tối đa 10 MB mỗi file, giữ 3 file mỗi container |
+| Quản trị viên đầu tiên | Tên đăng nhập `quantri`; `prod-bootstrap` hỏi **họ tên** và mật khẩu (từ 10 ký tự), không lưu vào lịch sử lệnh hay file. Lệnh `bootstrap-admin` đòi `BOOTSTRAP_ADMIN_FULL_NAME`, bản nháp `demo-wsl.md` mục 6 còn thiếu biến này |
+| Tải ảnh | `ghcr.io/tvviem/exam-api` và `exam-web` theo mã commit, không cần đăng nhập (ảnh đã công khai) |
+| Kiểm tra sau khi dựng | `prod-up` chờ `/api/health` qua `127.0.0.1:8180`; không xong sau 60 giây thì báo lỗi và in log |
+| Thử nghiệm | Pod tạm `drill-exam` dùng cổng khác, xóa sau khi thử |
+
+**Quên mật khẩu Quản trị viên (hỏi thêm 8/11/2026):** hệ thống đã có sẵn lệnh `recover-admin --username <tên>` (Q60, `docs/data-model.md`): mở Khóa đăng nhập, gỡ khóa tạm, cấp mật khẩu tạm mới (in ra một lần, hạn 7 ngày, buộc đổi khi đăng nhập), thu hồi mọi phiên, ghi `audit_logs` (`cli.recover-admin`). Chạy được trên server. Hệ thống không có email nên không có "quên mật khẩu" tự phục vụ. 6a thêm:
+- `make prod-recover-admin ADMIN=<tên>` bọc lệnh đó trong pod `prod-exam`; hướng dẫn từng bước trong `docs/ops/trien-khai.md`.
+- Khuyến nghị trong hướng dẫn: tạo thêm một **Quản trị viên thứ hai** (chức năng "Tạo Quản trị viên" có sẵn) để có người dự phòng; người dự phòng của Q326 là ứng viên.
+
+## Câu hỏi còn mở
+
+- Q342: bắt đầu code 6a (đề xuất merge #77 trước để 6a tách từ `main`).
+- Sau 6a: 6b (workflow deploy), 6c (script sao lưu), 6d (phần trong ứng dụng), 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.

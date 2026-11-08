@@ -160,7 +160,7 @@ Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pu
   - Kiểm tra định dạng, kích thước và loại MIME thật của ảnh tải lên.
 - **Vận hành:**
   - Khóa bí mật lưu trong env file ngoài repo (`~/exam-prod-secrets/*.env`, quyền `600`).
-  - `pg_dump` hằng ngày, thêm một bản ngay trước mỗi lần deploy; định kỳ chạy thử khôi phục.
+  - Sao lưu 4 lớp (bản đầy đủ, lưu liên tục WAL, bản ngoài máy đã mã hóa, thử khôi phục định kỳ): xem [docs/plan/slice-6.md](plan/slice-6.md) mục "Thiết kế sao lưu và khôi phục".
   - Nhật ký thao tác chỉ ghi thêm.
   - Mục tiêu đạt OWASP ASVS cấp 2.
 
@@ -189,7 +189,7 @@ Làm theo cùng mô hình đã chạy ổn định ở `plo-tracker-bluni` ([ADR
 
 - **Ra Internet:** dùng chung `cloudflared` đang chạy trên máy. Thêm một ingress rule `exam.<tên-miền>` → `http://localhost:8180`. Tunnel hỗ trợ WebSocket nên Socket.IO chạy được. Đã kiểm 4/11/2026: Socket.IO nối và vào phòng qua chính `infra/containers/nginx.conf` (nginx 1.29) cả bằng WebSocket thẳng lẫn nâng cấp từ polling; phần Cloudflare Tunnel chưa thử được vì chưa có tên miền (Socket.IO ping 25 giây giữ kết nối dưới hạn 100 giây không có dữ liệu của Cloudflare).
 - **Bí mật:** đặt trong `~/exam-prod-secrets/{api,postgres}.env`, không nằm trong repo.
-- **Sao lưu:** lưu ở `~/exam-prod-backups/`, lấy ý tưởng từ `BACKUP_OPERATOR_RUNBOOK.md` của plo-tracker.
+- **Sao lưu:** phương án đã duyệt ở [docs/plan/slice-6.md](plan/slice-6.md): mất tối đa 1 đến 5 phút dữ liệu, bản ở `~/exam-prod-backups/` (WSL), ổ D: của Windows và Cloudflare R2, giữ theo bảng Q325. Chưa có code (lát cắt 6).
 - **Rủi ro riêng của WSL:** Windows ngủ, cập nhật hoặc khởi động lại trong giờ thi. Cần tắt sleep, đặt Active Hours cho Windows Update và có checklist trước mỗi Phiên thi quan trọng.
 - **Chuyển sang VPS:** dùng nguyên các image và Makefile. Chỉ đổi env file và runner. Nếu VPS có Podman ≥ 4.4, có thể chuyển sang Quadlet (systemd) để tự khởi động lại.
 
