@@ -158,7 +158,15 @@ Chọn **phương án B**:
 - Có tùy chọn **ép khẩn cấp**: mặc định vẫn chặn; muốn ép, người bấm chạy phải nhập lý do. Lý do được ghi vào nhật ký (`audit_logs`) và hiện ở đầu báo cáo deploy. Dùng cho lỗi bảo mật nghiêm trọng cần vá ngay giữa giờ thi.
 - Hướng dẫn trong `docs/ops/trien-khai.md` nói rõ khi nào nên và không nên ép, và việc báo cho Người dự thi đang thi.
 
+### Q333: ai tạo các khóa bí mật lần đầu (đã duyệt 8/11/2026)
+
+Chọn **phương án A**: `make prod-bootstrap` tự sinh ngẫu nhiên.
+
+- Tạo `~/exam-prod-secrets/*.env` (quyền `600`, thư mục `700`) với giá trị ngẫu nhiên đủ mạnh: `SLIP_ENCRYPTION_KEY`, mật khẩu PostgreSQL, khóa mã hóa bản sao lưu, địa chỉ báo ngoài máy (điền tay vì do dịch vụ cấp), các giá trị tương tự.
+- Hiện các khóa **một lần duy nhất** lên màn hình để người vận hành chép vào trình quản lý mật khẩu và bản giấy (Q327). Không ghi khóa vào log, vào repo hay vào báo cáo của workflow.
+- Chạy lại **không ghi đè** khóa đã có (ghi đè `SLIP_ENCRYPTION_KEY` hay mật khẩu cơ sở dữ liệu làm hỏng hệ thống đang chạy); muốn đổi khóa phải theo quy trình đổi khóa trong `docs/ops/trien-khai.md`.
+
 ## Câu hỏi còn mở
 
-- Q333: khởi tạo môi trường lần đầu (`prod-bootstrap`): ai tạo các khóa bí mật.
+- Q334: tự khởi động lại hệ thống khi Windows hoặc WSL khởi động lại (hiện trạng máy: systemd bật, `Linger=yes`, Podman 4.9.3 hỗ trợ Quadlet).
 - Sau đó: `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
