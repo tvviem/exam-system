@@ -224,9 +224,15 @@ Chọn **A: dùng chung tunnel hiện có** (đúng ADR-0006).
 - Kiểm: `cloudflared tunnel ingress validate`, rồi `sudo systemctl restart cloudflared`. Lúc khởi động lại, `demo.plotrackerbluni.site` bị ngắt vài giây.
 - Các lệnh cần `sudo` do **chủ dự án** chạy (tác nhân không có quyền `sudo`), nên chọn lúc plo-tracker ít người dùng. `docs/ops/trien-khai.md` viết từng lệnh và kết quả mong đợi, kèm cách quay lui (khôi phục `config.yml` cũ).
 
+### Q340: lệnh có xóa dữ liệu thật hay không (đã duyệt 8/11/2026)
+
+Chọn **A: không có lệnh `make` nào xóa dữ liệu**.
+
+- `make prod-down` chỉ xóa container và pod, **giữ nguyên** volume `exam_pgdata` và `exam_media`; `prod-up` dựng lại là có đủ dữ liệu.
+- Xóa volume chỉ làm tay bằng `podman volume rm`, theo một mục riêng trong `docs/ops/trien-khai.md` có cảnh báo: kiểm tra bản sao lưu mở được (khôi phục thử thành công) trước khi xóa.
+
 ## Câu hỏi còn mở
 
-- Q340: lệnh có xóa dữ liệu thật hay không (`prod-down`, xóa volume).
 - Q341: các mặc định kỹ thuật còn lại của 6a (tên container, giới hạn tài nguyên, chính sách tự khởi động lại, tên Quản trị viên đầu tiên).
 - Sau đó: code 6a.
 - Sau đó (lát cắt 6): `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
