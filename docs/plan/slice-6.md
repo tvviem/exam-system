@@ -166,7 +166,16 @@ Chọn **phương án A**: `make prod-bootstrap` tự sinh ngẫu nhiên.
 - Hiện các khóa **một lần duy nhất** lên màn hình để người vận hành chép vào trình quản lý mật khẩu và bản giấy (Q327). Không ghi khóa vào log, vào repo hay vào báo cáo của workflow.
 - Chạy lại **không ghi đè** khóa đã có (ghi đè `SLIP_ENCRYPTION_KEY` hay mật khẩu cơ sở dữ liệu làm hỏng hệ thống đang chạy); muốn đổi khóa phải theo quy trình đổi khóa trong `docs/ops/trien-khai.md`.
 
+### Q334: khi nào hệ thống tự dựng lại (đã duyệt 8/11/2026)
+
+Chủ dự án chọn: **hệ thống chỉ dựng lại khi chủ dự án bật WSL Ubuntu lên**. Quyền chủ động mở hệ thống cho người dùng thuộc về lúc bật WSL.
+
+- Làm bằng một dịch vụ systemd của user chạy `make prod-up` (phương án A đã đề xuất, bỏ phần Windows). Máy đã có systemd bật, `Linger=yes`, Podman 4.9.3; `prod-bootstrap` cài dịch vụ này.
+- **Không** tạo tác vụ Windows (Task Scheduler) tự bật WSL khi máy khởi động. Windows tự khởi động lại thì hệ thống ngừng cho đến khi chủ dự án mở Ubuntu.
+- Tắt WSL (hoặc `wsl --shutdown`) là tắt hệ thống. Hướng dẫn vận hành nhắc: kiểm tra không có Phiên thi đang diễn ra hoặc sắp bắt đầu trước khi tắt, tắt chế độ ngủ và đặt giờ hoạt động cho Windows Update (đã có ở `architecture.md` mục 8).
+- **Việc kiểm khi làm code:** (1) pod tự dựng lại sau `wsl --shutdown` rồi mở Ubuntu; (2) WSL không tự tắt khi đóng hết cửa sổ terminal (hiện máy chạy liên tục 20 giờ với container đang chạy, `.wslconfig` chưa đặt `vmIdleTimeout`); nếu có tự tắt thì cấu hình giữ WSL chạy và ghi vào hướng dẫn. (3) Thời gian từ lúc mở Ubuntu đến khi hệ thống phục vụ được, ghi vào tài liệu.
+
 ## Câu hỏi còn mở
 
-- Q334: tự khởi động lại hệ thống khi Windows hoặc WSL khởi động lại (hiện trạng máy: systemd bật, `Linger=yes`, Podman 4.9.3 hỗ trợ Quadlet).
+- Q335: hai bản api cho phòng từ 300 người (khi nào bật, ai quyết định).
 - Sau đó: `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
