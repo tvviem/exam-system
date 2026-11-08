@@ -19,6 +19,11 @@
 # riêng, dùng để thử script mà không đụng dữ liệu thật.
 set -euo pipefail
 
+# Runner GitHub gắn RUNNER_TRACKING_ID vào mọi tiến trình của job và giết các tiến trình còn sót khi job kết thúc
+# ("Terminate orphan process"). Container Podman do job dựng có conmon thừa hưởng biến này nên bị giết theo: container
+# mất người giám sát, lần dừng kế tiếp treo ở trạng thái "stopping". Bỏ biến này để conmon không bị coi là tiến trình mồ côi.
+unset RUNNER_TRACKING_ID
+
 EXAM_STAGE="${EXAM_STAGE:-prod}"
 case "$EXAM_STAGE" in
   prod)
@@ -198,8 +203,10 @@ replace() { # tên container, rồi lệnh dựng lại
   local name="$1"
   shift
   if container_exists "$name"; then
-    "$PODMAN" stop -t 30 "$name" >/dev/null
-    "$PODMAN" rm "$name" >/dev/null
+    # Dừng êm trước; nếu container mất người giám sát (conmon chết) thì `stop` kẹt ở "stopping" và `rm` thường từ chối,
+    # nên cuối cùng xóa cưỡng bức để không bị kẹt (cả lần tự lùi cũng đi qua đây).
+    "$PODMAN" stop -t 30 "$name" >/dev/null 2>&1 || true
+    "$PODMAN" rm -f -t 5 "$name" >/dev/null
   fi
   "$@"
 }

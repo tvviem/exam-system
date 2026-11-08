@@ -512,7 +512,29 @@ bấm "Run workflow" (main)  →  Approve (Environment production, Q343)
 3. Bấm **Run workflow** (ô để trống), Approve, đọc Summary; kiểm Nhật ký trong ứng dụng.
 4. Bấm lần hai với mã cũ để thử đường lùi bản.
 
+## PR 6b.1: sửa lỗi runner giết người giám sát container (phát hiện ở lần chạy thật đầu tiên)
+
+**Sự cố (8/11/2026).** Lần deploy thật đầu tiên bằng workflow thành công. Lần thứ hai (lùi về `6c9d186`) lỗi và hệ thống ngừng khoảng 6 phút (502 từ 23:31 đến 23:37) cho đến khi chủ dự án chạy `make -C infra prod-up` bằng terminal.
+
+**Nguyên nhân gốc.** Runner GitHub gắn biến `RUNNER_TRACKING_ID` vào mọi tiến trình của job và, khi job kết thúc, giết các tiến trình còn sót ("Terminate orphan process"). `conmon` (người giám sát của mỗi container Podman) do job sinh ra thừa hưởng biến này nên bị giết: log runner ghi `Terminate orphan process: pid (644252) (conmon)` và hai pid nữa, khớp đúng `ConmonPid` của container api, worker, web. Container vẫn chạy nhưng không còn ai giám sát, nên lần `podman stop` kế tiếp kẹt ở "stopping" và `podman rm` từ chối ("container state improper"); lần tự lùi cũng đi qua cùng chỗ kẹt đó nên lỗi theo.
+
+**Vì sao lần thử trên pod `drill` không thấy.** Khi đó lệnh chạy từ terminal, không qua runner nên không có `RUNNER_TRACKING_ID` và không có bước dọn tiến trình mồ côi. Bài học: thử deploy trên pod tạm bằng terminal **không** thay được một lần chạy thật qua runner; phải thử qua runner trước khi coi là xong.
+
+**Sửa:**
+1. `exam-ctl.sh` chạy `unset RUNNER_TRACKING_ID` ngay đầu file, nên mọi caller đều an toàn.
+2. Bước "Deploy" của workflow đặt `RUNNER_TRACKING_ID: ''` (hai lớp, phòng khi sửa một bên).
+3. `replace` không còn kẹt khi container mất người giám sát: `stop -t 30` (bỏ qua lỗi) rồi `rm -f -t 5`. Lần tự lùi vì thế cũng đi qua được.
+
+**Đã thử:**
+- Tái hiện đúng lỗi bằng một container giả bị giết `conmon`: cách cũ (`stop` rồi `rm`) cho đúng lỗi `container state improper`, container kẹt "stopping"; cách mới xóa sạch trong 1,4 giây.
+- Giả lập job của runner trên pod `drill`: chạy `deploy` với `RUNNER_TRACKING_ID` giả, rồi quét `/proc/*/environ` như runner: **0 tiến trình mang biến** (có đối chứng dương: một `sleep` mang biến thì bị quét thấy), conmon của api, worker, web đều **sống**, `/api/health` ok.
+- Đối chiếu bằng chứng thật: ba pid conmon bị runner giết trong log khớp ba container bị hỏng.
+
+**Chưa thử:** lần chạy thật qua runner sau khi sửa (cần merge vào `main`; checkout của workflow lấy commit `main` nên sẽ có bản sửa). Sau merge, thử lại theo thứ tự: deploy bản mới nhất bằng workflow, rồi lùi về `6c9d186`, rồi deploy lại bản mới nhất; sau mỗi lần kiểm conmon còn sống (`podman inspect -f '{{.State.ConmonPid}}' prod-exam-api` rồi `ps -p <pid>`).
+
+**Lưu ý cho 6e:** thêm vào checklist "kiểm sau mỗi deploy qua runner: conmon của mọi container phải sống".
+
 ## Câu hỏi còn mở
 
-- PR 6b: thiết kế Q342–Q350 đã duyệt, mã đã viết và thử trên pod `drill`; chờ PR được mở, CI xanh và chủ dự án duyệt.
+- PR 6b đã merge (#79). PR 6b.1 (sửa lỗi runner giết người giám sát container) đang chờ mở, CI xanh và chủ dự án duyệt; sau đó thử lại workflow qua runner (deploy, lùi bản, deploy lại).
 - Sau 6b: 6c (script sao lưu), 6d (phần trong ứng dụng), 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.

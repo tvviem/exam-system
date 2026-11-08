@@ -98,6 +98,8 @@ jobs:
           FORCE_REASON: ${{ inputs.force_reason }}
           TRIGGERED_BY: ${{ github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # Rỗng để runner không coi conmon của container vừa dựng là tiến trình mồ côi rồi giết khi job kết thúc.
+          RUNNER_TRACKING_ID: ''
         run: |
           set -euo pipefail
           SUMMARY_FILE="$GITHUB_STEP_SUMMARY" bash infra/scripts/exam-ctl.sh deploy
