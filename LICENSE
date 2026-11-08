@@ -1,21 +1,9 @@
-MIT License
+Copyright (c) 2026 TRIỆU VĨNH VIÊM. Bảo lưu mọi quyền.
+Copyright (c) 2026 TRIỆU VĨNH VIÊM. All rights reserved.
 
-Copyright (c) 2026 TRIỆU VĨNH VIÊM
+Mã nguồn, tài liệu và dữ liệu mẫu trong kho này là tài sản của TRIỆU VĨNH VIÊM. Không ai được sao chép, sửa, phân phối, cấp phép lại, bán hoặc dùng cho mục đích nào (kể cả nội bộ và thương mại) nếu chưa được chủ sở hữu cho phép bằng văn bản.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+The source code, documentation and sample data in this repository are the property of TRIỆU VĨNH VIÊM. No one may copy, modify, distribute, sublicense, sell or use them for any purpose (including internal and commercial use) without prior written permission from the owner.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Lưu ý: các bản sao đã được phát hành dưới giấy phép MIT trước ngày 8/11/2026 (khi kho còn công khai, từ commit đầu tiên tới thời điểm chuyển sang riêng tư) vẫn theo giấy phép MIT đó; thay đổi này chỉ áp dụng cho các phiên bản từ nay về sau.
+Note: copies obtained under the MIT license before 8 November 2026 (while this repository was public) remain under that license; this change applies only to versions from now on.
