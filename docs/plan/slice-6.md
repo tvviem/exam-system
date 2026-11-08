@@ -197,7 +197,26 @@ Chọn **phương án A**: 5 PR nhỏ, làm theo thứ tự dưới đây. **Sao
 
 **Dọn máy trước khi bắt đầu (8/11/2026):** máy 16 GB RAM, đang dùng khoảng 2 GB. Pod đang chạy: `dev-exam` (dev của dự án này) và `prod-plotracker`. Pod đã dừng: `devadh` (11 ngày), `devplotracker` (4 tháng), `devapp` (8 tháng). Pod dừng không tốn RAM, chỉ tốn đĩa. Ổ WSL còn 859 GB trống. Phần đáng dọn nhất là ảnh không dùng (khoảng 25 GB) và volume Ollama (`ollamadata` 8 GB, `prod_ollamadata` 2,8 GB). Chủ dự án tự quyết xóa gì; thao tác xóa không hoàn tác.
 
+## PR 6a: thiết kế chi tiết (đang duyệt từng câu)
+
+Khung (8/11/2026): 6a thay các bước gõ tay ở `docs/ops/demo-wsl.md` mục 6 và 7 bằng lệnh `make`, thử trước trên pod tạm (cổng khác), không đụng `prod-exam` thật.
+
+| Phần | Việc | Dựa trên |
+|---|---|---|
+| `make prod-bootstrap` | Chạy một lần: thư mục bí mật, sinh khóa và in một lần, volume, pod `prod-exam` (web `:8180`, PostgreSQL `127.0.0.1:5436`), hỏi mật khẩu Quản trị viên đầu tiên, cài dịch vụ systemd | Q333, Q334 |
+| `make prod-up TAG=<mã commit>` | Chạy migration, dựng api, worker, web từ ảnh GHCR của đúng mã commit | Q331 |
+| Dịch vụ systemd | Mở Ubuntu thì dựng lại pod | Q334 |
+| `make prod-scale 1\|2` | Bật hoặc tắt bản api thứ hai, nginx chia tải | Q335 |
+| `make prod-status`, `prod-logs`, `prod-stop` | Xem tình trạng, log; dừng có kiểm Phiên thi | Q332 |
+
+### Q338: tên phụ (đã duyệt 8/11/2026)
+
+Chọn **A**: `exam.plotrackerbluni.site`. `APP_ORIGINS=https://exam.plotrackerbluni.site`.
+
+Sự thật đã kiểm về tunnel: dịch vụ `cloudflared` chạy bằng `/etc/cloudflared/config.yml` (thuộc root, cần `sudo` để sửa và khởi động lại; `~/.cloudflared/config.yml` là bản giống hệt nhưng dịch vụ **không** đọc). Tunnel hiện chỉ có `demo.plotrackerbluni.site` → `localhost:8080`. `~/.cloudflared/cert.pem` có sẵn nên `cloudflared tunnel route dns` có thể tạo bản ghi DNS cho tên mới.
+
 ## Câu hỏi còn mở
 
-- Sau khi dọn máy: bắt đầu code PR 6a (cần thiết kế chi tiết của 6a trước).
-- Sau đó: `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
+- Q339: cách thêm `exam.plotrackerbluni.site` vào tunnel (dùng chung tunnel hiện có hay tunnel riêng; ai chạy lệnh `sudo`).
+- Sau đó: các quyết định còn lại của 6a, rồi code.
+- Sau đó (lát cắt 6): `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
