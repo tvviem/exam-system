@@ -215,8 +215,18 @@ Chọn **A**: `exam.plotrackerbluni.site`. `APP_ORIGINS=https://exam.plotrackerb
 
 Sự thật đã kiểm về tunnel: dịch vụ `cloudflared` chạy bằng `/etc/cloudflared/config.yml` (thuộc root, cần `sudo` để sửa và khởi động lại; `~/.cloudflared/config.yml` là bản giống hệt nhưng dịch vụ **không** đọc). Tunnel hiện chỉ có `demo.plotrackerbluni.site` → `localhost:8080`. `~/.cloudflared/cert.pem` có sẵn nên `cloudflared tunnel route dns` có thể tạo bản ghi DNS cho tên mới.
 
+### Q339: cách thêm tên vào tunnel (đã duyệt 8/11/2026)
+
+Chọn **A: dùng chung tunnel hiện có** (đúng ADR-0006).
+
+- Thêm vào `/etc/cloudflared/config.yml`, **trước** dòng chốt chặn `http_status:404`: `exam.plotrackerbluni.site` → `http://127.0.0.1:8180`.
+- Tạo DNS: `cloudflared tunnel route dns <tên-hoặc-id-tunnel> exam.plotrackerbluni.site`.
+- Kiểm: `cloudflared tunnel ingress validate`, rồi `sudo systemctl restart cloudflared`. Lúc khởi động lại, `demo.plotrackerbluni.site` bị ngắt vài giây.
+- Các lệnh cần `sudo` do **chủ dự án** chạy (tác nhân không có quyền `sudo`), nên chọn lúc plo-tracker ít người dùng. `docs/ops/trien-khai.md` viết từng lệnh và kết quả mong đợi, kèm cách quay lui (khôi phục `config.yml` cũ).
+
 ## Câu hỏi còn mở
 
-- Q339: cách thêm `exam.plotrackerbluni.site` vào tunnel (dùng chung tunnel hiện có hay tunnel riêng; ai chạy lệnh `sudo`).
-- Sau đó: các quyết định còn lại của 6a, rồi code.
+- Q340: lệnh có xóa dữ liệu thật hay không (`prod-down`, xóa volume).
+- Q341: các mặc định kỹ thuật còn lại của 6a (tên container, giới hạn tài nguyên, chính sách tự khởi động lại, tên Quản trị viên đầu tiên).
+- Sau đó: code 6a.
 - Sau đó (lát cắt 6): `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
