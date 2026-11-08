@@ -2,7 +2,7 @@
 
 Hệ thống kiểm tra đánh giá trực tuyến, ưu tiên làm bài trên điện thoại. Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi tại lớp hoặc phòng máy. Người dự thi đăng nhập, nhập Mã vào thi và làm bài ngay trên điện thoại hoặc máy tính.
 
-> **Trạng thái (4/11/2026):** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án), **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi), **lát cắt 3** (Bộ đề) và **lát cắt 4** (Phiên thi: Danh sách dự thi, Mã vào thi, làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ). Lát cắt tiếp theo là 5 (Chấm, Công bố kết quả, Phúc khảo). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 4](#dùng-thử-lát-cắt-4).
+> **Trạng thái (8/11/2026):** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án), **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi), **lát cắt 3** (Bộ đề) **lát cắt 4** (Phiên thi: Danh sách dự thi, Mã vào thi, làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ) và **lát cắt 5** (chấm tự động và tự luận, Công bố kết quả, Kết quả của tôi, Phúc khảo, Chốt, Đính chính đáp án, Ủy quyền chấm, xuất Excel, đo tải 500 người). Lát cắt tiếp theo là 6 (triển khai production). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 5](#dùng-thử-lát-cắt-5); hiệu năng đã đo ở [docs/hieu-nang.md](docs/hieu-nang.md).
 
 ## Tính năng giai đoạn 1
 
@@ -66,12 +66,12 @@ Lý do của từng lựa chọn nằm trong các ADR ở [docs/adr](docs/adr).
 Cloudflare Tunnel ──► Podman pod `prod-exam`
                         ├─ web     nginx: SPA tĩnh, proxy /api và /ws, phục vụ ảnh
                         ├─ api     NestJS modular monolith (HTTP + WebSocket)
-                        ├─ worker  BullMQ: tự nộp bài quá hạn, xử lý ảnh, Excel, Phiếu tài khoản (chốt kết quả: lát cắt 5)
+                        ├─ worker  BullMQ: tự nộp bài quá hạn, xử lý ảnh, Excel, Phiếu tài khoản, chấm tự động và chấm lại sau Đính chính, Chốt kết quả
                         ├─ postgres  nơi lưu trữ gốc
                         └─ redis     phiên đăng nhập, hàng đợi, trạng thái online, kênh tin đẩy
 ```
 
-Backend chia module theo nghiệp vụ: `identity`, `audit`, `notifications`, `question-bank`, `exam`, `session`, `attempt`, `realtime` (và `grading` ở lát cắt 5). Module không đọc bảng của nhau mà nói chuyện qua các cổng trong `apps/api/src/common` (test kiến trúc `architecture.test.ts` giữ ranh giới này). Kênh đẩy Socket.IO (`/ws`) chỉ là phần tăng tốc: tin đẩy không mang dữ liệu, mất kênh thì heartbeat 15 giây và hỏi lại vẫn giữ mọi thứ đúng. Chi tiết luồng nghiệp vụ, bảo mật và ước tính tải nằm trong [docs/architecture.md](docs/architecture.md).
+Backend chia module theo nghiệp vụ: `identity`, `audit`, `notifications`, `question-bank`, `exam`, `session`, `attempt`, `realtime`, `grading` (chấm, Công bố, Phúc khảo, Đính chính). Module không đọc bảng của nhau mà nói chuyện qua các cổng trong `apps/api/src/common` (test kiến trúc `architecture.test.ts` giữ ranh giới này). Kênh đẩy Socket.IO (`/ws`) chỉ là phần tăng tốc: tin đẩy không mang dữ liệu, mất kênh thì heartbeat 15 giây và hỏi lại vẫn giữ mọi thứ đúng. Chi tiết luồng nghiệp vụ, bảo mật và ước tính tải nằm trong [docs/architecture.md](docs/architecture.md).
 
 ## Cấu trúc monorepo
 
