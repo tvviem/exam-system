@@ -231,8 +231,24 @@ Chọn **A: không có lệnh `make` nào xóa dữ liệu**.
 - `make prod-down` chỉ xóa container và pod, **giữ nguyên** volume `exam_pgdata` và `exam_media`; `prod-up` dựng lại là có đủ dữ liệu.
 - Xóa volume chỉ làm tay bằng `podman volume rm`, theo một mục riêng trong `docs/ops/trien-khai.md` có cảnh báo: kiểm tra bản sao lưu mở được (khôi phục thử thành công) trước khi xóa.
 
+### Q341: các mặc định kỹ thuật của 6a (đã duyệt 8/11/2026)
+
+| Mục | Mặc định |
+|---|---|
+| Tên container | `prod-exam-postgres`, `prod-exam-redis`, `prod-exam-api` (bản thứ hai `prod-exam-api-2`), `prod-exam-worker`, `prod-exam-web` |
+| Giới hạn tài nguyên | PostgreSQL 3 GB, api 1 GB mỗi bản, worker 512 MB, web 256 MB, Redis 256 MB (tổng khoảng 5 GB với một api, 6 GB với hai api) |
+| Khi container lỗi | Tự khởi động lại (`--restart always`) |
+| Log container | Tối đa 10 MB mỗi file, giữ 3 file mỗi container |
+| Quản trị viên đầu tiên | Tên đăng nhập `quantri`; `prod-bootstrap` hỏi **họ tên** và mật khẩu (từ 10 ký tự), không lưu vào lịch sử lệnh hay file. Lệnh `bootstrap-admin` đòi `BOOTSTRAP_ADMIN_FULL_NAME`, bản nháp `demo-wsl.md` mục 6 còn thiếu biến này |
+| Tải ảnh | `ghcr.io/tvviem/exam-api` và `exam-web` theo mã commit, không cần đăng nhập (ảnh đã công khai) |
+| Kiểm tra sau khi dựng | `prod-up` chờ `/api/health` qua `127.0.0.1:8180`; không xong sau 60 giây thì báo lỗi và in log |
+| Thử nghiệm | Pod tạm `drill-exam` dùng cổng khác, xóa sau khi thử |
+
+**Quên mật khẩu Quản trị viên (hỏi thêm 8/11/2026):** hệ thống đã có sẵn lệnh `recover-admin --username <tên>` (Q60, `docs/data-model.md`): mở Khóa đăng nhập, gỡ khóa tạm, cấp mật khẩu tạm mới (in ra một lần, hạn 7 ngày, buộc đổi khi đăng nhập), thu hồi mọi phiên, ghi `audit_logs` (`cli.recover-admin`). Chạy được trên server. Hệ thống không có email nên không có "quên mật khẩu" tự phục vụ. 6a thêm:
+- `make prod-recover-admin ADMIN=<tên>` bọc lệnh đó trong pod `prod-exam`; hướng dẫn từng bước trong `docs/ops/trien-khai.md`.
+- Khuyến nghị trong hướng dẫn: tạo thêm một **Quản trị viên thứ hai** (chức năng "Tạo Quản trị viên" có sẵn) để có người dự phòng; người dự phòng của Q326 là ứng viên.
+
 ## Câu hỏi còn mở
 
-- Q341: các mặc định kỹ thuật còn lại của 6a (tên container, giới hạn tài nguyên, chính sách tự khởi động lại, tên Quản trị viên đầu tiên).
-- Sau đó: code 6a.
-- Sau đó (lát cắt 6): `prod-bootstrap`, hai bản api cho phòng từ 300 người, kiểm tra trước khi deploy, quay lui khi lỗi.
+- Q342: bắt đầu code 6a (đề xuất merge #77 trước để 6a tách từ `main`).
+- Sau 6a: 6b (workflow deploy), 6c (script sao lưu), 6d (phần trong ứng dụng), 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.
