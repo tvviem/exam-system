@@ -1,8 +1,10 @@
 # Triển khai và vận hành pod `prod-exam`
 
-Tài liệu cho người vận hành hệ thống trên máy WSL Ubuntu (ADR-0006). Thiết kế và các quyết định ở [docs/plan/slice-6.md](../plan/slice-6.md). Mọi lệnh chạy ở thư mục gốc của repo, qua `make -C infra …`; logic nằm ở [`infra/scripts/exam-ctl.sh`](../../infra/scripts/exam-ctl.sh).
+Tài liệu cho người vận hành hệ thống trên máy WSL Ubuntu (ADR-0006). Thiết kế và các quyết định ở [docs/plan/slice-6.md](../plan/slice-6.md). Khi chuyển sang VPS hoặc máy chủ tại nhà: [chuyen-len-vps.md](./chuyen-len-vps.md). Mọi lệnh chạy ở thư mục gốc của repo, qua `make -C infra …`; logic nằm ở [`infra/scripts/exam-ctl.sh`](../../infra/scripts/exam-ctl.sh).
 
-> **Phạm vi hiện tại (PR 6a, 6b):** dựng lần đầu, đưa bản mới lên bằng tay hoặc bằng workflow GitHub bấm tay (có sao lưu trước, kiểm sau, tự lùi), một hoặc hai bản api, dừng/bật, khôi phục Quản trị viên, tự dựng lại khi mở WSL. **Chưa có:** sao lưu định kỳ và khôi phục dữ liệu (6c, 6d), diễn tập và checklist đưa lên chạy thật (6e). Trước khi có sao lưu định kỳ **không dùng cho Phiên thi thật**.
+> **Phạm vi hiện tại (PR 6a, 6b, 6c):** dựng lần đầu, đưa bản mới lên bằng tay hoặc bằng workflow GitHub bấm tay (có sao lưu trước, kiểm sau, tự lùi), một hoặc hai bản api, dừng/bật, khôi phục Quản trị viên, tự dựng lại khi mở WSL, và **công cụ sao lưu và khôi phục** ([khoi-phuc.md](./khoi-phuc.md)): bản dump hằng đêm, lưu liên tục WAL, đẩy sang ổ D: và R2 mã hóa, thử khôi phục hằng tháng, báo ngoài máy. **Công cụ sao lưu đã viết và thử trên pod `drill-exam` nhưng CHƯA bật cho hệ thống thật** (cần tài khoản R2, khóa gpg, healthchecks.io: làm cùng nhau theo [khoi-phuc.md mục 4](./khoi-phuc.md)). **Chưa có:** màn hình trạng thái sao lưu trong ứng dụng (6d), diễn tập và checklist đưa lên chạy thật (6e). Cho đến khi sao lưu **được bật và `make -C infra prod-backup-status` báo đủ**, **không dùng cho Phiên thi thật**.
+>
+> **Quy mô dự kiến giai đoạn đầu (chủ dự án, 9/11/2026):** chạy thật trên WSL Ubuntu của laptop cho tiết kiệm nhất, phục vụ **dưới 100 sinh viên dự thi cùng lúc**. Số đo ở [hieu-nang.md](../hieu-nang.md) cho thấy **một bản api và một worker đủ** cho 100 người (đạt mọi ngưỡng, 0 lỗi), nên giữ mặc định một bản api; chỉ bật hai bản (`prod-scale N=2`) từ khoảng 300 người trở lên. Việc sao lưu chạy ở mức ưu tiên thấp để không làm chậm phòng thi trên cùng máy.
 
 ## 1. Có gì trong pod
 
@@ -21,6 +23,7 @@ Tài liệu cho người vận hành hệ thống trên máy WSL Ubuntu (ADR-000
 | Nhật ký thao tác của bạn | `~/.local/state/exam-prod/operations.log` (mỗi lần up, scale, stop, ép khẩn cấp, khôi phục Quản trị viên) |
 | Danh sách api cho nginx | `~/.local/state/exam-prod/upstream.conf` (do `prod-scale` quản lý, đừng sửa tay) |
 | Dịch vụ systemd | `~/.config/systemd/user/exam-prod.service` |
+| Sao lưu (PR 6c) | bản sao ở `~/exam-prod-backups/` (`daily`, `weekly`, `monthly`, `base`, `wal`, `media`, `khoa`, `truoc-deploy-*`); cấu hình riêng của máy `~/exam-prod-secrets/backup.env`; sổ kết quả `~/.local/state/exam-prod/backup-runs.jsonl`; timer `exam-backup-*` trong `~/.config/systemd/user/`. Chi tiết: [khoi-phuc.md](./khoi-phuc.md) |
 
 Địa chỉ công khai: `https://exam.plotrackerbluni.site` (Q338). Ảnh `ghcr.io/tvviem/exam-api` và `exam-web` đã công khai, không cần đăng nhập để tải.
 
@@ -96,6 +99,10 @@ Nếu Cloudflare chặn: trong mục Security của tên miền, **tắt Bot Fig
 | Dừng pod (giữ dữ liệu) | `make -C infra prod-stop` |
 | Bật lại pod | `make -C infra prod-start` |
 | Xóa pod và container (**giữ volume dữ liệu**) | `make -C infra prod-down` rồi `prod-up` để dựng lại |
+| Tình trạng sao lưu (bản mới nhất, dãy WAL, hàng chờ đẩy, timer) | `make -C infra prod-backup-status` |
+| Bật lưu liên tục WAL (dựng lại **chỉ** PostgreSQL, từ chối nếu có Phiên thi) | `make -C infra prod-enable-archiving` |
+
+Mọi việc sao lưu và khôi phục (cài đặt lần đầu, các lệnh chạy tay, khôi phục theo từng kịch bản, báo động): **[khoi-phuc.md](./khoi-phuc.md)**. Hai điểm liên quan đến deploy: (1) container PostgreSQL chỉ bị dựng lại bởi `prod-enable-archiving`/`prod-disable-archiving` và khi `prod-down` rồi dựng lại; `prod-up` và workflow deploy **không** đụng nó, nên các tham số lưu liên tục được giữ qua mọi lần deploy; (2) sau khi merge thay đổi script sao lưu, chạy `make -C infra prod-backup-install` để cập nhật bản chép mà timer dùng.
 
 ### Phiên thi và chốt chặn (Q332)
 
@@ -148,6 +155,13 @@ Workflow `Deploy (bấm tay)` ([`.github/workflows/deploy.yml`](../../.github/wo
 4. Lần chạy hiện trạng thái vàng "Waiting" kèm **Review deployments**. Mở lần chạy, bấm **Review deployments**, tick `production`, bấm **Approve and deploy**. (Bước này có chủ đích: để bạn xem lại trước khi chạy lệnh thật trên máy.)
 5. Theo dõi log. Bình thường mất khoảng 30–60 giây. Xong thì mở **Summary** của lần chạy để đọc tóm tắt (bảng dưới).
 6. Kiểm bằng trình duyệt: mở địa chỉ hệ thống, đăng nhập Quản trị viên, vào **Nhật ký** (Nhật ký thao tác): có dòng **Đưa bản mới lên** với bản cũ → bản mới, người bấm và đường dẫn lần chạy.
+7. Kiểm "người giám sát" của container còn sống (nên làm sau mỗi deploy qua GitHub; giải thích ở mục "Lỗi thường gặp", dòng 502 + `Stopping`):
+   ```bash
+   for c in api worker web; do p=$(podman inspect -f '{{.State.ConmonPid}}' prod-exam-$c); echo "$c conmon=$p $(ps -p $p -o comm= || echo CHẾT)"; done
+   ```
+   Cả ba dòng phải ra `conmon`. Có dòng `CHẾT` thì lần deploy kế tiếp sẽ kẹt: chạy khôi phục ở mục "Lỗi thường gặp" ngay lúc không có Phiên thi.
+
+**Đã thử qua runner thật (8–9/11/2026):** deploy bản mới → lùi bản bằng mã cũ → deploy lại, cả ba lần đạt và conmon sống sau mỗi lần (chi tiết ở `docs/plan/slice-6.md`, mục PR 6b.1).
 
 **Đọc tóm tắt (Summary):**
 
@@ -176,7 +190,7 @@ FORCE_REASON="lý do" make -C infra prod-deploy TAG=...   # ép khẩn cấp
 ```
 Tóm tắt ghi ở `~/.local/state/exam-prod/last-deploy-summary.md`, log lỗi ở `last-failure.log`.
 
-**Sao lưu trước deploy:** file `~/exam-prod-backups/truoc-deploy-<ngày-giờ>-<bản cũ>.dump` (định dạng `pg_dump -Fc`), mỗi lần deploy một file, giữ 10 file mới nhất. Chỉ chống được lỗi phần mềm/migration, **không** chống hỏng ổ đĩa; sao lưu định kỳ ngoài máy là việc của PR 6c. Cách khôi phục từ file này viết ở `docs/ops/khoi-phuc.md` (PR 6c).
+**Sao lưu trước deploy:** file `~/exam-prod-backups/truoc-deploy-<ngày-giờ>-<bản cũ>.dump` (định dạng `pg_dump -Fc`), mỗi lần deploy một file, giữ 10 file mới nhất. Chỉ chống được lỗi phần mềm/migration, **không** chống hỏng ổ đĩa; sao lưu định kỳ và ngoài máy là phần của [khoi-phuc.md](./khoi-phuc.md). Khôi phục từ file này: `bash infra/scripts/exam-backup.sh restore-dump ~/exam-prod-backups/truoc-deploy-….dump` (khoi-phuc.md mục 5.2).
 
 **Quy ước cho người sửa script (Q349):** workflow luôn dùng `infra/scripts/exam-ctl.sh` của commit `main` lúc bấm, kể cả khi lùi ảnh về bản cũ. Vì vậy script vận hành chỉ được gọi những lệnh mà **ảnh cũ cũng có** (hiện: `node dist/db/migrate.js`, `node dist/cli/main.js bootstrap-admin|recover-admin`). Cần lệnh mới trong ảnh thì phát hành lệnh đó trước một lần rồi mới dùng trong script, hoặc script dò xem có lệnh rồi mới gọi. Mỗi lần sửa script, chạy thử `prod-deploy` trên pod `drill` (mục 7) với một ảnh cũ.
 
@@ -242,4 +256,5 @@ Thử quy trình deploy đủ bước (không đụng dữ liệu thật): `EXAM
 | Summary ⚠️ "Địa chỉ công khai chưa trả lời" | Hệ thống trong máy chạy tốt; lỗi nằm ở đường ra ngoài: kiểm tunnel (`systemctl status cloudflared`, `/etc/cloudflared/config.yml` có host `exam.…`), rồi `curl -fsS https://<tên miền>/api/health` |
 | Summary 🛑 "Lùi … cũng lỗi" | `make -C infra prod-status`, `prod-logs C=api`, `C=postgres`. Thường do PostgreSQL hoặc Redis chết: `podman pod restart prod-exam`. Dữ liệu còn nguyên; bản sao lưu trước deploy nằm ở `~/exam-prod-backups` |
 | Trang trả 502, `prod-status` thấy container ở trạng thái `Stopping` (hoặc `podman rm` báo `container state improper`) | Container mất người giám sát (`conmon` chết). Khôi phục: `podman rm -f -t 5 prod-exam-api prod-exam-worker prod-exam-web` (không đụng PostgreSQL, Redis và volume), rồi `make -C infra prod-up TAG=<bản tốt>` (tag đang chạy xem ở `cat ~/.local/state/exam-prod/tag`). Nguyên nhân đã sửa ở PR 6b.1 (runner GitHub giết `conmon`), xem `docs/plan/slice-6.md` |
+| `prod-backup-status` ghi CHƯA/LỖI, hoặc nhận thư "im lặng" từ healthchecks | Xem [khoi-phuc.md mục 3](./khoi-phuc.md): timer có chạy không (`systemctl --user list-timers 'exam-backup-*'`), `journalctl --user -u exam-backup-nightly.service -n 50`, sổ `backup-runs.jsonl` |
 | Workflow đỏ ở bước "Chuẩn bị Podman" | Không thấy pod `prod-exam`: chưa bootstrap hoặc runner chạy bằng người dùng khác `tvviem` |

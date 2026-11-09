@@ -530,11 +530,514 @@ bấm "Run workflow" (main)  →  Approve (Environment production, Q343)
 - Giả lập job của runner trên pod `drill`: chạy `deploy` với `RUNNER_TRACKING_ID` giả, rồi quét `/proc/*/environ` như runner: **0 tiến trình mang biến** (có đối chứng dương: một `sleep` mang biến thì bị quét thấy), conmon của api, worker, web đều **sống**, `/api/health` ok.
 - Đối chiếu bằng chứng thật: ba pid conmon bị runner giết trong log khớp ba container bị hỏng.
 
-**Chưa thử:** lần chạy thật qua runner sau khi sửa (cần merge vào `main`; checkout của workflow lấy commit `main` nên sẽ có bản sửa). Sau merge, thử lại theo thứ tự: deploy bản mới nhất bằng workflow, rồi lùi về `6c9d186`, rồi deploy lại bản mới nhất; sau mỗi lần kiểm conmon còn sống (`podman inspect -f '{{.State.ConmonPid}}' prod-exam-api` rồi `ps -p <pid>`).
+**Đã thử qua runner thật sau khi sửa (8–9/11/2026, main = `75e57eb`).** Ba lần bấm workflow liên tiếp, cả ba thành công:
 
-**Lưu ý cho 6e:** thêm vào checklist "kiểm sau mỗi deploy qua runner: conmon của mọi container phải sống".
+| Lần | Việc | Kết quả kiểm sau khi job kết thúc |
+|---|---|---|
+| 1 | Để trống tag: `87cb1b4` → `75e57eb` (đổi bản thật) | `/api/health` version `75e57eb`; conmon api, worker, web sống; dòng `ops.deploy` (`rolled_back=false`); có bản sao lưu `truoc-deploy-*.dump` |
+| 2 | Nhập `87cb1b4` (lùi bản; đúng thao tác từng gây sự cố) | version `87cb1b4`; conmon cả ba sống (pid mới); không kẹt `Stopping` |
+| 3 | Để trống tag: về lại `75e57eb` | version `75e57eb`; conmon cả ba sống; đủ 3 dòng `ops.deploy` |
+
+Kết luận: lỗi đã sửa thật, không chỉ qua giả lập. Cách kiểm lặp lại được: `podman inspect -f '{{.State.ConmonPid}}' prod-exam-api` rồi `ps -p <pid> -o comm=` (phải ra `conmon`), cộng `curl https://exam.plotrackerbluni.site/api/health` xem `version`.
+
+**Vẫn chưa thử (giữ trong checklist 6e):** WebSocket (không chỉ polling) qua tunnel bằng trình duyệt thật, hai bản api qua trình duyệt, `wsl --shutdown` rồi mở lại WSL, WSL có tự tắt khi đóng cửa sổ terminal không.
+
+**Lưu ý cho 6e:** thêm vào checklist "kiểm sau mỗi deploy qua runner: conmon của mọi container phải sống" (kiểm tay như trên, hoặc xem để script `deploy` tự kiểm bước này).
+
+## Định hướng của chủ dự án: sau này chuyển sang VPS hoặc máy chủ tại nhà (9/11/2026)
+
+Hệ thống chạy ổn định trên WSL Ubuntu (laptop) trước; khi có điều kiện thuê VPS hoặc mua máy chủ đặt tại nhà thì chuyển sang để chạy 24/7. Đã viết sẵn hướng dẫn chuẩn bị, gồm cài từ đầu Podman rootless, pod, `cloudflared` tunnel, GitHub Actions runner để bấm tay chạy workflow, cắt chuyển dữ liệu và checklist: **[docs/ops/chuyen-len-vps.md](../ops/chuyen-len-vps.md)** (chưa chạy thử trên máy thật; sẽ cập nhật theo thực tế và viết ADR thay ADR-0006 khi chuyển).
+
+**Ràng buộc cho mọi PR còn lại của lát cắt 6 (để việc chuyển sau này rẻ):**
+- Script **không viết cứng** thứ chỉ có ở WSL: đường dẫn ổ `D:` (`/mnt/d`) phải là biến cấu hình, không giả định `wsl.exe`, không gọi lệnh Windows; chỉ dùng systemd người dùng, Podman rootless, `bash`, `rclone`, `gpg` (đều có trên Ubuntu máy chủ).
+- Mọi thứ cấu hình theo máy (đường dẫn sao lưu, mã healthchecks, tên nhãn runner) nằm ở **env file hoặc biến môi trường**, không nằm trong mã.
+- Câu chữ trong thông điệp và tài liệu phân biệt được "WSL (giai đoạn 1)" và "máy chủ 24/7" ở các chỗ khác nhau, ví dụ cách báo khi máy tắt (laptop: bình thường; máy chủ: sự cố).
+
+## PR 6c: thiết kế chi tiết (đã duyệt Q351–Q361)
+
+### Q351: cách lưu liên tục (lớp 2) và khôi phục về một thời điểm (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Quyết định.** Dùng công cụ **có sẵn của PostgreSQL** (`archive_command` cộng `pg_basebackup`), không cài `pgBackRest`. Script của dự án (bash, cùng phong cách `exam-ctl.sh`) lo phần còn lại: nén, mã hóa bằng `gpg`, đẩy bằng `rclone`, xóa bản cũ theo bảng Q325, kiểm tra.
+
+**Phương án đã bỏ:**
+- `pgBackRest` (B): mạnh hơn nhưng thêm một công cụ lớn vào ảnh hoặc thêm container, có cấu hình riêng phải học, thêm "hộp đen" cho hệ thống nhỏ. Nếu sau này dữ liệu lớn hoặc cần nhiều máy thì chuyển sang vẫn được, vì bản `pg_dump` và dữ liệu cũ không mất.
+- Bỏ lớp 2 (C): mức mất dữ liệu tối đa lên tới một ngày, trái Q323 đã duyệt.
+
+**Hiện trạng đo được (9/11/2026):** PostgreSQL 17.11 trong pod `prod-exam`; `wal_level=replica` (đủ để lưu liên tục, không cần đổi), `archive_mode=off` (chưa lưu), `max_wal_size=1GB`; máy đã có `rclone` và `gpg`; ổ D: còn khoảng 82 GB.
+
+#### Ghi chú để tự học: cơ chế lưu liên tục (WAL) và khôi phục về một thời điểm (PITR)
+
+**WAL là gì.** Mọi thay đổi trong PostgreSQL (thêm Câu trả lời, nộp bài…) trước hết được ghi vào một cuốn **nhật ký ghi trước** (Write-Ahead Log, WAL), rồi mới sửa vào file dữ liệu thật. Nhờ vậy khi mất điện, PostgreSQL đọc lại nhật ký để làm nốt. Nhật ký được cắt thành các file **16 MB** (gọi là "đoạn WAL") nối tiếp nhau.
+
+**Ý tưởng sao lưu liên tục.** Giữ một **bản chụp đầy đủ** ở một thời điểm (bản nền) cộng **mọi đoạn WAL phát sinh sau đó**. Muốn quay về lúc 14:06: dựng bản nền lên rồi cho PostgreSQL "chạy lại" nhật ký từng bước cho tới đúng 14:06 thì dừng. So với `pg_dump` (một ảnh chụp mỗi đêm), cách này cho mất dữ liệu cỡ phút thay vì cỡ ngày.
+
+```text
+ bản nền (chủ nhật)        WAL đoạn 1 → 2 → 3 → … → N (mỗi phút một đoạn)
+        │                                          │
+        └──── dựng lên ──→ chạy lại WAL ──→ dừng đúng 14:06 ──→ mở cho dùng
+```
+
+**Ba bộ phận phải có:**
+1. **Bật lưu**: `archive_mode = on`, `archive_command = '<lệnh chép đoạn WAL đi>'`, `archive_timeout = 60`. Mỗi khi đầy đoạn 16 MB, hoặc quá 60 giây mà đoạn chưa đầy, PostgreSQL gọi lệnh chép đoạn đó sang thư mục sao lưu. `archive_timeout` chính là cái làm **mức mất tối đa cỡ 1 phút** khi hệ thống vắng; lúc đông thí sinh đoạn đầy nhanh hơn nên chép nhanh hơn.
+2. **Bản nền định kỳ** (`pg_basebackup`, mỗi tuần một lần theo Q323): chụp cả thư mục dữ liệu khi PostgreSQL vẫn đang chạy, không cần dừng hệ thống.
+3. **Khôi phục**: dựng bản nền vào một thư mục dữ liệu **mới và rỗng**, tạo file `recovery.signal`, đặt `restore_command` (lệnh lấy đoạn WAL từ kho về) và `recovery_target_time` (thời điểm muốn quay về), khởi động PostgreSQL; nó tự chạy lại WAL rồi dừng ở mốc. Kiểm dữ liệu xong mới cho dùng (`pg_wal_replay_resume()` hoặc `recovery_target_action = 'promote'`).
+
+**Quy tắc sống còn của `archive_command` (đã biết trước, đưa vào thiết kế):**
+- Chỉ trả về **0 (thành công) khi đoạn WAL đã nằm an toàn ở nơi mới**; trả khác 0 thì PostgreSQL **giữ nguyên đoạn đó và thử lại**. Không bao giờ được "báo thành công giả".
+- **Không ghi đè** file đã có cùng tên (tránh hỏng kho khi chạy lại).
+- Ghi ra file tạm rồi **đổi tên** thành tên chính thức, để không bao giờ có file chép dở nằm trong kho.
+- ⚠️ **Rủi ro lớn nhất:** nếu lệnh chép cứ thất bại (đầy đĩa, mất thư mục sao lưu…), PostgreSQL **không xóa** các đoạn WAL chưa chép, thư mục `pg_wal` phình ra tới khi **đầy ổ đĩa rồi PostgreSQL dừng hẳn**, tức cả hệ thống thi ngừng. Vì vậy thiết kế phải có: (a) kiểm số đoạn chờ chép (`pg_stat_archiver.failed_count`, số file `.ready` trong `pg_wal/archive_status`) trong script sao lưu hằng đêm và báo qua healthchecks và chuông; (b) giữ thư mục đích **ngay trên ổ WSL** (rất rộng, 859 GB trống) làm bước chép đầu, còn việc đẩy sang D: và R2 do script riêng làm sau, để mất mạng hay mất D: **không** làm nghẽn `archive_command`.
+
+**Thứ tự chép (hai chặng, để chặng nào hỏng cũng không kéo sập PostgreSQL):**
+
+```text
+PostgreSQL ──archive_command (nhanh, chỉ chép nội bộ)──► ~/exam-prod-backups/wal/   (ổ WSL)
+                                                              │ script chạy mỗi phút
+                                                              ▼ nén + mã hóa + đẩy
+                                              Ổ D: (/mnt/d)        Cloudflare R2
+```
+
+**Cách thử mà người vận hành lặp lại được (sẽ viết đầy đủ trong `docs/ops/khoi-phuc.md` ở 6c):**
+1. Tạo dữ liệu mốc A, ghi giờ, tạo thêm dữ liệu mốc B.
+2. Khôi phục bản nền cộng WAL, đặt `recovery_target_time` đúng giữa A và B.
+3. Kiểm: thấy A, **không** thấy B. Đó là bằng chứng PITR hoạt động.
+
+**Việc kéo theo (làm trong 6c):**
+- Thêm các tham số `archive_*` vào lệnh dựng container PostgreSQL trong `exam-ctl.sh` (cho pod prod, và pod `drill` để thử) cùng một thư mục gắn vào container; vì phải dựng lại container PostgreSQL nên làm đúng lúc **chưa có Phiên thi**.
+- Bản nền và WAL là **một cặp**: xóa bản nền cũ thì chỉ xóa WAL cũ hơn bản nền cũ nhất còn giữ (Q325 đã ghi quy tắc này).
+- Đo thật: kích thước 1 đoạn WAL đã nén lúc vắng và lúc đông (tải 500 người), ghi vào `docs/hieu-nang.md`.
+
+### Q352: xóa bản cũ trên R2 bằng quy tắc vòng đời, script không có việc xóa (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Vấn đề.** Q324 muốn khóa R2 trên máy "chỉ ghi, không xóa" để người chiếm được máy hoặc script lỗi cũng không xóa nổi bản sao lưu ngoài máy. Nhưng Q325 cần dọn bản cũ trên R2 để nằm trong 10 GB miễn phí. Hai yêu cầu va nhau nếu chính script phải xóa.
+
+**Quyết định.** **R2 tự xóa theo tuổi** bằng **quy tắc vòng đời** (lifecycle rule) do chủ dự án đặt **một lần** trên trang quản lý R2. Script chỉ **tải lên**, không có dòng lệnh xóa nào nhắm vào R2.
+
+**Phương án đã bỏ:**
+- Script có quyền xóa và tự dọn theo "giữ N bản" (B): đúng ý Q325 nhất nhưng khóa nằm trên máy có quyền xóa; máy bị chiếm hay script lỗi có thể xóa sạch bản ngoài máy, mất đúng lớp bảo vệ mà lớp 3 sinh ra để có.
+- Hai khóa, khóa xóa cất ở Bitwarden và dọn tay hằng tháng (C): an toàn nhất nhưng thêm một việc tay phải nhớ; quên thì R2 đầy.
+
+**Cách tổ chức thư mục (tiền tố) trên R2 và quy tắc xóa:**
+
+| Thư mục trên R2 | Chứa | Xóa sau | Vì sao |
+|---|---|---|---|
+| `daily/` | bản `pg_dump` mỗi đêm (đã mã hóa) | 7 ngày | Q325: 7 bản hằng ngày |
+| `weekly/` | bản đêm Chủ nhật, **chép thêm** vào đây | 28 ngày | Q325: 4 bản hằng tuần |
+| `monthly/` | bản đêm mùng 1, chép thêm vào đây | 180 ngày | Q325: 6 bản hằng tháng |
+| `wal/` | các đoạn WAL (đã nén, mã hóa) | 7 ngày | Q325: WAL 7 ngày |
+| `base/` | bản nền hằng tuần (`pg_basebackup`) | 15 ngày | luôn còn ít nhất **hai** bản nền (xem chú thích bên dưới) |
+| `media/`, `khoa/` | ảnh `exam_media`, khóa bí mật (đã mã hóa) | **không đặt xóa** | ảnh chỉ thêm; khóa chỉ đổi thỉnh thoảng, dung lượng nhỏ |
+
+Script tải **thẳng** vào từng thư mục (đêm Chủ nhật tải thêm bản vào `weekly/`, mùng 1 tải thêm vào `monthly/`), nên không cần quyền sao chép hay đổi tên trên R2. Lượng dùng thêm chỉ vài chục MB mỗi tháng.
+
+**Chú thích: vì sao `base/` giữ 15 ngày mà `wal/` chỉ 7 ngày.** Một bản nền chỉ dùng được cho khôi phục thời điểm (PITR) khi còn **đủ mọi đoạn WAL từ lúc chụp bản nền trở đi**. Bản nền chụp hằng tuần, WAL giữ 7 ngày, nên bản nền cũ nhất sẽ dần mất WAL đầu của nó và hết dùng được. Nếu chỉ giữ một bản nền mà tuần đó chụp hỏng, ta sẽ **không có bản nền nào dùng được**. Giữ khoảng hai tuần để luôn có bản nền dùng được ngay cả khi lần chụp tuần này hỏng, trong lúc chuông 26 giờ và healthchecks kịp báo. Bản nền nào hết hạn thì chỉ cần mất; khôi phục luôn bắt đầu từ bản nền **mới nhất còn đủ WAL**.
+
+**Điểm yếu đã biết và cách bù:**
+- Xóa theo **tuổi**, không theo **số bản**. Nếu script ngừng chạy cả tuần, bản cũ vẫn tự mất mà không có bản mới thay. Bù: healthchecks.io (Q328) và chuông Quản trị viên báo ngay khi quá 26 giờ không có bản mới, sớm hơn nhiều so với hạn 7 ngày.
+- Quy tắc vòng đời của R2 chạy nền theo lịch của Cloudflare, **không xóa đúng giây**; đủ cho mục tiêu dọn dung lượng.
+- **Chưa kiểm được trước:** khóa R2 mức "Object Read & Write" có tự xóa được file hay không. Cloudflare không có mức chỉ-ghi thật sự; tài liệu không nói rõ. Khi bạn tạo khóa ở bước hướng dẫn tay, ta **thử thật**: tải một file lên rồi thử xóa bằng chính khóa đó. Nếu **xóa được** thì ghi rõ trong tài liệu rằng "chống xóa" ở R2 chỉ là quy ước (script không gọi xóa) chứ chưa là chốt kỹ thuật, và cân nhắc bước thêm ở câu sau (ví dụ khóa tải lên riêng, hoặc bật khóa đối tượng nếu có).
+
+#### Ghi chú để tự học: vì sao tách người ghi khỏi người xóa
+
+Nguyên tắc chung của sao lưu ngoài máy: **kẻ làm hỏng dữ liệu gốc không được có khả năng làm hỏng luôn bản sao**. Hỏng gốc có thể do lỗi phần mềm, xóa nhầm, mã độc tống tiền hoặc kẻ xâm nhập. Nếu bản sao nằm trong tầm xóa của cùng một tài khoản thì mọi thứ mất cùng lúc. Có ba cách làm cho bản sao khó bị xóa: (1) quyền riêng không có chữ "xóa" (nhưng không phải dịch vụ nào cũng cho); (2) để chính nhà cung cấp tự xóa theo tuổi, như ở đây; (3) bật **khóa đối tượng** (object lock) để file không xóa được trong một thời hạn. Dự án chọn (2) vì gói miễn phí, ít phần chuyển động, và dễ giải thích: "dọn dẹp là việc của R2, không phải của script".
+
+#### Hướng dẫn tay cho chủ dự án (sẽ làm từng bước cùng nhau khi viết code 6c)
+
+Đây là phác thảo; từng bước chi tiết kèm ảnh chụp màn hình cần bấm gì sẽ làm khi tới lúc:
+1. Có tài khoản Cloudflare (đã có, dùng chung với tunnel); vào **R2**, bật R2 (tài liệu Cloudflare không nói rõ có bắt buộc thêm phương thức thanh toán hay không; khi bật, làm theo màn hình hiện ra. Dùng trong gói miễn phí thì không tính tiền, xem mục "Chính sách R2 đã kiểm" bên dưới).
+2. Tạo **bucket** riêng cho dự án, ví dụ `exam-backup`. Không bật truy cập công khai.
+3. Đặt **quy tắc vòng đời** cho từng thư mục theo bảng trên (mỗi dòng một quy tắc: tiền tố, xóa sau N ngày).
+4. Tạo **khóa API R2** (Access Key ID và Secret) với quyền thấp nhất cho đúng bucket đó, **thử ghi rồi thử xóa** để biết khóa có xóa được không, rồi cất vào Bitwarden (Q327).
+5. Đưa khóa vào `~/exam-prod-secrets/` (file riêng, quyền 600) để script đọc, không đưa vào repo.
+
+### Q353: sao lưu hằng đêm có chạy bù khi bật máy (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Bối cảnh do chủ dự án nêu thêm:** pod `prod-exam` chạy trong WSL Ubuntu trên **laptop**, không mở 24/7; WSL mở lên thì pod mới tự dựng lại (Q334). Vì vậy "02:00 mỗi đêm" không phải lúc nào cũng có máy để chạy.
+
+**Quyết định.**
+1. Hẹn giờ bằng **systemd timer của người dùng** với `OnCalendar=*-*-* 02:00` và `Persistent=true`: lỡ giờ vì máy tắt thì khi WSL mở lên timer **chạy bù ngay**.
+2. Lớp kiểm thứ hai, chạy khoảng **5 phút sau khi pod lên**: nếu bản `pg_dump` mới nhất cũ hơn **20 giờ** thì sao lưu ngay. Phòng trường hợp `Persistent` không bù được (ví dụ WSL bị tắt cưỡng bức, mất file ghi nhớ).
+3. Hai đường chạy cùng một script và dùng **một khóa chống chạy trùng** (`flock`), để timer bù và lớp kiểm không sao lưu chồng lên nhau.
+
+**Phương án đã bỏ:** hẹn giờ cứng không bù (B; có thể vào Phiên thi với bản sao cũ vài ngày); thêm tác vụ Windows giữ WSL bật suốt (C; đảo ngược Q334, laptop phải bật 24/7).
+
+**Ràng buộc rút ra cho các câu sau (rất quan trọng khi máy là laptop):**
+- **"Máy tắt" là bình thường, không phải sự cố.** Cảnh báo "quá 26 giờ" (Q323) và cảnh báo của healthchecks.io (Q328) phải được thiết kế để **không kêu oan** mỗi lần bạn tắt máy qua đêm. Trong ứng dụng, chuông chỉ có thể kêu **khi hệ thống đang chạy** (do chính ứng dụng gửi), nên đã hợp lý. Với healthchecks.io, cách báo dựa vào "tín hiệu còn sống" phải khác "bản sao lưu đêm" (sẽ chốt ở câu riêng).
+- Mức mất dữ liệu 1–5 phút (Q323) **chỉ có nghĩa lúc máy đang bật**: khi tắt máy thì không có thao tác nào để mất. Mối nguy thật là **tắt đột ngột giữa Phiên thi** (gập laptop, hết pin, Windows tự khởi động lại): PostgreSQL tự phục hồi sau mất điện nhờ WAL, và các đoạn WAL đã chép ra vẫn nằm đó; phần mất tối đa là những thao tác chưa kịp chép, cỡ 1 phút. Phần "laptop ngủ giữa giờ thi" là chuyện vận hành (ghi vào checklist 6e: cắm sạc, tắt chế độ ngủ khi có Phiên thi), không phải việc của sao lưu.
+
+#### Ghi chú để tự học: systemd timer và `Persistent=true`
+
+- **Timer là gì.** systemd có hai loại file đi đôi: `*.service` (việc cần làm) và `*.timer` (khi nào làm). Timer thay cho `cron`, có thêm ưu điểm: có nhật ký chuẩn (`journalctl`), xem được lần chạy kế tiếp, và nhớ được lần lỡ.
+- **`OnCalendar=*-*-* 02:00`** nghĩa là mỗi ngày lúc 02:00 (giờ máy).
+- **`Persistent=true`**: systemd ghi giờ chạy lần cuối vào một file nhỏ trên đĩa (với timer của người dùng nằm ở `~/.local/share/systemd/timers/`). Khi timer được bật lại mà phát hiện đã lỡ ít nhất một lần hẹn trong lúc tắt, nó **chạy ngay một lần** (chỉ một lần, không chạy bù từng đêm bị lỡ).
+- Timer của **người dùng** chỉ chạy khi **phiên của người dùng đó còn sống**; điều này khớp cách pod prod-exam đang dựng lại khi mở WSL (Q334).
+- **Xem lịch:** `systemctl --user list-timers`. **Xem nhật ký lần chạy:** `journalctl --user -u <tên-service> -n 50`.
+- **`flock`**: lệnh khóa file; script thứ hai gặp khóa đang giữ thì chờ hoặc thoát, tránh hai bản sao lưu chạy đồng thời tranh nhau đĩa và làm hỏng nhau.
+
+### Q354: mã hóa bản gửi lên R2 bằng khóa công khai gpg, khóa bí mật không nằm trên máy (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Quyết định.**
+- Bản gửi **ra ngoài máy (R2)** mã hóa bằng **khóa công khai gpg**. Máy chỉ giữ **khóa công khai** (chỉ mã hóa được). **Khóa bí mật** (giải mã) cất ở Bitwarden và bản giấy niêm phong (Q327), **không bao giờ để trên laptop hay máy chủ**.
+- Bản chép ở **WSL và ổ D:** **không mã hóa** (cùng máy nên mã hóa không tăng bảo vệ, mà làm khó khôi phục nhanh). Điều này cũng cho phép **khôi phục thử hằng tháng tự động** (Q323, lớp 4) dùng bản trong WSL mà không cần khóa bí mật.
+- Phần giải mã **bản R2** do chủ dự án thử **tay** mỗi vài tháng, bằng khóa bí mật lấy từ Bitwarden. Đây là bài kiểm duy nhất chứng minh bản ngoài máy dùng được khi mất cả máy.
+
+**Phương án đã bỏ:**
+- Mã hóa bằng mật khẩu (gpg đối xứng, B): mật khẩu phải nằm trên máy để script chạy tự động, nên ai chiếm được máy cũng giải mã được bản ngoài máy.
+- `rclone crypt` (C): khóa mã hóa và giải mã là một, nằm trên máy (cùng điểm yếu B); ngoài ra mã hóa cả **tên file** làm quy tắc vòng đời theo tiền tố thư mục của Q352 không dùng được.
+
+#### Ghi chú để tự học: mã hóa khóa công khai (bất đối xứng)
+
+- **Hai khóa đi đôi.** Khóa công khai khóa "chiếc hộp" lại, ai có nó cũng khóa được nhưng **không mở được**; chỉ khóa bí mật mới mở. Như một thùng thư: ai cũng bỏ thư vào được, chỉ người giữ chìa mới lấy thư ra.
+- **Vì sao hợp với sao lưu tự động.** Script chạy hằng đêm, không có người gõ mật khẩu, nên mọi thứ script cần phải nằm sẵn trên máy. Nếu thứ đó cũng là thứ giải mã được (như mật khẩu), kẻ chiếm máy lấy luôn. Với khóa công khai, thứ nằm trên máy **chỉ dùng để khóa**, nên máy bị chiếm vẫn không đọc được các bản đã gửi đi.
+- **Cái giá:** mất khóa bí mật là mất khả năng đọc **mọi** bản trên R2. Vì vậy khóa bí mật cất hai nơi (Bitwarden và giấy) và **thử giải mã thật định kỳ**. Nếu sau này đổi cặp khóa, bản cũ vẫn cần khóa bí mật **cũ**: giữ lại mọi khóa bí mật đã dùng.
+- **Khóa bí mật nên đặt thêm cụm mật khẩu bảo vệ** (passphrase), cất cụm mật khẩu ở nơi khác với file khóa khi có thể.
+- **Người dự phòng (Q326):** gpg cho mã hóa cho **nhiều người nhận** cùng lúc. Muốn người dự phòng giải mã bằng khóa riêng của họ thì thêm khóa công khai của họ làm người nhận thứ hai (không bắt buộc, quyết ở bước làm thật).
+
+#### Hướng dẫn thao tác (phác thảo; sẽ làm từng bước cùng chủ dự án khi viết code 6c)
+
+1. **Tạo cặp khóa trong một thư mục gpg tạm** (không dùng kho khóa thường ngày):
+   ```bash
+   export GNUPGHOME="$(mktemp -d)"; chmod 700 "$GNUPGHOME"
+   gpg --quick-generate-key "exam-system backup" default default never   # hỏi cụm mật khẩu cho khóa bí mật
+   gpg --list-keys --fingerprint                                          # ghi lại dấu vân tay (fingerprint)
+   ```
+2. **Xuất hai khóa:**
+   ```bash
+   gpg --armor --export <FINGERPRINT> > exam-backup-public.asc
+   gpg --armor --export-secret-keys <FINGERPRINT> > exam-backup-SECRET.asc   # CHỈ cất ở Bitwarden và bản giấy
+   ```
+3. **Cất khóa bí mật** vào Bitwarden (Secure note đã có, đính kèm hoặc dán nội dung) và in bản giấy; cất cụm mật khẩu tách riêng. **Sau đó xóa file bí mật khỏi máy và xóa thư mục `GNUPGHOME` tạm.**
+4. **Nhập khóa công khai vào máy** (kho khóa của người dùng vận hành): `gpg --import exam-backup-public.asc`, rồi đánh dấu tin cậy hoặc dùng `--trust-model always` trong script.
+5. **Script mã hóa** (ví dụ): `gpg --encrypt --recipient <FINGERPRINT> --trust-model always -o file.gpg file`. gpg tự nén nên không cần nén riêng.
+6. **Thử giải mã (làm tay, định kỳ):** trên một máy khác (hoặc thư mục `GNUPGHOME` tạm), nhập khóa bí mật từ Bitwarden, tải một file từ R2 và `gpg --decrypt file.gpg > file`, rồi `pg_restore --list file` để chắc file đọc được. Ghi ngày thử vào checklist hằng tháng.
+
+**Việc kéo theo trong 6c:** script chỉ mã hóa các thứ **đi ra R2**; thư mục `wal/`, `base/`, `daily/`, `weekly/`, `monthly/`, `media/`, `khoa/` trên R2 đều chứa file `.gpg`. Tên file **không** mã hóa (cần cho quy tắc vòng đời Q352) nên **không đặt thông tin nhạy cảm vào tên file** (chỉ ngày giờ, loại và số thứ tự).
+
+### Chính sách R2 đã kiểm (9/11/2026) để bảo đảm sao lưu liên tục
+
+Chủ dự án yêu cầu kiểm chính sách mới nhất của Cloudflare R2 trước khi chốt tần suất. Số liệu lấy từ tài liệu chính thức ngày 9/11/2026; **chính sách có thể đổi, kiểm lại trước khi chạy thật và mỗi khi R2 thông báo thay đổi** (nguồn: [Pricing](https://developers.cloudflare.com/r2/pricing/), [Object lifecycles](https://developers.cloudflare.com/r2/buckets/object-lifecycles/), [API tokens](https://developers.cloudflare.com/r2/api/tokens/), [S3 API](https://developers.cloudflare.com/r2/get-started/s3/)).
+
+| Hạng mục | Chính sách ghi trong tài liệu | Ảnh hưởng đến thiết kế |
+|---|---|---|
+| Gói miễn phí (chỉ lớp lưu trữ Standard) | 10 GB-tháng lưu trữ; 1 triệu thao tác loại A mỗi tháng; 10 triệu thao tác loại B mỗi tháng | Khớp ước tính dung lượng Q325. **Không dùng lớp Infrequent Access**: không thuộc gói miễn phí |
+| Thao tác loại A | `PutObject` (tải lên) và `ListObjects` (liệt kê) | Tải lên mỗi phút **và liệt kê** tốn hạn mức này (xem tính toán bên dưới) |
+| Thao tác loại B | `GetObject` (tải về) | Khôi phục và thử giải mã dùng loại này, rẻ |
+| Xóa | `DeleteObject` miễn phí | Quy tắc vòng đời xóa không tốn phí |
+| Tải dữ liệu ra (egress) | Miễn phí | Khôi phục từ R2 không tốn tiền băng thông |
+| Thời gian giữ tối thiểu | Standard: không có. Infrequent Access: 30 ngày | Không bị tính phí khi xóa sớm file Standard |
+| Quy tắc vòng đời | Xóa sau N ngày hoặc vào một ngày; lọc theo **tiền tố**; tối đa 1000 quy tắc | Đúng thứ Q352 cần. Dùng khoảng 6 quy tắc |
+| Độ trễ xóa | "thường xóa trong vòng 24 giờ sau thời điểm hết hạn"; file có sẵn khi mới đặt quy tắc có thể lâu hơn | Dung lượng thực tế có thể cao hơn bảng tính tới một ngày dữ liệu; ước tính đã có dư |
+| Quyền cấu hình vòng đời | Là thao tác cấp bucket, cần quyền "Workers R2 Storage Write" | **Chủ dự án đặt quy tắc bằng tài khoản Cloudflare của mình** (trang quản lý hoặc `wrangler`), **không** dùng khóa trên máy. Điều này đúng ý Q352 |
+| Mức quyền khóa API R2 | Chỉ có 4 mức: Admin Read & Write, Admin Read only, Object Read & Write, Object Read only; **không có mức chỉ-ghi** | Khóa trên máy dùng **Object Read & Write, giới hạn đúng một bucket** |
+| Khóa Object Read & Write có xóa được file không | **Tài liệu không nói** (chỉ ghi "đọc, ghi, liệt kê") | **Vẫn phải thử thật** (Q352): tải file lên rồi thử xóa bằng chính khóa. Coi như xóa được cho tới khi thử |
+| Tiền tố trong khóa | Tài liệu không nhắc giới hạn khóa theo tiền tố | Không dựa vào việc khóa chỉ được ghi vào `wal/` |
+| Địa chỉ S3 | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`, vùng `auto` | Cấu hình `rclone` kiểu S3 (nhà cung cấp Cloudflare), vùng `auto` |
+| Phương thức thanh toán khi bật R2 | **Tài liệu không nói rõ** | Làm theo màn hình khi bật; ghi lại thực tế vào tài liệu |
+
+**Tính hạn mức loại A cho tần suất "mỗi phút" (Q355).** Một tháng có khoảng 43 200 phút.
+- Tải lên: tối đa 1 lần mỗi phút lúc có thao tác, thường ít hơn nhiều: chặn trên khoảng **43 200** thao tác mỗi tháng, cộng vài chục lần cho bản đêm và bản nền. Chỉ khoảng 4 % hạn mức 1 triệu.
+- **Cạm bẫy: liệt kê.** Cách "so sánh thư mục" mặc định của `rclone` (`rclone copy`, `rclone sync`) **liệt kê toàn bộ thư mục đích mỗi lần chạy**, một trang tối đa 1000 file mỗi lần gọi. Thư mục `wal/` giữ 7 ngày × tối đa 1440 đoạn = hơn **10 000 file**, tức khoảng 11 lần liệt kê mỗi phút, khoảng **475 000** thao tác mỗi tháng, tương đương gần một nửa hạn mức, **chỉ để biết đã có gì**. Không chấp nhận được.
+- **Cách tránh (đã đưa vào thiết kế Q355):** script **không liệt kê R2**. Nó giữ một **sổ ghi cục bộ** các file đã đẩy xong; mỗi phút chỉ đẩy các file mới chưa có trong sổ, bằng danh sách file cụ thể (`rclone copy --files-from <danh-sách> --no-traverse`, kiểm lại tùy chọn trong tài liệu `rclone` bản đang cài). Kiểm bằng cách đếm: một lần chạy bình thường chỉ gọi vài thao tác loại B/A, không phải hàng chục.
+- Việc đối chiếu toàn bộ giữa sổ và R2 (liệt kê thật) làm **hiếm**, ví dụ mỗi đêm một lần (khoảng 30 lần liệt kê mỗi tháng) để phát hiện file thiếu.
+
+### Q355: chép sang ổ D: và R2 mỗi phút, chỉ file mới, không liệt kê R2 (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Quyết định.**
+- Một **timer chạy mỗi phút** (systemd timer của người dùng) gọi một script "đẩy". Script chép các đoạn WAL **mới** (chưa có trong sổ ghi) từ thư mục `wal/` trên ổ WSL sang **ổ D:** và sang **R2** (đã nén, mã hóa gpg theo Q354 với bản R2).
+- Phút nào không có file mới thì chạy rất nhanh, không tải lên gì.
+- Mất mạng hoặc D: chưa gắn thì file vẫn nằm ở thư mục WSL và được chép bù theo thứ tự ở lần chạy sau. Hai đích chép **độc lập**: R2 lỗi không ngăn D:, và ngược lại. Không đường nào làm nghẽn `archive_command` của PostgreSQL (hai chặng, Q351).
+- Mức mất dữ liệu nếu mất cả máy: khoảng **1 phút** của thao tác (Q323, mức chặt nhất).
+- **Bảo đảm liên tục (không đứt mắt xích):** tên đoạn WAL là chuỗi 24 ký tự hex gồm nhánh thời gian, và số thứ tự tăng dần. Script kiểm **dãy số liền nhau** ở thư mục WSL và ở sổ đã đẩy; thấy **lỗ hổng** (thiếu một đoạn giữa hai đoạn có mặt) thì ghi lỗi, gọi địa chỉ "thất bại" của healthchecks.io (Q328) và hiện chuông ở 6d. Lỗ hổng trong WAL nghĩa là **không khôi phục được qua chỗ đó**, nên đây là cảnh báo nghiêm trọng, và bản `pg_dump` đêm đó là chỗ dựa.
+- Sổ ghi cục bộ nằm cạnh thư mục sao lưu (một file danh sách đơn giản). Mất sổ thì script dựng lại bằng một lần đối chiếu có liệt kê (chấp nhận tốn vài chục thao tác một lần).
+
+**Phương án đã bỏ:** mỗi 5 phút (B; mất tối đa 5 phút khi mất cả máy, sát mức trên Q323), D: mỗi phút nhưng R2 chỉ mỗi đêm (C; mất tới một ngày khi mất cả máy, trái Q323).
+
+**Nếu laptop thấy nặng:** chuyển sang 5 phút chỉ cần sửa `OnCalendar` của timer (một dòng cấu hình), không đổi thiết kế.
+
+#### Ghi chú để tự học: vì sao tính "số thao tác" của dịch vụ lưu trữ
+
+Dịch vụ lưu trữ đối tượng (S3, R2) tính phí và đặt hạn mức theo **số yêu cầu**, không chỉ theo dung lượng. Một công cụ "đồng bộ" tiện lợi có thể âm thầm gọi hàng nghìn yêu cầu liệt kê mỗi lần chạy. Với việc chạy mỗi phút, nhân lên 43 200 lần mỗi tháng. Bài học chung: **tính trước số yêu cầu mỗi chu kỳ × số chu kỳ mỗi tháng** và thiết kế để mỗi chu kỳ chỉ làm đúng phần việc mới (ghi nhớ cục bộ cái đã làm), thay vì hỏi dịch vụ "có gì rồi" mỗi lần.
+
+### Q356: ảnh chép từng file mới; khóa bí mật mã hóa rồi chép khi có thay đổi (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Hiện trạng (9/11/2026):** volume `exam_media` còn trống (0 file); `~/exam-prod-secrets/` có hai file `postgres.env` (103 byte) và `api.env` (404 byte), quyền `600`.
+
+**Quyết định.**
+
+*Ảnh minh họa (`exam_media`):*
+- Mỗi đêm (cùng đợt sao lưu hằng đêm) và sau mỗi lần sao lưu, script chép các **file ảnh mới** chưa có trong **sổ ghi cục bộ** sang **ổ D:** (không mã hóa, giống các bản chép khác ở D:) và **R2** (mã hóa gpg theo Q354, thư mục `media/`), theo cách "chỉ file mới, không liệt kê R2" của Q355. Ảnh đã đẩy không chép lại.
+- Ảnh chỉ **thêm mới, không sửa**, nên mỗi file chép một lần. **Chống chép dở:** chỉ lấy file có thời điểm sửa cuối **cũ hơn 60 giây** và kích thước không đổi giữa hai lần đo, tránh chép đúng lúc API đang ghi.
+- Đường dẫn volume lấy bằng `podman volume inspect exam_media -f '{{.Mountpoint}}'` (không viết cứng, để chạy được cả trên VPS).
+- **Sao lưu chỉ thêm, không xóa:** nếu một ảnh bị xóa khỏi hệ thống thì bản sao vẫn còn (chấp nhận; ảnh nhẹ, và lỡ xóa nhầm thì còn gốc). Thư mục `media/` trên R2 **không đặt quy tắc xóa** (Q352). *Khi làm 6c kiểm xem ứng dụng có đường nào xóa ảnh không và ghi vào tài liệu.*
+
+*Khóa bí mật (`postgres.env`, `api.env`):*
+- Mã hóa bằng **khóa công khai** (Q354) rồi chép khi **nội dung đổi** (so mã băm `sha256` với lần chép trước, lưu trong sổ ghi). Mỗi bản có tên theo ngày và đoạn đầu của mã băm.
+- Chép ở **cả D: lẫn R2 đều ở dạng mã hóa**: D: là ổ Windows, mọi chương trình Windows đọc được, nên khóa không được nằm dạng thường ở đó. Chỉ file gốc trong `~/exam-prod-secrets/` (quyền 600) là dạng thường.
+- Thư mục `khoa/` trên R2 và D: **không xóa**: file nhỏ, và có thể cần bản **cũ** để mở dữ liệu cũ (ví dụ sau khi đổi khóa).
+- Bitwarden và bản giấy (Q327) vẫn là nơi lưu chính, đây chỉ là lớp thứ ba.
+
+**Phương án đã bỏ:** gộp ảnh và khóa vào gói hằng đêm (B; đẩy lại toàn bộ ảnh mỗi đêm, nhanh chạm 10 GB miễn phí); chỉ chép ảnh, bỏ khóa (C; thiếu dự phòng khi không vào được Bitwarden, mà khóa chỉ cỡ 500 byte).
+
+#### Ghi chú để tự học: sao lưu "chỉ thêm" cho dữ liệu bất biến
+
+Với dữ liệu **ghi một lần, không bao giờ sửa** (ảnh, file đính kèm), sao lưu đơn giản nhất và rẻ nhất là: nhìn thấy file mới thì chép đúng một lần, không đụng tới file cũ. Cái cần ghi nhớ là **danh sách đã chép** (sổ ghi), để lần sau biết file nào còn thiếu mà không phải hỏi nơi lưu. Đổi lại ta chấp nhận sao lưu không tự dọn: file bị xóa ở nguồn vẫn còn ở bản sao. Với dữ liệu thi, giữ thừa an toàn hơn xóa nhầm.
+
+#### Khôi phục ảnh và khóa (phác thảo, viết đủ trong `docs/ops/khoi-phuc.md`)
+
+- **Ảnh:** chép ngược các file vào volume `exam_media`. Vì Podman rootless ánh xạ người dùng (user namespace), file chép vào volume phải đúng chủ sở hữu bên trong container; dùng `podman unshare` để chép hoặc `podman volume import` từ một file `.tar` đã dựng từ thư mục ảnh.
+- **Khóa:** giải mã bằng khóa bí mật (Bitwarden), đặt lại vào `~/exam-prod-secrets/` với quyền `600`.
+- Cả hai đã nằm trong checklist thử khôi phục hằng tháng (câu sau).
+
+### Q357: thử khôi phục đầy đủ mỗi tháng, tự động, trong pod tạm (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Vì sao cần:** bản sao lưu chưa từng khôi phục thử thì chưa chắc dùng được. Lỗi chỉ lộ khi thử: file dump mở được nhưng thiếu bảng; chuỗi WAL đứt nên chỉ khôi phục được tới giữa tuần; ảnh chép về sai chủ sở hữu nên API không đọc được; khóa không khớp dữ liệu.
+
+**Quyết định.** Mỗi tháng một lần, script `restore-test` chạy **tự động** trong một **pod tạm** `restore-test`, cô lập hoàn toàn với `prod-exam`:
+
+1. **Cô lập:** pod, thư mục dữ liệu và cổng riêng (chỉ gắn `127.0.0.1`, không trùng 8180 và 5436), thư mục làm việc `~/exam-prod-backups/restore-test/` xóa sạch sau khi chạy. **Không đọc hay ghi** vào volume và pod của prod.
+2. **Chốt chặn trước khi chạy:** không có Phiên thi đang diễn ra hoặc sắp bắt đầu (dùng lại kiểm tra của Q332); đĩa còn trống ít nhất gấp đôi kích thước bản dump; không có sao lưu khác đang chạy (`flock`, Q353). Đặt **giới hạn thời gian** (ví dụ 20 phút); quá hạn thì dừng, dọn và báo lỗi.
+3. **Kiểm tra A: bản `pg_dump` mới nhất.** Khôi phục vào PostgreSQL tạm, đếm số dòng các bảng chính và so với **số đếm ghi lúc làm bản dump** (cùng một ảnh chụp dữ liệu, không so với cơ sở dữ liệu đang chạy vì dữ liệu thật đã thêm sau đó). *Cách lấy số đếm cùng ảnh chụp (ví dụ `pg_dump --snapshot` với ảnh chụp xuất bằng `pg_export_snapshot()`) cân nhắc khi viết code.*
+4. **Kiểm tra B: khôi phục về một thời điểm (PITR).** Bản nền mới nhất cộng WAL tới một mốc gần đây (ví dụ 10 phút trước); kiểm **dãy WAL liền nhau**, PostgreSQL báo đã dừng đúng mốc (log "recovery stopping"), thoát chế độ khôi phục, số dòng không **ít hơn** số của bản dump.
+5. **Kiểm tra C: ứng dụng chạy được.** Khởi động **chỉ ảnh `exam-api`** của bản đang chạy (đọc tag ở `~/.local/state/exam-prod/tag`) với cơ sở dữ liệu vừa khôi phục: `/api/health` trả `ok`; `node dist/db/migrate.js` báo không còn migration chờ (dữ liệu và mã khớp phiên bản); một ảnh mẫu chép từ bản sao ảnh đọc được qua cùng cấu hình. **Không** khởi động worker (tránh gửi thông báo hay chạy việc nền trên dữ liệu thử).
+6. **Ghi kết quả** vào sổ ghi (`state/restore-test.json`): giờ bắt đầu, giờ xong, **thời gian khôi phục** (chính là số "máy hỏng thì dựng lại mất bao lâu"), tên bản dump, các số đếm, WAL có đứt không, đúng hay sai từng kiểm tra, tổng kết `ok`. Gọi healthchecks.io (địa chỉ thành công hoặc thất bại, Q328); 6d đọc sổ này cho màn hình chỉ đọc và chuông.
+
+**Chạy khi nào (laptop, Q353):** timer của người dùng `OnCalendar=monthly` kèm `Persistent=true`, cộng lớp kiểm sau khi pod lên: nếu lần thử gần nhất cũ hơn 35 ngày thì chạy. Tháng nào laptop không mở thì lần mở sau chạy bù; **nếu lúc đó có Phiên thi thì hoãn** đến khi hết.
+
+**Dùng bản trong WSL (không mã hóa)**, nên không cần khóa bí mật. Phần **giải mã bản R2 vẫn do chủ dự án thử tay** (Q354), vì khóa bí mật không nằm trên máy. Checklist thử tay vài tháng một lần, ghi vào `khoi-phuc.md`: tải một bản từ R2, giải mã bằng khóa ở Bitwarden, `pg_restore --list`.
+
+**Phương án đã bỏ:** thử nhẹ mỗi tuần và đầy đủ mỗi quý (B; phát hiện lỗi chậm tới 3 tháng); thử tay khi nhớ (C; dễ quên).
+
+**Chi phí:** vài phút CPU và đĩa mỗi tháng với dữ liệu hiện nay; đo lại ở ca 500 người và ghi vào `docs/hieu-nang.md` (kích thước dump, thời gian khôi phục, thời gian dựng pod tạm).
+
+#### Ghi chú để tự học: "bản sao chưa thử khôi phục thì chưa phải bản sao"
+
+Câu quen thuộc của người làm vận hành: **sao lưu chỉ có giá trị khi khôi phục được**. Hai nguyên tắc trong thiết kế này:
+- Thử ở **môi trường tách biệt**, không bao giờ thử trên hệ thống đang chạy: lỡ tay xóa nhầm thì mất dữ liệu thật.
+- Đo **thời gian khôi phục (RTO)** cùng với **mức mất dữ liệu (RPO)**. RPO (Q323: 1 đến 5 phút) trả lời "mất bao nhiêu"; RTO trả lời "mất bao lâu để chạy lại". Phiên thi đang diễn ra thì cả hai đều quan trọng, và RTO chỉ biết thật nhờ lần thử này.
+
+### Q358: healthchecks.io báo "sao lưu đêm" và "thử khôi phục" với hạn trễ rộng; tín hiệu "còn sống" để dành cho máy chủ 24/7 (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Điều chỉnh Q328 theo hoàn cảnh laptop.** Q328 duyệt hai thứ: báo sao lưu hằng đêm và báo "hệ thống còn trả lời". Q353 xác định laptop tắt là bình thường. Tín hiệu "còn sống" gửi mỗi 5 phút sẽ gây **email báo giả mỗi lần gập máy**, làm người vận hành quen bỏ qua cảnh báo, nguy hiểm hơn không có cảnh báo. Vì vậy: giữ phần báo sao lưu, **hoãn** phần "còn sống" tới khi chạy ở máy chủ 24/7 (xem [chuyen-len-vps.md](../ops/chuyen-len-vps.md), mục 9).
+
+**Số liệu đã kiểm (trang giá và tài liệu của healthchecks.io, 9/11/2026):** gói miễn phí theo dõi **20 việc**, mỗi việc lưu **100 dòng nhật ký** (việc chạy mỗi 5 phút chỉ giữ lịch sử khoảng 8 giờ, việc chạy hằng ngày giữ khoảng 3 tháng). Mỗi việc nhận tín hiệu thành công (gọi địa chỉ gốc), `/start` (đo thời gian chạy), `/fail` (thất bại ngay), `/log` (ghi chú, không đổi trạng thái), hoặc đuôi mã thoát `/0` đến `/255`. Phần thân yêu cầu lưu 100 kB đầu. **Trang giá không nêu gói miễn phí có những kênh báo nào**; email thường có sẵn nhưng chưa xác nhận, **kiểm khi tạo tài khoản** và ghi kết quả vào tài liệu. Không đặt dữ liệu thi hay tên người dùng vào thân tín hiệu (Q328).
+
+**Quyết định: hai việc theo dõi, dùng 2 trên 20.**
+
+| Việc | Chu kỳ | Cho phép trễ | Khi nào báo thành công | Khi nào báo thất bại |
+|---|---|---|---|---|
+| `exam-backup-nightly` ("sao lưu hằng đêm") | 1 ngày | **3 ngày** | Chỉ khi **cả ba** đúng: bản `pg_dump` xong và đọc được; dãy WAL liền nhau; đã chép sang D: và R2 | Gọi `/fail` ngay khi một trong ba sai (kèm một dòng lý do ngắn trong thân) |
+| `exam-restore-test` ("thử khôi phục hằng tháng") | 35 ngày | 7 ngày | Lần thử Q357 đạt cả ba kiểm tra | `/fail` khi một kiểm tra sai hoặc quá giờ |
+
+- Hạn trễ 3 ngày để cuối tuần tắt máy không báo; tắt hơn 3 ngày thì có đúng một email nhắc (chấp nhận được).
+- **Chưa tạo** việc "còn sống mỗi 5 phút". Khi chuyển sang máy chủ 24/7 thì bật, với hạn trễ ngắn (cỡ 10 phút), vì lúc đó "máy ngừng trả lời" là sự cố thật.
+- Có chỗ trống trong 20 việc để thêm sau (ví dụ việc riêng cho lỗi WAL nghiêm trọng).
+- **Địa chỉ báo là bí mật nhỏ:** cất trong env file riêng của máy (`~/exam-prod-secrets/backup.env`, quyền 600), không đưa vào repo, vào log công khai hay tài liệu. Chép vào Bitwarden (Q327) để dựng lại khi chuyển máy.
+- Script luôn gọi `/start` trước khi chạy để healthchecks đo được thời gian sao lưu và phát hiện lần chạy treo.
+- **Gọi báo lỗi không được làm hỏng việc chính:** thiếu mạng hoặc healthchecks.io lỗi thì ghi cảnh báo vào log và đi tiếp (hết thời gian chờ ngắn, vài giây); không bao giờ để lỗi gọi báo làm sao lưu thất bại hay nghẽn `archive_command`.
+
+**Điểm yếu đã biết và cách bù:** máy **tắt đột ngột giữa Phiên thi** thì healthchecks không báo ngay. Lớp bảo vệ chính là chuông trong ứng dụng (chỉ kêu khi hệ thống đang chạy, chỉ thấy khi Quản trị viên đăng nhập) và người ngồi cạnh máy; checklist 6e dặn cắm sạc, tắt chế độ ngủ, đặt giờ hoạt động cho Windows Update trong giờ thi. Chấp nhận cho giai đoạn laptop.
+
+**Phương án đã bỏ:** thêm việc "còn sống mỗi 5 phút" ngay (B; email giả mỗi lần gập máy); chưa dùng healthchecks khi còn laptop (C; sao lưu đêm lỗi thì chỉ phát hiện khi tình cờ mở màn hình chỉ đọc).
+
+#### Ghi chú để tự học: cảnh báo giả và "mệt mỏi vì cảnh báo"
+
+Hệ thống giám sát tốt báo **ít nhưng đúng**. Mỗi cảnh báo giả làm người nhận giảm một chút sự chú ý, và khi cảnh báo thật đến thì bị coi như giả. Hai cách giảm cảnh báo giả đã dùng ở đây: (1) **chỉnh hạn trễ theo thói quen thật** của hệ thống (laptop tắt cuối tuần thì cho trễ 3 ngày); (2) **báo theo kết quả** (script tự gọi `/fail` khi biết lỗi) thay vì chỉ báo theo **sự im lặng**. Báo theo kết quả nhanh và chính xác hơn; báo theo im lặng cần để bắt trường hợp script chết hẳn không kịp báo gì, nên vẫn giữ làm lưới an toàn với hạn trễ rộng.
+
+### Q359: script ghi sổ kết quả cục bộ (luôn có) và chèn vào bảng trong cơ sở dữ liệu khi có bảng (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Bài toán.** Q323 muốn Quản trị viên xem tình trạng sao lưu trong ứng dụng và có chuông khi bản mới nhất cũ hơn 26 giờ. Script sao lưu chạy ở máy (ngoài container), ứng dụng chạy trong pod, nên kết quả phải đi từ script vào ứng dụng.
+
+**Quyết định.**
+- **PR 6c:** mỗi lần chạy, script **luôn** ghi một dòng JSON vào sổ `~/.local/state/exam-prod/backup-runs.jsonl` (mỗi dòng một lần chạy). Mỗi dòng có: loại việc (dump đêm, dump trước deploy, bản nền, đẩy WAL, đẩy ảnh và khóa, thử khôi phục), giờ bắt đầu và kết thúc, kích thước, nơi đã chép (WSL, D:, R2), kết quả (`ok` hoặc `failed`), lý do lỗi ngắn. **Sổ này là nguồn gốc**, tồn tại kể cả khi cơ sở dữ liệu hỏng, tức đúng lúc cần biết bản sao cuối là khi nào.
+- **PR 6d:** thêm bảng `backup_runs` bằng migration, màn hình chỉ đọc cho Quản trị viên và chuông quá 26 giờ. Script thêm bước: **nếu bảng tồn tại** thì chèn dòng bằng `psql` qua `podman exec`, đúng cách `audit_deploy` đang chèn vào `audit_logs`. Cơ sở dữ liệu hỏng, đang khôi phục, hoặc chưa có bảng thì **bỏ qua và chèn bù** ở lần chạy sau (script so sổ với bảng và chèn những dòng còn thiếu).
+- Sổ và bảng **không lưu bí mật** (không có địa chỉ healthchecks, không có khóa); chỉ tên loại việc, số liệu và lý do lỗi ngắn.
+- Chia việc: 6c độc lập, chạy được mà không cần ứng dụng thay đổi. 6d chỉ thêm phần hiển thị và chuông.
+
+**Phương án đã bỏ:** chỉ ghi vào cơ sở dữ liệu (B; hỏng cơ sở dữ liệu là mất luôn sổ ghi đúng lúc cần); ứng dụng tự đọc file qua thư mục gắn vào container (C; mở thêm đường vào hệ thống file của máy chủ, phải dựng lại container, cần thiết kế bảo mật riêng).
+
+#### Ghi chú để tự học: "sổ gốc" ngoài hệ thống được theo dõi
+
+Nguyên tắc chung: **thứ dùng để theo dõi một hệ thống không nên sống phụ thuộc vào chính hệ thống đó**. Nếu sổ kết quả sao lưu chỉ nằm trong cơ sở dữ liệu thì cơ sở dữ liệu hỏng làm mất cả sổ lẫn khả năng biết bản sao còn dùng được không. Vì vậy sổ gốc là file thường trên máy chủ; bảng trong cơ sở dữ liệu chỉ là **bản sao để hiển thị**, mất thì dựng lại từ file.
+
+### Q360: timer ở máy hỏi `audit_logs` mỗi 5 phút để chạy bản dump sau mỗi lần Công bố (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Bài toán.** Q323 muốn có một bản `pg_dump` ngay sau mỗi lần Công bố. Công bố xảy ra trong ứng dụng (trong container), còn script sao lưu chạy ở máy; ứng dụng không gọi được script của máy.
+
+**Quyết định.** Khi Công bố, mã hiện tại đã ghi dòng `session.released` vào `audit_logs` trong **cùng giao dịch** (`apps/api/src/modules/grading/release.service.ts`). Một timer của người dùng chạy **mỗi 5 phút**: script nhớ mốc thời gian của dòng `session.released` cuối cùng đã sao lưu (trong sổ cục bộ), hỏi cơ sở dữ liệu có dòng mới hơn không; nếu có thì chạy `pg_dump` (loại `publish`) rồi lưu mốc mới. Nhiều lần Công bố trong 5 phút chỉ cần một bản (một ảnh chụp phủ tất cả). Công bố lúc máy tắt thì không có gì để sao lưu.
+- Không sửa mã ứng dụng, không mở đường kết nối mới giữa container và máy; dùng cùng khuôn với `ops.deploy` (script đọc và ghi `audit_logs` bằng `psql` qua `podman exec`).
+- Độ trễ tối đa 5 phút; mỗi lần hỏi là một truy vấn nhẹ trên `audit_logs`.
+
+**Phương án đã bỏ:** bỏ bản dump riêng, dựa vào PITR (B; PITR phụ thuộc chuỗi bản nền cộng WAL, bản dump độc lập là chỗ dựa thứ hai); ứng dụng ghi file cờ cho script đọc (C; cần đường dùng chung giữa container và máy, tức thiết kế bảo mật riêng).
+
+**Còn mở của 6c:** tên lệnh và cấu trúc script; thứ tự các bước làm; bản tổng kết thiết kế 6c để duyệt một lần (câu tiếp theo).
+
+### Q361: các thiết lập kỹ thuật còn lại của 6c (ĐÃ DUYỆT 9/11/2026: đồng ý cả 9 điểm)
+
+**Bối cảnh quy mô do chủ dự án nêu (9/11/2026).** Giai đoạn đầu chạy thật **trên WSL Ubuntu của laptop cho tiết kiệm nhất**, chủ yếu phục vụ **dưới 100 sinh viên dự thi cùng lúc**. Số đo ở [hieu-nang.md](../hieu-nang.md) cho thấy cấu hình này **đạt mọi ngưỡng với một api và một worker** (100 người, 0 lỗi), nên:
+
+- Mặc định giữ **một bản api** (`make -C infra prod-scale N=2` chỉ dành cho phòng khoảng 300 người trở lên, chưa cần ở giai đoạn này).
+- Sao lưu phải **nhẹ**: chạy dưới `nice -n 19` / `ionice` để không làm chậm phòng thi trên cùng máy. `pg_dump` (nhỏ, nhanh, không khóa ghi) vẫn chạy khi có Phiên thi; **bản nền `pg_basebackup` và thử khôi phục hằng tháng thì hoãn khi có Phiên thi** (nặng hơn; lần chạy bù sau sẽ làm).
+- Dung lượng sao lưu của một trường học nhỏ rất bé (cơ sở dữ liệu cỡ vài chục MB đến vài trăm MB, ảnh đề thi cỡ MB), nên 10 GB R2 và 82 GB ổ D: dư rộng.
+- Laptop tắt là bình thường (Q353); khi chuyển sang máy chủ 24/7 thì đổi hạn báo chứ không đổi thiết kế (xem [chuyen-len-vps.md](../ops/chuyen-len-vps.md)).
+
+**Chín điểm đã duyệt.**
+
+| # | Điểm | Nội dung đã duyệt |
+|---|---|---|
+| 1 | Script và lệnh | Một file `infra/scripts/exam-backup.sh` (cùng phong cách `exam-ctl.sh`), lệnh con: `dump`, `basebackup`, `push`, `release-check`, `restore-test`, `status`, `enable`, `disable`. Đích `make -C infra prod-backup-*` tương ứng, dùng cho cả việc hằng ngày lẫn chạy tay |
+| 2 | Timer | Các timer **của người dùng**, tên bắt đầu `exam-backup-`: `push` mỗi phút, `release` mỗi 5 phút, `nightly` 02:00, `base` hằng tuần (Chủ nhật), `restore-test` hằng tháng, và dịch vụ chạy bù ~5 phút sau khi pod lên. Tất cả `Persistent=true`, dùng chung một khóa `flock` (không hai việc nặng cùng lúc) |
+| 3 | Thư mục ổ WSL | `~/exam-prod-backups/{daily,weekly,monthly,base,wal,restore-test}` cộng các file `truoc-deploy-*.dump` đang có (giữ 10). Bản chép ở D: cùng cấu trúc, đường dẫn lấy từ biến `EXAM_BACKUP_MIRROR_DIR` (mặc định `/mnt/d/exam-prod-backups`), **không viết cứng** |
+| 4 | Cấu hình theo máy | `~/exam-prod-secrets/backup.env` (quyền 600, không vào repo): thông tin R2, địa chỉ healthchecks, dấu vân tay khóa gpg công khai, `EXAM_BACKUP_MIRROR_DIR` |
+| 5 | Tên dump | `exam-<YYYYMMDD>-<HHMMSS>-<loại>.dump`, loại: `nightly`, `publish` (sau Công bố), `deploy` (trước deploy, giữ tên cũ `truoc-deploy-*` cho tương thích). Tạo bằng `pg_dump -Fc` chạy **trong container PostgreSQL**, kiểm bằng `pg_restore --list` |
+| 6 | Bật lưu liên tục | Lệnh riêng `exam-ctl.sh enable-archiving`: dựng lại **chỉ container PostgreSQL** (volume giữ nguyên) với `archive_mode=on`, `archive_command`, `archive_timeout=60` và thư mục WAL gắn vào. **Chốt chặn: không chạy khi có Phiên thi.** Mỗi lần `prod-up` về sau tự giữ các tham số này |
+| 7 | Dọn bản cũ ở WSL và D: | Script làm theo bảng Q325, có chế độ chạy thử `--dry-run` in ra sẽ xóa gì. **Không bao giờ xóa bản mới nhất**; chỉ xóa WAL cũ hơn bản nền cũ nhất còn giữ. R2 vẫn do quy tắc vòng đời (Q352) |
+| 8 | Cách thử trong 6c | Thử trên pod `drill`, dùng `rclone` kiểu `local` làm "R2 giả" (chưa cần tài khoản R2 thật). Tình huống: đầy đĩa, mất đích chép, WAL đứt, khôi phục thời điểm A rồi B (PITR), chạy bù. Viết `docs/ops/khoi-phuc.md` và cập nhật `trien-khai.md` **trong cùng PR** |
+| 9 | Bật thật là bước riêng | PR 6c chỉ **cài sẵn** script và timer ở trạng thái **chưa bật**. Sau merge, hướng dẫn chủ dự án từng bước: tài khoản R2, bucket, quy tắc vòng đời, khóa API (kèm thử xóa), cặp khóa gpg + Bitwarden + giấy, tài khoản healthchecks (kiểm kênh báo của gói miễn phí). Cuối cùng `make -C infra prod-backup-enable`, rồi `enable-archiving` lúc không có Phiên thi, rồi thử một lần khôi phục thật |
+
+**Vì sao chia "cài sẵn" và "bật thật" (điểm 9).** Bật lưu liên tục dựng lại container PostgreSQL và bắt đầu chép ra ngoài; nếu khóa R2/gpg chưa sẵn sàng thì sao lưu "bật nửa chừng" còn nguy hơn chưa bật (đĩa đầy WAL, báo giả). Vì vậy PR chỉ giao công cụ đã thử trên `drill`, còn việc cần tài khoản thật (người chủ làm) đi theo một danh sách có thứ tự, kiểm từng bước.
+
+**Tự học: một lần chạy `exam-backup.sh nightly` làm gì (thứ tự).**
+
+1. Lấy khóa `flock`; không lấy được (việc khác đang chạy) thì thoát êm, ghi sổ "bỏ qua".
+2. Gọi healthchecks `/start`.
+3. `pg_dump -Fc` trong container, kiểm `pg_restore --list`, ghi tên file + kích thước + số dòng các bảng chính.
+4. Xếp bản tuần (Chủ nhật) hoặc tháng (mùng 1) bằng cách **chép thêm** file.
+5. Kiểm dãy WAL liền nhau (không đứt số).
+6. Đẩy các file mới sang D: và R2 (xem Q355, Q356), mã hóa gpg cho R2 (Q354).
+7. Dọn bản cũ ở WSL và D: (điểm 7).
+8. Ghi một dòng vào `~/.local/state/exam-prod/backup-runs.jsonl` (Q359).
+9. Gọi healthchecks thành công, hoặc `/fail` kèm lý do nếu bất kỳ bước 3 đến 6 hỏng. Việc báo hỏng **không bao giờ** làm hỏng việc chính.
+
+**Các tên và đường dẫn dự kiến để tra lại:**
+
+| Thứ | Tên / chỗ |
+|---|---|
+| Script | `infra/scripts/exam-backup.sh` |
+| Make | `make -C infra prod-backup-dump`, `prod-backup-push`, `prod-backup-status`, `prod-backup-restore-test`, `prod-backup-enable`, `prod-backup-disable` |
+| Timer | `exam-backup-push.timer`, `exam-backup-release.timer`, `exam-backup-nightly.timer`, `exam-backup-base.timer`, `exam-backup-restore-test.timer`, `exam-backup-catchup.service` (trong `~/.config/systemd/user/`) |
+| Cấu hình | `~/exam-prod-secrets/backup.env` |
+| Sổ kết quả | `~/.local/state/exam-prod/backup-runs.jsonl`, `~/.local/state/exam-prod/restore-test.json` |
+| Ổ WSL | `~/exam-prod-backups/` |
+| Ổ D: | `$EXAM_BACKUP_MIRROR_DIR` (mặc định `/mnt/d/exam-prod-backups`) |
+
+**Thứ tự làm PR 6c (ước lượng, mỗi bước thử trên pod `drill`):** (1) khung script + `dump` + sổ kết quả + dọn bản cũ; (2) `enable-archiving` + `push` với "R2 giả"; (3) `basebackup` + kiểm dãy WAL + PITR; (4) ảnh và khóa bí mật; (5) `release-check`; (6) `restore-test` trong pod tạm; (7) timer, `catchup`, healthchecks (có thể giả); (8) tài liệu `khoi-phuc.md`, `trien-khai.md`; (9) soát mã hai trục rồi mở PR.
+
+### Tổng kết thiết kế sao lưu 6c (Q351–Q361, để theo dõi và học lại)
+
+**Mục tiêu:** mất tối đa khoảng 1 phút thao tác khi máy hỏng giữa giờ thi (Q323), khôi phục được về một thời điểm, mọi bản sao ngoài máy đều mã hóa và khóa giải mã không nằm trên máy, và biết sớm khi sao lưu hỏng.
+
+```text
+PostgreSQL ──archive_command (nội bộ, nhanh)──► ~/exam-prod-backups/wal/      (Q351)
+     │                                                │ mỗi phút: chỉ file mới, sổ ghi, không liệt kê R2 (Q355)
+     │                                                ▼
+     │                                    Ổ D: (dạng thường)     R2 wal/ (gpg, công khai Q354)
+     ├─ pg_dump hằng đêm 02:00 (chạy bù khi bật máy, Q353) ──► daily/ → weekly/ (CN), monthly/ (mùng 1)
+     ├─ pg_dump trước deploy (6b) và sau Công bố (hỏi audit_logs mỗi 5 phút, Q360)
+     ├─ bản nền pg_basebackup hằng tuần ──► base/
+exam_media ─ file mới, đợi nguội 60 giây (Q356) ──► D: (thường), R2 media/ (gpg)
+~/exam-prod-secrets ─ gpg, chỉ khi mã băm đổi (Q356) ──► D: và R2 khoa/ (đều mã hóa)
+
+R2 tự xóa theo tuổi bằng quy tắc vòng đời (Q352); script không có lệnh xóa trên R2.
+Mỗi tháng: khôi phục thử trong pod tạm restore-test (dump + PITR + api), ghi thời gian khôi phục (Q357).
+Mỗi lần chạy: ghi sổ backup-runs.jsonl (Q359); gọi healthchecks.io: sao lưu đêm (trễ 3 ngày), thử khôi phục (trễ 7 ngày) (Q358).
+```
+
+| Câu | Quyết định | Tóm tắt |
+|---|---|---|
+| Q351 | Lưu liên tục bằng công cụ có sẵn của PostgreSQL | `archive_command` chép WAL nội bộ, `pg_basebackup` hằng tuần; chép hai chặng để R2 hay D: hỏng không làm nghẽn PostgreSQL |
+| Q352 | R2 tự xóa theo tuổi | Quy tắc vòng đời theo thư mục con; script chỉ tải lên; thử xem khóa có xóa được không khi tạo khóa |
+| Q353 | Chạy bù khi bật máy | systemd timer 02:00 `Persistent=true`, lớp kiểm 20 giờ sau khi pod lên, `flock`; laptop tắt là bình thường |
+| Q354 | Mã hóa bằng khóa công khai gpg | Chỉ bản gửi R2; khóa bí mật ở Bitwarden và giấy; bản WSL và D: dạng thường |
+| Q355 | Chép mỗi phút, chỉ file mới | Sổ ghi cục bộ, không liệt kê R2 (tránh cạn hạn mức loại A); kiểm dãy WAL liền nhau |
+| Q356 | Ảnh chép từng file mới; khóa mã hóa khi đổi | Chỉ thêm, không xóa; khóa ở D: cũng mã hóa |
+| Q357 | Thử khôi phục hằng tháng trong pod tạm | Dump + PITR + ứng dụng chạy được; đo thời gian khôi phục |
+| Q358 | Hai việc theo dõi với hạn trễ rộng | "Còn sống" để dành cho máy chủ 24/7 |
+| Q359 | Sổ cục bộ luôn có; bảng trong CSDL khi có (6d) | Sổ gốc ngoài hệ thống được theo dõi |
+| Q360 | Hỏi `audit_logs` mỗi 5 phút để dump sau Công bố | Không sửa ứng dụng |
+| Q361 | Chín thiết lập kỹ thuật | Tên script/timer/thư mục, cài sẵn rồi mới bật thật; quy mô đầu: laptop WSL, dưới 100 người, một api |
+
+**Lịch chạy (đều là systemd timer của người dùng, có chạy bù):**
+
+| Việc | Khi nào |
+|---|---|
+| Đẩy WAL, ảnh, khóa sang D: và R2 | mỗi phút |
+| Kiểm Công bố mới, chạy `pg_dump` nếu có | mỗi 5 phút |
+| `pg_dump` đêm, giữ theo tuần/tháng, ảnh, khóa, kiểm dãy WAL, báo healthchecks | 02:00 mỗi đêm |
+| Bản nền `pg_basebackup` | mỗi tuần |
+| Thử khôi phục | mỗi tháng |
+| Lớp kiểm sau khi pod lên (chạy bù) | 5 phút sau khi pod lên |
+
+**Các tài liệu liên quan để tham khảo lại:** deploy hằng ngày [trien-khai.md](../ops/trien-khai.md); khôi phục dữ liệu `khoi-phuc.md` (viết trong 6c); chuyển máy chủ [chuyen-len-vps.md](../ops/chuyen-len-vps.md); thiết kế và lý do ở chính file này (deploy: Q330–Q350; sao lưu: Q323–Q328, Q351–Q360).
+
+## PR 6c: ghi chú triển khai (9/11/2026)
+
+**Đã viết (nhánh `feat/sao-luu-6c`, chưa commit):**
+
+| File | Vai trò |
+|---|---|
+| `infra/scripts/exam-backup.sh` | Mọi việc sao lưu và khôi phục: `status`, `dump`, `nightly`, `basebackup`, `push`, `release-check`, `restore-test`, `catchup`, `prune`, `wal-gaps`, `check`, `install`, `enable`, `disable`, `pitr`, `pitr-stop`, `restore-dump` |
+| `infra/scripts/pg-archive-wal.sh` | `archive_command` của PostgreSQL (chạy trong container): nén, đọc lại so khớp, `sync`, đổi tên, không ghi đè |
+| `infra/scripts/exam-ctl.sh` | thêm `enable-archiving`, `disable-archiving`; `run_postgres` giữ tham số lưu liên tục qua mọi lần dựng lại container |
+| `infra/scripts/test-backup-drill.sh` | bài thử tự động trên pod `drill-exam` (`make -C infra backup-drill-test`) |
+| `infra/Makefile` | các đích `prod-backup-*`, `prod-enable-archiving`, `backup-drill-test` |
+| `docs/ops/khoi-phuc.md` (mới) | tài liệu vận hành sao lưu và khôi phục (tra cứu lâu dài) |
+| `docs/ops/trien-khai.md`, `docs/ops/chuyen-len-vps.md` | cập nhật liên kết, mục sao lưu, quy mô giai đoạn đầu |
+
+**Điều chỉnh so với thiết kế đã duyệt, phát sinh khi làm (chủ dự án xem lại; đều dễ đổi):**
+
+1. **Ảnh: KHÔNG sao lưu `tmp/`, `uploads/`, `slips/`** (Q356 nói chép "file ảnh mới"). Đọc mã nguồn thấy volume media chứa cả file **tạm mà ứng dụng chủ động xóa**: `uploads/…` (bảng tính danh sách thí sinh, có thông tin cá nhân), `slips/*.enc` (Phiếu tài khoản mã hóa, có hạn giữ), `tmp/illustrations/…`. Sao lưu "chỉ thêm" bản **thường** sang ổ D: sẽ giữ mãi dữ liệu mà ứng dụng định xóa. Chỉ `illustrations/` là dữ liệu bền. Đặt bằng biến `MEDIA_EXCLUDE` (mặc định `tmp uploads slips`). Thư mục mới sau này mặc định được sao lưu; `status` liệt kê các thư mục để dễ thấy.
+2. **Ảnh và khóa bí mật quét mỗi phút cùng đợt `push`** (không chỉ hằng đêm), vì ảnh mới là dữ liệu mà bản WAL đã trỏ tới; quét chỉ tốn một lệnh `find`. Vẫn "chỉ file mới, cũ hơn 60 giây, kiểm kích thước sau khi chép".
+3. **WAL nén gzip mức 1 ngay lúc lưu** (`<tên>.gz`): mỗi đoạn WAL dài 16 MB dù ít ghi, với `archive_timeout=60` thì không nén sẽ đầy ổ và R2. Đọc lại bản nén để so khớp trước khi báo thành công.
+4. **Bản nền là một file `base/exam-<ngày>-<giờ>-base.tar.gz`** làm bằng `pg_basebackup -Ft -z -X fetch -c fast` (đã kèm WAL cần để tự nhất quán), cộng sổ phụ `.info` (đoạn WAL bắt đầu, giờ làm xong). Quy tắc dọn WAL: xóa khi quá hạn ngày **và** cũ hơn điểm bắt đầu của bản nền **mới nhất**, hoặc khi cũ hơn bản nền **cũ nhất** còn giữ (vô dụng); không bao giờ xóa file chưa vào sổ đẩy của mọi đích.
+5. **Số dòng lúc dump lưu thành khoảng** `[trước, sau]` (đếm trước và sau `pg_dump`, sổ phụ `.counts`): vì đếm và dump không cùng một khoảnh khắc nên bản khôi phục phải nằm **trong khoảng** đó mới tính khớp.
+6. **Thử khôi phục ghi một dòng dấu `ops.backup_test` vào `audit_logs` thật** mỗi tháng (rồi ép chuyển đoạn WAL) để chứng minh WAL cuối đã vào bản khôi phục. Một dòng mỗi tháng.
+7. **Thêm các lệnh chưa nằm trong chín điểm của Q361 vì tài liệu khôi phục cần**: `pitr`/`pitr-stop` (PostgreSQL tạm về một thời điểm), `restore-dump` (thay cơ sở dữ liệu thật bằng một bản dump, có xác nhận, tự dump trước, tự nạp lại nếu hỏng), `check` (kiểm điều kiện trước khi bật), `catchup`, `wal-gaps`, `install`. Dựng các bước khôi phục bằng lệnh tay rất dễ sai (xem "bẫy đã gặp" trong khoi-phuc.md mục 8), nên đóng gói và thử.
+8. **Tên timer** `exam-backup-<việc>` cho pod thật, `exam-backup-drill-<việc>` cho pod thử; timer chạy **bản chép cố định** ở `~/.local/share/exam-<stage>/bin/` (cập nhật bằng `prod-backup-install`), không trỏ vào cây mã nguồn. `push` và `release` đặt `AccuracySec=5s` (mặc định systemd cho phép trễ tới 1 phút).
+9. **Tham số khi khôi phục:** PostgreSQL khôi phục từ WAL đòi các tham số ảnh hưởng WAL không nhỏ hơn máy gốc (`max_connections=200` ở `run_postgres`); `pitr` và `restore-test` đã đặt đúng.
+
+**Bẫy đã gặp khi làm (đã sửa, có bài thử giữ lại):** `date -u -d "giờ máy"` hiểu chuỗi là UTC nên `pitr` sai 7 giờ; khóa `flock` (fd 9) bị container chạy lâu thừa hưởng khiến mọi việc sau đó "bỏ qua êm" (đã thấy: `restore-dump` rồi `dump` bị bỏ qua); bước "ứng dụng chạy trên bản khôi phục" báo khỏe giả khi bước dump lỗi vì migration dựng cơ sở dữ liệu trống; `cp -p` trong `podman unshare` làm file chép ra mang chủ lạ; reconcile đếm cả file mới chưa từng đẩy là "thiếu".
+
+**Kết quả thử trên pod `drill-exam`** (cơ sở dữ liệu rất nhỏ nên thời gian chỉ là mốc so sánh; số thật đo sau khi bật ở hệ thống thật, ghi vào đây):
+
+| Việc | Thời gian / kích thước |
+|---|---|
+| `enable-archiving` (dựng lại PostgreSQL, ép chuyển WAL, kiểm đã chép) | 13 giây |
+| `dump` (nice 19) | 5 giây, 150 KB |
+| `basebackup` | 2 giây, 4,2 MB |
+| `push` (không có gì mới) | dưới 1 giây |
+| `restore-test` đủ 4 bước | 28–31 giây (dump 6, pitr 9, api 8, ảnh 3) |
+| `pitr` về một thời điểm | 6 giây |
+| `restore-dump` | 19 giây (api và worker dừng khoảng 15 giây) |
+
+`make -C infra backup-drill-test` (xem kết quả cuối ở mục dưới): bài thử chạy được các kịch bản chính, gồm các tình huống hỏng (R2 hỏng, ổ chép chỉ đọc, WAL đứt, dump hỏng, file ảnh không đọc được, nạp khôi phục hỏng giữa chừng → tự trả về).
+
+**Chưa thử / chưa biết (ghi để làm ở bước bật thật và 6e):**
+
+- ~~R2 **thật**~~ Đã thử 9/11/2026 (xem khoi-phuc.md mục 4.9): ghi và đọc được; khóa Object Read & Write **xóa được file** (nên "R2 không bao giờ bị xóa" chỉ là quy ước của script); phát hiện và sửa lỗi export biến rclone trong `$(...)`; rclone 1.60.1 gặp 501 ở lần thử đầu mỗi lần tải lên rồi tự thành công ở lần hai. Quy tắc vòng đời: chưa đối chiếu từng dòng.
+- healthchecks.io **thật** (gói miễn phí có kênh báo nào).
+- Tốc độ sinh WAL khi rảnh và khi có Phiên thi trên máy thật (ảnh hưởng dung lượng R2 và ổ D:); xem `status` sau vài ngày bật.
+- `wsl --shutdown` giữa lúc đang đẩy hay đang dump; đĩa đầy thật.
+- Khôi phục sang máy khác từ R2 (diễn tập của 6e).
+- Timer chạy sau khi mở WSL từ trạng thái tắt hoàn toàn (đã thử `enable` và chạy một dịch vụ bằng systemd, chưa thử qua một lần tắt/mở WSL).
+- Số thật của thử khôi phục trên dữ liệu thật (RTO).
+
+### PR 6c: kết quả bật thật trên `prod-exam` (9/11/2026)
+
+Toàn bộ nhật ký (lệnh, số đo, lỗi) ở [khoi-phuc.md mục 4.9](../ops/khoi-phuc.md). Tóm tắt những gì thay đổi so với thiết kế và bài thử ở pod drill:
+
+| Điểm | Kết quả thật |
+|---|---|
+| Cặp khóa gpg | `C03E6416CDACA6645710AA3E14C0007D328A40D9`; khóa bí mật chỉ ở Bitwarden và 3 tờ giấy (A khóa, B mật khẩu, C mã khôi phục 2FA của Bitwarden); máy chỉ giữ khóa công khai; đã giải mã thử bản `khoa/` trên R2 bằng khóa lấy từ Bitwarden, dấu băm khớp |
+| R2 | cần thêm thẻ thanh toán mới bật được; **không có trần chi tiêu cứng**, chỉ cảnh báo ngân sách (đặt 1 và 5 USD); khóa **Object Read & Write xóa được file** (đã thử thật), nên "script không xóa trên R2" chỉ là quy ước |
+| healthchecks.io | gói Hobbyist đủ (20 việc, email); thử `/fail` báo Down rồi Up, email nhận được |
+| Bật WAL | 11,9 giây, worker khởi động lại một lần, api không đứt |
+| Đẩy lần đầu | R2 và ổ D: khớp nhau; lần đầu 1 phút 47 giây, các lần sau 1 giây; rclone 1.60.1 gặp `501` ở lần tải đầu rồi tự thành công (vô hại) |
+| Thử khôi phục | **27 giây** (dump 6, pitr 8, api 9, media 0); CSDL gần trống nên là cận dưới; giai đoạn media chưa thử thật (chưa có ảnh) |
+| Lỗi script phát hiện khi chạy thật (đã sửa) | (1) biến `RCLONE_CONFIG_EXAM_R2_*` được export trong `r2_remote()` gọi qua `$(...)` nên mất; (2) `newest()` lỗi khi thư mục chưa tồn tại (với `pipefail`) làm `status` và `catchup` thoát lỗi |
+| Bài học | bài thử bằng đích giả và trạng thái cũ không bắt hết lỗi lần chạy đầu; 6e thêm kịch bản "thư mục sao lưu trống" và một lần thử với đích thật |
 
 ## Câu hỏi còn mở
 
-- PR 6b đã merge (#79). PR 6b.1 (sửa lỗi runner giết người giám sát container) đang chờ mở, CI xanh và chủ dự án duyệt; sau đó thử lại workflow qua runner (deploy, lùi bản, deploy lại).
-- Sau 6b: 6c (script sao lưu), 6d (phần trong ứng dụng), 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.
+- PR 6b (#79) và 6b.1 (#80) đã merge; workflow deploy đã chạy thật qua runner (deploy, lùi bản, deploy lại) và đạt. Hệ thống đang chạy thật ở `exam.plotrackerbluni.site`, bản `75e57eb`.
+- Tiếp theo: 6c (script sao lưu): thiết kế đã duyệt (Q351–Q361), **mã đã viết, thử trên pod drill (61/61), mở PR #81 và đã bật thật trên `prod-exam` ngày 9/11/2026** (nhật ký từng bước ở [khoi-phuc.md mục 4.9](../ops/khoi-phuc.md)) (xem "PR 6c: ghi chú triển khai"); việc bật thật theo [khoi-phuc.md mục 4](../ops/khoi-phuc.md). Sau đó 6d (phần trong ứng dụng) và 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.
+- Trước Phiên thi thật đầu tiên: sao lưu chạy được (6c), người quản trị thứ hai (chủ dự án hoãn), bản giấy các khóa trong phong bì dán kín.

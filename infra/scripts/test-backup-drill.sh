@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+# Thử toàn bộ chuỗi sao lưu trên pod thử `drill-exam` (PR 6c, docs/plan/slice-6.md Q361 điểm 8). KHÔNG đụng pod thật.
+#
+#   make -C infra backup-drill-test
+#
+# Cần pod drill đã dựng (dựng bằng: EXAM_STAGE=drill TAG=<mã commit> EXAM_ADMIN_FULL_NAME=Thử EXAM_ADMIN_PASSWORD=<10+ ký tự>
+# bash scripts/exam-ctl.sh bootstrap). R2 được thay bằng một thư mục (rclone kiểu local), khóa gpg và healthchecks là đồ giả
+# dựng trong thư mục tạm, nên chạy được khi chưa có tài khoản R2 thật. Mất khoảng 4–5 phút. In từng bước đạt/lỗi, thoát 1 nếu có lỗi.
+set -uo pipefail
+cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+[ "${EXAM_STAGE:-drill}" = drill ] || {
+  echo "Chỉ chạy trên pod drill (EXAM_STAGE=drill)." >&2
+  exit 2
+}
+export EXAM_STAGE=drill
+SCRIPT="$PWD/exam-backup.sh"
+CTL="$PWD/exam-ctl.sh"
+PODMAN="${PODMAN:-podman}"
+WORK="$(mktemp -d)"
+BACKUP="$HOME/exam-drill-backups"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/exam-drill"
+SECRETS="$HOME/exam-drill-secrets"
+HC_PORT=18081
+PASS=0 FAIL=0
+
+cleanup() {
+  [ -z "${HC_PID:-}" ] || kill "$HC_PID" 2>/dev/null
+  rm -f "$SECRETS/backup.env"
+  EXAM_STAGE=drill bash "$SCRIPT" disable >/dev/null 2>&1 || true
+  rm -f "$HOME"/.config/systemd/user/exam-backup-drill-*.{service,timer}
+  systemctl --user daemon-reload 2>/dev/null || true
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
+
+ok() { PASS=$((PASS + 1)); printf '  ✓ %s\n' "$*"; }
+bad() { FAIL=$((FAIL + 1)); printf '  ✗ %s\n' "$*"; }
+check() { # mô tả, lệnh...
+  local desc="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then ok "$desc"; else bad "$desc"; fi
+}
+check_fail() { # mô tả, lệnh... (phải thất bại)
+  local desc="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then bad "$desc"; else ok "$desc"; fi
+}
+backup() { bash "$SCRIPT" "$@"; }
+pg() { "$PODMAN" exec drill-exam-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atq -c "$1"' _ "$1"; }
+gen_wal() { pg "create table zz_t as select generate_series(1,1000) a; select pg_switch_wal(); drop table zz_t" >/dev/null; sleep 3; }
+step() { printf '\n== %s\n' "$*"; }
+
+"$PODMAN" pod exists drill-exam || {
+  echo "Chưa có pod drill-exam. Dựng bằng exam-ctl.sh bootstrap (xem đầu file này)." >&2
+  exit 2
+}
+
+step "Chuẩn bị: xóa sạch trạng thái sao lưu CŨ của pod drill, dựng khóa gpg giả, R2 giả, healthchecks giả"
+bash "$CTL" disable-archiving >/dev/null 2>&1
+"$PODMAN" unshare rm -rf "$BACKUP" 2>/dev/null
+rm -rf "$BACKUP" "$STATE/push-ledger" "$STATE/backup-runs.jsonl" "$STATE/release-last" "$STATE/secrets-hashes.txt" "$STATE/restore-test.json" "$STATE/push-last-failure" "$STATE/push-errors.log"
+export GNUPGHOME="$WORK/gnupg-full"
+mkdir -m 700 "$GNUPGHOME" "$WORK/gnupg-pub"
+gpg --batch --passphrase '' --quick-gen-key 'exam-test <test@example.invalid>' default default never >/dev/null 2>&1
+FPR="$(gpg --list-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')"
+gpg --export "$FPR" | GNUPGHOME="$WORK/gnupg-pub" gpg --import >/dev/null 2>&1
+FULL_HOME="$WORK/gnupg-full"
+MIRROR="$WORK/mirror" FAKE_R2="$WORK/fake-r2"
+cat >"$WORK/hc_mock.py" <<'PY'
+import http.server, sys
+class H(http.server.BaseHTTPRequestHandler):
+    def _r(self):
+        n = int(self.headers.get('Content-Length') or 0)
+        b = self.rfile.read(n).decode()[:300] if n else ''
+        open(sys.argv[2], 'a').write(f"{self.command} {self.path} {b}\n")
+        self.send_response(200); self.end_headers(); self.wfile.write(b'OK')
+    do_GET = do_POST = _r
+    def log_message(self, *a): pass
+http.server.HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
+PY
+: >"$WORK/hc.log"
+python3 "$WORK/hc_mock.py" "$HC_PORT" "$WORK/hc.log" >/dev/null 2>&1 &
+HC_PID=$!
+umask 077
+cat >"$SECRETS/backup.env" <<EOF
+GNUPGHOME=$WORK/gnupg-pub
+EXAM_GPG_RECIPIENT=$FPR
+EXAM_BACKUP_MIRROR_DIR=$MIRROR
+: "\${EXAM_R2_REMOTE:=$FAKE_R2}" # biến môi trường đặt trước thì thắng (để bài thử giả lập R2 hỏng)
+HC_NIGHTLY_URL=http://127.0.0.1:$HC_PORT/nightly
+HC_RESTORE_URL=http://127.0.0.1:$HC_PORT/restore
+EOF
+umask 022
+ok "chuẩn bị xong (khóa gpg $FPR; R2 giả $FAKE_R2)"
+
+step "1. Điều kiện trước khi bật lưu liên tục"
+check_fail "check báo chưa đủ (lưu liên tục chưa bật)" backup check
+check "enable-archiving dựng lại PostgreSQL với archive_mode=on" bash "$CTL" enable-archiving
+check "archive_mode đang bật" test "$(pg 'SHOW archive_mode')" = on
+check "check đạt đủ sau khi bật" backup check
+
+step "2. Dump, bản nền, đẩy sang ổ chép và R2 (mã hóa)"
+check "dump đêm" backup dump
+check "dump sau Công bố" backup dump publish
+check "bản nền pg_basebackup" backup basebackup --force
+gen_wal
+check "đẩy file mới" backup push
+check "ổ chép có WAL" bash -c "ls '$MIRROR'/wal/*.gz"
+check "R2 có WAL dạng mã hóa .gpg" bash -c "ls '$FAKE_R2'/wal/*.gz.gpg"
+WAL1="$(ls "$BACKUP"/wal/*[0-9A-F].gz | head -1)"
+check "giải mã bản R2 (bằng khóa bí mật của bài thử) khớp bản gốc" bash -c "GNUPGHOME='$FULL_HOME' gpg --batch -q -d '$FAKE_R2/wal/$(basename "$WAL1").gpg' | cmp - '$WAL1'"
+check "đẩy lần hai không có gì mới (êm lặng)" test -z "$(backup push 2>&1)"
+
+step "3. Một đích hỏng không chặn đích kia, và hồi phục khi đích khỏe lại"
+gen_wal
+GOOD_R2="$FAKE_R2"
+check_fail "R2 hỏng thì push báo lỗi" env EXAM_R2_REMOTE=/proc/khong-co/r2 bash "$SCRIPT" push
+check "ổ chép vẫn nhận WAL mới" bash -c "test \$(ls '$MIRROR'/wal/*.gz | wc -l) -ge \$(ls '$BACKUP'/wal/*.gz | wc -l)"
+check "R2 khỏe lại thì đẩy bù" env EXAM_R2_REMOTE="$GOOD_R2" bash "$SCRIPT" push
+check "R2 đủ WAL sau khi bù" bash -c "test \$(ls '$FAKE_R2'/wal/*.gz.gpg | wc -l) -ge \$(ls '$BACKUP'/wal/*[0-9A-F].gz | wc -l)"
+
+step "4. Ảnh: chỉ chép thư mục bền, bỏ thư mục tạm; khóa bí mật mã hóa khi đổi"
+"$PODMAN" run --rm --user 1000 -v drill_exam_media:/m docker.io/library/postgres:17 sh -c 'umask 077; mkdir -p /m/illustrations/t1 /m/uploads/q /m/slips /m/tmp/x; echo anh > /m/illustrations/t1/1.webp; echo pii > /m/uploads/q/b; echo slip > /m/slips/s.enc; echo t > /m/tmp/x/y' >/dev/null 2>&1
+# File trong volume do người dùng của container sở hữu: sửa giờ qua `podman unshare` để vượt ngưỡng 60 giây.
+"$PODMAN" unshare touch -d '2 minutes ago' "$("$PODMAN" volume inspect drill_exam_media -f '{{.Mountpoint}}')/illustrations/t1/1.webp"
+backup push >/dev/null 2>&1
+check "ảnh illustrations được chép" test -f "$BACKUP/media/illustrations/t1/1.webp"
+check_fail "uploads/ KHÔNG được chép" test -e "$BACKUP/media/uploads"
+check_fail "slips/ KHÔNG được chép" test -e "$BACKUP/media/slips"
+check_fail "tmp/ KHÔNG được chép" test -e "$BACKUP/media/tmp"
+check "khóa bí mật được mã hóa và lưu" bash -c "ls '$BACKUP'/khoa/api.env-*.gpg '$BACKUP'/khoa/postgres.env-*.gpg"
+check_fail "không có file khóa dạng thường trong thư mục sao lưu" bash -c "ls '$BACKUP'/khoa/*.env"
+check "R2 có ảnh (mã hóa) và khóa" bash -c "ls '$FAKE_R2'/media/illustrations/t1/1.webp.gpg '$FAKE_R2'/khoa/api.env-*.gpg"
+echo "X=1" >>"$SECRETS/api.env"
+backup push >/dev/null 2>&1
+sed -i '$d' "$SECRETS/api.env"
+check "đổi khóa thì có bản mới (2 bản api.env)" test "$(ls "$BACKUP"/khoa/api.env-*.gpg | wc -l)" = 2
+
+step "5. Dãy WAL: đứt thì phát hiện"
+gen_wal
+gen_wal
+gen_wal
+check "dãy WAL liền ban đầu" test -z "$(backup wal-gaps)"
+MID="$(ls "$BACKUP"/wal/*[0-9A-F].gz | tail -2 | head -1)"
+mv "$MID" "$WORK/wal-saved.gz"
+check "wal-gaps thấy chỗ đứt" test -n "$(backup wal-gaps)"
+check_fail "nightly báo lỗi khi WAL đứt" backup nightly
+check "healthchecks nhận /fail khi WAL đứt" grep -q 'POST /nightly/fail' "$WORK/hc.log"
+mv "$WORK/wal-saved.gz" "$MID"
+check "dãy liền lại sau khi trả file" test -z "$(backup wal-gaps)"
+
+step "6. Sao lưu đêm trọn vẹn, báo healthchecks"
+: >"$WORK/hc.log"
+check "nightly đạt" backup nightly
+check "healthchecks nhận /start rồi thành công" bash -c "grep -q 'POST /nightly/start' '$WORK/hc.log' && grep -q 'POST /nightly ' '$WORK/hc.log'"
+
+step "7. Công bố mới thì dump ngay"
+backup release-check >/dev/null 2>&1
+N0="$(ls "$BACKUP"/daily/*-publish.dump | wc -l)"
+backup release-check >/dev/null 2>&1
+check "chưa có Công bố mới thì không dump" test "$(ls "$BACKUP"/daily/*-publish.dump | wc -l)" = "$N0"
+pg "insert into audit_logs(actor_id,action,entity_type,before,after,at) values (NULL,\$\$session.released\$\$,\$\$session\$\$,\$\${}\$\$::jsonb,\$\${}\$\$::jsonb,now())" >/dev/null
+backup release-check >/dev/null 2>&1
+check "có Công bố mới thì dump loại publish" test "$(ls "$BACKUP"/daily/*-publish.dump | wc -l)" = $((N0 + 1))
+
+step "8. Dọn bản cũ: giữ bản mới nhất, chạy thử không xóa"
+for i in $(seq 1 20); do
+  f="$BACKUP/daily/exam-202601$(printf '%02d' "$i")-020000-nightly.dump"
+  echo x >"$f"
+  echo x >"$f.counts"
+done
+backup push >/dev/null 2>&1 # file giả phải vào sổ đẩy thì mới được phép xóa (chốt "chưa đẩy xong thì chưa xóa")
+N1="$(ls "$BACKUP"/daily/*-nightly.dump | wc -l)"
+backup prune --dry-run >/dev/null 2>&1
+check "--dry-run không xóa gì" test "$(ls "$BACKUP"/daily/*-nightly.dump | wc -l)" = "$N1"
+KEEP_LOCAL_DAILY=0 bash "$SCRIPT" prune >/dev/null 2>&1
+check "giữ đúng 1 bản đêm khi đặt giữ 0 (không bao giờ xóa bản mới nhất)" test "$(ls "$BACKUP"/daily/*-nightly.dump | wc -l)" = 1
+check "bản còn lại là bản mới nhất" bash -c "ls '$BACKUP'/daily/*-nightly.dump | grep -q 2026110"
+# Làm lại một bản đêm thật để các bước sau (thử khôi phục) có bản dump hợp lệ.
+backup dump >/dev/null 2>&1
+
+step "9. Thử khôi phục đầy đủ (dump, WAL đến cuối, ứng dụng, ảnh) và các tình huống hỏng"
+backup basebackup --force >/dev/null 2>&1
+check "restore-test đạt cả 4 bước" backup restore-test
+check "restore-test.json ghi ok" test "$(jq -r .ok "$STATE/restore-test.json")" = true
+check "pod và volume tạm đã dọn" test -z "$("$PODMAN" pod ls --format '{{.Name}}' | grep '^rt-drill')$("$PODMAN" volume ls --format '{{.Name}}' | grep '^rt_drill')"
+DUMP="$(ls "$BACKUP"/daily/*-nightly.dump | tail -1)"
+cp "$DUMP" "$WORK/dump.saved"
+head -c 1000 "$WORK/dump.saved" >"$DUMP"
+check_fail "dump hỏng thì restore-test báo lỗi" backup restore-test
+check "...và ứng dụng không được tính 'khỏe giả'" test "$(jq -r .phases.api.status "$STATE/restore-test.json")" = fail
+cp "$WORK/dump.saved" "$DUMP"
+BASE_START="$(sed -n 's/^start_wal=//p' "$(ls "$BACKUP"/base/*.info | tail -1)")"
+gen_wal
+gen_wal
+GAPF=""
+for f in "$BACKUP"/wal/*[0-9A-F].gz; do
+  n="$(basename "$f" .gz)"
+  if [[ "$n" > "$BASE_START" ]]; then GAPF="$f"; break; fi
+done
+mv "$GAPF" "$WORK/wal-saved2.gz"
+check_fail "WAL sau bản nền đứt thì restore-test báo lỗi" backup restore-test
+mv "$WORK/wal-saved2.gz" "$GAPF"
+check "...và pod tạm vẫn được dọn" test -z "$("$PODMAN" pod ls --format '{{.Name}}' | grep '^rt-drill')"
+
+step "9b. Khôi phục về một thời điểm (pitr) và thay cơ sở dữ liệu bằng một bản dump (restore-dump)"
+pg "drop table if exists pitr_demo; create table pitr_demo(id int, note text); insert into pitr_demo values (1,'A truoc moc')" >/dev/null
+sleep 3
+T="$(date '+%Y-%m-%d %H:%M:%S')"
+sleep 3
+pg "insert into pitr_demo values (2,'B sau moc')" >/dev/null
+SEG="$(pg "select pg_walfile_name(pg_current_wal_insert_lsn())")"
+pg "select pg_switch_wal()" >/dev/null
+for _ in $(seq 1 30); do [ -e "$BACKUP/wal/$SEG.gz" ] && break; sleep 1; done
+check "pitr dựng PostgreSQL tạm đến thời điểm giờ máy $T" backup pitr "$T"
+check "bản tạm chỉ có dòng trước mốc (không có dòng sau mốc)" test "$("$PODMAN" exec pitr-drill sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atq -c "select string_agg(id::text, \$\$,\$\$ order by id) from pitr_demo"')" = 1
+"$PODMAN" exec pitr-drill sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' >"$WORK/pitr.dump"
+backup pitr-stop >/dev/null 2>&1
+check "pitr-stop dọn container và volume tạm" test -z "$("$PODMAN" ps -a --format '{{.Names}}' | grep '^pitr-drill')$("$PODMAN" volume ls --format '{{.Name}}' | grep '^pitr_drill')"
+pg "insert into pitr_demo values (9,'C: se mat sau khi khoi phuc')" >/dev/null
+check_fail "restore-dump không có --yes và không có bàn phím thì từ chối" bash -c "bash '$SCRIPT' restore-dump '$WORK/pitr.dump' </dev/null"
+check_fail "restore-dump từ chối file không phải bản dump" bash "$SCRIPT" restore-dump /etc/hostname --yes
+check "restore-dump --yes thay cơ sở dữ liệu" backup restore-dump "$WORK/pitr.dump" --yes
+check "sau khôi phục chỉ còn dòng A (dòng C đã mất theo đúng cảnh báo)" test "$(pg 'select string_agg(id::text, $$,$$ order by id) from pitr_demo')" = 1
+check "audit_logs ghi ops.restore" test "$(pg "select count(*) from audit_logs where action = 'ops.restore'")" -ge 1
+check "ứng dụng chạy lại khỏe" bash -c "curl -fsS http://127.0.0.1:8190/api/health | grep -q '\"status\":\"ok\"'"
+check "có bản an toàn 'trước khi khôi phục'" bash -c "ls '$BACKUP'/truoc-deploy-*truoc-khoi-p*.dump"
+check "khóa sao lưu không bị container api/worker giữ (việc khác chạy được ngay)" backup dump
+
+step "10. Timer systemd: cài, bật, chạy một dịch vụ bằng systemd, tắt"
+backup install >/dev/null 2>&1
+check "install tạo 6 timer (chưa bật)" test "$(ls "$HOME"/.config/systemd/user/exam-backup-drill-*.timer | wc -l)" = 6
+check "enable (check đạt) bật 6 timer" bash "$SCRIPT" enable
+check "6 timer đang chạy" test "$(systemctl --user list-timers 'exam-backup-drill-*' --no-legend | grep -c .)" = 6
+: >"$WORK/hc.log"
+check "chạy nightly bằng systemd đạt" systemctl --user start --wait exam-backup-drill-nightly.service
+check "healthchecks nhận báo thành công từ systemd" grep -q 'POST /nightly ' "$WORK/hc.log"
+check "disable tắt hết timer" bash -c "bash '$SCRIPT' disable >/dev/null 2>&1; test \$(systemctl --user list-timers 'exam-backup-drill-*' --no-legend | grep -c .) = 0"
+
+printf '\nKết quả: %d đạt, %d lỗi.\n' "$PASS" "$FAIL"
+[ "$FAIL" = 0 ]
