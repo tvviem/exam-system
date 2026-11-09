@@ -58,6 +58,15 @@ make -C infra prod-backup-status
 
 In: bản đêm, bản sau Công bố, bản nền mới nhất (và tuổi), lưu liên tục WAL bật hay tắt, sức khỏe archive, dãy WAL có liền không, số file chờ đẩy (WSL → ổ chép / R2), lần thử khôi phục cuối, số timer đang bật, và 8 dòng gần nhất của sổ kết quả. Chỗ nào ghi **CHƯA** hoặc **LỖI** là việc cần làm.
 
+**Trong ứng dụng (PR 6d):** Quản trị viên mở mục **"Sao lưu dữ liệu"** (`/admin/backup`) trong menu: dải đỏ khi có việc đang lỗi, ba ô tóm tắt (bản đêm, bản nền, thử khôi phục gần nhất, kèm tuổi), và danh sách lần chạy gần đây. Chỉ đọc, không có nút nào đổi gì; hỏi lại mỗi phút. Màn hình chỉ có dữ liệu **sau khi** migration `0022` đã chạy và script đã chèn (xem "Cách ghi vào bảng" bên dưới); trống thì ghi "Chưa có kết quả sao lưu nào".
+
+**Chuông (Q363, Q364)**, gửi cho mọi Quản trị viên đang hoạt động, job `backup.check` chạy mỗi 30 phút trong worker:
+- **"Đã hơn N giờ chưa có bản sao lưu đêm nào"**: bản đêm thành công mới nhất quá 26 giờ **và** ứng dụng đã chạy liên tục ít nhất 30 phút (để `catchup` kịp chạy bù sau khi bật máy). Một chuông chưa đọc; tự tắt khi có bản đêm mới. Chưa có dòng nào trong bảng thì không báo.
+- **"Sao lưu lỗi: <việc>. <lý do>"**: một việc (bản đêm, bản sau Công bố, bản nền, thử khôi phục, kiểm hằng đêm gồm WAL đứt hoặc archive lỗi, đẩy sang ổ chép hoặc R2) có dòng mới nhất là lỗi. Kêu ngay, trừ **đẩy** (chỉ ghi lỗi khi đã lỗi liên tục từ 30 phút, để lỗi mạng thoáng qua không làm chuông kêu oan). Một chuông mỗi loại việc; tự tắt khi có dòng thành công hoặc "đã phục hồi" sau đó.
+- Bấm vào chuông mở màn hình Sao lưu. Chuông chỉ kêu khi hệ thống đang chạy; máy tắt thì không có chuông (đúng thiết kế, xem Q353).
+
+**Cách ghi vào bảng (cho người sửa script):** `run_log` ghi sổ gốc rồi gọi `report_consider` để lọc (Q362): ghi `ok` của dump đêm, dump sau Công bố, bản nền, thử khôi phục, kiểm hằng đêm, khóa bí mật, chạy bù; ghi **một** dòng lỗi cho mỗi đợt lỗi (cờ trong `~/.local/state/exam-prod/backup-failing/`, xóa khi có dòng ok); với đẩy: chỉ ghi lỗi khi lỗi liên tục ≥ 30 phút (`EXAM_PUSH_ALERT_SECONDS`, mặc định 1800) và ghi dòng "đã phục hồi" khi đẩy lại được. Các dòng đáng báo nằm ở `backup-report.jsonl`; `backup-report.cursor` là số dòng đã chèn vào bảng. Chèn bằng `psql` qua `podman exec` (như `audit_deploy`); bảng chưa có hoặc cơ sở dữ liệu hỏng thì im lặng bỏ qua và **chèn bù** lần sau (đầu `release-check` mỗi 5 phút, và mỗi lần có dòng mới); lần đầu dựng sổ báo cáo từ sổ gốc nên các lần chạy trước khi có bảng cũng được chèn bù. Xem bảng trực tiếp: `podman exec prod-exam-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select kind,status,finished_at,detail from backup_runs order by finished_at desc limit 20"'`.
+
 Sổ kết quả đầy đủ: `~/.local/state/exam-prod/backup-runs.jsonl` (mỗi dòng một JSON: `at`, `kind`, `status`, `detail`). Đọc nhanh: `tail -n 20 ~/.local/state/exam-prod/backup-runs.jsonl | jq -r '"\(.at) \(.kind) \(.status) \(.detail)"'`. Sổ này **nằm ngoài cơ sở dữ liệu** nên còn khi cơ sở dữ liệu hỏng. Lỗi đẩy lặp lại chỉ ghi khi nội dung đổi hoặc mỗi giờ một lần, để sổ không đầy.
 
 ### 3.2 Việc nào chạy khi nào (timer của người dùng, tên `exam-backup-*`)
@@ -344,13 +353,15 @@ Chủ dự án tắt WSL Ubuntu giữa chừng và mở lại. Kết quả kiể
 - `/api/health` trong máy: `{"status":"ok","checks":{"postgres":"up","redis":"up"}}`, 200 trong 4 ms. Địa chỉ công khai `https://exam.plotrackerbluni.site/api/health`: 200 trong 0,55 giây.
 - Kết luận: unit systemd của người dùng đưa pod lên lại sau khi WSL khởi động, đúng như thiết kế (Q cũ: pod chỉ chạy khi chủ dự án mở WSL). Lưu ý: lúc này lưu liên tục WAL **chưa bật** nên kết quả này là của pod chưa có sao lưu. Sau khi bật (4.5) cần thử lại một lần nữa (đặc biệt là việc PG khởi động lại với cờ lưu trữ).
 
+**Thử lại lần hai khi WAL đã BẬT (9/11/2026, WSL mở lại lúc khoảng 18:56, kiểm lúc 19:07):** pod `prod-exam` lại tự dựng lên; PostgreSQL khởi động lại **giữ nguyên cờ lưu trữ** (file đánh dấu `~/.local/state/exam-prod/archiving`): `status` báo "Lưu liên tục WAL: BẬT", "Sức khỏe archive: ổn", "Dãy WAL: liền nhau", đoạn WAL mới `…0007` được chép và đẩy sang ổ D: và R2 lúc 19:01 (sau khi mở lại); hàng chờ `0 / 0`; 6/6 timer vẫn bật (timer của người dùng tự chạy lại cùng systemd). Mục "Chưa thử" về timer sau tắt/mở WSL: **đã thử, đạt** (chưa thử tắt giữa lúc đang đẩy hoặc đang dump).
+
 #### 4.9.3 Cloudflare R2 (mục 4.2)
 
 | Bước | Việc | Kết quả |
 |---|---|---|
 | 1 | Tạo bucket | `exam-backup`, vị trí Automatic, lớp Standard. **Cloudflare yêu cầu thêm phương thức thanh toán** (thẻ) mới bật được R2; chủ dự án đã thêm thẻ. Dữ liệu của ta nhỏ nên dự kiến vẫn trong gói miễn phí |
 | 2 | Cảnh báo ngân sách | **Manage Account → Billing → Billable Usage**: hai cảnh báo thư **1 USD** và **5 USD**. Tra tài liệu Cloudflare: **không có trần chi tiêu cứng** cho R2 và cảnh báo chỉ để báo, không chặn; không có tài liệu nói rút thẻ thì R2 xử lý ra sao nên **không rút thẻ** (R2 dừng im lặng là rủi ro tệ hơn). Theo dõi dung lượng thật sau 1 đến 2 tuần |
-| 3 | Quy tắc vòng đời | 5 quy tắc theo tiền tố: `daily/` 7 ngày, `weekly/` 28 ngày, `monthly/` 180 ngày, `wal/` 7 ngày, `base/` 15 ngày; không có quy tắc cho `media/`, `khoa/`, `selftest/` (chủ dự án báo đã tạo đủ 5; chưa đối chiếu lại từng dòng, việc này làm ở cuối mục 4.2) |
+| 3 | Quy tắc vòng đời | 5 quy tắc theo tiền tố: `daily/` 7 ngày, `weekly/` 28 ngày, `monthly/` 180 ngày, `wal/` 7 ngày, `base/` 15 ngày; không có quy tắc cho `media/`, `khoa/`, `selftest/` (**đã đối chiếu từng dòng ngày 9/11/2026, khớp bảng**: base/ 15, daily/ 7, monthly/ 180, wal/ 7, weekly/ 28 ngày; ngoài ra có quy tắc mặc định của hệ thống **"Default Multipart Abort Rule"**: hủy các lần tải lên dang dở sau 7 ngày, không đụng file đã tải xong; **nên giữ**, vì mảnh dở vẫn chiếm dung lượng; tài liệu Cloudflare không nói quy tắc này xóa được hay không) |
 | 4 | Khóa API | token `exam-backup-prod`, quyền **Object Read & Write**, giới hạn bucket `exam-backup`, TTL vô hạn. Ba giá trị (Account ID, Access Key ID, Secret) cất ở Bitwarden, mục `exam-backup R2 key` |
 | 5 | `backup.env` | `~/exam-prod-secrets/backup.env` (quyền 600, 15 dòng; độ dài Account ID 32, Access Key ID 32, Secret 64 ký tự). Chưa có hai địa chỉ healthchecks (4.3) |
 | 6 | `make -C infra prod-backup-check` | ổ D: ghi được, gpg ổn; **R2 báo hỏng ở lần đầu** (xem lỗi 1); sau khi sửa: R2 ghi và đọc được |
@@ -462,7 +473,7 @@ Về thiết kế và kiểm thử (cho người sửa script):
 
 | Việc | Khi nào | Ai |
 |---|---|---|
-| Đối chiếu từng dòng 5 quy tắc vòng đời trên R2 với bảng ở mục 4.2 | sớm | chủ dự án, kèm Trợ lý |
+| ~~Đối chiếu từng dòng 5 quy tắc vòng đời trên R2~~ | **xong 9/11/2026, khớp** (xem 4.9.3) | |
 | Xem sao lưu đêm tự động đầu tiên (02:00 ngày 10/11) và việc `exam-backup-nightly` chuyển Up trên healthchecks.io | sáng 10/11 (laptop phải bật hoặc ngủ nhẹ lúc 02:00; tắt thì timer chạy bù khi mở WSL) | chủ dự án, Trợ lý chạy `status` |
 | Đo lại thời gian khôi phục (RTO) khi đã có dữ liệu và ảnh thật; giai đoạn media chưa thử thật | sau khi có dữ liệu; lần tự động ngày 1 mỗi tháng (1/12) | tự động, Trợ lý ghi số |
 | Đo tốc độ sinh WAL và dung lượng R2 sau 1 đến 2 tuần; xem hóa đơn và cảnh báo ngân sách | 1 đến 2 tuần | chủ dự án |

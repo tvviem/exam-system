@@ -101,6 +101,18 @@ audit_logs (                              -- chỉ INSERT, không UPDATE/DELETE
   entity_type text, entity_id uuid,
   before jsonb, after jsonb, ip inet, at timestamptz
 )
+
+-- Lát cắt 6 (PR 6d, module `backup`, migration 0022, plan/slice-6.md Q362–Q366): kết quả các lần sao lưu quan trọng, để
+-- Quản trị viên xem chỉ đọc và để job `backup.check` báo chuông. KHÔNG phải ứng dụng ghi: script infra/scripts/exam-backup.sh
+-- chèn bằng psql (sổ gốc là file backup-runs.jsonl ở máy; bảng này chỉ là bản sao để hiển thị). Giữ 12 tháng.
+backup_runs (
+  id uuid PK, run_key text UNIQUE,                  -- giờ ghi sổ + loại việc: chèn bù không trùng
+  kind text,                                        -- dump-nightly, dump-publish, basebackup, restore-test, nightly, secrets, catchup, push
+  status enum('ok','failed'), finished_at timestamptz, seconds int NULL, bytes bigint NULL,
+  detail text NULL CHECK (char_length <= 200),      -- ngắn, KHÔNG chứa bí mật
+  created_at
+)  -- INDEX (finished_at), (kind, finished_at). Chỉ ghi: việc quan trọng thành công, mọi lỗi (mỗi đợt lỗi một dòng), dòng "đã phục hồi" của
+   -- việc đẩy; đẩy thành công mỗi phút KHÔNG ghi.
 ```
 
 Quy tắc ràng buộc ở tầng service:

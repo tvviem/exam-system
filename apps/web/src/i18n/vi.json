@@ -34,7 +34,8 @@
       "sessions": "Phiên thi",
       "take": "Phiên thi",
       "account": "Tài khoản",
-      "gradingDelegates": "Ủy quyền"
+      "gradingDelegates": "Ủy quyền",
+      "backup": "Sao lưu"
     },
     "questionBank": "Ngân hàng câu hỏi",
     "exams": "Bộ đề",
@@ -490,7 +491,8 @@
       "loginEvents": "Lịch sử đăng nhập",
       "auditLogs": "Nhật ký thao tác",
       "invitations": "Lời mời",
-      "gradingDelegates": "Ủy quyền chấm"
+      "gradingDelegates": "Ủy quyền chấm",
+      "backup": "Sao lưu dữ liệu"
     },
     "users": {
       "heading": "Người dùng",
@@ -585,6 +587,35 @@
       "filteredEntity": "Đối tượng: {{name}}",
       "filterByActor": "Chỉ xem thao tác của {{name}}",
       "thisEntity": "đối tượng đã chọn"
+    },
+    "backup": {
+      "heading": "Sao lưu dữ liệu",
+      "intro": "Màn hình chỉ để xem. Việc sao lưu do máy chủ tự chạy; khôi phục làm tay theo sách hướng dẫn (docs/ops/khoi-phuc.md).",
+      "issues": "Có việc sao lưu đang lỗi",
+      "issueSince": " (từ {{at}})",
+      "nightly": "Bản đêm gần nhất",
+      "base": "Bản nền gần nhất",
+      "restoreTest": "Thử khôi phục gần nhất",
+      "none": "Chưa có",
+      "ok": "Thành công",
+      "failed": "Lỗi",
+      "stale": "Đã quá {{hours}} giờ",
+      "recent": "Lần chạy gần đây",
+      "empty": "Chưa có kết quả sao lưu nào. Máy chủ sẽ ghi vào đây sau lần chạy đầu tiên.",
+      "seconds": "{{count}} giây",
+      "ageMinutes": "{{count}} phút trước",
+      "ageHours": "{{count}} giờ trước",
+      "ageDays": "{{count}} ngày trước",
+      "kind": {
+        "dump-nightly": "Bản đêm",
+        "dump-publish": "Bản sau Công bố",
+        "basebackup": "Bản nền",
+        "restore-test": "Thử khôi phục",
+        "nightly": "Kiểm tra hằng đêm",
+        "secrets": "Khóa bí mật",
+        "catchup": "Chạy bù",
+        "push": "Đẩy sang ổ chép và R2"
+      }
     },
     "invitations": {
       "heading": "Lời mời",
@@ -804,6 +835,8 @@
     "account_request.submitted": "{{requesterName}} gửi yêu cầu cấp tài khoản ({{rowCount}} dòng).",
     "account_request.parse_failed": "Không đọc được file yêu cầu của bạn.",
     "account_request.reviewed_rejected": "Yêu cầu cấp tài khoản của bạn đã bị từ chối.",
+    "backup.stale": "Đã hơn {{hours}} giờ chưa có bản sao lưu đêm nào. Hãy mở màn hình Sao lưu để kiểm tra.",
+    "backup.failed": "Sao lưu lỗi: {{kindLabel}}. {{detail}}",
     "unknown": "Thông báo mới.",
     "empty": "Chưa có thông báo nào.",
     "markAllRead": "Đánh dấu tất cả đã đọc",

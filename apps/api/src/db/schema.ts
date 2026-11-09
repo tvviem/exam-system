@@ -1,5 +1,6 @@
 export * from '../modules/attempt/attempt.schema';
 export * from '../modules/audit/audit.schema';
+export * from '../modules/backup/backup.schema';
 export * from '../modules/exam/exam.schema';
 export * from '../modules/grading/grading.schema';
 export * from '../modules/identity/identity.schema';

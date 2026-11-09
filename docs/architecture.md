@@ -76,6 +76,7 @@ apps/api/src/modules/
   identity/      Người dùng, vai trò, đăng nhập, phiên, Khóa đăng nhập, Xóa người dùng, lịch sử đăng nhập
   audit/         nhật ký thao tác (chỉ ghi thêm)
   notifications/ thông báo trong ứng dụng (chuông); module khác gọi NotificationsService để gửi
+  backup/        màn hình "Sao lưu" chỉ đọc cho Quản trị viên, bảng backup_runs (do script sao lưu ghi), job `backup.check` báo chuông (Q362–Q366)
   question-bank/ Chủ đề, Câu hỏi, Hình minh họa
   exam/          Bộ đề, Phần, Phát hành (tạo bản chụp)
   session/       Phiên thi, Danh sách dự thi, Khung giờ, thiết lập

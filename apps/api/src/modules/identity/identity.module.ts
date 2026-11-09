@@ -10,6 +10,7 @@ import { AccountRequestsController } from './account-requests/account-requests.c
 import { AccountRequestsService } from './account-requests/account-requests.service';
 import { RequesterCredentialsService } from './account-requests/requester-credentials.service';
 import { AdminAccountsService } from './admin-accounts.service';
+import { AdminDirectoryService } from './admin-directory.service';
 import { AuditLogsController } from './audit-logs/audit-logs.controller';
 import { AuthController } from './auth/auth.controller';
 import { AuthGuard } from './auth/auth.guard';
@@ -72,6 +73,7 @@ import { UsersRepository } from './users.repository';
     RequesterCredentialsService,
     CandidateDirectoryService,
     ExaminerDirectoryService,
+    AdminDirectoryService,
     AccountRequestParseJob,
     AccountRequestApproveJob,
     CredentialSlipsService,
@@ -88,6 +90,7 @@ import { UsersRepository } from './users.repository';
     RequesterCredentialsService,
     CandidateDirectoryService,
     ExaminerDirectoryService,
+    AdminDirectoryService,
   ],
 })
 export class IdentityModule {}

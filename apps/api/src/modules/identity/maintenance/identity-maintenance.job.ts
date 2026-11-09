@@ -8,6 +8,8 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { accountRequests, credentialSlips, loginEvents } from '../identity.schema';
 
 const LOGIN_EVENT_RETENTION_MONTHS = 12;
+// Q366: thông báo ĐÃ ĐỌC giữ 90 ngày (chưa đọc giữ mãi). Kết quả sao lưu quá 12 tháng do job `backup.check` dọn.
+const READ_NOTIFICATION_RETENTION_DAYS = 90;
 const PARSING_TIMEOUT_MS = 15 * 60_000;
 // Mỗi ngày lúc 3 giờ sáng.
 const DAILY_CRON = '0 3 * * *';
@@ -35,6 +37,7 @@ export class IdentityMaintenanceJob implements OnModuleInit {
       ['login_events', () => this.deleteOldLoginEvents()],
       ['phiếu hết hạn', () => this.expireSlips()],
       ['yêu cầu kẹt ở parsing', () => this.failStuckParsing()],
+      ['thông báo đã đọc quá 90 ngày', () => this.deleteOldReadNotifications()],
     ] as const;
     for (const [name, step] of steps) {
       try {
@@ -43,6 +46,14 @@ export class IdentityMaintenanceJob implements OnModuleInit {
         this.logger.error(`Dọn dẹp "${name}" lỗi`, error);
       }
     }
+  }
+
+  /** Xóa thông báo ĐÃ ĐỌC quá 90 ngày (Q366); thông báo chưa đọc giữ nguyên. */
+  private async deleteOldReadNotifications() {
+    const cutoff = new Date(
+      this.clock.now().getTime() - READ_NOTIFICATION_RETENTION_DAYS * 86_400_000,
+    );
+    await this.notifications.deleteReadBefore(cutoff);
   }
 
   private async deleteOldLoginEvents() {

@@ -1438,5 +1438,19 @@
     "roleTags": ["candidate"],
     "code": "DC-M-001",
     "classLabel": "LOP-DC-M"
+  },
+  {
+    "username": "e2e-sao-luu-desktop",
+    "fullName": "Quản trị Sao lưu desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-sao-luu-mobile",
+    "fullName": "Quản trị Sao lưu mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
   }
 ]

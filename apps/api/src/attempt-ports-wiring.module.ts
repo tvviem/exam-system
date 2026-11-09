@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { ADMIN_DIRECTORY } from './common/admin-directory';
 import { ATTEMPT_GRADE_GUARD, ATTEMPT_SUBMITTED_HOOKS } from './common/attempt-grading';
 import { CANDIDATE_MEDIA } from './common/candidate-media';
 import { EXAM_CONTENT } from './common/exam-content';
@@ -20,6 +21,7 @@ import { ExamContentService } from './modules/exam/exam-content.service';
 import { GradingModule } from './modules/grading/grading.module';
 import { GradingHooksService } from './modules/grading/grading-hooks.service';
 import { GradingStatusService } from './modules/grading/grading-status.service';
+import { AdminDirectoryService } from './modules/identity/admin-directory.service';
 import { ExaminerDirectoryService } from './modules/identity/examiner-directory.service';
 import { IdentityModule } from './modules/identity/identity.module';
 import { GradingSessionsService } from './modules/session/grading-sessions.service';
@@ -42,6 +44,7 @@ import { SessionEntryService } from './modules/session/session-entry.service';
     { provide: GRADING_SESSIONS, useExisting: GradingSessionsService },
     { provide: SESSION_GRADING_STATUS, useExisting: GradingStatusService },
     { provide: EXAMINER_DIRECTORY, useExisting: ExaminerDirectoryService },
+    { provide: ADMIN_DIRECTORY, useExisting: AdminDirectoryService },
     { provide: VIOLATION_PENALTIES, useExisting: ViolationPenaltiesService },
   ],
   exports: [
@@ -56,6 +59,7 @@ import { SessionEntryService } from './modules/session/session-entry.service';
     GRADING_SESSIONS,
     SESSION_GRADING_STATUS,
     EXAMINER_DIRECTORY,
+    ADMIN_DIRECTORY,
     VIOLATION_PENALTIES,
   ],
 })

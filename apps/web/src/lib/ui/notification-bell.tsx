@@ -27,11 +27,24 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
       : n.type === 'topics.transferred' && Number(n.data.exams) > 0
         ? 'notification.topics.transferred_exams'
         : `notification.${n.type}`;
-    return t(key, { ...n.data, defaultValue: t('notification.unknown') });
+    // Việc sao lưu lỗi: dịch tên loại việc ra tiếng Việt cho câu thông báo (Q364).
+    const extra =
+      n.type === 'backup.failed'
+        ? {
+            kindLabel: t(`admin.backup.kind.${String(n.data.kind)}`, {
+              defaultValue: String(n.data.kind),
+            }),
+          }
+        : {};
+    return t(key, { ...n.data, ...extra, defaultValue: t('notification.unknown') });
   };
   const openNotification = async (n: AppNotification) => {
     if (!n.readAt) markRead.mutate([n.id]);
     setOpen(false);
+    if (n.type.startsWith('backup.')) {
+      await navigate({ to: '/admin/backup' });
+      return;
+    }
     if (n.type === 'topics.transferred') {
       await navigate({ to: '/examiner/questions' });
       return;

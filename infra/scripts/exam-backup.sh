@@ -49,6 +49,13 @@ fi
 # Ổ chép thứ hai (Windows D: khi chạy trong WSL). KHÔNG viết cứng: máy chủ 24/7 sau này đặt biến này sang ổ khác.
 MIRROR_DIR="${EXAM_BACKUP_MIRROR_DIR:-/mnt/d/exam-$EXAM_STAGE-backups}"
 RUN_LOG="$STATE_DIR/backup-runs.jsonl"
+# Bản sao để hiển thị trong ứng dụng (PR 6d, Q362 đến Q366): chỉ các dòng đáng báo, đã lọc; con trỏ cho biết đã chèn vào
+# bảng backup_runs tới dòng nào. FAILING_DIR: mỗi loại việc đang lỗi có một file cờ để không ghi lỗi lặp lại.
+REPORT_LOG="$STATE_DIR/backup-report.jsonl"
+REPORT_CURSOR="$STATE_DIR/backup-report.cursor"
+FAILING_DIR="$STATE_DIR/backup-failing"
+# Đẩy sang ổ chép hoặc R2 lỗi liên tục từng này giây mới ghi một dòng lỗi (Q364); đặt nhỏ khi thử.
+PUSH_ALERT_SECONDS="${EXAM_PUSH_ALERT_SECONDS:-1800}"
 LOCK_FILE="$STATE_DIR/backup.lock"
 
 # Số bản giữ theo bảng Q325. WSL không cần bản tháng (Q325) nhưng giữ 2 bản để chắc chắn đã đẩy đi trước khi xóa.
@@ -71,7 +78,7 @@ now_iso() { date -Is; }
 # Ghi một dòng JSON vào sổ kết quả (Q359). Sổ nằm ngoài cơ sở dữ liệu nên còn khi cơ sở dữ liệu hỏng.
 # Cách dùng: run_log <việc> <ok|fail|skip> <chi tiết> [khóa=giá trị ...] (giá trị số nhận dạng bằng tiền tố n:)
 run_log() {
-  local kind="$1" status="$2" detail="$3" args=() pair key val
+  local kind="$1" status="$2" detail="$3" args=() pair key val r_seconds="" r_bytes=""
   shift 3
   for pair in "$@"; do
     key="${pair%%=*}" val="${pair#*=}"
@@ -79,11 +86,115 @@ run_log() {
       n:*) args+=(--argjson "$key" "${val#n:}") ;;
       *) args+=(--arg "$key" "$val") ;;
     esac
+    case "$key" in seconds) r_seconds="${val#n:}" ;; bytes) r_bytes="${val#n:}" ;; esac
   done
   mkdir -p "$STATE_DIR"
   jq -nc --arg at "$(now_iso)" --arg kind "$kind" --arg status "$status" --arg detail "$detail" "${args[@]}" \
     '{at: $at, kind: $kind, status: $status, detail: $detail} + ($ARGS.named | del(.at, .kind, .status, .detail))' \
     >>"$RUN_LOG"
+  # Báo sang bảng trong ứng dụng (lọc theo Q362). Lỗi ở đây KHÔNG bao giờ làm hỏng việc chính.
+  report_consider "$kind" "$status" "$detail" "$r_seconds" "$r_bytes" || true
+}
+
+# ---------- Báo kết quả sang bảng backup_runs của ứng dụng (PR 6d, Q362 đến Q366) ----------
+# Sổ gốc vẫn là $RUN_LOG (Q359). Ở đây chọn dòng nào đáng báo: việc quan trọng thành công, mọi lỗi (mỗi đợt lỗi một dòng),
+# và dòng "đã phục hồi" khi đẩy lại được sau một đợt lỗi. Đẩy thành công bình thường mỗi phút KHÔNG ghi.
+REPORT_KINDS=" dump-nightly dump-publish basebackup restore-test nightly secrets catchup "
+
+# Thêm một dòng vào $REPORT_LOG rồi thử chèn ngay vào bảng. Tham số: loại, ok|failed, chi tiết, giây, byte (giây và byte có thể rỗng).
+report_add() {
+  local at
+  at="$(date +%Y-%m-%dT%H:%M:%S.%6N%:z)" # có micro giây: hai dòng cùng loại trong một giây không trùng run_key
+  mkdir -p "$STATE_DIR"
+  jq -nc --arg at "$at" --arg kind "$1" --arg status "$2" --arg detail "$3" --arg seconds "${4:-}" --arg bytes "${5:-}" \
+    '{run_key: ($at + "|" + $kind), kind: $kind, status: $status, finished_at: $at,
+      seconds: (if $seconds == "" then null else ($seconds | tonumber? // null) end),
+      bytes: (if $bytes == "" then null else ($bytes | tonumber? // null) end),
+      detail: ($detail | .[0:200])}' >>"$REPORT_LOG"
+  report_flush || true
+}
+
+# Lọc một dòng sổ gốc: có đáng báo không (Q362, Q364). Cờ trong $FAILING_DIR tránh ghi lỗi lặp lại cho tới khi có dòng ok.
+report_consider() { # loại, ok|fail|skip, chi tiết, giây, byte
+  local kind="$1" status="$2" detail="$3" seconds="${4:-}" bytes="${5:-}"
+  case "$REPORT_KINDS" in *" $kind "*) ;; *) return 0 ;; esac
+  mkdir -p "$FAILING_DIR" "$STATE_DIR"
+  [ -f "$REPORT_LOG" ] || report_seed 1 # lần đầu: dựng từ sổ gốc TRƯỚC khi thêm dòng này (dòng này vừa vào sổ gốc)
+  case "$status" in
+    ok)
+      rm -f "$FAILING_DIR/$kind"
+      report_add "$kind" ok "$detail" "$seconds" "$bytes"
+      ;;
+    fail)
+      [ -e "$FAILING_DIR/$kind" ] && return 0
+      : >"$FAILING_DIR/$kind"
+      report_add "$kind" failed "$detail" "$seconds" "$bytes"
+      ;;
+  esac
+  return 0
+}
+
+# Đẩy sang ổ chép hoặc R2 đang lỗi (gọi mỗi phút khi lỗi): chỉ ghi một dòng lỗi khi đã lỗi liên tục >= PUSH_ALERT_SECONDS (Q364).
+report_push_failing() { # chi tiết
+  mkdir -p "$FAILING_DIR" "$STATE_DIR"
+  [ -f "$REPORT_LOG" ] || report_seed 0
+  local since="$FAILING_DIR/push.since" reported="$FAILING_DIR/push"
+  [ -e "$since" ] || date +%s >"$since"
+  if [ ! -e "$reported" ] && [ $(($(date +%s) - $(cat "$since"))) -ge "$PUSH_ALERT_SECONDS" ]; then
+    : >"$reported"
+    report_add push failed "$1" "" ""
+  fi
+  return 0
+}
+
+# Đẩy lại được: nếu trước đó đã ghi lỗi thì ghi dòng "đã phục hồi". Đường nhanh mỗi phút: không có cờ thì không làm gì.
+report_push_ok() {
+  [ -e "$FAILING_DIR/push.since" ] || return 0
+  [ -f "$REPORT_LOG" ] || report_seed 0
+  local was_reported=0
+  [ -e "$FAILING_DIR/push" ] && was_reported=1
+  rm -f "$FAILING_DIR/push" "$FAILING_DIR/push.since"
+  [ "$was_reported" = 1 ] && report_add push ok "đã phục hồi, đẩy lại được" "" ""
+  return 0
+}
+
+# Lần đầu (chưa có $REPORT_LOG): dựng từ sổ gốc những dòng đáng báo, để chèn bù các lần chạy trước khi có bảng (Q359, Q366).
+# Tham số 1: đặt 1 khi vừa ghi dòng sổ gốc của chính việc đang báo (dòng cuối), để không đếm dòng đó hai lần.
+report_seed() {
+  : >"$REPORT_LOG"
+  [ -s "$RUN_LOG" ] || return 0
+  { if [ "${1:-0}" = 1 ]; then head -n -1 "$RUN_LOG"; else cat "$RUN_LOG"; fi; } | jq -c --arg kinds "$REPORT_KINDS" \
+    'select((.status == "ok" or .status == "fail") and (. as $r | $kinds | contains(" " + $r.kind + " ")))
+     | {run_key: (.at + "|" + .kind), kind: .kind, status: (if .status == "ok" then "ok" else "failed" end), finished_at: .at,
+        seconds: (.seconds // null), bytes: (.bytes // null), detail: ((.detail // "") | .[0:200])}' \
+    >>"$REPORT_LOG" 2>/dev/null || true
+}
+
+# Chèn các dòng chưa chèn của $REPORT_LOG vào bảng backup_runs bằng psql qua podman exec (như audit_deploy). Cơ sở dữ liệu hỏng,
+# đang khôi phục, hoặc chưa có bảng thì im lặng bỏ qua và để lần sau chèn bù; chạy lại bao nhiêu lần cũng không trùng (run_key duy nhất).
+report_flush() {
+  [ -f "$REPORT_LOG" ] || report_seed 0
+  local cursor total batch rows n
+  cursor="$(cat "$REPORT_CURSOR" 2>/dev/null || echo 0)"
+  total="$(wc -l <"$REPORT_LOG")"
+  while [ "$total" -gt "$cursor" ]; do
+    batch="$(tail -n +$((cursor + 1)) "$REPORT_LOG" | head -n 200)"
+    n="$(printf '%s\n' "$batch" | wc -l)"
+    rows="$(printf '%s\n' "$batch" | jq -cs .)" || return 0
+    "$PODMAN" exec -i "$C_PG" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q -1 -v ON_ERROR_STOP=1 -v rows="$1"' _ "$rows" 9>&- >/dev/null 2>&1 <<'SQL' || return 0
+DO $$ BEGIN
+  IF to_regclass('public.backup_runs') IS NULL THEN RAISE EXCEPTION 'chưa có bảng backup_runs'; END IF;
+END $$;
+INSERT INTO backup_runs (id, run_key, kind, status, finished_at, seconds, bytes, detail)
+SELECT gen_random_uuid(), x.run_key, x.kind, x.status::backup_run_status, x.finished_at, x.seconds, x.bytes, x.detail
+FROM jsonb_to_recordset(:'rows'::jsonb)
+  AS x(run_key text, kind text, status text, finished_at timestamptz, seconds integer, bytes bigint, detail text)
+ON CONFLICT (run_key) DO NOTHING;
+SQL
+    cursor=$((cursor + n))
+    printf '%s\n' "$cursor" >"$REPORT_CURSOR"
+  done
+  return 0
 }
 
 # Báo healthchecks.io (Q358). Lỗi báo KHÔNG bao giờ làm hỏng việc chính: luôn trả 0.
@@ -583,9 +694,11 @@ cmd_push() {
       say "Đã đẩy: ổ chép +$PUSH_COUNT_MIRROR, R2 +$PUSH_COUNT_R2"
     fi
     rm -f "$STATE_DIR/push-last-failure"
+    report_push_ok
   else
     PUSH_PROBLEMS+=("${gather_problems[@]}")
     log_push_failure "${PUSH_PROBLEMS[*]}"
+    report_push_failing "${PUSH_PROBLEMS[*]}"
     echo "LỖI đẩy: ${PUSH_PROBLEMS[*]} (chi tiết: $STATE_DIR/push-errors.log)" >&2
     return 1
   fi
@@ -691,6 +804,7 @@ archive_health() {
 cmd_release_check() {
   local file="$STATE_DIR/release-last" last latest
   pod_exists 2>/dev/null && pg_running || return 0 # máy mới mở, pod chưa lên: lần sau
+  report_flush || true # chèn bù các dòng chưa vào bảng backup_runs (cơ sở dữ liệu vừa lên, hoặc bảng vừa có)
   take_lock release quiet
   if [ ! -s "$file" ]; then
     mkdir -p "$STATE_DIR"
