@@ -313,6 +313,7 @@ Mục này ghi lại **đúng những gì đã làm trên máy thật**, theo th
 | 4.9.6 | Cài và bật 6 timer, đẩy lần đầu | 16:15 đến 16:20 | đạt; 1 lỗi script sửa |
 | 4.9.7 | Dump, bản nền, thử khôi phục lần đầu | 16:22 | đạt, **27 giây** (CSDL gần trống) |
 | 4.9.8 | Giải mã thử bản `khoa/` trên R2 | khoảng 16:30 | dấu băm khớp |
+| 4.9.11 | Đưa PR 6d lên `prod-exam` (10/11, 04:40 đến 04:55) | sau 6d merge | đạt: `87d86f7`, conmon sống, `backup_runs` có 6 dòng, màn hình Sao lưu đúng |
 
 #### 4.9.1 Cặp khóa gpg (mục 4.1)
 
@@ -452,6 +453,23 @@ Chủ dự án làm tay: lấy khóa bí mật từ Bitwarden vào clipboard (`p
 | `khoa/api.env-20261109-574a33cb.gpg` | `574a33cbee2c` | `~/exam-prod-secrets/api.env` |
 
 **Kết quả: khớp cả hai.** Chuỗi "bí mật trên máy, mã hóa bằng khóa công khai, lên R2, giải mã bằng khóa trong Bitwarden" đã được chứng minh trọn vẹn. (Tên file `khoa/` chứa 8 ký tự đầu của dấu băm nên có thể đối chiếu bằng mắt.) Dọn sau đó: `rm -rf "$TMPG" ~/thu-giai-ma`; `gpg --list-secret-keys` trống, thư mục `private-keys-v1.d` rỗng; clipboard Windows xóa trắng (Trợ lý kiểm lại và xóa thêm lần nữa vì thấy còn 63 ký tự).
+
+#### 4.9.11 Đưa PR 6d lên `prod-exam` (10/11/2026, khoảng 04:40 đến 04:55)
+
+Theo đúng quy trình `trien-khai.md` ("Deploy bằng GitHub"):
+
+| Bước | Ai | Kết quả |
+|---|---|---|
+| Kiểm điều kiện | Trợ lý | runner `wsl-exam` online và rảnh; environment `production` có `required_reviewers` và `branch_policy`; chính sách PR từ fork `all_external_contributors`; **0 Phiên thi** đang diễn ra hay sắp bắt đầu, 0 Lượt làm bài dở |
+| Merge PR #82 | Trợ lý, theo lệnh có điều kiện của chủ dự án ("gộp tài liệu vào #82 rồi merge khi CI xanh") | cả 4 check xanh trên commit `dc0235b`; squash merge, `main` = `87d86f7` |
+| Chờ ảnh | Trợ lý | CI trên `main` xong: Lint·typecheck·unit, Integration·e2e·migration drift, **Image api · push GHCR**, **Image web · push GHCR** đều `success` |
+| Chạy workflow | Chủ dự án | Actions → Deploy (bấm tay) → Run workflow (Branch `main`, hai ô còn lại trống) → Review deployments → Approve and deploy; kết quả **xanh** (run `42705259625`, bản `87d86f7`) |
+| Kiểm sau deploy | Trợ lý | bản đang chạy `87d86f7` (api, worker, web; redis và postgres không dựng lại); `/api/health` ok, địa chỉ công khai 200 trong **0,23 giây**; conmon của api, worker, web **còn sống**; `audit_logs` có `ops.deploy` bản `87d86f7` (21:45 UTC); bảng `backup_runs` đã có (migration `0022`) |
+| Cài lại script cho timer | Trợ lý | `make -C infra prod-backup-install`; bản cài trùng bản trên `main`; 6 timer vẫn chạy |
+| Chèn bù | Trợ lý | `exam-backup.sh release-check` chèn **6 dòng** từ sổ gốc: kiểm hằng đêm và bản đêm tự động 10/11 02:00, thử khôi phục 27 giây, bản nền 9/11 (4,2 MB), bản đêm 9/11 và việc sao lưu file bí mật. Số khớp sổ `backup-runs.jsonl` |
+| Xem màn hình | Chủ dự án | mục **Sao lưu dữ liệu** trong menu quản trị hiện đúng: không có dải đỏ, ba ô tóm tắt (bản đêm, bản nền, thử khôi phục) và danh sách; chủ dự án xác nhận "mọi thứ đúng" |
+
+Ghi chú: chuông chưa kêu (đúng, vì bản đêm mới hơn 26 giờ và không có việc lỗi). Để thấy chuông thật cần một lần lỗi hoặc bản đêm quá hạn; bài integration đã chứng minh quy tắc, việc thử trên máy thật để lại khi có dịp (ví dụ khi sao lưu lỗi thật).
 
 #### 4.9.9 Bài học tổng hợp
 
