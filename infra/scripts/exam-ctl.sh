@@ -13,6 +13,8 @@
 #   exam-ctl.sh start            Bật lại pod đã dừng (dịch vụ systemd gọi lệnh tương đương khi mở WSL)
 #   exam-ctl.sh install-service  Cài lại dịch vụ systemd (mở WSL thì dựng lại pod)
 #   exam-ctl.sh recover-admin <tên>   Khôi phục tài khoản Quản trị viên (mật khẩu tạm in một lần)
+#   exam-ctl.sh enable-archiving    Bật lưu liên tục WAL (archive_mode=on, dựng lại container PostgreSQL; PR 6c)
+#   exam-ctl.sh disable-archiving   Tắt lưu liên tục WAL
 #   exam-ctl.sh active-sessions  In số Phiên thi đang diễn ra hoặc sắp bắt đầu; thoát 1 nếu có
 #
 # EXAM_STAGE=prod (mặc định) là pod thật; EXAM_STAGE=drill là pod thử `drill-exam` với cổng, volume và thư mục bí mật
@@ -170,10 +172,20 @@ reload_web() {
 }
 
 # ---------- Chạy container ----------
+# Lưu liên tục (PR 6c, Q351): có file đánh dấu `archiving` trong $STATE_DIR thì PostgreSQL chạy với archive_mode=on và chép
+# từng đoạn WAL sang $BACKUP_DIR/wal bằng pg-archive-wal.sh. Bật bằng `enable-archiving`; mọi lần dựng lại container
+# PostgreSQL (kể cả bootstrap lại sau `down`) đều đi qua hàm này nên giữ nguyên các tham số.
+archiving_enabled() { [ -f "$STATE_DIR/archiving" ]; }
+
 run_postgres() {
+  local extra_args=() extra_conf=()
+  if archiving_enabled; then
+    extra_args+=(-v "$BACKUP_DIR/wal":/wal-archive -v "$STATE_DIR/pg-archive-wal.sh":/usr/local/bin/pg-archive-wal.sh:ro)
+    extra_conf+=(-c archive_mode=on -c "archive_command=/usr/local/bin/pg-archive-wal.sh %p %f" -c archive_timeout=60)
+  fi
   "$PODMAN" run -d --name "$C_PG" --pod "$POD" --restart always --memory 3g --cpus 4 "${LOG_OPTS[@]}" \
-    --env-file "$SECRETS_DIR/postgres.env" -v "$PG_VOLUME":/var/lib/postgresql/data \
-    "$POSTGRES_IMAGE" postgres -c shared_buffers=1GB -c effective_cache_size=3GB -c max_connections=200 >/dev/null
+    --env-file "$SECRETS_DIR/postgres.env" -v "$PG_VOLUME":/var/lib/postgresql/data "${extra_args[@]}" \
+    "$POSTGRES_IMAGE" postgres -c shared_buffers=1GB -c effective_cache_size=3GB -c max_connections=200 "${extra_conf[@]}" >/dev/null
 }
 
 run_redis() {
@@ -361,6 +373,7 @@ cmd_up() {
   [ "${SKIP_GUARD:-}" = 1 ] || guard "đưa bản $VERSION_LABEL lên"
   pull_images
   [ -f "$STATE_DIR/upstream.conf" ] || write_upstream 1
+  if archiving_enabled; then install_archive_script; fi
   local two=1
   container_exists "$C_API2" && two=2
   write_upstream "$two"
@@ -680,6 +693,83 @@ cmd_down() {
   say "Đã xóa pod $POD và container. Volume $PG_VOLUME và $MEDIA_VOLUME CÒN NGUYÊN (Q340). Dựng lại bằng prod-up."
 }
 
+# ---------- Lưu liên tục WAL (PR 6c, docs/plan/slice-6.md Q351, Q361 điểm 6) ----------
+# Chép script archive_command vào $STATE_DIR (gắn vào container PostgreSQL chỉ đọc). Ghi đè tại chỗ để giữ inode.
+install_archive_script() {
+  local src
+  src="$(dirname "$SELF")/pg-archive-wal.sh"
+  [ -f "$src" ] || die "Không thấy $src."
+  mkdir -p "$STATE_DIR"
+  [ -f "$STATE_DIR/pg-archive-wal.sh" ] || : >"$STATE_DIR/pg-archive-wal.sh"
+  cat "$src" >"$STATE_DIR/pg-archive-wal.sh"
+  chmod 755 "$STATE_DIR/pg-archive-wal.sh"
+}
+
+archiver_archived_count() { psql_scalar "SELECT archived_count FROM pg_stat_archiver"; }
+
+# Thư mục wal/ được container PostgreSQL (người dùng khác trong ánh xạ rootless) ghi vào nên cần quyền ghi cho mọi người;
+# thư mục cha ($BACKUP_DIR, quyền 700) vẫn chặn người khác trên máy. Dấu 1 (sticky): chỉ chủ file hoặc chủ thư mục xóa được.
+prepare_wal_dir() {
+  mkdir -p "$BACKUP_DIR/wal"
+  chmod 700 "$BACKUP_DIR"
+  chmod 1777 "$BACKUP_DIR/wal"
+}
+
+cmd_enable_archiving() {
+  pod_exists || die "Chưa có pod $POD."
+  container_exists "$C_PG" || die "Chưa có container $C_PG."
+  if archiving_enabled; then
+    say "Lưu liên tục đã bật. Xem tình trạng: exam-backup.sh status."
+    return 0
+  fi
+  guard "bật lưu liên tục (dựng lại PostgreSQL)"
+  prepare_wal_dir
+  install_archive_script
+  say "Sao lưu một bản trước khi dựng lại PostgreSQL"
+  backup_before_deploy "bat-luu-lien-tuc" || die "Sao lưu trước khi bật hỏng, không dựng lại PostgreSQL."
+  : >"$STATE_DIR/archiving"
+  say "Dựng lại container PostgreSQL với archive_mode=on (volume $PG_VOLUME giữ nguyên)"
+  replace "$C_PG" run_postgres
+  local before ok=0
+  if (wait_postgres) && [ "$(psql_scalar 'SHOW archive_mode')" = on ]; then
+    before="$(archiver_archived_count)"
+    psql_scalar "SELECT pg_switch_wal()" >/dev/null
+    for _ in $(seq 1 30); do
+      if [ "$(archiver_archived_count)" -gt "$before" ]; then
+        ok=1
+        break
+      fi
+      sleep 1
+    done
+  fi
+  if [ "$ok" != 1 ]; then
+    "$PODMAN" logs --tail 30 "$C_PG" >&2 || true
+    rm -f "$STATE_DIR/archiving"
+    say "Lưu liên tục KHÔNG chạy được; trả PostgreSQL về như cũ."
+    replace "$C_PG" run_postgres
+    wait_postgres
+    die "Bật lưu liên tục thất bại (đã trả về như cũ). Xem log PostgreSQL ở trên."
+  fi
+  wait_health || true
+  ops_log "enable-archiving"
+  say "Đã bật lưu liên tục: WAL được chép sang $BACKUP_DIR/wal. Tiếp theo: exam-backup.sh push (đẩy sang ổ chép và R2)."
+}
+
+cmd_disable_archiving() {
+  pod_exists || die "Chưa có pod $POD."
+  archiving_enabled || {
+    say "Lưu liên tục đang tắt."
+    return 0
+  }
+  guard "tắt lưu liên tục (dựng lại PostgreSQL)"
+  rm -f "$STATE_DIR/archiving"
+  replace "$C_PG" run_postgres
+  wait_postgres
+  wait_health || true
+  ops_log "disable-archiving"
+  say "Đã tắt lưu liên tục. Các file WAL đã chép vẫn nằm ở $BACKUP_DIR/wal."
+}
+
 cmd_recover_admin() {
   local name="${1:-}"
   [ -n "$name" ] || die "Cách dùng: recover-admin <tên đăng nhập>"
@@ -704,9 +794,11 @@ main() {
     install-service) cmd_install_service "$@" ;;
     down) cmd_down "$@" ;;
     recover-admin) cmd_recover_admin "$@" ;;
+    enable-archiving) cmd_enable_archiving "$@" ;;
+    disable-archiving) cmd_disable_archiving "$@" ;;
     active-sessions) cmd_active_sessions "$@" ;;
     *)
-      sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' >&2
+      sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' >&2
       exit 2
       ;;
   esac
