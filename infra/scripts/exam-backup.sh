@@ -36,6 +36,16 @@ if [ -f "$SECRETS_DIR/backup.env" ]; then
   set +a
 fi
 
+# Cấu hình rclone cho R2 bằng biến môi trường. PHẢI đặt ở đây (shell chính): đặt bên trong r2_remote() thì mất,
+# vì r2_remote được gọi qua $(...) (shell con) nên biến export trong đó không tới các lệnh rclone ở shell chính.
+# Lỗi này lọt qua bài thử trên pod drill (dùng thư mục giả qua EXAM_R2_REMOTE), lộ ra khi chạy với R2 thật ngày 9/11/2026.
+if [ -n "${R2_ACCOUNT_ID:-}" ] && [ -n "${R2_ACCESS_KEY_ID:-}" ] && [ -n "${R2_SECRET_ACCESS_KEY:-}" ]; then
+  export RCLONE_CONFIG_EXAM_R2_TYPE=s3 RCLONE_CONFIG_EXAM_R2_PROVIDER=Cloudflare RCLONE_CONFIG_EXAM_R2_REGION=auto
+  export RCLONE_CONFIG_EXAM_R2_NO_CHECK_BUCKET=true RCLONE_CONFIG_EXAM_R2_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
+  export RCLONE_CONFIG_EXAM_R2_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+  export RCLONE_CONFIG_EXAM_R2_ENDPOINT="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+fi
+
 # Ổ chép thứ hai (Windows D: khi chạy trong WSL). KHÔNG viết cứng: máy chủ 24/7 sau này đặt biến này sang ổ khác.
 MIRROR_DIR="${EXAM_BACKUP_MIRROR_DIR:-/mnt/d/exam-$EXAM_STAGE-backups}"
 RUN_LOG="$STATE_DIR/backup-runs.jsonl"
@@ -410,10 +420,7 @@ r2_remote() {
   if [ -n "${EXAM_R2_REMOTE:-}" ]; then
     echo "$EXAM_R2_REMOTE"
   elif [ -n "${R2_ACCOUNT_ID:-}" ] && [ -n "${R2_ACCESS_KEY_ID:-}" ] && [ -n "${R2_SECRET_ACCESS_KEY:-}" ] && [ -n "${R2_BUCKET:-}" ]; then
-    export RCLONE_CONFIG_EXAM_R2_TYPE=s3 RCLONE_CONFIG_EXAM_R2_PROVIDER=Cloudflare RCLONE_CONFIG_EXAM_R2_REGION=auto
-    export RCLONE_CONFIG_EXAM_R2_NO_CHECK_BUCKET=true RCLONE_CONFIG_EXAM_R2_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
-    export RCLONE_CONFIG_EXAM_R2_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
-    export RCLONE_CONFIG_EXAM_R2_ENDPOINT="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+    # Chỉ in địa chỉ. Biến RCLONE_CONFIG_EXAM_R2_* đã được export ở đầu script (không export được trong $(...)).
     echo "exam_r2:$R2_BUCKET"
   fi
 }
@@ -1281,7 +1288,8 @@ cmd_disable() {
 }
 
 # ---------- status ----------
-newest() { # thư mục, mẫu
+newest() { # thư mục, mẫu. Thư mục chưa có (máy mới, chưa dump lần nào) -> in rỗng, KHÔNG lỗi (pipefail + find báo 1 làm hỏng status/catchup lúc bật thật 9/11/2026)
+  [ -d "$1" ] || return 0
   find "$1" -maxdepth 1 -type f -name "$2" ! -name '*.counts' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-
 }
 

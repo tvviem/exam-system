@@ -1013,7 +1013,7 @@ Mỗi lần chạy: ghi sổ backup-runs.jsonl (Q359); gọi healthchecks.io: sa
 
 **Chưa thử / chưa biết (ghi để làm ở bước bật thật và 6e):**
 
-- R2 **thật** (khóa API, quy tắc vòng đời, giới hạn), và khóa Object Read & Write có xóa được không.
+- ~~R2 **thật**~~ Đã thử 9/11/2026 (xem khoi-phuc.md mục 4.9): ghi và đọc được; khóa Object Read & Write **xóa được file** (nên "R2 không bao giờ bị xóa" chỉ là quy ước của script); phát hiện và sửa lỗi export biến rclone trong `$(...)`; rclone 1.60.1 gặp 501 ở lần thử đầu mỗi lần tải lên rồi tự thành công ở lần hai. Quy tắc vòng đời: chưa đối chiếu từng dòng.
 - healthchecks.io **thật** (gói miễn phí có kênh báo nào).
 - Tốc độ sinh WAL khi rảnh và khi có Phiên thi trên máy thật (ảnh hưởng dung lượng R2 và ổ D:); xem `status` sau vài ngày bật.
 - `wsl --shutdown` giữa lúc đang đẩy hay đang dump; đĩa đầy thật.
@@ -1021,8 +1021,23 @@ Mỗi lần chạy: ghi sổ backup-runs.jsonl (Q359); gọi healthchecks.io: sa
 - Timer chạy sau khi mở WSL từ trạng thái tắt hoàn toàn (đã thử `enable` và chạy một dịch vụ bằng systemd, chưa thử qua một lần tắt/mở WSL).
 - Số thật của thử khôi phục trên dữ liệu thật (RTO).
 
+### PR 6c: kết quả bật thật trên `prod-exam` (9/11/2026)
+
+Toàn bộ nhật ký (lệnh, số đo, lỗi) ở [khoi-phuc.md mục 4.9](../ops/khoi-phuc.md). Tóm tắt những gì thay đổi so với thiết kế và bài thử ở pod drill:
+
+| Điểm | Kết quả thật |
+|---|---|
+| Cặp khóa gpg | `C03E6416CDACA6645710AA3E14C0007D328A40D9`; khóa bí mật chỉ ở Bitwarden và 3 tờ giấy (A khóa, B mật khẩu, C mã khôi phục 2FA của Bitwarden); máy chỉ giữ khóa công khai; đã giải mã thử bản `khoa/` trên R2 bằng khóa lấy từ Bitwarden, dấu băm khớp |
+| R2 | cần thêm thẻ thanh toán mới bật được; **không có trần chi tiêu cứng**, chỉ cảnh báo ngân sách (đặt 1 và 5 USD); khóa **Object Read & Write xóa được file** (đã thử thật), nên "script không xóa trên R2" chỉ là quy ước |
+| healthchecks.io | gói Hobbyist đủ (20 việc, email); thử `/fail` báo Down rồi Up, email nhận được |
+| Bật WAL | 11,9 giây, worker khởi động lại một lần, api không đứt |
+| Đẩy lần đầu | R2 và ổ D: khớp nhau; lần đầu 1 phút 47 giây, các lần sau 1 giây; rclone 1.60.1 gặp `501` ở lần tải đầu rồi tự thành công (vô hại) |
+| Thử khôi phục | **27 giây** (dump 6, pitr 8, api 9, media 0); CSDL gần trống nên là cận dưới; giai đoạn media chưa thử thật (chưa có ảnh) |
+| Lỗi script phát hiện khi chạy thật (đã sửa) | (1) biến `RCLONE_CONFIG_EXAM_R2_*` được export trong `r2_remote()` gọi qua `$(...)` nên mất; (2) `newest()` lỗi khi thư mục chưa tồn tại (với `pipefail`) làm `status` và `catchup` thoát lỗi |
+| Bài học | bài thử bằng đích giả và trạng thái cũ không bắt hết lỗi lần chạy đầu; 6e thêm kịch bản "thư mục sao lưu trống" và một lần thử với đích thật |
+
 ## Câu hỏi còn mở
 
 - PR 6b (#79) và 6b.1 (#80) đã merge; workflow deploy đã chạy thật qua runner (deploy, lùi bản, deploy lại) và đạt. Hệ thống đang chạy thật ở `exam.plotrackerbluni.site`, bản `75e57eb`.
-- Tiếp theo: 6c (script sao lưu): thiết kế đã duyệt (Q351–Q361), **mã đã viết và thử trên pod drill, chờ chủ dự án duyệt trước khi mở PR** (xem "PR 6c: ghi chú triển khai"); việc bật thật theo [khoi-phuc.md mục 4](../ops/khoi-phuc.md). Sau đó 6d (phần trong ứng dụng) và 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.
+- Tiếp theo: 6c (script sao lưu): thiết kế đã duyệt (Q351–Q361), **mã đã viết, thử trên pod drill (61/61), mở PR #81 và đã bật thật trên `prod-exam` ngày 9/11/2026** (nhật ký từng bước ở [khoi-phuc.md mục 4.9](../ops/khoi-phuc.md)) (xem "PR 6c: ghi chú triển khai"); việc bật thật theo [khoi-phuc.md mục 4](../ops/khoi-phuc.md). Sau đó 6d (phần trong ứng dụng) và 6e (hoàn tất); mỗi PR có thiết kế chi tiết riêng nếu còn điểm chưa duyệt.
 - Trước Phiên thi thật đầu tiên: sao lưu chạy được (6c), người quản trị thứ hai (chủ dự án hoãn), bản giấy các khóa trong phong bì dán kín.

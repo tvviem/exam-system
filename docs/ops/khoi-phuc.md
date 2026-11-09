@@ -2,7 +2,7 @@
 
 Tài liệu cho người vận hành (chủ dự án), để **tra cứu lâu dài và học**. Thiết kế và lý do từng quyết định ở [docs/plan/slice-6.md](../plan/slice-6.md) (Q323–Q328, Q351–Q361); triển khai hằng ngày ở [trien-khai.md](./trien-khai.md); chuyển sang máy chủ khác ở [chuyen-len-vps.md](./chuyen-len-vps.md). Mọi lệnh chạy ở thư mục gốc của repo qua `make -C infra …`; logic nằm ở [`infra/scripts/exam-backup.sh`](../../infra/scripts/exam-backup.sh) (và `exam-ctl.sh enable-archiving`, `pg-archive-wal.sh`).
 
-> **Trạng thái (PR 6c):** công cụ đã viết và đã thử trên pod `drill-exam` bằng `make -C infra backup-drill-test` (R2 giả, khóa gpg giả, healthchecks giả). **Chưa bật cho hệ thống thật** và **chưa thử với R2 thật, healthchecks.io thật**. Việc bật thật là mục 4, làm **cùng nhau từng bước**. Cho đến khi mục 4 xong và `make -C infra prod-backup-status` báo đủ, **không dùng cho Phiên thi thật**.
+> **Trạng thái (lát cắt 6, triển khai bản MVP; PR 6c):** công cụ đã thử trên pod `drill-exam` (`make -C infra backup-drill-test`, 61/61) và **đã bật thật trên `prod-exam` ngày 9/11/2026** với R2 thật, healthchecks.io thật, khóa gpg thật; lần thử khôi phục đầu tiên đạt trong 27 giây. Từng bước, lệnh, số đo và lỗi gặp phải ở [mục 4.9](#49-nhật-ký-bật-thật-9112026-laptop-wsl-ubuntu-prod-exam); việc còn lại ở mục 4.9.10. **Chưa thử:** khôi phục sang máy khác từ R2, `wsl --shutdown` giữa lúc đang đẩy, đĩa đầy thật, ảnh minh họa thật (làm ở 6e). Trước Phiên thi thật đầu tiên còn cần Quản trị viên thứ hai.
 
 ## 1. Mất gì thì cứu bằng gì
 
@@ -109,7 +109,7 @@ Timer chạy bản **chép cố định** ở `~/.local/share/exam-prod/bin/` (k
 
 ## 4. Cài đặt lần đầu (làm cùng nhau từng bước)
 
-Các bước cần **tài khoản và quyết định của bạn** nên làm theo thứ tự, mỗi bước kiểm xong mới sang bước sau. Trợ lý hướng dẫn chi tiết từng thao tác và lệnh; đây là bản đồ để bạn biết mình đang ở đâu.
+Các bước cần **tài khoản và quyết định của bạn** nên làm theo thứ tự (kết quả làm thật ngày 9/11/2026 ở [mục 4.9](#49-nhật-ký-bật-thật-9112026-laptop-wsl-ubuntu-prod-exam)), mỗi bước kiểm xong mới sang bước sau. Trợ lý hướng dẫn chi tiết từng thao tác và lệnh; đây là bản đồ để bạn biết mình đang ở đâu.
 
 | # | Việc | Bạn làm | Kiểm bằng |
 |---|---|---|---|
@@ -140,6 +140,49 @@ shred -u khoa-bi-mat.asc
 Nếu tạo ở máy khác: chép `khoa-cong-khai.asc` sang máy chạy hệ thống rồi `gpg --import khoa-cong-khai.asc`.
 
 > **Đừng đặt mật khẩu cho khóa bí mật?** Nên đặt (mật khẩu cũng cất ở Bitwarden). Khóa công khai không cần mật khẩu. Mất cả hai bản khóa bí mật thì **mọi bản sao lưu trên R2 thành vô dụng** (bản ở WSL và D: vẫn đọc được vì là dạng thường); vì vậy bản giấy là bắt buộc.
+
+#### 4.1.1 Làm bản giấy (hướng dẫn từng bước)
+
+Vì sao cần giấy dù Bitwarden đã có 2FA và Face ID: 2FA chống **người khác** vào, còn giấy cứu khi **chính bạn bị khóa bên ngoài** (điện thoại hỏng hoặc mất, Google Authenticator và Face ID đi theo điện thoại, không đăng nhập được Bitwarden đúng lúc cần khôi phục).
+
+Cần **ba tờ giấy, cất ở hai hoặc ba nơi khác nhau**, mỗi tờ trong phong bì dán kín. Ai chỉ lấy được một tờ thì không dùng được.
+
+| Tờ | Nội dung | Cách làm |
+|---|---|---|
+| A | Khối khóa bí mật gpg (17 dòng, từ `-----BEGIN PGP PRIVATE KEY BLOCK-----` đến `-----END …-----`) và dấu vân tay (ghi thêm bằng tay nếu muốn) | in |
+| B | **Mật khẩu của khóa gpg** (chữ và số, không dấu) | chép tay từ Bitwarden |
+| C | **Mã khôi phục 2FA của Bitwarden** (Settings → Security → Two-step login → View recovery code). Nếu bạn ghi cả mật khẩu chủ Bitwarden thì ghi trên tờ này | chép tay hoặc in |
+
+**Cất ở đâu:** tờ A và tờ B **không bao giờ để chung một nơi**. Tờ C để cách xa tờ A (tờ C mở Bitwarden, tờ A và B mở khóa; ai có cả ba là có hết).
+
+**Các bước (tờ A, in bằng Notepad của Windows):**
+
+```bash
+cp ~/khoa-bi-mat.asc /mnt/c/Users/Public/khoa-bi-mat.txt
+notepad.exe 'C:\Users\Public\khoa-bi-mat.txt'      # in bằng Ctrl+P, cỡ chữ vừa để mỗi dòng không bị ngắt
+rm /mnt/c/Users/Public/khoa-bi-mat.txt             # xóa bản tạm ở Windows ngay sau khi in
+```
+
+Kiểm tờ A đã in: đếm đủ 17 dòng, dòng cuối của khối (ngay trên `END`) bắt đầu bằng `=` và có 4 ký tự (ví dụ `=P22P`). Khi phải khôi phục từ giấy mà gõ lại 17 dòng khó và dễ nhầm, nên ưu tiên Bitwarden; giấy là phương án cuối cùng. Ai muốn chắc hơn có thể in thêm mã QR của khối khóa (làm sau, không bắt buộc).
+
+**Kiểm tờ B bằng cách gõ lại từ giấy (làm TRƯỚC khi xóa khóa bí mật khỏi máy).** Chép tay dễ nhầm `l`, `I`, `1`, `O`, `0`. Bộ gõ để tiếng Anh, gõ **từng ký tự đọc từ tờ giấy** (không dán) vào phép thử này:
+
+```bash
+export GPG_TTY=$(tty)
+gpgconf --kill gpg-agent
+echo thu | gpg -u C03E6416CDACA6645710AA3E14C0007D328A40D9 --clearsign > /dev/null && echo "TO B DUNG"
+```
+
+In `TO B DUNG` là tờ B chép đúng. Không đúng thì viết lại cho rõ (chữ in hoa, chia nhóm 4 ký tự) rồi thử lại. Sau khi xóa khóa bí mật khỏi máy thì không còn phép thử này nữa.
+
+**Những thứ KHÔNG cần ghi ra giấy** (đã nằm trong Bitwarden, và đã có đường khôi phục khác):
+- Mật khẩu PostgreSQL, `SLIP_ENCRYPTION_KEY` và các bí mật khác của `api.env` / `postgres.env`: sau khi bật sao lưu (4.6), hai file này được gpg mã hóa và chép sang D: và R2 mỗi khi đổi (thư mục `khoa/`). Có tờ A và tờ B là mở được (mục 5.5).
+- Tài khoản Quản trị viên đầu tiên: mất mật khẩu thì dùng `make -C infra prod-recover-admin ADMIN=<tên>` (trien-khai.md) hoặc nhờ Quản trị viên thứ hai cấp lại.
+- Dấu vân tay: tính lại được từ khóa (có thể ghi thêm cho tiện).
+
+Nghĩa là **tờ A và B là chìa mở mọi thứ còn lại**, nên giữ chúng cẩn thận nhất.
+
+**Chỉ sau khi cả ba tờ đã cất** mới xóa khóa bí mật khỏi máy (mục 4.9.1, phần "Kiểm chứng trước khi xóa khóa").
 
 ### 4.2 Cloudflare R2 (Q352, chính sách đã kiểm 9/11/2026)
 
@@ -244,6 +287,189 @@ gpg -d /tmp/thu-giai-ma/<tên-file>.gz.gpg | gzip -dc | head -c 100 | xxd | head
 # 3. Dọn sạch:
 rm -rf "$GNUPGHOME" /tmp/thu-giai-ma khoa-bi-mat.asc; unset GNUPGHOME
 ```
+
+### 4.9 Nhật ký bật thật (9/11/2026, laptop WSL Ubuntu, `prod-exam`)
+
+Mục này ghi lại **đúng những gì đã làm trên máy thật**, theo thứ tự thời gian, kèm lệnh, kết quả đo được và lỗi gặp phải, để xem lại và học. Mục 4.1 đến 4.8 ở trên là **hướng dẫn** (làm lại ở máy khác được); mục 4.9 là **bằng chứng và kinh nghiệm** của lần làm đầu tiên. Số hiệu 4.9.N tương ứng mục 4.N (trừ 4.9.2 và các mục cuối).
+
+**Trạng thái (9/11/2026): mục 4 hoàn tất, sao lưu đang chạy trên `prod-exam` thật.**
+
+| Mục | Việc | Giờ (9/11) | Kết quả |
+|---|---|---|---|
+| 4.9.1 | Cặp khóa gpg, khóa bí mật cất Bitwarden và 3 tờ giấy, xóa khỏi máy | khoảng 12:00 đến 14:00 | đạt, đã giải mã thử bằng khóa từ Bitwarden |
+| 4.9.2 | Tắt rồi mở lại WSL | khoảng 13:40 (giữa 4.9.1) | pod tự dựng lại, `/api/health` ok |
+| 4.9.3 | Cloudflare R2: bucket, cảnh báo ngân sách, vòng đời, khóa API, thử xóa | khoảng 14:00 đến 15:30 | đạt; khóa **xóa được** file; 1 lỗi script sửa |
+| 4.9.4 | healthchecks.io và `backup.env` | khoảng 15:30 đến 16:10 | đạt, báo động email thử thật |
+| 4.9.5 | Bật lưu liên tục WAL | 16:13 | đạt, 11,9 giây |
+| 4.9.6 | Cài và bật 6 timer, đẩy lần đầu | 16:15 đến 16:20 | đạt; 1 lỗi script sửa |
+| 4.9.7 | Dump, bản nền, thử khôi phục lần đầu | 16:22 | đạt, **27 giây** (CSDL gần trống) |
+| 4.9.8 | Giải mã thử bản `khoa/` trên R2 | khoảng 16:30 | dấu băm khớp |
+
+#### 4.9.1 Cặp khóa gpg (mục 4.1)
+
+| Bước | Việc | Lệnh | Kết quả |
+|---|---|---|---|
+| 1 | Kiểm trước | `gpg --list-keys` | chưa có khóa nào (lệnh tạo thư mục `~/.gnupg`) |
+| 2 | Tạo khóa | `gpg --quick-gen-key "exam-backup <trieuvinhviem@gmail.com>" default default never` | tạo xong. Khóa chính ed25519 (ký) và khóa con cv25519 (mã hóa) |
+| 3 | Lấy dấu vân tay | `gpg --list-keys --with-colons \| awk -F: '/^fpr/{print $10; exit}'` | **`C03E6416CDACA6645710AA3E14C0007D328A40D9`** (khóa con mã hóa: `FC009ABFF6411765`) |
+| 4 | Xuất khóa bí mật | `gpg --armor --export-secret-keys <FPR> > ~/khoa-bi-mat.asc` (có `umask 077`) | 878 byte, 17 dòng, mở đầu `-----BEGIN PGP PRIVATE KEY BLOCK-----` |
+| 5 | Cất vào Bitwarden | `clip.exe < ~/khoa-bi-mat.asc`, dán vào ghi chú bảo mật; mục riêng cho mật khẩu của khóa | hai mục: khóa bí mật và mật khẩu (tách riêng) |
+| 6 | Kiểm bản Bitwarden | đọc lại clipboard (`powershell.exe Get-Clipboard`) rồi `diff -B` với bản gốc | xem "Lỗi gặp" bên dưới |
+| 7 | Giải mã thử bằng khóa từ Bitwarden | nhập khóa vào keyring tạm (`gpg --homedir "$TMPG" --import …`), mã hóa một câu bằng khóa công khai rồi giải mã bằng keyring tạm | `secret key imported`, giải mã ra đúng câu thử |
+
+**Lỗi gặp và cách xử lý (đáng nhớ):**
+
+1. **`Inappropriate ioctl for device` khi ký hoặc giải mã.** gpg không mở được ô hỏi mật khẩu vì shell chưa đặt `GPG_TTY`. Sửa: `export GPG_TTY=$(tty)` trong **cửa sổ Ubuntu thật**. Không chạy qua dòng lệnh `!` của phiên làm việc này. Triệu chứng đi kèm là `Bad passphrase` ngay khi nhập khóa vào keyring tạm.
+2. **Bộ gõ tiếng Việt bật khi nhập mật khẩu lúc tạo khóa** làm chữ gõ vào bị biến đổi (ví dụ `aw` thành `ă`), nên mật khẩu thật của khóa khác chuỗi lưu trong Bitwarden. Sửa: `gpg --change-passphrase <FPR>` (nhập mật khẩu cũ bằng đúng các phím như lần đầu, mật khẩu mới do Bitwarden sinh, chỉ chữ và số, **dán** vào lúc bộ gõ ở tiếng Anh). **Quy tắc rút ra:** mật khẩu của khóa luôn do Bitwarden sinh, chỉ gồm chữ và số, và luôn **dán**, không gõ tay.
+3. **`diff` báo khác nhau dù đã "dán xong".** Mỗi lần xuất khóa bí mật, phần mã hóa bên trong đổi ngẫu nhiên (muối và vectơ khởi tạo), nên hai bản xuất ở hai thời điểm khác nhau luôn khác nhau. Ở đây ghi chú trong Bitwarden vẫn là bản xuất cũ (mật khẩu cũ). Cách tự kiểm nhanh không cần lộ khóa: so **dòng kiểm cuối của khối** (4 ký tự sau dấu `=`, ví dụ `=P22P`). Sau khi dán lại đúng bản, `diff` báo `GIONG NHAU` và giải mã thử thành công.
+
+**Kiểm chứng trước khi xóa khóa, rồi xóa khóa (9/11/2026):**
+
+1. Ba tờ giấy A, B, C đã làm và cất (chủ dự án xác nhận).
+2. `gpgconf --kill gpg-agent` rồi ký thử bằng khóa trên máy: mật khẩu **dán từ Bitwarden** mở được (`BITWARDEN DUNG`); mật khẩu **gõ lại từ tờ B** cũng mở được (`TO B DUNG`).
+3. Xuất khóa công khai: `~/khoa-cong-khai.asc` (652 byte, bắt đầu `-----BEGIN PGP PUBLIC KEY BLOCK-----`; không bí mật, có thể chép sang máy khác).
+4. Xóa khóa bí mật: `gpg --batch --yes --delete-secret-keys C03E6416CDACA6645710AA3E14C0007D328A40D9` (thoát 0).
+5. `shred -u` ba tệp tạm (`~/khoa-bi-mat.asc`, `~/khoa-tu-bitwarden.asc`, `~/thu.gpg`); không còn keyring tạm trong `/tmp` (WSL khởi động lại đã dọn); không còn bản tạm `khoa-bi-mat.txt` ở Windows; clipboard Windows xóa trắng.
+6. Kiểm trạng thái cuối:
+   - `gpg --list-secret-keys` **trống**, `~/.gnupg/private-keys-v1.d/` có 0 tệp.
+   - `gpg --list-keys` còn khóa công khai `ed25519/14C0007D328A40D9` (`[SC]`) và khóa con `cv25519/FC009ABFF6411765` (`[E]`, dùng để mã hóa).
+   - Mã hóa một câu bằng khóa công khai: được. Giải mã lại: `gpg: public key decryption failed: No secret key` (đúng ý: máy này chỉ mã hóa được, không giải mã được).
+
+**Mục 4.1 hoàn tất.** Máy chỉ giữ khóa công khai. Dấu vân tay cho `EXAM_GPG_RECIPIENT` trong `backup.env` (mục 4.4): `C03E6416CDACA6645710AA3E14C0007D328A40D9`.
+
+#### 4.9.2 Thử tắt rồi mở lại WSL (kiểm tra thêm, ngoài mục 4)
+
+Chủ dự án tắt WSL Ubuntu giữa chừng và mở lại. Kết quả kiểm sau khi mở lại (uptime 10 phút):
+- Pod `prod-exam` **tự dựng lại**: 6 container (`postgres`, `redis`, `api`, `worker`, `web`, `infra`) đều `Up 10 minutes`, bản đang chạy vẫn `75e57eb`.
+- `/api/health` trong máy: `{"status":"ok","checks":{"postgres":"up","redis":"up"}}`, 200 trong 4 ms. Địa chỉ công khai `https://exam.plotrackerbluni.site/api/health`: 200 trong 0,55 giây.
+- Kết luận: unit systemd của người dùng đưa pod lên lại sau khi WSL khởi động, đúng như thiết kế (Q cũ: pod chỉ chạy khi chủ dự án mở WSL). Lưu ý: lúc này lưu liên tục WAL **chưa bật** nên kết quả này là của pod chưa có sao lưu. Sau khi bật (4.5) cần thử lại một lần nữa (đặc biệt là việc PG khởi động lại với cờ lưu trữ).
+
+#### 4.9.3 Cloudflare R2 (mục 4.2)
+
+| Bước | Việc | Kết quả |
+|---|---|---|
+| 1 | Tạo bucket | `exam-backup`, vị trí Automatic, lớp Standard. **Cloudflare yêu cầu thêm phương thức thanh toán** (thẻ) mới bật được R2; chủ dự án đã thêm thẻ. Dữ liệu của ta nhỏ nên dự kiến vẫn trong gói miễn phí |
+| 2 | Cảnh báo ngân sách | **Manage Account → Billing → Billable Usage**: hai cảnh báo thư **1 USD** và **5 USD**. Tra tài liệu Cloudflare: **không có trần chi tiêu cứng** cho R2 và cảnh báo chỉ để báo, không chặn; không có tài liệu nói rút thẻ thì R2 xử lý ra sao nên **không rút thẻ** (R2 dừng im lặng là rủi ro tệ hơn). Theo dõi dung lượng thật sau 1 đến 2 tuần |
+| 3 | Quy tắc vòng đời | 5 quy tắc theo tiền tố: `daily/` 7 ngày, `weekly/` 28 ngày, `monthly/` 180 ngày, `wal/` 7 ngày, `base/` 15 ngày; không có quy tắc cho `media/`, `khoa/`, `selftest/` (chủ dự án báo đã tạo đủ 5; chưa đối chiếu lại từng dòng, việc này làm ở cuối mục 4.2) |
+| 4 | Khóa API | token `exam-backup-prod`, quyền **Object Read & Write**, giới hạn bucket `exam-backup`, TTL vô hạn. Ba giá trị (Account ID, Access Key ID, Secret) cất ở Bitwarden, mục `exam-backup R2 key` |
+| 5 | `backup.env` | `~/exam-prod-secrets/backup.env` (quyền 600, 15 dòng; độ dài Account ID 32, Access Key ID 32, Secret 64 ký tự). Chưa có hai địa chỉ healthchecks (4.3) |
+| 6 | `make -C infra prod-backup-check` | ổ D: ghi được, gpg ổn; **R2 báo hỏng ở lần đầu** (xem lỗi 1); sau khi sửa: R2 ghi và đọc được |
+
+**Phép thử "khóa có xóa được không" (kết quả thật):** tải 3 file nhỏ lên `selftest/xoa-thu/` rồi `rclone deletefile` một file bằng chính khóa này: **xóa được** (file biến mất, hai file kia còn). Kết luận: khóa Object Read & Write **có quyền xóa**. Vì vậy ở R2, "script không bao giờ xóa" chỉ là quy ước, chưa là chốt kỹ thuật: kẻ chiếm được máy này (đang giữ khóa) xóa được bản sao trên R2. Giảm thiểu hiện có: bản ở ổ D: và WSL (kẻ phải chiếm cả hai nơi); và quy tắc vòng đời không phải là chốt. Cân nhắc làm sau (6e): bật khóa đối tượng nếu Cloudflare hỗ trợ, hoặc dùng khóa tải lên riêng và khóa xóa riêng cất ngoài máy. Việc này đã dọn: các file thử trên R2 đã xóa, chỉ còn `selftest/ok.txt` (script ghi mỗi lần `check`).
+
+**Lỗi gặp khi chạy với R2 thật (đáng nhớ):**
+
+1. **`check` báo "R2 không ghi/đọc được" dù khóa đúng.** Nguyên nhân là lỗi trong script: các biến `RCLONE_CONFIG_EXAM_R2_*` được `export` bên trong hàm `r2_remote()`, mà hàm này luôn được gọi trong `$(...)` (shell con), nên biến không bao giờ tới lệnh `rclone` ở shell chính. Bài thử ở pod drill không lộ lỗi vì dùng thư mục giả qua `EXAM_R2_REMOTE`. Sửa: đặt các biến này một lần ở đầu `exam-backup.sh`, ngay sau khi nạp `backup.env`; `r2_remote()` chỉ in địa chỉ. **Bài học:** bài thử bằng đích giả không chứng minh đường dùng đích thật; luôn thử cả đường thật khi có thể.
+2. **Mỗi lần tải lên, lần thử đầu của `rclone` (bản 1.60.1 của Ubuntu) bị R2 trả `501 Not Implemented`, lần thử thứ hai thành công** (rclone tự thử lại tối đa 3 lần, kết quả cuối vẫn đúng). Quan sát bằng `--dump headers`: HEAD 404, rồi PUT 501, rồi PUT 200. Hệ quả: số yêu cầu gấp đôi và mỗi lần đẩy chậm thêm chút; ở nhịp của ta (ước vài nghìn file mỗi tháng) vẫn rất xa hạn mức miễn phí 1 triệu thao tác loại A. Chưa sửa; hướng xử lý nếu muốn gọn: nâng `rclone` lên bản mới hơn (cần xin phép chủ dự án vì cài phần mềm ngoài kho Ubuntu). Ghi ở đây để khi đọc nhật ký rclone thấy dòng `501` thì biết là bình thường.
+3. (Nhắc lại) zsh không có `read -p`: dùng `printf '…: '; read -r BIEN` (chạy được ở cả zsh và bash).
+
+#### 4.9.4 healthchecks.io và `backup.env` (mục 4.3, 4.4)
+
+| Bước | Việc | Kết quả |
+|---|---|---|
+| 1 | Đăng ký | gói **Hobbyist** (miễn phí, không thẻ): 20 việc theo dõi, 100 dòng nhật ký mỗi việc; SMS và gọi điện **0** (chỉ có ở gói trả tiền). Đang dùng 2 trên 20 |
+| 2 | Tạo hai việc theo dõi | `exam-backup-nightly` (Period 1 ngày, Grace 3 ngày) và `exam-restore-test` (Period và Grace theo bảng thiết kế; xem mục 3.3) |
+| 3 | Kênh báo | chủ dự án chọn **chỉ Email** (đã có Telegram nhưng không dùng; tài liệu Healthchecks không nói rõ gói Hobbyist có Telegram hay không, cũng chưa thử) |
+| 4 | Địa chỉ ping | cất ở Bitwarden, mục `exam-backup healthchecks`; đưa vào `backup.env` bằng ô nhập ẩn (`stty -echo; read -r`), không qua cuộc trò chuyện |
+
+**Cách thử báo động thật (không cần chờ hết hạn):** gọi `<địa-chỉ-ping>/fail` thì việc theo dõi chuyển sang **Down** ngay và gửi cảnh báo; gọi `<địa-chỉ-ping>` (không có `/fail`) thì trở lại **Up** và gửi thông báo hồi phục. Kết quả thật: cả hai việc đều Down rồi Up, thư **email nhận được đủ**. Nút *Test* ở trang Integrations chỉ thử kênh, không chứng minh địa chỉ ping và việc theo dõi nối đúng kênh, nên không thay được phép thử `/fail`.
+
+`make -C infra prod-backup-check` sau khi điền xong: **tất cả ✓ trừ một mục**: lưu liên tục WAL chưa bật (việc của 4.5). Đã ✓: pod và PostgreSQL, `backup.env`, khóa công khai có, khóa bí mật không có, mã hóa thử, ổ D: ghi được, R2 ghi và đọc được, hai địa chỉ healthchecks, và đủ lệnh `jq rclone gpg flock curl`.
+
+#### 4.9.5 Bật lưu liên tục WAL (mục 4.5, 16:13)
+
+Điều kiện trước khi chạy: `prod-active-sessions` báo **0 Phiên thi** (đang diễn ra hoặc bắt đầu trong 60 phút tới) và 0 Lượt làm bài dở.
+
+`make -C infra prod-enable-archiving` (Trợ lý chạy theo yêu cầu của chủ dự án), tổng **11,9 giây**:
+1. Dump an toàn trước: `~/exam-prod-backups/truoc-deploy-20261109-161316-bat-luu-lien.dump`.
+2. Dựng lại **chỉ container PostgreSQL** với `archive_mode=on`, `archive_command`, `archive_timeout=60` (volume `exam_pgdata` giữ nguyên).
+3. Ép chuyển một đoạn WAL và đợi chép: thành công, lệnh báo "Đã bật lưu liên tục".
+
+Kiểm sau đó:
+- `prod-status`: `postgres` Up 16 giây, `worker` Up 18 giây (**worker khởi động lại một lần**, đúng như dự kiến), `api`, `web`, `redis` vẫn `Up 3 hours` (không bị động tới).
+- `/api/health` trong máy báo `ok`; địa chỉ công khai `https://exam.plotrackerbluni.site/api/health`: **200 trong 0,68 giây** ngay sau đó.
+- PostgreSQL: `archive_mode=on`, `archive_timeout=1min`, `wal_level=replica`; `pg_stat_archiver`: `archived_count=1`, `failed_count=0`, đoạn đầu `000000010000000000000001` lúc 09:13:25 UTC (16:13 giờ địa phương).
+- Thư mục `~/exam-prod-backups/wal/` có `000000010000000000000001.gz` (3,8 MB; đoạn WAL đầu tiên chứa nhiều dữ liệu khởi tạo, các đoạn sau thường nhỏ hơn khi rảnh).
+- `prod-backup-check`: **mục "lưu liên tục WAL đã bật" đã ✓**.
+- Đợi thêm hơn 1 phút: **không có đoạn WAL mới** (`archived_count` vẫn 1, `failed_count` 0). Đúng thiết kế: `archive_timeout` chỉ ép chuyển đoạn khi **có ghi dữ liệu mới**; lúc rảnh không có gì thì không sinh file. Cần theo dõi tốc độ sinh WAL khi có người dùng và khi có Phiên thi (mục "Chưa thử" của slice-6.md).
+
+#### 4.9.6 Cài và bật timer (mục 4.6, khoảng 16:15)
+
+Trợ lý chạy theo đồng ý của chủ dự án: `make -C infra prod-backup-install` (chép script sang `~/.local/share/exam-prod/bin/`, chưa bật gì) rồi `make -C infra prod-backup-enable` (chạy `check` đạt hết rồi bật 6 timer).
+
+Kết quả:
+- `systemctl --user list-timers 'exam-backup-*'`: **6 timer**, lần chạy kế tiếp: `push` mỗi phút (16:18), `release` mỗi 5 phút, `nightly` **2:00 ngày 10/11**, `base` **Chủ nhật 15/11 03:00**, `restore-test` **1/12 04:00**; `catchup` chạy ngay một lần (máy đã bật quá 5 phút).
+- **Lần đẩy đầu tiên** (16:18:04 đến 16:19:51, khoảng **1 phút 47 giây**, vì còn mã hóa và đẩy lần đầu): `ổ chép +3, R2 +3`: hai file bí mật (`khoa/api.env-…gpg`, `khoa/postgres.env-…gpg`, đã mã hóa vì hash vừa được ghi lần đầu) và đoạn WAL số 1. Lần sau (16:19:52, **1 giây**): `+1`: WAL số 2 (PostgreSQL đã sinh thêm một đoạn khi có hoạt động). Đối chiếu: `rclone lsf -R` trên R2 thấy đúng 5 file (`khoa/` 2, `wal/` 2 đuôi `.gz.gpg`, `selftest/ok.txt`); ổ D: có đúng 4 file (không có `.gpg` ở `wal/`, vì ổ D: giữ dạng thường).
+- `status`: 6/6 timer, "Sức khỏe archive: ổn", "Dãy WAL: liền nhau", sổ đẩy có 4 file cho mỗi đích. Chưa có dump đêm, bản nền, hay thử khôi phục (làm ở 4.7).
+
+**Lỗi thứ hai gặp khi chạy thật (sửa luôn):** `status` thoát lỗi, `catchup` báo `status=1/FAILURE`. Nguyên nhân: hàm `newest` (tìm file mới nhất trong thư mục) trả lỗi khi **thư mục chưa tồn tại** (máy mới, chưa có dump đêm nào nên chưa có `daily/`); với `set -o pipefail` lỗi này làm cả lệnh thoát. Bài thử ở pod drill không lộ vì thư mục luôn có sẵn. Sửa: `newest` trả rỗng khi thư mục chưa có. **Bài học (cùng loại với lỗi R2):** chạy thật trên **trạng thái trống** (lần đầu) lộ lỗi mà bài thử tái dùng trạng thái cũ không thấy; bài thử drill nên có thêm kịch bản "bắt đầu từ thư mục sao lưu hoàn toàn trống" (việc cho 6e).
+
+**Lưu ý khi đọc nhật ký:** file `~/.local/state/exam-prod/push-errors.log` ghi các dòng `501 Not Implemented` ở lần thử đầu mỗi lần tải lên R2 (rclone 1.60.1), rồi `Attempt 2/3 succeeded`. Đó là chuyện đã biết (xem 4.9.3, lỗi 2), **không phải sự cố**. Chỉ cần lo khi thấy `Attempt 3/3 failed` hoặc `Failed to copy` mà không có `succeeded` ngay sau.
+
+#### 4.9.7 Lần đầu thử khôi phục (mục 4.7, 16:22)
+
+Trợ lý chạy ba lệnh theo đồng ý của chủ dự án, lúc không có Phiên thi:
+
+| Lệnh | Kết quả |
+|---|---|
+| `make -C infra prod-backup-dump` | `daily/exam-20261109-162222-nightly.dump` (152 KB, **3 giây**) và file `.counts` (số dòng từng bảng lúc dump) |
+| `make -C infra prod-backup-basebackup ARGS=--force` | `base/exam-20261109-162232-base.tar.gz` (4,2 MB, **2 giây**, bắt đầu từ WAL `000000010000000000000004`) và `.info` |
+| `make -C infra prod-backup-restore-test` | **ĐẠT trong 27 giây**, pod tạm `rt-prod` đã tự xóa (không còn volume `rt*`) |
+
+Chi tiết `restore-test` (`~/.local/state/exam-prod/restore-test.json`):
+
+| Giai đoạn | Kết quả | Thời gian |
+|---|---|---|
+| dump: nạp dump vào PostgreSQL tạm, so số dòng 38 bảng với file `.counts` | đạt, số dòng khớp | 6 giây |
+| pitr: bản nền + WAL đến `000000010000000000000005`, tìm dòng dấu `ops.backup_test` mới nhất | đạt | 8 giây |
+| api: chạy ảnh `75e57eb` trên bản khôi phục, `/api/health` | đạt, `ok` | 9 giây |
+| media: so mẫu ảnh với volume thật | đạt (**chưa có ảnh nào cần sao lưu**, nên giai đoạn này **chưa được thử thật**) | 0 giây |
+
+**Đọc con số này đúng cách:** CSDL thật lúc đó gần như trống (0 đề thi, 0 Lượt làm bài; chỉ có 8 dòng nhật ký, 4 phiên đăng nhập, 5 sự kiện đăng nhập), nên **27 giây chỉ là cận dưới** của thời gian khôi phục. Thời gian thật sẽ tăng theo dữ liệu (dump, ảnh minh họa) và theo lượng WAL phải phát lại. Cần **đo lại sau khi có dữ liệu thật** (lần thử tự động ngày 1 mỗi tháng, hoặc chạy tay `prod-backup-restore-test`) và ghi lại để biết RTO thật. Giai đoạn media chỉ có nghĩa khi có ảnh minh họa trong volume.
+
+`status` sau đó: "Bản đêm mới nhất: 1 phút trước", "Bản nền mới nhất: 0 phút trước", "Thử khôi phục cuối: ĐẠT trong 27s", "Sức khỏe archive: ổn", "Dãy WAL: liền nhau", "Chờ đẩy 8/8" (lần đẩy kế tiếp, trong 1 phút, sẽ chuyển dump và bản nền sang ổ D: và R2).
+
+#### 4.9.8 Giải mã thử bản R2 bằng khóa từ Bitwarden (mục 4.8)
+
+Trước đó, Trợ lý xóa `selftest/ok.txt` trên R2 (47 byte, do lệnh `check` ghi để chứng minh R2 ghi và đọc được; chỉ `check` dùng nó; **mỗi lần chạy `check` hoặc `prod-backup-enable` nó được tạo lại**, vô hại) và tải hai file `khoa/*.gpg` về `~/thu-giai-ma/`.
+
+Chủ dự án làm tay: lấy khóa bí mật từ Bitwarden vào clipboard (`powershell.exe Get-Clipboard`, rồi xóa clipboard), nhập vào keyring tạm (`gpg --homedir "$TMPG" --import`, dán mật khẩu từ Bitwarden), giải mã hai file và chỉ in 12 ký tự đầu dấu băm SHA-256 của nội dung (không in bí mật ra màn hình):
+
+| File trên R2 | Dấu băm sau giải mã | Khớp với |
+|---|---|---|
+| `khoa/postgres.env-20261109-302ff1a7.gpg` | `302ff1a7d6ae` | `~/exam-prod-secrets/postgres.env` |
+| `khoa/api.env-20261109-574a33cb.gpg` | `574a33cbee2c` | `~/exam-prod-secrets/api.env` |
+
+**Kết quả: khớp cả hai.** Chuỗi "bí mật trên máy, mã hóa bằng khóa công khai, lên R2, giải mã bằng khóa trong Bitwarden" đã được chứng minh trọn vẹn. (Tên file `khoa/` chứa 8 ký tự đầu của dấu băm nên có thể đối chiếu bằng mắt.) Dọn sau đó: `rm -rf "$TMPG" ~/thu-giai-ma`; `gpg --list-secret-keys` trống, thư mục `private-keys-v1.d` rỗng; clipboard Windows xóa trắng (Trợ lý kiểm lại và xóa thêm lần nữa vì thấy còn 63 ký tự).
+
+#### 4.9.9 Bài học tổng hợp
+
+Về thao tác (người vận hành):
+1. **Mật khẩu của khóa gpg do Bitwarden sinh, chỉ chữ và số, luôn dán, không gõ tay.** Gõ khi bộ gõ tiếng Việt bật làm sai mật khẩu (4.9.1).
+2. **gpg cần `export GPG_TTY=$(tty)` trong cửa sổ Ubuntu thật**, không chạy qua dòng lệnh `!` của phiên làm việc (4.9.1).
+3. Shell là **zsh**: không có `read -p`; dùng `printf '…: '; read -r BIEN` (và `stty -echo` cho bí mật). `echo ======` làm zsh báo lỗi.
+4. **Bí mật không đi qua cuộc trò chuyện:** nhập vào `backup.env` bằng ô nhập ẩn; kiểm bằng độ dài và 4 ký tự đầu, không in hết.
+5. **Xóa clipboard Windows** (`echo -n "" | clip.exe`) sau mỗi lần dán bí mật; đã gặp lần còn sót 63 ký tự.
+6. Mỗi lần xuất khóa bí mật có nội dung khác nhau; so bản lưu bằng **dòng kiểm cuối** (`=XXXX`) hoặc bằng giải mã thật, không so `diff` hai lần xuất.
+
+Về thiết kế và kiểm thử (cho người sửa script):
+7. **Bài thử bằng đích giả hoặc trạng thái cũ không bắt hết lỗi.** Hai lỗi chỉ lộ khi chạy thật lần đầu: biến `rclone` export trong `$(...)` (đích giả `EXAM_R2_REMOTE` bỏ qua đường này) và `newest` trên thư mục chưa có (pod drill luôn có sẵn thư mục). Việc cho 6e: thêm kịch bản "bắt đầu từ thư mục sao lưu hoàn toàn trống" và một lần thử với đích R2 thật.
+8. Trước khi sửa script và cài lại, chạy `make -C infra backup-drill-test` (61 đạt, 0 lỗi sau cả hai chỗ sửa), rồi `prod-backup-install` để timer dùng bản mới.
+9. Khóa Object Read & Write của R2 **xóa được** file: "không xóa trên R2" chỉ là quy ước (xem 4.9.3 và mục 6 về giới hạn).
+10. rclone 1.60.1 trả `501` ở lần tải đầu mỗi lần rồi tự thành công: không phải sự cố (4.9.3, 4.9.6).
+
+#### 4.9.10 Việc còn lại sau mục 4
+
+| Việc | Khi nào | Ai |
+|---|---|---|
+| Đối chiếu từng dòng 5 quy tắc vòng đời trên R2 với bảng ở mục 4.2 | sớm | chủ dự án, kèm Trợ lý |
+| Xem sao lưu đêm tự động đầu tiên (02:00 ngày 10/11) và việc `exam-backup-nightly` chuyển Up trên healthchecks.io | sáng 10/11 (laptop phải bật hoặc ngủ nhẹ lúc 02:00; tắt thì timer chạy bù khi mở WSL) | chủ dự án, Trợ lý chạy `status` |
+| Đo lại thời gian khôi phục (RTO) khi đã có dữ liệu và ảnh thật; giai đoạn media chưa thử thật | sau khi có dữ liệu; lần tự động ngày 1 mỗi tháng (1/12) | tự động, Trợ lý ghi số |
+| Đo tốc độ sinh WAL và dung lượng R2 sau 1 đến 2 tuần; xem hóa đơn và cảnh báo ngân sách | 1 đến 2 tuần | chủ dự án |
+| Lặp lại giải mã thử bản R2 (4.8) | mỗi quý | chủ dự án |
+| Cân nhắc nâng `rclone` (bớt `501`) và chặn xóa trên R2 (khóa tải lên riêng hoặc khóa đối tượng) | 6e | thảo luận |
+| PR 6d (trạng thái sao lưu trong ứng dụng), 6e (diễn tập khôi phục sang máy khác, danh sách trước khi dùng thật) | tiếp theo | |
+| **Quản trị viên thứ hai** trước Phiên thi thật đầu tiên | trước Phiên thi thật | chủ dự án |
 
 ## 5. Khôi phục (runbook)
 
