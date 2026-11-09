@@ -4,6 +4,7 @@ import {
   CalendarClock,
   ClipboardCheck,
   ClipboardList,
+  DatabaseBackup,
   Ellipsis,
   FileText,
   History,
@@ -67,6 +68,12 @@ export function navFor(me: Me): NavItem[] {
         label: 'admin.nav.auditLogs',
         short: 'nav.short.auditLogs',
         icon: ScrollText,
+      },
+      {
+        to: '/admin/backup',
+        label: 'admin.nav.backup',
+        short: 'nav.short.backup',
+        icon: DatabaseBackup,
       },
     ];
   }

@@ -34,6 +34,8 @@ export interface JobPayloads {
   'attempt.sweep': Record<string, never>;
   /** Dọn dẹp định kỳ hằng ngày (Q96). */
   'maintenance.cleanup': Record<string, never>;
+  /** Báo chuông cho Quản trị viên khi bản đêm quá 26 giờ hoặc một việc sao lưu lỗi (Q363, Q364), mỗi 30 phút. */
+  'backup.check': Record<string, never>;
 }
 export type JobName = keyof JobPayloads;
 export type JobHandler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;

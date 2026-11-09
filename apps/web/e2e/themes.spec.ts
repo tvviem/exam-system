@@ -13,6 +13,7 @@ const PAGES = [
   ['yeu-cau-cap-tai-khoan', '/admin/account-requests'],
   ['lich-su-dang-nhap', '/admin/login-events'],
   ['nhat-ky-thao-tac', '/admin/audit-logs'],
+  ['sao-luu', '/admin/backup'],
 ] as const;
 
 // Q107: điểm gãy chuẩn 360 / 768 / 1024 / 1440 px, mỗi cỡ ở cả hai chế độ.

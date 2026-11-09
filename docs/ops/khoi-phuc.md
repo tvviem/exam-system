@@ -58,6 +58,15 @@ make -C infra prod-backup-status
 
 In: bản đêm, bản sau Công bố, bản nền mới nhất (và tuổi), lưu liên tục WAL bật hay tắt, sức khỏe archive, dãy WAL có liền không, số file chờ đẩy (WSL → ổ chép / R2), lần thử khôi phục cuối, số timer đang bật, và 8 dòng gần nhất của sổ kết quả. Chỗ nào ghi **CHƯA** hoặc **LỖI** là việc cần làm.
 
+**Trong ứng dụng (PR 6d):** Quản trị viên mở mục **"Sao lưu dữ liệu"** (`/admin/backup`) trong menu: dải đỏ khi có việc đang lỗi, ba ô tóm tắt (bản đêm, bản nền, thử khôi phục gần nhất, kèm tuổi), và danh sách lần chạy gần đây. Chỉ đọc, không có nút nào đổi gì; hỏi lại mỗi phút. Màn hình chỉ có dữ liệu **sau khi** migration `0022` đã chạy và script đã chèn (xem "Cách ghi vào bảng" bên dưới); trống thì ghi "Chưa có kết quả sao lưu nào".
+
+**Chuông (Q363, Q364)**, gửi cho mọi Quản trị viên đang hoạt động, job `backup.check` chạy mỗi 30 phút trong worker:
+- **"Đã hơn N giờ chưa có bản sao lưu đêm nào"**: bản đêm thành công mới nhất quá 26 giờ **và** ứng dụng đã chạy liên tục ít nhất 30 phút (để `catchup` kịp chạy bù sau khi bật máy). Một chuông chưa đọc; tự tắt khi có bản đêm mới. Chưa có dòng nào trong bảng thì không báo.
+- **"Sao lưu lỗi: <việc>. <lý do>"**: một việc (bản đêm, bản sau Công bố, bản nền, thử khôi phục, kiểm hằng đêm gồm WAL đứt hoặc archive lỗi, đẩy sang ổ chép hoặc R2) có dòng mới nhất là lỗi. Kêu ngay, trừ **đẩy** (chỉ ghi lỗi khi đã lỗi liên tục từ 30 phút, để lỗi mạng thoáng qua không làm chuông kêu oan). Một chuông mỗi loại việc; tự tắt khi có dòng thành công hoặc "đã phục hồi" sau đó.
+- Bấm vào chuông mở màn hình Sao lưu. Chuông chỉ kêu khi hệ thống đang chạy; máy tắt thì không có chuông (đúng thiết kế, xem Q353).
+
+**Cách ghi vào bảng (cho người sửa script):** `run_log` ghi sổ gốc rồi gọi `report_consider` để lọc (Q362): ghi `ok` của dump đêm, dump sau Công bố, bản nền, thử khôi phục, kiểm hằng đêm, khóa bí mật, chạy bù; ghi **một** dòng lỗi cho mỗi đợt lỗi (cờ trong `~/.local/state/exam-prod/backup-failing/`, xóa khi có dòng ok); với đẩy: chỉ ghi lỗi khi lỗi liên tục ≥ 30 phút (`EXAM_PUSH_ALERT_SECONDS`, mặc định 1800) và ghi dòng "đã phục hồi" khi đẩy lại được. Các dòng đáng báo nằm ở `backup-report.jsonl`; `backup-report.cursor` là số dòng đã chèn vào bảng. Chèn bằng `psql` qua `podman exec` (như `audit_deploy`); bảng chưa có hoặc cơ sở dữ liệu hỏng thì im lặng bỏ qua và **chèn bù** lần sau (đầu `release-check` mỗi 5 phút, và mỗi lần có dòng mới); lần đầu dựng sổ báo cáo từ sổ gốc nên các lần chạy trước khi có bảng cũng được chèn bù. Xem bảng trực tiếp: `podman exec prod-exam-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select kind,status,finished_at,detail from backup_runs order by finished_at desc limit 20"'`.
+
 Sổ kết quả đầy đủ: `~/.local/state/exam-prod/backup-runs.jsonl` (mỗi dòng một JSON: `at`, `kind`, `status`, `detail`). Đọc nhanh: `tail -n 20 ~/.local/state/exam-prod/backup-runs.jsonl | jq -r '"\(.at) \(.kind) \(.status) \(.detail)"'`. Sổ này **nằm ngoài cơ sở dữ liệu** nên còn khi cơ sở dữ liệu hỏng. Lỗi đẩy lặp lại chỉ ghi khi nội dung đổi hoặc mỗi giờ một lần, để sổ không đầy.
 
 ### 3.2 Việc nào chạy khi nào (timer của người dùng, tên `exam-backup-*`)
@@ -344,13 +353,15 @@ Chủ dự án tắt WSL Ubuntu giữa chừng và mở lại. Kết quả kiể
 - `/api/health` trong máy: `{"status":"ok","checks":{"postgres":"up","redis":"up"}}`, 200 trong 4 ms. Địa chỉ công khai `https://exam.plotrackerbluni.site/api/health`: 200 trong 0,55 giây.
 - Kết luận: unit systemd của người dùng đưa pod lên lại sau khi WSL khởi động, đúng như thiết kế (Q cũ: pod chỉ chạy khi chủ dự án mở WSL). Lưu ý: lúc này lưu liên tục WAL **chưa bật** nên kết quả này là của pod chưa có sao lưu. Sau khi bật (4.5) cần thử lại một lần nữa (đặc biệt là việc PG khởi động lại với cờ lưu trữ).
 
+**Thử lại lần hai khi WAL đã BẬT (9/11/2026, WSL mở lại lúc khoảng 18:56, kiểm lúc 19:07):** pod `prod-exam` lại tự dựng lên; PostgreSQL khởi động lại **giữ nguyên cờ lưu trữ** (file đánh dấu `~/.local/state/exam-prod/archiving`): `status` báo "Lưu liên tục WAL: BẬT", "Sức khỏe archive: ổn", "Dãy WAL: liền nhau", đoạn WAL mới `…0007` được chép và đẩy sang ổ D: và R2 lúc 19:01 (sau khi mở lại); hàng chờ `0 / 0`; 6/6 timer vẫn bật (timer của người dùng tự chạy lại cùng systemd). Mục "Chưa thử" về timer sau tắt/mở WSL: **đã thử, đạt** (chưa thử tắt giữa lúc đang đẩy hoặc đang dump).
+
 #### 4.9.3 Cloudflare R2 (mục 4.2)
 
 | Bước | Việc | Kết quả |
 |---|---|---|
 | 1 | Tạo bucket | `exam-backup`, vị trí Automatic, lớp Standard. **Cloudflare yêu cầu thêm phương thức thanh toán** (thẻ) mới bật được R2; chủ dự án đã thêm thẻ. Dữ liệu của ta nhỏ nên dự kiến vẫn trong gói miễn phí |
 | 2 | Cảnh báo ngân sách | **Manage Account → Billing → Billable Usage**: hai cảnh báo thư **1 USD** và **5 USD**. Tra tài liệu Cloudflare: **không có trần chi tiêu cứng** cho R2 và cảnh báo chỉ để báo, không chặn; không có tài liệu nói rút thẻ thì R2 xử lý ra sao nên **không rút thẻ** (R2 dừng im lặng là rủi ro tệ hơn). Theo dõi dung lượng thật sau 1 đến 2 tuần |
-| 3 | Quy tắc vòng đời | 5 quy tắc theo tiền tố: `daily/` 7 ngày, `weekly/` 28 ngày, `monthly/` 180 ngày, `wal/` 7 ngày, `base/` 15 ngày; không có quy tắc cho `media/`, `khoa/`, `selftest/` (chủ dự án báo đã tạo đủ 5; chưa đối chiếu lại từng dòng, việc này làm ở cuối mục 4.2) |
+| 3 | Quy tắc vòng đời | 5 quy tắc theo tiền tố: `daily/` 7 ngày, `weekly/` 28 ngày, `monthly/` 180 ngày, `wal/` 7 ngày, `base/` 15 ngày; không có quy tắc cho `media/`, `khoa/`, `selftest/` (**đã đối chiếu từng dòng ngày 9/11/2026, khớp bảng**: base/ 15, daily/ 7, monthly/ 180, wal/ 7, weekly/ 28 ngày; ngoài ra có quy tắc mặc định của hệ thống **"Default Multipart Abort Rule"**: hủy các lần tải lên dang dở sau 7 ngày, không đụng file đã tải xong; **nên giữ**, vì mảnh dở vẫn chiếm dung lượng; tài liệu Cloudflare không nói quy tắc này xóa được hay không) |
 | 4 | Khóa API | token `exam-backup-prod`, quyền **Object Read & Write**, giới hạn bucket `exam-backup`, TTL vô hạn. Ba giá trị (Account ID, Access Key ID, Secret) cất ở Bitwarden, mục `exam-backup R2 key` |
 | 5 | `backup.env` | `~/exam-prod-secrets/backup.env` (quyền 600, 15 dòng; độ dài Account ID 32, Access Key ID 32, Secret 64 ký tự). Chưa có hai địa chỉ healthchecks (4.3) |
 | 6 | `make -C infra prod-backup-check` | ổ D: ghi được, gpg ổn; **R2 báo hỏng ở lần đầu** (xem lỗi 1); sau khi sửa: R2 ghi và đọc được |
@@ -457,13 +468,14 @@ Về thiết kế và kiểm thử (cho người sửa script):
 8. Trước khi sửa script và cài lại, chạy `make -C infra backup-drill-test` (61 đạt, 0 lỗi sau cả hai chỗ sửa), rồi `prod-backup-install` để timer dùng bản mới.
 9. Khóa Object Read & Write của R2 **xóa được** file: "không xóa trên R2" chỉ là quy ước (xem 4.9.3 và mục 6 về giới hạn).
 10. rclone 1.60.1 trả `501` ở lần tải đầu mỗi lần rồi tự thành công: không phải sự cố (4.9.3, 4.9.6).
+11. **Số file WAL trên R2 thường nhiều hơn ổ D: và WSL, không phải lỗi** (thấy 10/11/2026: R2 có `…01`, `…02`, `…03` mà hai nơi kia không có). Bản nền duy nhất bắt đầu từ WAL số 4 (`.info`: `start_wal=…04`); WAL nằm **trước** mọi bản nền không dùng để khôi phục theo thời điểm được nữa nên script dọn ở máy xóa (quy tắc "vô dụng", Q325). R2 không có lệnh xóa nào của script (Q352), chỉ quy tắc vòng đời tự xóa sau 7 ngày. Sau mỗi bản nền mới (Chủ nhật hằng tuần) sẽ lặp lại với vài đoạn WAL cũ. So sánh ba nơi: lấy danh sách `wal/` của R2 (bỏ đuôi `.gpg`), ổ D: và WSL rồi `comm`; chỉ cần lo khi **thiếu** đoạn nằm sau điểm bắt đầu của bản nền mới nhất.
 
 #### 4.9.10 Việc còn lại sau mục 4
 
 | Việc | Khi nào | Ai |
 |---|---|---|
-| Đối chiếu từng dòng 5 quy tắc vòng đời trên R2 với bảng ở mục 4.2 | sớm | chủ dự án, kèm Trợ lý |
-| Xem sao lưu đêm tự động đầu tiên (02:00 ngày 10/11) và việc `exam-backup-nightly` chuyển Up trên healthchecks.io | sáng 10/11 (laptop phải bật hoặc ngủ nhẹ lúc 02:00; tắt thì timer chạy bù khi mở WSL) | chủ dự án, Trợ lý chạy `status` |
+| ~~Đối chiếu từng dòng 5 quy tắc vòng đời trên R2~~ | **xong 9/11/2026, khớp** (xem 4.9.3) | |
+| ~~Xem sao lưu đêm tự động đầu tiên (02:00 ngày 10/11)~~ | **đã chạy đúng giờ 02:00:03, `dump-nightly ok` và `nightly ok` (kiểm lúc 03:53; laptop bật suốt đêm)**; **healthchecks.io cũng nhận đúng**: lần ping gần nhất của `exam-backup-nightly` mang nội dung "dump exam-20261110-020003-nightly.dump 153KB; đã đẩy sang ổ chép và R2; dãy WAL liền" (chủ dự án xác nhận 10/11/2026) | xong |
 | Đo lại thời gian khôi phục (RTO) khi đã có dữ liệu và ảnh thật; giai đoạn media chưa thử thật | sau khi có dữ liệu; lần tự động ngày 1 mỗi tháng (1/12) | tự động, Trợ lý ghi số |
 | Đo tốc độ sinh WAL và dung lượng R2 sau 1 đến 2 tuần; xem hóa đơn và cảnh báo ngân sách | 1 đến 2 tuần | chủ dự án |
 | Lặp lại giải mã thử bản R2 (4.8) | mỗi quý | chủ dự án |
@@ -603,4 +615,42 @@ Dựng khóa gpg giả, "R2" là một thư mục (rclone kiểu local), healthc
 - **Vì sao mã hóa bằng khóa công khai.** Khóa công khai chỉ **mã hóa** được; ai chiếm được máy cũng không đọc được bản sao lưu đã gửi đi. Giải mã cần khóa bí mật mà máy **không có**. Đổi lại phải giữ khóa bí mật cẩn thận (mất nó là mất bản R2).
 - **Vì sao thử khôi phục hằng tháng.** "Có sao lưu" chưa phải "khôi phục được". Mỗi tháng máy tự dựng pod tạm, khôi phục dump và so số dòng từng bảng, phát lại WAL đến cuối và tìm thấy dòng dấu vừa ghi, chạy đúng ảnh ứng dụng đang chạy trên cơ sở dữ liệu vừa khôi phục, và so mẫu ảnh. Thất bại thì báo, không đợi đến ngày cần.
 - **Vì sao "chậm mà chắc" (nice).** Mọi việc nặng chạy mức ưu tiên thấp nhất (`nice -n 19`, `ionice -c 3`) để không làm chậm phòng thi trên cùng máy. Bản nền và thử khôi phục còn tự **hoãn khi có Phiên thi**.
+- **WAL viết tắt của gì, nghĩa là gì (ghi chú thuật ngữ).** **WAL = Write-Ahead Log**, tiếng Việt: **nhật ký ghi trước**. "Write-Ahead" nghĩa là "ghi *trước*": trước khi PostgreSQL sửa dữ liệu thật trong các file bảng, nó **ghi một dòng mô tả thay đổi vào nhật ký trước**; nhật ký chắc chắn nằm trên đĩa rồi mới sửa dữ liệu. Nhờ vậy mất điện giữa chừng thì lúc bật lại PostgreSQL đọc nhật ký và làm nốt hoặc hoàn tác, dữ liệu không bị hỏng nửa vời. Ví dụ đời thường: kế toán ghi vào **sổ nhật ký** "chuyển 100 nghìn từ A sang B" rồi mới sửa số dư trong **sổ cái**. Hỏng sổ cái thì đọc lại sổ nhật ký dựng lại được. PostgreSQL ghi nhật ký thành từng **đoạn 16 MB** (segment); tên đoạn là 24 ký tự hex, ví dụ `000000010000000000000004` = 8 ký tự nhánh thời gian (`00000001`) + 8 ký tự số nhật ký + 8 ký tự số đoạn; số tăng dần nên kiểm "dãy liền nhau" là so số thứ tự.
+
+  **Vì sao WAL dùng được để sao lưu:** vì nhật ký ghi *mọi thay đổi theo thứ tự*, nên **bản nền** (ảnh cả thư mục dữ liệu lúc nào đó) **cộng** các đoạn WAL sinh ra sau đó có thể **phát lại** đến một thời điểm bất kỳ (PITR, Point-In-Time Recovery, khôi phục theo thời điểm). Ví dụ: bản nền Chủ nhật 03:00 cộng WAL đến Thứ ba 14:05 cho phép về đúng 14:04 của Thứ ba, trước khi ai đó xóa nhầm lúc 14:05. Còn bản dump (`pg_dump`) chỉ về được đúng lúc chụp. `archive_command` là lệnh PostgreSQL gọi để **cất từng đoạn WAL đã đầy** sang chỗ an toàn; `archive_timeout=60` ép đóng đoạn mỗi 60 giây khi có ghi mới, nên mất tối đa khoảng 1 phút dữ liệu (Q323). Đoạn WAL nằm **trước** mọi bản nền thì vô dụng (không có điểm xuất phát để phát lại), nên bị dọn (xem bài học 11 ở 4.9.9).
+
+- **Healthchecks.io: người gác từ bên ngoài (giải thích chi tiết).** Mọi cảnh báo nằm *bên trong* hệ thống có chung một điểm mù: hệ thống chết thì cảnh báo chết theo. Healthchecks.io nằm ngoài máy, trên Internet, nên không chịu cùng số phận với laptop. Nó chỉ biết một điều: **lần cuối nghe tín hiệu từ ta là lúc nào**, như một đồng hồ đếm ngược. Hai việc nó làm: (1) nhận `/fail` thì gửi email lỗi ngay; (2) quá hạn mà **không nghe gì** thì gửi email "im lặng".
+
+  | Tình huống | Tự báo được không? |
+  |---|---|
+  | Sao lưu chạy nhưng báo lỗi rõ (hết chỗ trống, R2 từ chối) | Có: script tự phát hiện, gọi `/fail` |
+  | Timer hỏng, không ai gọi script | **Không** tự báo được (script không chạy): healthchecks bắt bằng "im lặng" |
+  | Script chết giữa chừng, treo, WSL lỗi | **Không** tự báo được: healthchecks bắt bằng "im lặng" (hoặc `/start` không có `ok` theo sau) |
+  | Chuông trong ứng dụng khi ứng dụng không lên | **Không**: chuông là một phần của ứng dụng |
+
+  Cách hoạt động: mỗi việc theo dõi có một địa chỉ riêng (`https://hc-ping.com/<mã>`, bí mật). Script gọi như bấm chuông cửa: `…/start` ("bắt đầu", để đo thời gian và phát hiện lần chạy treo), `…` không hậu tố ("xong và ổn", kèm một dòng mô tả), `…/fail` ("chạy nhưng lỗi", kèm lý do).
+
+  ```
+  02:00 mỗi đêm
+  timer systemd ──► script nightly ──► làm việc (dump, kiểm WAL, đẩy ổ D: và R2)
+                         │
+                         ├─ /start ───────────────────────────┐
+                         └─ ok hoặc /fail + lý do ────────────┤
+                                                              ▼
+                                                      healthchecks.io
+                                             (đếm ngược: chu kỳ 1 ngày + hạn trễ 3 ngày)
+                                                              │
+                             ┌────────────────────────────────┴─────────┐
+                             ▼                                          ▼
+                      nhận /fail                              hết giờ mà im lặng
+                      → email "LỖI: <lý do>"                  → email "IM LẶNG"
+  ```
+
+  Ví dụ: đêm R2 từ chối ghi → email **ngay lúc 02:00** "LỖI: đẩy lên R2 lỗi". Cập nhật Windows làm timer không còn chạy → không có tín hiệu, khoảng **4 ngày sau** (1 ngày + 3 ngày trễ) nhận email "im lặng". Tắt laptop 2 đêm cuối tuần → **không có email** (nằm trong hạn trễ, thiết kế để không kêu oan). Tắt cả tuần → email im lặng sau khoảng 4 ngày, đúng vì suốt thời gian đó không có bản sao mới.
+
+  Thời gian trên healthchecks.io hiển thị theo **UTC**; giờ Việt Nam là UTC+7. Ví dụ lần ping đầu tiên của sao lưu đêm: `2026-11-09T19:00:08+00:00` = **02:00:08 ngày 10/11** giờ máy (dump bắt đầu 02:00:03, kiểm hằng đêm ghi ok 02:00:07). Nội dung kèm theo: "dump exam-20261110-020003-nightly.dump 153KB; đã đẩy sang ổ chép và R2; dãy WAL liền".
+
+  **Hai điều nó không làm:** (1) **không kiểm chất lượng bản sao**: nó chỉ biết script *báo* thành công; chuyện bản sao có mở và khôi phục được thật là việc của bài thử khôi phục hằng tháng và bài giải mã bằng tay (4.8) mỗi quý; (2) **không nhanh với trường hợp "im lặng"**, vì laptop có thể tắt nên hạn trễ cố ý dài (3 ngày); với máy chủ 24/7 sau này sẽ thêm tín hiệu "còn sống" mỗi 5 phút (Q358).
+
+  **Bốn lớp bảo vệ, mỗi lớp bắt một loại sự cố mà lớp khác bỏ sót:** (1) script tự kiểm (dump, WAL, archive, đẩy xong) và gọi `/fail`; (2) healthchecks.io bắt trường hợp script không chạy được; (3) chuông trong ứng dụng (PR 6d): bản đêm quá 26 giờ hoặc việc sao lưu lỗi, chỉ khi ứng dụng đang chạy; (4) thử khôi phục hằng tháng và giải mã bằng tay mỗi quý: chứng minh bản sao dùng được thật.
 - **Bẫy đã gặp khi làm, ghi để khỏi gặp lại:** (1) `archive_command` chạy bằng người dùng `postgres` trong container, ánh xạ rootless khiến file nó tạo thuộc người dùng khác của máy, nên thư mục `wal/` phải cho ghi chung (`1777`, thư mục cha `700` vẫn chặn người ngoài) và file chép ra phải `644`; (2) ảnh trong volume quyền `600` thuộc uid của container nên chỉ đọc được qua `podman unshare` (và `cp -p` làm file chép ra mang chủ lạ, nên dùng `--preserve=timestamps`); (3) PostgreSQL khôi phục từ WAL đòi `max_connections` không nhỏ hơn máy gốc; (4) `date -u -d "giờ"` hiểu chuỗi là UTC (sai 7 giờ khi đổi giờ máy sang giờ PostgreSQL), phải đổi sang giây trước; (5) **khóa `flock` bị container chạy lâu thừa hưởng** nếu khởi động container khi đang giữ khóa, làm mọi việc sao lưu sau đó "bỏ qua êm": mọi lệnh khởi động container trong script đều đóng fd khóa (`9>&-`); (6) bước "ứng dụng chạy trên bản khôi phục" phải **không chạy khi bước dump lỗi**, nếu không migration dựng cơ sở dữ liệu trống và ứng dụng "khỏe giả".

@@ -955,6 +955,11 @@ Mỗi lần chạy: ghi sổ backup-runs.jsonl (Q359); gọi healthchecks.io: sa
 | Q359 | Sổ cục bộ luôn có; bảng trong CSDL khi có (6d) | Sổ gốc ngoài hệ thống được theo dõi |
 | Q360 | Hỏi `audit_logs` mỗi 5 phút để dump sau Công bố | Không sửa ứng dụng |
 | Q361 | Chín thiết lập kỹ thuật | Tên script/timer/thư mục, cài sẵn rồi mới bật thật; quy mô đầu: laptop WSL, dưới 100 người, một api |
+| Q362 | `backup_runs` ghi việc quan trọng và mọi lỗi | Đẩy thành công mỗi phút không ghi (khỏi 1.440 dòng mỗi ngày) |
+| Q363 | Chuông "bản đêm quá 26 giờ" | Kiểm mỗi 30 phút; chỉ kêu khi quá 26 giờ và ứng dụng đã chạy ít nhất 30 phút (tránh kêu oan sau khi bật máy); một chuông, tự tắt |
+| Q364 | Chuông khi việc sao lưu lỗi | Việc nghiêm trọng kêu ngay; đẩy D:/R2 chỉ kêu khi lỗi liên tục từ 30 phút; tự tắt khi phục hồi |
+| Q365 | Màn hình "Sao lưu" chỉ đọc | Dải cảnh báo, ba ô tóm tắt, danh sách phân trang, không bộ lọc |
+| Q366 | Sáu thiết lập kỹ thuật của 6d | Migration 0022, script chèn qua psql có chèn bù, giữ 12 tháng và 90 ngày, API GET admin, job `backup.check`, kiểm thử |
 
 **Lịch chạy (đều là systemd timer của người dùng, có chạy bù):**
 
@@ -1035,6 +1040,84 @@ Toàn bộ nhật ký (lệnh, số đo, lỗi) ở [khoi-phuc.md mục 4.9](../
 | Thử khôi phục | **27 giây** (dump 6, pitr 8, api 9, media 0); CSDL gần trống nên là cận dưới; giai đoạn media chưa thử thật (chưa có ảnh) |
 | Lỗi script phát hiện khi chạy thật (đã sửa) | (1) biến `RCLONE_CONFIG_EXAM_R2_*` được export trong `r2_remote()` gọi qua `$(...)` nên mất; (2) `newest()` lỗi khi thư mục chưa tồn tại (với `pipefail`) làm `status` và `catchup` thoát lỗi |
 | Bài học | bài thử bằng đích giả và trạng thái cũ không bắt hết lỗi lần chạy đầu; 6e thêm kịch bản "thư mục sao lưu trống" và một lần thử với đích thật |
+
+## PR 6d: thiết kế chi tiết (đang duyệt từng câu từ Q362, 9/11/2026)
+
+**Phạm vi (từ Q323 và Q359):** trong ứng dụng, thêm (1) bảng `backup_runs` bằng migration, (2) script `exam-backup.sh` chèn dòng vào bảng, (3) màn hình **chỉ đọc** về tình trạng sao lưu cho Quản trị viên, (4) chuông khi bản đêm mới nhất quá 26 giờ hoặc có lỗi, (5) job xóa thông báo đã đọc quá 90 ngày. Bối cảnh: lát cắt 6 của bản MVP, nên giữ phạm vi gọn. Sổ gốc vẫn là file `~/.local/state/exam-prod/backup-runs.jsonl` (Q359); bảng chỉ là bản sao để hiển thị.
+
+### Q362: bảng `backup_runs` ghi những việc nào (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Bài toán.** Script đẩy sang ổ D: và R2 mỗi phút. Ghi mọi lần đẩy thành công vào bảng thì thêm khoảng 1.440 dòng mỗi ngày (khoảng 130.000 dòng mỗi quý), màn hình ngập dòng vô nghĩa và dòng quan trọng bị chìm.
+
+**Quyết định (A): chỉ ghi việc quan trọng và mọi lỗi.**
+- Ghi: dump đêm, dump sau Công bố, bản nền, thử khôi phục, đổi file bí mật, chạy bù (catchup), và **bất kỳ lần đẩy hay kiểm tra nào lỗi** (đẩy hỏng, WAL đứt quãng, archive lỗi).
+- **Không** ghi: lần đẩy thành công mỗi phút. Chỉ vài dòng mỗi ngày; màn hình gọn; "quá 26 giờ" chỉ cần bản đêm thành công gần nhất.
+- Chỉ số sống (hàng chờ đẩy, WAL liền hay không) vẫn xem bằng lệnh `make -C infra prod-backup-status`; thêm vào màn hình sau nếu thực tế thấy thiếu.
+
+**Phương án đã bỏ:** B (ghi tất cả kể cả đẩy mỗi phút: đầy đủ nhưng phình bảng, cần bộ lọc, mỗi phút thêm một lệnh ghi vào cơ sở dữ liệu); C (như A thêm một dòng "tình trạng hiện tại" cập nhật mỗi phút: phức tạp hơn, chưa cần cho MVP).
+
+### Q363: chuông "bản đêm quá 26 giờ" kêu khi nào (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Bài toán.** Chuông trong ứng dụng chỉ kêu khi hệ thống đang chạy, nhưng laptop không bật 24/7. Ví dụ kêu oan: tắt máy lúc 17:00, bật lại 07:30; bản đêm cuối là 02:00 hôm qua nên đã 29,5 giờ (quá 26 giờ); 5 phút sau (07:35) `catchup` tự chạy bù và tạo bản mới. Nếu ứng dụng kiểm ngay lúc 07:30 thì Quản trị viên nhận chuông báo lỗi rồi vài phút sau mọi thứ lại ổn. Vài lần như vậy người nhận sẽ bỏ qua chuông (cảnh báo giả, xem ghi chú ở Q358).
+
+**Quyết định (A).** Một job trong worker kiểm **mỗi 30 phút**. Chỉ kêu khi **cả hai** điều kiện đúng: (1) bản đêm thành công mới nhất (dòng `backup_runs` loại dump đêm, `ok`) cũ hơn **26 giờ**; (2) **ứng dụng đã chạy liên tục ít nhất 30 phút** (đủ để `catchup` chạy xong). Chỉ **một** chuông chưa đọc (gộp theo loại, không nhân lên mỗi 30 phút), **tự tắt** khi có bản đêm thành công mới. Gửi cho **mọi Quản trị viên**.
+
+**Phương án đã bỏ:** B (kiểm mỗi 30 phút, kêu ngay khi quá 26 giờ: kêu oan sau mỗi đêm tắt máy); C (chỉ kiểm lúc 09:00 mỗi ngày: bản đêm lỗi thì tới 9 giờ mới biết, bật máy sau 9 giờ thì hôm đó không có lần kiểm nào).
+
+### Q364: chuông khi một việc sao lưu báo lỗi (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Bài toán.** Khác Q363 ("bản đêm quá cũ"): ở đây là một việc sao lưu **tự báo lỗi** dù bản đêm vẫn còn mới (bản nền lỗi, thử khôi phục lỗi, WAL đứt, đẩy sang R2 hỏng). Có lỗi thoáng qua (mạng chập chờn một phút, phút sau tự ổn) và lỗi thật. Mỗi lỗi thoáng qua đều kêu thì chuông kêu oan vài lần mỗi tuần và người nhận dần phớt lờ.
+
+**Quyết định (A): phân loại.**
+- **Kêu chuông ngay khi lỗi:** dump đêm, dump sau Công bố, bản nền, thử khôi phục, WAL đứt quãng, archive lỗi.
+- **Đẩy sang ổ D: hoặc R2 lỗi: chỉ kêu nếu lỗi liên tục từ 30 phút trở lên.** Script chỉ ghi dòng lỗi vào `backup_runs` khi đã lỗi đủ 30 phút liên tục, và ghi một dòng "đã phục hồi" (`ok`) khi đẩy lại được (khớp với Q362: đẩy thành công bình thường không ghi, chỉ ghi lúc chuyển từ lỗi sang ổn).
+- Mỗi **loại việc** một chuông chưa đọc (gộp, không nhân lên), **tự tắt** khi có dòng thành công hoặc phục hồi sau đó cùng loại. Gửi cho mọi Quản trị viên.
+
+**Phương án đã bỏ:** B (mọi dòng lỗi kêu ngay: lỗi mạng thoáng qua làm chuông kêu oan); C (không kêu chuông khi lỗi, chỉ hiện trên màn hình: thử khôi phục hỏng hay bản nền lỗi không ai biết cho đến khi tình cờ mở màn hình).
+
+### Q365: màn hình "Sao lưu" của Quản trị viên (ĐÃ DUYỆT 9/11/2026: phương án A)
+
+**Quyết định (A).** Một màn hình **chỉ đọc** trong menu quản trị (cạnh "Nhật ký" và "Đăng nhập"), theo kiểu các màn hiện có (ưu tiên điện thoại, danh sách phân trang): (1) **dải cảnh báo** chỉ hiện khi có vấn đề chưa xử lý (ví dụ "Đẩy sang R2 lỗi từ 14:05"); (2) **ba ô tóm tắt**: bản đêm gần nhất (tuổi, kết quả, dung lượng), bản nền gần nhất, thử khôi phục gần nhất (kết quả, số giây); (3) **danh sách lần chạy gần đây**, mới nhất trước, phân trang, **không có bộ lọc**. Không có nút nào làm thay đổi hệ thống (khôi phục vẫn làm tay theo sách hướng dẫn, Q323).
+
+**Phương án đã bỏ:** B (chỉ danh sách như màn Nhật ký: muốn biết bản đêm gần nhất phải tự dò); C (thêm bộ lọc và tải file: thừa cho MVP, danh sách chỉ vài dòng mỗi ngày; thêm sau nếu thực tế cần).
+
+### Q366: các thiết lập kỹ thuật còn lại của 6d (ĐÃ DUYỆT 9/11/2026: đồng ý cả 6 điểm)
+
+1. **Bảng `backup_runs`** (migration `0022`): loại việc, kết quả (`ok` hoặc `failed`), giờ bắt đầu và xong, dung lượng, lý do ngắn (tối đa 200 ký tự, **không chứa bí mật**), và **mã chạy** duy nhất lấy từ sổ file để chèn bù không trùng.
+2. **Script chèn bằng `psql` qua `podman exec`**, đúng cách `audit_deploy` đang làm. Bảng chưa có, hoặc cơ sở dữ liệu hỏng hay đang khôi phục thì **bỏ qua**, lần chạy sau **chèn bù** các dòng còn thiếu từ sổ file (Q359). Lỗi ghi bảng **không bao giờ** làm hỏng việc sao lưu.
+3. **Giữ dữ liệu:** `backup_runs` giữ **12 tháng** (cùng mức `login_events`); thông báo **đã đọc** quá **90 ngày** bị xóa, thông báo **chưa đọc** giữ. Cả hai là thêm bước (độc lập) vào job `maintenance.cleanup` hằng ngày 03:00 đang có.
+4. **API chỉ đọc:** một đường `GET` cho Quản trị viên (cả phần tóm tắt và một trang danh sách, 20 dòng mỗi trang); người khác nhận 403; không có đường ghi nào từ ứng dụng.
+5. **Chuông:** job `backup.check` trong worker, mỗi 30 phút, theo Q363 và Q364. Hai loại thông báo: `backup.stale` (bản đêm quá 26 giờ) và `backup.failed` (kèm loại việc lỗi). Dùng lại `upsertUnread` và `clearUnread`.
+6. **Kiểm thử và tài liệu:** kiểm thử đơn vị cho quy tắc 26 giờ cộng "ứng dụng chạy chưa đủ 30 phút" (đồng hồ giả); kiểm thử tích hợp cho API (đúng quyền), chuông gộp và tự tắt, job dọn dẹp mới; một bài E2E ngắn mở màn hình "Sao lưu"; bài thử drill của script (chèn, chèn bù, thiếu bảng); cập nhật `data-model.md`, `khoi-phuc.md`, `architecture.md`.
+
+**Thiết kế 6d hoàn tất (Q362–Q366).**
+
+## PR 6d: ghi chú triển khai (9/11/2026)
+
+**Đã làm theo Q362–Q366:**
+
+| Phần | Nơi | Ghi chú |
+|---|---|---|
+| Bảng `backup_runs` | `apps/api/drizzle/0022_sao_luu.sql`, `modules/backup/backup.schema.ts` | enum `backup_run_status`, `run_key` duy nhất, chỉ mục theo `finished_at` và `(kind, finished_at)` |
+| API chỉ đọc | `GET /api/admin/backup` (`modules/backup/backup.controller.ts`) | trả `summary` (bản đêm, bản nền, thử khôi phục, `issues`) và `runs` (20 dòng mỗi trang); `@AdminOnly`; không có đường ghi |
+| Chuông | job `backup.check` (`backup-check.job.ts`, mỗi 30 phút trong worker), `BackupService.check` | hai loại `backup.stale` và `backup.failed`; dùng `upsertUnreadKeyed` và `clearUnreadKeyed` mới của `NotificationsService` (khái quát hóa `upsertUnread` và `clearUnread` theo một khóa tùy ý trong `data`; hai hàm cũ gọi lại hàm mới) |
+| Dọn dữ liệu | `NotificationsService.deleteReadBefore` gọi từ `maintenance.cleanup` (thông báo đã đọc quá 90 ngày); `BackupService.purgeOld` gọi từ `backup.check` (kết quả quá 12 tháng) | xem sai khác 2 bên dưới |
+| Màn hình | `apps/web/src/routes/_authed/admin/backup.tsx`, `lib/backup.ts`, mục "Sao lưu dữ liệu" trong menu quản trị, chuỗi trong `vi.json`, chuông bấm vào mở màn hình | dải cảnh báo, 3 ô tóm tắt, danh sách phân trang, chỉ đọc, hỏi lại mỗi phút |
+| Script | `exam-backup.sh`: `report_consider`, `report_add`, `report_flush`, `report_seed`, `report_push_failing`, `report_push_ok` | lọc theo Q362 và Q364, chèn bằng `psql` qua `podman exec`, chèn bù, sổ báo cáo `backup-report.jsonl` và con trỏ `backup-report.cursor`, cờ lỗi trong `backup-failing/` |
+
+**Sai khác so với thiết kế (ghi để biết):**
+
+1. **Cột giờ:** bảng lưu `finished_at` và `seconds` (giờ bắt đầu suy ra được), không lưu cả `started_at` như Q366 điểm 1 viết. Đủ cho màn hình và chuông, đơn giản hơn cho script.
+2. **Xóa kết quả quá 12 tháng nằm ở job `backup.check`, không ở `maintenance.cleanup`** (Q366 điểm 3 nói thêm vào job dọn dẹp hằng ngày). Lý do: `maintenance.cleanup` nằm trong module `identity`; muốn xóa bảng của `backup` thì `identity` phải import bảng của module khác, vi phạm ranh giới module (`architecture.test.ts`, A1). Xóa thông báo đã đọc vẫn ở `maintenance.cleanup` nhưng đi qua `NotificationsService` (module `identity` đã dùng service này).
+3. **Cổng mới `ADMIN_DIRECTORY`** (`common/admin-directory.ts`, cài đặt `identity/admin-directory.service.ts`, nối ở `AttemptPortsWiringModule`): để `backup` biết gửi chuông cho Quản trị viên nào mà không đọc bảng `users`. Cùng kiểu `EXAMINER_DIRECTORY`.
+4. **Loại việc ghi vào bảng:** `dump-nightly`, `dump-publish`, `basebackup`, `restore-test`, `nightly` (kiểm hằng đêm: WAL đứt, archive lỗi, đồng bộ), `secrets`, `catchup`, `push`. `release` (hỏi `audit_logs` mỗi 5 phút), `media` và `reconcile` không vào bảng (lỗi `release` lặp mỗi 5 phút khi cơ sở dữ liệu hỏng, không có dòng ok tương ứng để tự tắt chuông).
+5. **Quy tắc chuông "quá 26 giờ" khi chưa có bản đêm ok nào:** tính từ dòng đầu tiên trong bảng; bảng trống hẳn (script chưa báo) thì không báo.
+
+**Lỗi tìm được khi thử (đã sửa):** (1) `check` lấy mốc "bản đêm gần nhất" từ dòng mới nhất của loại đó, nên khi dòng mới nhất là lỗi thì mốc bị lệch (bắt bởi bài integration "bản đêm lỗi không tính là bản đêm"); sửa bằng truy vấn riêng lấy bản đêm **thành công** gần nhất. (2) Lần đầu chèn bù từ sổ gốc không chạy vì dòng báo cáo đầu tiên tạo file trước khi `report_seed` kịp kiểm tra (bắt bởi bài drill 9c); sửa bằng cách dựng sổ báo cáo từ sổ gốc trước khi thêm dòng đầu. (3) `architecture.test.ts` chặn lần đầu vì `backup` và `identity` import bảng của nhau; sửa bằng cổng và đường qua service (sai khác 2 và 3).
+
+**Kiểm thử:** `apps/api/test/backup.int.test.ts` (18 bài: API đúng quyền, tóm tắt, phân trang, không có đường ghi, quy tắc 26 giờ và 30 phút chạy, chuông gộp một cái và tự tắt, chuông lỗi theo loại việc, dọn dẹp 90 ngày và 12 tháng); `apps/web/e2e/backup.spec.ts` (màn hình đủ phần, chỉ đọc, không cuộn ngang; thêm vào `themes.spec.ts` kiểm sáng/tối ở 4 cỡ); bài drill mục 9c của `test-backup-drill.sh` (chưa có bảng thì sao lưu vẫn chạy; chèn bù từ sổ gốc; chạy lại không trùng; đợt lỗi chỉ một dòng; dòng ok tự tắt; đẩy lỗi chỉ ghi khi đủ ngưỡng; dòng "đã phục hồi"; chi tiết không chứa bí mật).
+
+**Cách bật thật sau khi merge:** deploy bản mới bằng workflow (chạy migration 0022), rồi `make -C infra prod-backup-install` để timer dùng script mới; lần chạy `release-check` đầu tiên (trong 5 phút) chèn bù toàn bộ lịch sử từ sổ gốc. Kiểm: mở "Sao lưu dữ liệu" thấy bản đêm và bản nền đã có từ 9/11/2026.
 
 ## Câu hỏi còn mở
 

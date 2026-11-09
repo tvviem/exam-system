@@ -7,6 +7,7 @@ import { ExamUsageWiringModule } from '../exam-usage-wiring.module';
 import { PinoLoggerModule } from '../logger';
 import { MediaModule } from '../media/media-store';
 import { AuditModule } from '../modules/audit/audit.module';
+import { BackupModule } from '../modules/backup/backup.module';
 import { IdentityModule } from '../modules/identity/identity.module';
 import { NotificationsModule } from '../modules/notifications/notifications.module';
 import { QuestionBankModule } from '../modules/question-bank/question-bank.module';
@@ -31,6 +32,7 @@ import { SessionUsageWiringModule } from '../session-usage-wiring.module';
     MediaModule,
     QueueModule,
     AuditModule,
+    BackupModule,
     NotificationsModule,
     IdentityModule,
     QuestionBankModule,

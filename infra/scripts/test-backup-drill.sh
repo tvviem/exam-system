@@ -58,6 +58,7 @@ step() { printf '\n== %s\n' "$*"; }
 step "Chuẩn bị: xóa sạch trạng thái sao lưu CŨ của pod drill, dựng khóa gpg giả, R2 giả, healthchecks giả"
 bash "$CTL" disable-archiving >/dev/null 2>&1
 "$PODMAN" unshare rm -rf "$BACKUP" 2>/dev/null
+rm -rf "$STATE/backup-failing" "$STATE/backup-report.jsonl" "$STATE/backup-report.cursor"
 rm -rf "$BACKUP" "$STATE/push-ledger" "$STATE/backup-runs.jsonl" "$STATE/release-last" "$STATE/secrets-hashes.txt" "$STATE/restore-test.json" "$STATE/push-last-failure" "$STATE/push-errors.log"
 export GNUPGHOME="$WORK/gnupg-full"
 mkdir -m 700 "$GNUPGHOME" "$WORK/gnupg-pub"
@@ -226,6 +227,44 @@ check "audit_logs ghi ops.restore" test "$(pg "select count(*) from audit_logs w
 check "ứng dụng chạy lại khỏe" bash -c "curl -fsS http://127.0.0.1:8190/api/health | grep -q '\"status\":\"ok\"'"
 check "có bản an toàn 'trước khi khôi phục'" bash -c "ls '$BACKUP'/truoc-deploy-*truoc-khoi-p*.dump"
 check "khóa sao lưu không bị container api/worker giữ (việc khác chạy được ngay)" backup dump
+
+step "9c. Báo sang bảng backup_runs của ứng dụng (PR 6d, Q362 đến Q366)"
+# Pod drill chạy ảnh cũ chưa có bảng này nên dựng bảng bằng chính file migration 0022 (bỏ dấu ngắt câu của drizzle).
+SQL_FILE="$PWD/../../apps/api/drizzle/0022_sao_luu.sql"
+runs() { pg "select $1 from backup_runs $2"; }
+rm -rf "$STATE/backup-failing" "$STATE/backup-report.jsonl" "$STATE/backup-report.cursor"
+pg "drop table if exists backup_runs; drop type if exists backup_run_status" >/dev/null
+check "chưa có bảng backup_runs: dump vẫn đạt (việc báo bảng bị bỏ qua, không làm hỏng sao lưu)" backup dump
+check "sổ báo cáo được dựng từ sổ gốc và có dòng dump-nightly chờ chèn" bash -c "grep -q '\"kind\":\"dump-nightly\"' '$STATE/backup-report.jsonl'"
+check "con trỏ chưa dịch vì chưa chèn được" test "$(cat "$STATE/backup-report.cursor" 2>/dev/null || echo 0)" = 0
+sed 's/--> statement-breakpoint//' "$SQL_FILE" | "$PODMAN" exec -i drill-exam-postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q -v ON_ERROR_STOP=1' >/dev/null 2>&1
+check "có bảng rồi: release-check chèn bù các dòng cũ" backup release-check
+check "bảng có bản đêm ok" test "$(runs 'count(*)' "where kind='dump-nightly' and status='ok'")" -ge 1
+check "chèn bù cả việc cũ từ sổ gốc (bản nền)" test "$(runs 'count(*)' "where kind='basebackup' and status='ok'")" -ge 1
+N0="$(runs 'count(*)')"
+backup release-check >/dev/null 2>&1
+check "chạy lại không chèn trùng" test "$(runs 'count(*)')" = "$N0"
+check "đẩy thành công bình thường KHÔNG vào bảng (Q362)" test "$(runs 'count(*)' "where kind in ('push','media')")" = 0
+chmod a-w "$BACKUP/daily"
+check_fail "dump hỏng (thư mục đích chỉ đọc) báo lỗi" backup dump
+check_fail "dump hỏng lần hai cũng báo lỗi" backup dump
+chmod u+w "$BACKUP/daily"
+check "cả đợt lỗi chỉ có MỘT dòng lỗi trong bảng (không lặp)" test "$(runs 'count(*)' "where kind='dump-nightly' and status='failed'")" = 1
+check "dump lại được" backup dump
+check "dòng mới nhất của loại này là ok (chuông tự tắt nhờ dòng này)" test "$(runs 'status' "where kind='dump-nightly' order by finished_at desc limit 1")" = ok
+gen_wal
+check_fail "R2 hỏng: push báo lỗi" env EXAM_PUSH_ALERT_SECONDS=3600 EXAM_R2_REMOTE=/proc/khong-co/r2 bash "$SCRIPT" push
+check "lỗi đẩy mới ngắn (dưới ngưỡng 30 phút) CHƯA ghi vào bảng (Q364)" test "$(runs 'count(*)' "where kind='push'")" = 0
+check_fail "R2 vẫn hỏng, ngưỡng 0 giây" env EXAM_PUSH_ALERT_SECONDS=0 EXAM_R2_REMOTE=/proc/khong-co/r2 bash "$SCRIPT" push
+check_fail "R2 vẫn hỏng, lần nữa" env EXAM_PUSH_ALERT_SECONDS=0 EXAM_R2_REMOTE=/proc/khong-co/r2 bash "$SCRIPT" push
+check "đủ ngưỡng thì ghi đúng một dòng lỗi đẩy (không lặp mỗi phút)" test "$(runs 'count(*)' "where kind='push' and status='failed'")" = 1
+check "R2 khỏe lại: đẩy bù" env EXAM_R2_REMOTE="$FAKE_R2" bash "$SCRIPT" push
+check "ghi dòng 'đã phục hồi' (ok) sau đợt lỗi" test "$(runs 'status' "where kind='push' order by finished_at desc limit 1")" = ok
+gen_wal
+backup push >/dev/null 2>&1
+check "sau phục hồi, đẩy thành công bình thường không ghi thêm" test "$(runs 'count(*)' "where kind='push'")" = 2
+check "chi tiết ngắn, không chứa bí mật (không có địa chỉ healthchecks hay khóa)" test "$(runs 'count(*)' "where detail ~* '(hc-ping|SECRET|PASSWORD|BEGIN PGP)'")" = 0
+pg "drop table if exists backup_runs; drop type if exists backup_run_status" >/dev/null
 
 step "10. Timer systemd: cài, bật, chạy một dịch vụ bằng systemd, tắt"
 backup install >/dev/null 2>&1
