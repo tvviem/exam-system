@@ -109,7 +109,7 @@ Khi chuyển sang máy chủ chạy 24/7 thì thêm tín hiệu "còn sống" m�
 | `make -C infra prod-enable-archiving` / `prod-disable-archiving` | bật / tắt lưu liên tục WAL (dựng lại **chỉ** container PostgreSQL; từ chối nếu có Phiên thi) |
 | `bash infra/scripts/exam-backup.sh pitr "2026-11-20 10:04:00"` | PostgreSQL tạm khôi phục về một thời điểm (mục 5.3) |
 | `bash infra/scripts/exam-backup.sh restore-dump <file>` | thay cơ sở dữ liệu thật bằng một bản dump (mục 5.2) |
-| `make -C infra prod-preflight` | kiểm trước Phiên thi thật (✓ ⚠ ✗): sao lưu còn mới, 2 Quản trị viên, pod khỏe, đĩa, runner, địa chỉ công khai ([checklist-phien-thi.md](./checklist-phien-thi.md)) |
+| `make -C infra prod-preflight` | kiểm trước Phiên thi thật (✓ ⚠ ✗): sao lưu còn mới, 2 Quản trị viên, pod khỏe, đĩa, runner, địa chỉ công khai; hướng dẫn đọc kết quả ở mục 3.6 ([checklist-phien-thi.md](./checklist-phien-thi.md)) |
 | `bash infra/scripts/exam-backup.sh fetch-r2 <thư mục>` | máy mới: tải từ R2 bản nền, WAL, dump, khóa bí mật mới nhất và giải mã vào `<thư mục>` (cần khóa gpg bí mật nhập tạm; mục 5.6) |
 | `make -C infra dr-drill` | diễn tập khôi phục sang máy khác trong pod `dr-exam` (cần `~/dr-input/` từ Bitwarden; mục 5.6) |
 
@@ -118,6 +118,88 @@ Thêm `EXAM_STAGE=drill` để thử trên pod `drill-exam` mà không đụng p
 ### 3.5 Sau khi sửa script trong repo
 
 Timer chạy bản **chép cố định** ở `~/.local/share/exam-prod/bin/` (không trỏ vào cây mã nguồn, vì cây đó có thể đang ở nhánh khác). Sau khi merge thay đổi script, chạy lại `make -C infra prod-backup-install` để cập nhật bản chép (an toàn, chạy lại bao nhiêu lần cũng được; không đổi trạng thái bật/tắt của timer).
+
+### 3.6 Kiểm trước Phiên thi (`prod-preflight`)
+
+```bash
+make -C infra prod-preflight
+```
+
+**Để làm gì.** Phiên thi thật không làm lại được, hệ thống chạy trên laptop, và sao lưu chỉ có giá trị nếu nó **khỏe đúng lúc đó** (một timer có thể im lặng hỏng từ tuần trước mà không ai biết). Lệnh này **tự kiểm trong vài giây** những gì máy kiểm được và in từng dòng. Nó đi cùng [checklist-phien-thi.md](./checklist-phien-thi.md): lệnh kiểm **máy**, checklist kiểm **người và môi trường** (cắm sạc, tắt ngủ, có người ngồi cạnh máy...). Hai thứ cùng đạt mới nên mở Phiên thi.
+
+**Lệnh chỉ đọc, an toàn:** không đổi gì trong hệ thống, không dump, không đẩy, không khởi động lại gì. Chạy ở thư mục gốc của repo trong cửa sổ Ubuntu, mất vài giây. Chạy bao nhiêu lần cũng được.
+
+**Khi nào chạy:** theo checklist (trước 1 tuần, trước 1 ngày, **trước 1 giờ**), sau mỗi lần deploy, sau mỗi lần WSL khởi động lại bất thường, và bất cứ khi nào bạn muốn biết "hệ thống có ổn không".
+
+**Cách đọc kết quả.** Mỗi dòng bắt đầu bằng một ký hiệu:
+
+| Ký hiệu | Nghĩa | Ảnh hưởng tới kết luận |
+|---|---|---|
+| ✓ | đạt | không |
+| ⚠ | nên xem nhưng không chặn | **không** làm lệnh thất bại |
+| ✗ | không đạt | lệnh thất bại (script thoát mã 1; qua `make` thì make báo `Error 1` và thoát mã 2); **chưa mở Phiên thi** cho tới khi xử lý |
+| • | chỉ để biết (ví dụ số Phiên thi sắp tới) | không |
+
+Dòng cuối: "**máy kiểm đạt hết**" (không có ✗) hoặc "**N mục KHÔNG ĐẠT**". Mã thoát 0 (đạt) hay khác 0 (có ✗) để script khác dùng được (ví dụ `make -C infra prod-preflight && echo ok`). Đã thử thật ngày 10/11/2026: `PREFLIGHT_MIN_ADMINS=3` làm dòng Quản trị viên thành ✗ và lệnh thất bại; bỏ biến thì đạt, thoát 0.
+
+**Ví dụ kết quả tốt** (chạy trên `prod-exam` ngày 10/11/2026, rút gọn):
+
+```text
+Hệ thống
+  ✓ api trong máy khỏe (postgres và redis up), bản 87d86f774a1e
+  ✓ người giám sát (conmon) của prod-exam-api còn sống   (và worker, web)
+  ✓ địa chỉ công khai https://exam.plotrackerbluni.site trả ok, đúng bản đang chạy
+  ✓ có 2 Quản trị viên đang hoạt động (cần ít nhất 2)
+Sao lưu
+  ✓ bản đêm mới nhất cách đây 7 giờ (tối đa 26)
+  ✓ lưu liên tục WAL bật, archive khỏe
+  ✓ 6/6 timer sao lưu đang bật
+KẾT QUẢ: máy kiểm đạt hết (0 mục cần xem). Còn các mục chỉ người làm được: docs/ops/checklist-phien-thi.md
+```
+
+**Các mục máy kiểm, ý nghĩa của ✗ và cách xử lý:**
+
+| Nhóm | Mục kiểm | Đạt khi | Dòng ✗ nghĩa là | Xử lý |
+|---|---|---|---|---|
+| Hệ thống | api trong máy | `/api/health` ở `127.0.0.1` trả `ok`, `postgres` và `redis` đều `up` | ứng dụng hoặc cơ sở dữ liệu đang hỏng | `make -C infra prod-status`, `prod-logs C=api`; mục 5.7 nếu phải khôi phục |
+| | conmon của api, worker, web | container tồn tại và tiến trình giám sát (conmon) còn sống | container thiếu, hoặc conmon **chết**: lần deploy kế tiếp sẽ kẹt | [trien-khai.md](./trien-khai.md) mục "Lỗi thường gặp" (dòng 502 và `Stopping`), làm lúc không có Phiên thi |
+| | địa chỉ công khai (chỉ stage prod) | trả `ok` **và** đúng bản đang chạy trong máy | tunnel Cloudflare hỏng (trong máy vẫn chạy tốt nhưng sinh viên vào không được). Nếu `ok` nhưng khác bản: ⚠ (bộ nhớ đệm, hoặc đang giữa lúc deploy) | kiểm tunnel: trien-khai.md mục 2 |
+| | Quản trị viên | ít nhất **2** người hoạt động (chưa Khóa, chưa Xóa) | chỉ một Quản trị viên: mất mật khẩu giữa kỳ thi là không ai xử lý được | tạo người thứ hai trước Phiên thi |
+| | runner GitHub (chỉ prod) | dịch vụ `actions.runner.*` đang chạy | **chỉ ⚠**: chỉ cần khi định deploy (và đừng deploy lúc có Phiên thi) | không cần xử lý nếu không deploy |
+| Sao lưu | bản đêm | file `daily/exam-*-nightly.dump` mới nhất cách đây **≤ 26 giờ** | timer đêm không chạy hoặc dump hỏng | `make -C infra prod-backup-dump` rồi xem `prod-backup-status` và email healthchecks |
+| | bản nền | file `base/exam-*-base.tar.gz` mới nhất **≤ 8 ngày** | bản nền Chủ nhật bị bỏ lỡ (laptop tắt?) | `make -C infra prod-backup-basebackup ARGS=--force` (lúc không có Phiên thi) |
+| | thử khôi phục | lần gần nhất **đạt** và **≤ 35 ngày** | chưa từng thử, quá hạn, hoặc lần gần nhất **không đạt** (đáng lo nhất) | `make -C infra prod-backup-restore-test`, đọc kết quả, mục 5.7 |
+| | lưu liên tục WAL | đang bật, archive khỏe, **dãy WAL liền nhau** | WAL tắt hoặc đứt: khôi phục theo thời điểm hỏng; archive lỗi lâu có thể làm đầy đĩa | **xử lý ngay**: mục 4.5 "Rủi ro cần nhớ" |
+| | hàng chờ đẩy sang ổ D: và R2 | mỗi nơi **≤ 5 file** | đẩy bị kẹt: bản sao chưa ra khỏi máy | `~/.local/state/exam-prod/push-errors.log`; `make -C infra prod-backup-push` |
+| | timer sao lưu | đủ **6/6** timer | thiếu timer: việc đó không còn tự chạy | `make -C infra prod-backup-enable` |
+| | bảng `backup_runs` | không có loại việc nào mà dòng mới nhất là lỗi | một việc sao lưu đang báo lỗi (cùng nguồn với chuông và màn hình Sao lưu). Bảng chưa đọc được (migration chưa chạy, cơ sở dữ liệu không trả lời) chỉ là ⚠ | mở màn hình **Sao lưu dữ liệu** để xem việc nào và lý do |
+| Đĩa | ổ chứa thư mục sao lưu | còn **≥ 5 GB** | sắp đầy | dọn dẹp, `make -C infra prod-backup-prune ARGS=--dry-run` để xem sẽ xóa gì |
+| | ổ chép (D:) | còn **≥ 5 GB** và đọc được | ổ D: đầy hoặc bị rút | cắm lại ổ, dọn dẹp |
+
+**Chỉnh ngưỡng** bằng biến môi trường (mặc định trong ngoặc), ví dụ chạy tạm một lần:
+
+```bash
+PREFLIGHT_MIN_ADMINS=1 PREFLIGHT_MIN_FREE_GB=20 make -C infra prod-preflight
+```
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `PREFLIGHT_NIGHTLY_MAX_HOURS` | 26 | tuổi tối đa của bản đêm (giờ) |
+| `PREFLIGHT_BASE_MAX_DAYS` | 8 | tuổi tối đa của bản nền (ngày) |
+| `PREFLIGHT_RESTORE_MAX_DAYS` | 35 | tuổi tối đa của lần thử khôi phục gần nhất (ngày) |
+| `PREFLIGHT_QUEUE_MAX` | 5 | số file chờ đẩy tối đa ở mỗi nơi |
+| `PREFLIGHT_MIN_FREE_GB` | 5 | dung lượng trống tối thiểu (GB) |
+| `PREFLIGHT_MIN_ADMINS` | 2 | số Quản trị viên hoạt động tối thiểu |
+
+Hạ ngưỡng để "cho qua" chỉ nên là quyết định có chủ đích và ghi lại lý do, đừng hạ chỉ để thấy ✓.
+
+**Điều lệnh này KHÔNG đảm bảo:**
+- **Không phải hệ thống chắc chắn không hỏng.** Nó chỉ loại các nguyên nhân hỏng **đã biết và kiểm được** trước giờ thi.
+- **Không đọc R2 và không hỏi healthchecks.io.** Nó kiểm bản sao **ở máy** và hàng chờ đẩy (hàng chờ nhỏ nghĩa là đã đẩy đi). Nội dung R2 thì dùng giải mã bằng tay (mục 4.8) và `dr-drill` (mục 4.9.12); thư của healthchecks.io bạn xem trong email.
+- **Không đo tải.** Phòng từ khoảng 300 người trở lên cần quyết định hai bản api và bài đo 500 người ([hieu-nang.md](../hieu-nang.md)).
+- **Không thay cho việc có người ngồi cạnh máy** trong lúc thi và các mục tick tay của checklist.
+
+**Thử lệnh trên pod thử mà không đụng hệ thống thật:** `EXAM_STAGE=drill make -C infra prod-preflight` (bỏ qua mục địa chỉ công khai và runner; pod drill không có timer nên sẽ có ✗, đó là bình thường và còn là cách xem các dòng ✗ trông thế nào).
 
 ## 4. Cài đặt lần đầu (làm cùng nhau từng bước)
 
