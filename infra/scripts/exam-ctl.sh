@@ -18,7 +18,7 @@
 #   exam-ctl.sh active-sessions  In số Phiên thi đang diễn ra hoặc sắp bắt đầu; thoát 1 nếu có
 #
 # EXAM_STAGE=prod (mặc định) là pod thật; EXAM_STAGE=drill là pod thử `drill-exam` với cổng, volume và thư mục bí mật
-# riêng, dùng để thử script mà không đụng dữ liệu thật.
+# riêng, dùng để thử script mà không đụng dữ liệu thật; EXAM_STAGE=dr là pod `dr-exam` của bài diễn tập khôi phục sang máy khác.
 set -euo pipefail
 
 # Runner GitHub gắn RUNNER_TRACKING_ID vào mọi tiến trình của job và giết các tiến trình còn sót khi job kết thúc
@@ -42,8 +42,18 @@ case "$EXAM_STAGE" in
     DEFAULT_ORIGIN="http://127.0.0.1:8190"
     INSTALL_SERVICE_DEFAULT=0
     ;;
+  dr)
+    # Diễn tập "khôi phục sang máy khác" (PR 6e, Q367, scripts/dr-drill.sh): pod trống dựng từ bản sao lưu lấy về từ R2.
+    # Bí mật, trạng thái và thư mục sao lưu đều do dr-drill.sh đặt vào thư mục tạm (EXAM_DR_SECRETS_DIR, XDG_STATE_HOME,
+    # EXAM_BACKUP_DIR), không bao giờ dùng của prod.
+    POD=dr-exam WEB_PORT=8195 PG_PORT=5438
+    PG_VOLUME=dr_exam_pgdata MEDIA_VOLUME=dr_exam_media
+    SECRETS_DIR="${EXAM_DR_SECRETS_DIR:-$HOME/exam-dr-secrets}"
+    DEFAULT_ORIGIN="http://127.0.0.1:8195"
+    INSTALL_SERVICE_DEFAULT=0
+    ;;
   *)
-    echo "EXAM_STAGE phải là prod hoặc drill (nhận: $EXAM_STAGE)" >&2
+    echo "EXAM_STAGE phải là prod, drill hoặc dr (nhận: $EXAM_STAGE)" >&2
     exit 2
     ;;
 esac

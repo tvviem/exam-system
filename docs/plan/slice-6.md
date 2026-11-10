@@ -960,6 +960,10 @@ Mỗi lần chạy: ghi sổ backup-runs.jsonl (Q359); gọi healthchecks.io: sa
 | Q364 | Chuông khi việc sao lưu lỗi | Việc nghiêm trọng kêu ngay; đẩy D:/R2 chỉ kêu khi lỗi liên tục từ 30 phút; tự tắt khi phục hồi |
 | Q365 | Màn hình "Sao lưu" chỉ đọc | Dải cảnh báo, ba ô tóm tắt, danh sách phân trang, không bộ lọc |
 | Q366 | Sáu thiết lập kỹ thuật của 6d | Migration 0022, script chèn qua psql có chèn bù, giữ 12 tháng và 90 ngày, API GET admin, job `backup.check`, kiểm thử |
+| Q367 | Diễn tập khôi phục sang máy khác | Phương án A: môi trường sạch `dr-exam` trên laptop này, chỉ dùng R2, Bitwarden, `backup.env` |
+| Q368 | Đo hai bản api | Kiểm chức năng ít người trên pod drill; bài 500 người do chủ dự án tự chạy khi máy rảnh |
+| Q369 | Checklist đưa lên chạy thật | Tài liệu một trang theo mốc cộng lệnh `prod-preflight` |
+| Q370 | Tám thiết lập kỹ thuật của 6e | `fetch-r2`, `dr-drill`, `preflight`, `scale-drill-test`, drill thư mục trống, tài liệu, việc để sau, kiểm thử |
 
 **Lịch chạy (đều là systemd timer của người dùng, có chạy bù):**
 
@@ -1120,6 +1124,93 @@ Toàn bộ nhật ký (lệnh, số đo, lỗi) ở [khoi-phuc.md mục 4.9](../
 **Cách bật thật sau khi merge:** deploy bản mới bằng workflow (chạy migration 0022), rồi `make -C infra prod-backup-install` để timer dùng script mới; lần chạy `release-check` đầu tiên (trong 5 phút) chèn bù toàn bộ lịch sử từ sổ gốc. Kiểm: mở "Sao lưu dữ liệu" thấy bản đêm và bản nền đã có từ 9/11/2026.
 
 **Đã bật thật ngày 10/11/2026** (PR #82 merge, `main` = `87d86f7`; workflow deploy xanh; migration `0022` chạy; chèn bù 6 dòng; màn hình "Sao lưu dữ liệu" đúng, chủ dự án xác nhận). Từng bước ở [khoi-phuc.md mục 4.9.11](../ops/khoi-phuc.md). Chuông chưa được thử trên máy thật (chưa có lỗi hay bản đêm quá hạn), quy tắc đã được bài integration chứng minh.
+
+## PR 6e: thiết kế chi tiết (đang duyệt từng câu từ Q367, 10/11/2026)
+
+**Bối cảnh.** Lát cắt 6 là phần triển khai bản MVP. 6a đến 6d đã merge và chạy thật trên `prod-exam` (6d deploy lúc 10/11/2026 04:45, màn hình Sao lưu đã xác nhận). 6e là PR cuối: hoàn tất tài liệu, kiểm chứng những thứ chưa từng thử, và chốt điều kiện "đưa lên chạy thật" cho Phiên thi thật đầu tiên.
+
+**Phạm vi 6e (từ bảng PR ở đầu tài liệu này):** `trien-khai.md` và `khoi-phuc.md` hoàn chỉnh; **diễn tập khôi phục sang máy khác**; đo hai bản api; **checklist đưa lên chạy thật**; cập nhật README và số đo (`hieu-nang.md`). Giữ phạm vi gọn cho MVP.
+
+**Điều kiện trước Phiên thi thật đầu tiên (cập nhật 10/11/2026):**
+
+| Điều kiện | Trạng thái |
+|---|---|
+| Sao lưu đã bật và kiểm (WAL, dump đêm, bản nền, R2, ổ D:, healthchecks.io, thử khôi phục) | **Xong** (9 đến 10/11/2026; bản đêm tự động đầu tiên 10/11 02:00 đạt) |
+| Bản giấy khóa gpg (3 tờ A, B, C) và `backup.env` trong Bitwarden | **Xong** (9/11/2026) |
+| Quản trị viên thứ hai | **Xong** (10/11/2026: `tvvresearch`, đang hoạt động, đã đổi mật khẩu tạm; kiểm trong cơ sở dữ liệu thật) |
+| Màn hình Sao lưu trong ứng dụng và chuông | **Xong** (6d, đã deploy; chuông chưa kêu thật vì chưa có lỗi) |
+| Diễn tập khôi phục sang máy khác | **Chưa làm** (Q367 đã duyệt phương án A: môi trường sạch `dr-exam` trên laptop này) |
+
+**Danh sách "chưa thử" gom về cho checklist 6e** (từ các ghi chú 6a, 6b, 6b.1, 6c): WebSocket (không chỉ polling) qua tunnel bằng trình duyệt thật; hai bản api qua trình duyệt và Socket.IO qua cả hai (đo hai bản api); ảnh minh họa qua X-Accel từ api thật; `wsl --shutdown` giữa lúc đang đẩy hay đang dump; đĩa đầy thật; WSL có tự tắt khi đóng hết cửa sổ terminal không; tốc độ sinh WAL khi có người dùng và khi có Phiên thi; số đo thật của thử khôi phục khi đã có dữ liệu (RTO); giai đoạn media của thử khôi phục khi đã có ảnh thật; chuông sao lưu kêu thật; kịch bản "thư mục sao lưu trống" trong bài drill (bài học 4.9.9); cân nhắc nâng `rclone` (bớt `501`) và chặn xóa trên R2; kiểm sau mỗi deploy qua runner: conmon của mọi container phải sống; checklist vận hành lúc có Phiên thi (cắm sạc, tắt chế độ ngủ, giờ hoạt động Windows Update).
+
+**Đã xong khi thiết kế:** PR #83 (tài liệu ghi nhận deploy 6d) đã merge (`main` = `061d43e`); Q367 đã duyệt.
+
+### Q367: diễn tập "khôi phục sang máy khác" làm thế nào? (ĐÃ DUYỆT 10/11/2026: phương án A)
+
+**Bài toán.** Kịch bản "laptop hỏng hoặc mất hẳn" là kịch bản mà sao lưu sinh ra để cứu, nhưng mục 5.6 của `khoi-phuc.md` **chưa từng được thử**. Cần chứng minh: từ một nơi hoàn toàn trống, chỉ dùng thứ cất ngoài máy (Bitwarden, giấy A/B/C, bản sao `backup.env`) lấy bản sao lưu từ R2, giải mã, dựng lại hệ thống, rồi kiểm số dòng và dữ liệu khớp bản gốc.
+
+**Ví dụ.** Laptop rơi hỏng. Mua máy mới, cài Ubuntu và Podman. Mở Bitwarden lấy khóa gpg và `backup.env`, tải bản đêm và bản nền từ R2, giải mã, dựng pod, hệ thống chạy lại với dữ liệu đến đêm hôm trước.
+
+**Phương án:**
+- **A. Diễn tập trên chính laptop này nhưng trong "môi trường sạch giả làm máy mới"** (đề xuất): pod riêng (`dr-exam`), thư mục và keyring gpg trống, cổng khác. **Không** dùng gì đang có sẵn trên máy (không chép từ `~/exam-prod-backups`, không dùng keyring gpg hiện tại): chỉ lấy từ R2, Bitwarden và `backup.env`. Không đụng `prod-exam`. Chứng minh quy trình và các lệnh; sửa mục 5.6 theo đúng những gì thử thật. Khoảng nửa buổi.
+- **B. Diễn tập trên một máy thật khác** (laptop thứ hai, máy ảo, hoặc VPS thuê vài giờ): bằng chứng mạnh nhất (bắt thêm lỗi thiếu gói, khác phiên bản), nhưng cần bạn có sẵn máy và có thể tốn tiền.
+- **C. Không diễn tập, chỉ rà soát lại mục 5.6:** nhanh nhất, nhưng quy trình chưa thử có thể sai đúng lúc cần.
+
+**Quyết định (A):** diễn tập trong "môi trường sạch giả làm máy mới" trên chính laptop này: pod riêng `dr-exam`, thư mục và keyring gpg trống, cổng khác, **chỉ** lấy từ R2, Bitwarden và `backup.env` (không dùng gì đang có sẵn trên máy: không chép từ `~/exam-prod-backups`, không dùng keyring gpg hiện tại). Không đụng `prod-exam`. Kết quả dùng để sửa `khoi-phuc.md` mục 5.6 theo đúng những gì thử thật; ghi từng bước, lệnh, số đo và lỗi gặp vào nhật ký. Nếu sau này chuyển lên VPS ([chuyen-len-vps.md](../ops/chuyen-len-vps.md)) thì đó là lần thử B.
+
+**Lý do chọn A:** cho bản MVP, gần như mọi lỗi quy trình (thiếu bước, sai lệnh, thiếu file) lộ ra trong môi trường sạch mà không cần thêm máy. **Phương án đã bỏ:** B (máy thật khác: bằng chứng mạnh nhất nhưng cần máy và có thể tốn tiền, để dành cho lúc chuyển VPS); C (chỉ rà soát tài liệu: quy trình chưa thử có thể sai đúng lúc cần).
+
+**Khuyến nghị đã nêu của Trợ lý: A** cho bản MVP (gần như mọi lỗi quy trình lộ ra trong môi trường sạch mà không cần thêm máy). Nếu sau này chuyển lên VPS (xem `docs/ops/chuyen-len-vps.md`) thì đó chính là lần thử B.
+
+**Các câu dự kiến tiếp theo** (hỏi từng câu sau Q367): (Q368, đã duyệt) đo hai bản api; (Q369, đã duyệt) checklist; (Q370, đã duyệt) các thiết lập kỹ thuật của 6e.
+
+### Q368: "đo hai bản api" làm đến mức nào (ĐÃ DUYỆT 10/11/2026: phương án A)
+
+**Bối cảnh.** Chạy thật dùng **một** api (đủ cho dưới 100 người cùng lúc, `hieu-nang.md`); `make prod-scale 2` bật bản thứ hai cho phòng đông (khoảng 300 người trở lên). Bài đo 500 người với hai api trên máy phát triển **đã có** (đạt mọi ngưỡng). Chưa từng thử: lệnh `prod-scale 2` **trong pod thật**: nginx có chia tải đúng không, và tin đẩy Socket.IO có đến người xem qua cả hai bản không. Ví dụ lỗi có thể có: người dự thi A nối api số 1, Người ra đề nối api số 2; nếu tin Cộng giờ chỉ ở api số 2 thì A phải chờ lần hỏi lại 15 giây. Thiết kế dùng kênh Redis để tin đi qua cả hai, nhưng chưa thử trong pod.
+
+**Quyết định (A, mức giả lập ít người).** Trên pod **drill** (không đụng `prod-exam`): `scale 2`, kiểm nginx chia yêu cầu cho cả hai bản, `/api/health` ở cả hai, tin đẩy Socket.IO đến người dự thi dù kết nối ở bản nào (kiểm cả hai chiều), ca nhỏ khoảng 30 người ảo, rồi `scale 1`. **Không chạy bài 500 người.**
+
+**Bài đo 500 người với hai api: chủ dự án tự chạy khi có thời gian và máy rảnh** (đúng quy ước: chỉ chạy tải lớn khi chủ dự án báo máy rảnh). Lệnh có sẵn: `LOAD_API_INSTANCES=2 LOAD_USERS=500 nice -n 19 pnpm -C apps/api load:exam` (khoảng 7 phút, xem `hieu-nang.md` mục "Đo lại trên máy của bạn"). Kết quả khi chạy sẽ ghi vào `hieu-nang.md`; chưa chạy thì ghi rõ "chưa đo lại trên cấu hình máy hiện tại".
+
+**Phương án đã bỏ:** B (như A kèm bài 500 người ngay trong PR: đẩy CPU hết cỡ trên máy đang chạy hệ thống thật, để chủ dự án quyết lúc rảnh); C (bỏ qua: hai bản api trong pod thật vẫn chưa kiểm).
+
+### Q369: checklist "đưa lên chạy thật" dạng gì (ĐÃ DUYỆT 10/11/2026: phương án B)
+
+**Bối cảnh.** Mọi công cụ đã có (6a đến 6d); còn thiếu **danh sách việc cố định** trước, trong và sau mỗi Phiên thi thật để không phải nhớ từ đầu. Nhiều mục máy kiểm được; có mục chỉ người làm được.
+
+**Quyết định (B).** (1) Tài liệu một trang, in được: `docs/ops/checklist-phien-thi.md`, theo mốc **trước 1 tuần, trước 1 ngày, trước 1 giờ, trong thi, sau thi**, có ô tick; (2) lệnh **`make -C infra prod-preflight`** tự kiểm các mục máy kiểm được và in bảng đạt hoặc không đạt, mỗi dòng ghi lý do; mục chỉ người làm được (cắm sạc, tắt chế độ ngủ, ai ngồi cạnh máy) vẫn tick tay. Nội dung dự kiến: trước 1 tuần (bản nền dưới 7 ngày, thử khôi phục đạt, Quản trị viên thứ hai đăng nhập được, giấy A, B, C còn đủ); trước 1 ngày (không deploy nữa, `prod-backup-status` không có dòng CHƯA hoặc LỖI, ổ D: còn chỗ, cắm sạc, tắt ngủ, giờ hoạt động Windows Update ngoài giờ thi); trước 1 giờ (`prod-active-sessions` đúng dự kiến, dump tay, kiểm địa chỉ công khai, conmon của api, worker, web); trong thi (không deploy, không tắt pod, không `wsl --shutdown`, có người ngồi cạnh máy); sau thi (kiểm bản "sau Công bố" tự chạy, xem màn hình Sao lưu).
+
+**Phương án đã bỏ:** A (chỉ tài liệu tick tay: dễ quên mục máy kiểm được đúng lúc bận); C (chỉ một mục trong `trien-khai.md`: không có danh sách theo mốc).
+
+### Q370: các thiết lập kỹ thuật của 6e (ĐÃ DUYỆT 10/11/2026: đồng ý cả 8 điểm)
+
+1. **Lệnh `exam-backup.sh fetch-r2 <thư mục>`:** mục 5.6 hiện bắt tải và giải mã **từng file** bằng tay (mỗi đoạn WAL giải mã riêng), dễ sai lúc hoảng loạn. Lệnh này tải từ R2 bản `khoa/` mới nhất, bản nền mới nhất kèm `.info`, mọi đoạn WAL từ điểm bắt đầu của bản nền, dump mới nhất kèm `.counts`; giải mã bằng keyring gpg đang dùng (khóa bí mật chỉ nạp tạm); kiểm dãy WAL liền; in tóm tắt. Dùng cho cả diễn tập và mục 5.6.
+2. **Bài diễn tập `make -C infra dr-drill`** (Q367 A): "sân chơi" tách khỏi máy thật (keyring gpg tạm, thư mục trạng thái tạm, **không đọc file nào của `prod`**). Đầu vào duy nhất là `~/dr-input/` mà chủ dự án đặt hai file lấy từ Bitwarden (`backup.env`, khóa bí mật). Quy trình: `fetch-r2`, dựng pod `dr-exam`, `pitr` kiểm, `restore-dump`, `/api/health`, so số dòng với `.counts` của dump. Chủ dự án chỉ dán mật khẩu khóa một lần. Cuối cùng tự dọn sạch (pod, volume, khóa bí mật tạm, thư mục tải). Thêm stage `dr` vào `exam-ctl.sh` (pod `dr-exam`, cổng riêng).
+3. **`make -C infra prod-preflight`** (Q369): lệnh con `preflight` của `exam-backup.sh`; mỗi dòng ✓, ⚠ hoặc ✗, thoát khác 0 nếu có ✗. Ngưỡng: bản đêm ≤ 26 giờ, bản nền ≤ 8 ngày, thử khôi phục gần nhất đạt và ≤ 35 ngày, WAL liền và archive ổn, hàng chờ đẩy ≤ 5 file, 6 timer bật, ít nhất 2 Quản trị viên hoạt động, pod khỏe và conmon của api, worker, web sống, đĩa WSL và ổ D: còn ≥ 5 GB, runner online, địa chỉ công khai 200; cho biết số Phiên thi sắp tới.
+4. **Kiểm hai bản api** (Q368): `make -C infra scale-drill-test` trên pod drill: `scale 2`; cả hai bản `/api/health` ok; 40 yêu cầu qua nginx, đếm nhật ký từng bản, cả hai đều phải nhận; kênh Redis tin đẩy có đủ 2 bên nghe; rồi `scale 1`. Tin đẩy đến trình duyệt qua hai bản được kiểm bằng mắt khi chủ dự án chạy bài 500 người.
+5. **Bài drill sao lưu** thêm kịch bản "bắt đầu từ thư mục sao lưu hoàn toàn trống" (bài học 4.9.9).
+6. **Tài liệu:** `checklist-phien-thi.md` (mới); viết lại `khoi-phuc.md` mục 5.6 theo đúng diễn tập thật và đánh dấu "đã chứng minh"; cập nhật `trien-khai.md`, `README.md` (câu "chưa có sao lưu" đã sai), `hieu-nang.md` (ghi "chưa đo lại bài 500 người với hai api trên cấu hình hiện tại" cho đến khi chủ dự án chạy).
+7. **Để sau (ngoài 6e), ghi vào danh sách:** nâng `rclone` (bớt `501`), chặn xóa trên R2 (khóa tải lên riêng), thử chuông sao lưu kêu thật.
+8. **Kiểm thử:** `dr-drill` và `scale-drill-test` chạy tay trên máy thật (không vào CI vì cần pod, R2 thật và khóa của chủ dự án); kiểm cú pháp bằng `shellcheck` nếu có; chạy lại `backup-drill-test` (phải còn đạt hết) để chắc không hỏng chỗ cũ.
+
+**Thiết kế 6e hoàn tất (Q367–Q370).**
+
+## PR 6e: ghi chú triển khai (10/11/2026)
+
+**Đã làm theo Q367–Q370:**
+
+| Phần | Nơi | Ghi chú |
+|---|---|---|
+| Kiểm trước Phiên thi | `exam-backup.sh preflight`, `make -C infra prod-preflight` | ✓ ⚠ ✗, thoát 1 khi có ✗; ngưỡng ở biến `PREFLIGHT_*` (bản đêm 26 giờ, bản nền 8 ngày, thử khôi phục 35 ngày, hàng chờ 5 file, đĩa 5 GB, 2 Quản trị viên). Chạy thật trên `prod-exam` ngày 10/11: đạt hết; trên pod drill báo đúng các mục ✗ |
+| Lấy bản sao lưu từ R2 | `exam-backup.sh fetch-r2 <thư mục>` | tải khóa bí mật, bản nền, mọi WAL từ điểm bắt đầu của bản nền (kiểm liền nhau), dump mới nhất; mỗi file giải mã riêng; kiểm dump đọc được. Thử trên R2 giả: bí mật giống hệt, `pitr` dựng được từ thư mục lấy về |
+| Diễn tập khôi phục sang máy khác | `infra/scripts/dr-drill.sh`, `make -C infra dr-drill`, stage `dr` trong `exam-ctl.sh` (pod `dr-exam`, web 8195, PostgreSQL 5438) | "sân chơi" tạm, không đọc gì của `prod`; **chưa chạy thật** (chờ chủ dự án đặt `~/dr-input/` và dán mật khẩu khóa); ghi ở `khoi-phuc.md` mục 4.9.12 |
+| Thử hai bản api | `infra/scripts/test-scale-drill.sh`, `make -C infra scale-drill-test` | trên pod drill, 18 đạt: cả hai bản ok, nginx chia cả hai bản (60 yêu cầu, ví dụ 38 và 22: nginx có nhiều tiến trình, mỗi tiến trình tự xoay vòng nên không đều tuyệt đối), kênh Redis `realtime:events` có đúng 2 bên nghe khi hai bản và 1 khi một bản; bài 500 người chủ dự án tự chạy sau |
+| Bài drill sao lưu | `test-backup-drill.sh` | thêm mục 0 (bắt đầu từ trạng thái trống) và 9d (`fetch-r2` trên R2 giả); kết quả cuối **103 đạt, 0 lỗi** |
+| Tài liệu | `docs/ops/checklist-phien-thi.md` (mới), `khoi-phuc.md` (mục 5.6 viết lại, bảng lệnh, 4.9.9 thêm bài học 12 đến 14, 4.9.12), `trien-khai.md`, `README.md`, `hieu-nang.md` | README hết câu "chưa có sao lưu"; `hieu-nang.md` ghi bài 500 người với hai api chưa đo lại trên cấu hình hiện tại |
+
+**Lỗi tìm được khi thử (đã sửa):** (1) tên bản sao khóa bí mật chỉ có ngày nên đổi A→B→A cùng ngày không lên R2 và `fetch-r2` lấy nhầm B; sửa bằng tên có giờ, `fetch-r2` đọc cả hai dạng tên (script `sync_secrets` đã đổi: **cần `make -C infra prod-backup-install` sau khi merge** để timer dùng bản mới). (2) Một bài drill chỉ đúng ngày 1 đến 9 hằng tháng. (3) Bài thử R2 giả ban đầu dùng nhầm keyring chỉ có khóa công khai.
+
+**Còn lại sau khi merge PR 6e:** chạy `make -C infra prod-backup-install`; diễn tập thật `make -C infra dr-drill` cùng chủ dự án (rồi đánh dấu mục 5.6 "đã chứng minh"); chủ dự án chạy bài đo 500 người với hai api khi máy rảnh và gửi số đo; việc để sau: nâng `rclone`, chặn xóa trên R2, thử chuông sao lưu kêu thật.
 
 ## Câu hỏi còn mở
 

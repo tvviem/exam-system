@@ -15,6 +15,8 @@
 #   exam-backup.sh prune [--dry-run]       Dọn bản cũ ở WSL và ổ chép theo bảng Q325 (--dry-run: chỉ in sẽ xóa gì)
 #   exam-backup.sh wal-gaps [từ-WAL]       In các chỗ đứt của dãy WAL (không in gì là liền nhau)
 #   exam-backup.sh check                   Kiểm mọi điều kiện cần trước khi bật (gpg, R2, ổ chép, healthchecks, archive)
+#   exam-backup.sh preflight               Kiểm trước Phiên thi thật: sao lưu còn mới, 2 Quản trị viên, pod khỏe, đĩa, runner, địa chỉ công khai (✓ ⚠ ✗)
+#   exam-backup.sh fetch-r2 <thư mục>      Máy mới: tải từ R2 bản nền, WAL, dump, khóa bí mật mới nhất và GIẢI MÃ vào <thư mục> (cần khóa gpg bí mật)
 #   exam-backup.sh install                 Cài script và timer (CHƯA bật)
 #   exam-backup.sh enable | disable        Bật (sau khi check đạt) hoặc tắt các timer
 #
@@ -506,7 +508,9 @@ sync_secrets() {
     prev_hash="$(awk -v n="$name" '$1 == n {print $2}' "$ledger" | tail -1)"
     [ "$hash" != "$prev_hash" ] || continue
     short="${hash:0:8}"
-    out="$BACKUP_DIR/khoa/$name-$(date +%Y%m%d)-$short.gpg"
+    # Tên có cả giờ: mỗi lần đổi là một tên riêng. Nếu chỉ có ngày, đổi A→B→A trong cùng ngày làm bản "A" mới trùng tên bản "A" cũ
+    # (đã đẩy), không lên R2 nữa, và fetch-r2 sẽ lấy nhầm B làm bản mới nhất (phát hiện ở bài diễn tập 10/11/2026).
+    out="$BACKUP_DIR/khoa/$name-$(date +%Y%m%d-%H%M%S)-$short.gpg"
     gpg --batch --yes -q --trust-model always -r "$EXAM_GPG_RECIPIENT" -o "$out.tmp" -e "$f" || {
       rm -f "$out.tmp"
       return 1
@@ -1465,6 +1469,240 @@ cmd_status() {
 
 # ---------- Điều phối ----------
 # Việc nặng chạy ở mức ưu tiên thấp (Q361): chạy lại chính script dưới nice và ionice.
+# ---------- Lấy bản sao lưu từ R2 về máy mới (PR 6e, Q370 điểm 1) ----------
+# Dùng cho khôi phục thật ở máy mới và cho bài diễn tập dr-drill.sh. Cần: R2_* trong backup.env, khóa gpg BÍ MẬT trong keyring hiện
+# hành (nhập tạm từ Bitwarden, xóa sau khi xong). Kết quả trong <thư mục> cùng cấu trúc thư mục sao lưu (base/, wal/, daily/) cộng
+# secrets/ (api.env, postgres.env đã giải mã, quyền 600). Mỗi file .gpg được giải mã RIÊNG, đúng tên file gốc.
+fetch_r2_list() { # đường dẫn con trên R2 -> tên file (không đệ quy)
+  rclone lsf --files-only "$(r2_remote)/$1" 2>/dev/null
+}
+
+fetch_r2_one() { # đường dẫn con (có .gpg), thư mục đích -> giải mã ra <đích>/<tên không .gpg>
+  local sub="$1" dest="$2" name tmp
+  name="$(basename "$sub")"
+  tmp="$dest/.dl-$name"
+  rclone copyto "$(r2_remote)/$sub" "$tmp" -q 2>>"${FETCH_LOG:-/dev/null}" || return 1
+  gpg --batch --yes --quiet --decrypt -o "$dest/${name%.gpg}" "$tmp" 2>>"${FETCH_LOG:-/dev/null}" || {
+    rm -f "$tmp" "$dest/${name%.gpg}"
+    return 1
+  }
+  rm -f "$tmp"
+}
+
+cmd_fetch_r2() {
+  local dest="${1:-}" base_gpg dump_gpg start_wal f n total=0 gaps name prefix
+  [ -n "$dest" ] || die "Cách dùng: fetch-r2 <thư mục đích>"
+  [ -n "$(r2_remote)" ] || die "Chưa cấu hình R2 (cần R2_* trong $SECRETS_DIR/backup.env)."
+  [ -n "${EXAM_GPG_RECIPIENT:-}" ] || die "Thiếu EXAM_GPG_RECIPIENT trong backup.env."
+  gpg --list-secret-keys "$EXAM_GPG_RECIPIENT" >/dev/null 2>&1 ||
+    die "Chưa có khóa BÍ MẬT gpg $EXAM_GPG_RECIPIENT trong keyring hiện hành (GNUPGHOME=${GNUPGHOME:-$HOME/.gnupg}). Nhập tạm từ Bitwarden: gpg --import khoa-bi-mat.asc (xóa khỏi máy sau khi xong)."
+  [ -t 0 ] && export GPG_TTY="${GPG_TTY:-$(tty 2>/dev/null || true)}"
+  mkdir -p "$dest/base" "$dest/wal" "$dest/daily" "$dest/secrets"
+  chmod 700 "$dest/secrets"
+  export FETCH_LOG="$dest/fetch-errors.log"
+  : >"$FETCH_LOG"
+
+  say "1/5 Khóa bí mật (khoa/)"
+  # Mỗi tên (api.env, postgres.env) lấy bản MỚI NHẤT theo giờ sửa trên R2. Vòng lặp chạy ở shell chính (không qua ống) để die thoát được.
+  local -A latest_khoa=()
+  local when
+  while IFS='|' read -r when f; do
+    [ -n "$f" ] || continue
+    # Tên mới: <tên>-NGÀY-GIỜ-<sha8>.gpg; tên cũ (trước 10/11/2026): <tên>-NGÀY-<sha8>.gpg. Đọc được cả hai.
+    prefix="${f%-????????-??????-????????.gpg}"
+    [ "$prefix" != "$f" ] || prefix="${f%-????????-????????.gpg}"
+    latest_khoa["$prefix"]="$f"
+  done < <(rclone lsf --files-only --format 'tp' --separator '|' "$(r2_remote)/khoa" 2>>"$FETCH_LOG" | LC_ALL=C sort)
+  for prefix in "${!latest_khoa[@]}"; do
+    f="${latest_khoa[$prefix]}"
+    fetch_r2_one "khoa/$f" "$dest/secrets" || die "Không tải hoặc giải mã được khoa/$f (khóa gpg đúng chưa? xem $FETCH_LOG)."
+    mv -f "$dest/secrets/${f%.gpg}" "$dest/secrets/$prefix"
+    chmod 600 "$dest/secrets/$prefix"
+    echo "  $prefix <= khoa/$f"
+  done
+  [ -s "$dest/secrets/api.env" ] && [ -s "$dest/secrets/postgres.env" ] || die "R2 không có đủ api.env và postgres.env trong khoa/."
+
+  say "2/5 Bản nền mới nhất (base/)"
+  base_gpg="$(fetch_r2_list base | grep -E '^exam-.*-base\.tar\.gz\.gpg$' | LC_ALL=C sort | tail -1)"
+  [ -n "$base_gpg" ] || die "R2 chưa có bản nền nào (base/)."
+  fetch_r2_one "base/$base_gpg" "$dest/base" || die "Không tải hoặc giải mã được base/$base_gpg."
+  fetch_r2_one "base/${base_gpg%.tar.gz.gpg}.tar.gz.info.gpg" "$dest/base" || die "Không lấy được sổ phụ .info của bản nền."
+  start_wal="$(sed -n 's/^start_wal=//p' "$dest/base/${base_gpg%.gpg}.info" | head -1)"
+  [ -n "$start_wal" ] || die "Sổ phụ .info của bản nền thiếu start_wal."
+  echo "  ${base_gpg%.gpg} (bắt đầu từ WAL $start_wal)"
+
+  say "3/5 Các đoạn WAL từ $start_wal trở đi (wal/)"
+  while IFS= read -r f; do
+    name="${f%.gpg}"
+    [ "${name:0:24}" \< "$start_wal" ] && continue
+    fetch_r2_one "wal/$f" "$dest/wal" || die "Không tải hoặc giải mã được wal/$f."
+    total=$((total + 1))
+  done < <(fetch_r2_list wal | grep -E '\.gpg$' | LC_ALL=C sort)
+  echo "  $total file"
+  gaps="$(BACKUP_DIR="$dest" wal_gaps "$start_wal")"
+  [ -z "$gaps" ] || die "Dãy WAL lấy về bị đứt ($(echo "$gaps" | tr '\n' ';')): chỉ khôi phục được đến chỗ đứt."
+
+  say "4/5 Bản dump mới nhất (daily/)"
+  dump_gpg="$(fetch_r2_list daily | grep -E '^exam-[0-9]{8}-[0-9]{6}-(nightly|publish)\.dump\.gpg$' |
+    sed -E 's/^exam-([0-9]{8}-[0-9]{6})-.*/\1 &/' | LC_ALL=C sort | tail -1 | cut -d' ' -f2)"
+  [ -n "$dump_gpg" ] || die "R2 chưa có bản dump nào (daily/)."
+  fetch_r2_one "daily/$dump_gpg" "$dest/daily" || die "Không tải hoặc giải mã được daily/$dump_gpg."
+  fetch_r2_one "daily/${dump_gpg%.gpg}.counts.gpg" "$dest/daily" || echo "  (không có sổ phụ .counts của dump)"
+  echo "  ${dump_gpg%.gpg}"
+
+  say "5/5 Kiểm các file lấy về"
+  [ -s "$dest/base/${base_gpg%.gpg}" ] || die "Bản nền rỗng."
+  [ -s "$dest/daily/${dump_gpg%.gpg}" ] || die "Bản dump rỗng."
+  "$PODMAN" run --rm -i "$POSTGRES_IMAGE" pg_restore --list <"$dest/daily/${dump_gpg%.gpg}" >/dev/null 2>&1 ||
+    die "Bản dump lấy về không đọc được bằng pg_restore (giải mã sai hoặc file hỏng)."
+  find "$dest" -name '.dl-*' -delete
+  say "Xong. Đã lấy về $dest: bản nền ${base_gpg%.gpg}, $total đoạn WAL (liền nhau), dump ${dump_gpg%.gpg}, khóa bí mật ở $dest/secrets/."
+  say "Dùng: EXAM_BACKUP_DIR=$dest exam-backup.sh pitr latest (kiểm), rồi restore-dump (xem docs/ops/khoi-phuc.md mục 5.6)."
+}
+
+# ---------- Kiểm trước Phiên thi thật (PR 6e, Q369, Q370 điểm 3) ----------
+# Mỗi dòng ✓ (đạt), ⚠ (nên xem) hoặc ✗ (không đạt). Thoát 1 nếu có ✗. Các mục chỉ người làm được (cắm sạc, tắt chế độ ngủ,
+# người ngồi cạnh máy...) nằm ở docs/ops/checklist-phien-thi.md.
+PREFLIGHT_NIGHTLY_MAX_HOURS="${PREFLIGHT_NIGHTLY_MAX_HOURS:-26}"
+PREFLIGHT_BASE_MAX_DAYS="${PREFLIGHT_BASE_MAX_DAYS:-8}"
+PREFLIGHT_RESTORE_MAX_DAYS="${PREFLIGHT_RESTORE_MAX_DAYS:-35}"
+PREFLIGHT_QUEUE_MAX="${PREFLIGHT_QUEUE_MAX:-5}"
+PREFLIGHT_MIN_FREE_GB="${PREFLIGHT_MIN_FREE_GB:-5}"
+PREFLIGHT_MIN_ADMINS="${PREFLIGHT_MIN_ADMINS:-2}"
+
+free_gb() { # đường dẫn -> số GB còn trống (làm tròn xuống); rỗng nếu không đọc được
+  df -P -BG "$1" 2>/dev/null | awk 'NR==2 {gsub("G", "", $4); print $4}'
+}
+
+cmd_preflight() {
+  local fails=0 warns=0 f hrs days n out health c pid gaps ready1 ready2 admins issues free rt_ok rt_at url local_ver pub
+  pf() {
+    case "$1" in
+      ok) printf '  ✓ %s\n' "$2" ;;
+      warn) printf '  ⚠ %s\n' "$2"; warns=$((warns + 1)) ;;
+      fail) printf '  ✗ %s\n' "$2"; fails=$((fails + 1)) ;;
+      info) printf '  • %s\n' "$2" ;;
+    esac
+  }
+  echo "Kiểm trước Phiên thi cho $POD ($(date -Is))"
+
+  echo "Hệ thống"
+  health="$(curl -fsS -m 5 "http://127.0.0.1:$WEB_PORT/api/health" 2>/dev/null || true)"
+  if [[ "$health" == *'"status":"ok"'* && "$health" == *'"postgres":"up"'* && "$health" == *'"redis":"up"'* ]]; then
+    local_ver="$(printf '%s' "$health" | jq -r .version 2>/dev/null || true)"
+    pf ok "api trong máy khỏe (postgres và redis up), bản ${local_ver:0:12}"
+  else
+    local_ver=""
+    pf fail "api trong máy không trả ok (http://127.0.0.1:$WEB_PORT/api/health)"
+  fi
+  for c in "$C_API" "$C_WORKER" "$C_WEB"; do
+    if ! container_exists "$c"; then
+      pf fail "container $c không tồn tại"
+      continue
+    fi
+    pid="$("$PODMAN" inspect -f '{{.State.ConmonPid}}' "$c" 2>/dev/null || echo 0)"
+    if [ "${pid:-0}" -gt 0 ] && ps -p "$pid" -o comm= >/dev/null 2>&1; then
+      pf ok "người giám sát (conmon) của $c còn sống"
+    else
+      pf fail "người giám sát (conmon) của $c đã CHẾT: lần deploy kế tiếp sẽ kẹt (docs/ops/trien-khai.md, mục Lỗi thường gặp)"
+    fi
+  done
+  url="${APP_ORIGIN:-$DEFAULT_ORIGIN}"
+  if [ "$EXAM_STAGE" = prod ]; then
+    pub="$(curl -fsS -m 8 "$url/api/health" 2>/dev/null || true)"
+    if [[ "$pub" == *'"status":"ok"'* ]]; then
+      if [ -n "$local_ver" ] && [[ "$pub" == *"$local_ver"* ]]; then
+        pf ok "địa chỉ công khai $url trả ok, đúng bản đang chạy"
+      else
+        pf warn "địa chỉ công khai $url trả ok nhưng bản khác bản trong máy (tunnel hoặc bộ nhớ đệm?)"
+      fi
+    else
+      pf fail "địa chỉ công khai $url không trả ok (kiểm Cloudflare tunnel: docs/ops/trien-khai.md mục 2)"
+    fi
+  else
+    pf info "bỏ qua địa chỉ công khai (stage $EXAM_STAGE)"
+  fi
+  out="$(cmd_active_sessions 2>&1 || true)"
+  pf info "${out:-không đọc được số Phiên thi}"
+  admins="$(psql_scalar "SELECT count(*) FROM users WHERE is_admin AND status = 'active' AND removed_at IS NULL" 2>/dev/null || echo 0)"
+  if [ "${admins:-0}" -ge "$PREFLIGHT_MIN_ADMINS" ]; then
+    pf ok "có $admins Quản trị viên đang hoạt động (cần ít nhất $PREFLIGHT_MIN_ADMINS)"
+  else
+    pf fail "chỉ có ${admins:-0} Quản trị viên đang hoạt động (cần ít nhất $PREFLIGHT_MIN_ADMINS): thêm người thứ hai trước Phiên thi"
+  fi
+  if [ "$EXAM_STAGE" = prod ]; then
+    out="$(systemctl list-units 'actions.runner.*' --no-legend 2>/dev/null | awk '{print $3}' | sort -u | tr '\n' ' ')"
+    case "$out" in
+      *active*) pf ok "runner GitHub (deploy) đang chạy" ;;
+      *) pf warn "không thấy runner GitHub đang chạy: chỉ cần khi định deploy, và không nên deploy lúc có Phiên thi" ;;
+    esac
+  fi
+
+  echo "Sao lưu"
+  f="$(newest "$BACKUP_DIR/daily" 'exam-*-nightly.dump')"
+  hrs="$(hours_since_file "$f")"
+  if [ "$hrs" -le "$PREFLIGHT_NIGHTLY_MAX_HOURS" ]; then
+    pf ok "bản đêm mới nhất cách đây $hrs giờ (tối đa $PREFLIGHT_NIGHTLY_MAX_HOURS)"
+  else
+    pf fail "bản đêm mới nhất cách đây $([ "$hrs" = 99999 ] && echo "quá lâu / chưa có" || echo "$hrs giờ") (tối đa $PREFLIGHT_NIGHTLY_MAX_HOURS): chạy make -C infra prod-backup-dump"
+  fi
+  days="$(base_age_days)"
+  if [ "$days" -le "$PREFLIGHT_BASE_MAX_DAYS" ]; then
+    pf ok "bản nền mới nhất cách đây $days ngày (tối đa $PREFLIGHT_BASE_MAX_DAYS)"
+  else
+    pf fail "bản nền quá cũ hoặc chưa có (cách đây $days ngày, tối đa $PREFLIGHT_BASE_MAX_DAYS): make -C infra prod-backup-basebackup"
+  fi
+  if [ -f "$STATE_DIR/restore-test.json" ]; then
+    rt_ok="$(jq -r .ok "$STATE_DIR/restore-test.json" 2>/dev/null || echo false)"
+    rt_at="$(jq -r .at "$STATE_DIR/restore-test.json" 2>/dev/null || true)"
+    days=$((($(date +%s) - $(date -d "${rt_at:-1970-01-01}" +%s 2>/dev/null || echo 0)) / 86400))
+    if [ "$rt_ok" = true ] && [ "$days" -le "$PREFLIGHT_RESTORE_MAX_DAYS" ]; then
+      pf ok "thử khôi phục gần nhất ĐẠT cách đây $days ngày (tối đa $PREFLIGHT_RESTORE_MAX_DAYS)"
+    else
+      pf fail "thử khôi phục gần nhất $([ "$rt_ok" = true ] && echo "đạt nhưng đã $days ngày" || echo "KHÔNG đạt"): make -C infra prod-backup-restore-test"
+    fi
+  else
+    pf fail "chưa có lần thử khôi phục nào: make -C infra prod-backup-restore-test"
+  fi
+  if archiving_enabled; then
+    issues="$(archive_health || true)"
+    if [ -z "$issues" ]; then pf ok "lưu liên tục WAL bật, archive khỏe"; else pf fail "archive: $issues"; fi
+    gaps="$(wal_gaps)"
+    if [ -z "$gaps" ]; then pf ok "dãy WAL liền nhau"; else pf fail "dãy WAL đứt: $(echo "$gaps" | tr '\n' ';')"; fi
+  else
+    pf fail "lưu liên tục WAL đang TẮT (make -C infra prod-enable-archiving, lúc không có Phiên thi)"
+  fi
+  ready1="$(push_candidates | LC_ALL=C comm -23 - <(LC_ALL=C sort "$LEDGER_DIR/mirror.txt" 2>/dev/null) | wc -l)"
+  ready2="$(push_candidates | LC_ALL=C comm -23 - <(LC_ALL=C sort "$LEDGER_DIR/r2.txt" 2>/dev/null) | wc -l)"
+  if [ "$ready1" -le "$PREFLIGHT_QUEUE_MAX" ] && [ "$ready2" -le "$PREFLIGHT_QUEUE_MAX" ]; then
+    pf ok "hàng chờ đẩy sang ổ chép / R2: $ready1 / $ready2 file (tối đa $PREFLIGHT_QUEUE_MAX)"
+  else
+    pf fail "hàng chờ đẩy quá nhiều: ổ chép $ready1, R2 $ready2 (tối đa $PREFLIGHT_QUEUE_MAX): xem push-errors.log"
+  fi
+  n="$(systemctl --user list-timers "$UNIT_PREFIX-*" --no-legend 2>/dev/null | grep -c . || true)"
+  if [ "$n" -eq "${#TIMERS[@]}" ]; then pf ok "$n/${#TIMERS[@]} timer sao lưu đang bật"; else pf fail "chỉ $n/${#TIMERS[@]} timer sao lưu đang bật (make -C infra prod-backup-enable)"; fi
+  issues="$(psql_scalar "SELECT CASE WHEN to_regclass('public.backup_runs') IS NULL THEN '-1' ELSE (SELECT count(*) FROM (SELECT DISTINCT ON (kind) status FROM backup_runs ORDER BY kind, finished_at DESC, id DESC) t WHERE status = 'failed')::text END" 2>/dev/null || echo -1)"
+  case "${issues:-}" in
+    0) pf ok "bảng backup_runs không có việc sao lưu nào đang lỗi" ;;
+    -1 | '') pf warn "chưa đọc được bảng backup_runs (migration 0022 chưa chạy hoặc cơ sở dữ liệu không trả lời)" ;;
+    *) pf fail "có $issues việc sao lưu đang lỗi (mở màn hình Sao lưu dữ liệu để xem)" ;;
+  esac
+
+  echo "Đĩa"
+  free="$(free_gb "$BACKUP_DIR")"
+  if [ -n "$free" ] && [ "$free" -ge "$PREFLIGHT_MIN_FREE_GB" ]; then pf ok "ổ chứa $BACKUP_DIR còn ${free} GB (tối thiểu $PREFLIGHT_MIN_FREE_GB)"; else pf fail "ổ chứa $BACKUP_DIR còn ${free:-?} GB (tối thiểu $PREFLIGHT_MIN_FREE_GB)"; fi
+  free="$(free_gb "$MIRROR_DIR")"
+  if [ -n "$free" ] && [ "$free" -ge "$PREFLIGHT_MIN_FREE_GB" ]; then pf ok "ổ chép $MIRROR_DIR còn ${free} GB (tối thiểu $PREFLIGHT_MIN_FREE_GB)"; else pf fail "ổ chép $MIRROR_DIR còn ${free:-?} GB hoặc không đọc được (tối thiểu $PREFLIGHT_MIN_FREE_GB)"; fi
+
+  echo
+  if [ "$fails" -gt 0 ]; then
+    echo "KẾT QUẢ: $fails mục KHÔNG ĐẠT, $warns mục cần xem. Chưa nên mở Phiên thi thật cho tới khi xử lý xong."
+  else
+    echo "KẾT QUẢ: máy kiểm đạt hết ($warns mục cần xem). Còn các mục chỉ người làm được: docs/ops/checklist-phien-thi.md"
+  fi
+  [ "$fails" -eq 0 ]
+}
+
 main() {
   local command="${1:-}"
   [ $# -gt 0 ] && shift
@@ -1493,6 +1731,8 @@ main() {
     restore-dump) cmd_restore_dump "$@" ;;
     install) cmd_install ;;
     check) cmd_check ;;
+    preflight) cmd_preflight ;;
+    fetch-r2) cmd_fetch_r2 "$@" ;;
     enable) cmd_enable ;;
     disable) cmd_disable ;;
     wal-gaps) wal_gaps "$@" ;;
