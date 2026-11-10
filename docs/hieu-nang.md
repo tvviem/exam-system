@@ -54,6 +54,8 @@ Với dữ liệu lớn hơn (đo ở PR 5d, bộ test tích hợp và bản đo
 
 ## Đo lại trên máy của bạn
 
+> **Trạng thái đo (10/11/2026):** các số ở trên đo trên máy phát triển. Bài đo **500 người với hai api trên cấu hình máy chạy thật hiện tại chưa được chạy lại**; chủ dự án sẽ chạy khi có thời gian và máy rảnh (Q368). Trong pod `drill-exam` chỉ mới kiểm **chức năng** hai bản api bằng `make -C infra scale-drill-test` (nginx chia yêu cầu cho cả hai bản, kênh Redis tin đẩy có đủ hai bên nghe), không đo tải. Khi chạy bài 500 người nhớ xem Socket.IO qua hai bản bằng trình duyệt thật.
+
 ```bash
 pnpm -C apps/api build
 LOAD_USERS=100 nice -n 19 pnpm -C apps/api load:exam                          # khoảng 4 phút

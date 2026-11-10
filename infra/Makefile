@@ -23,7 +23,7 @@ REDIS_CONTAINER ?= $(STAGE)-exam-redis
 PG_DATA_VOLUME ?= $(STAGE)_exam_pgdata
 
 .PHONY: help pod postgres redis up wait down stop logs psql redis-cli dev-up dev-down ci-up ci-wait ci-down
-.PHONY: prod-bootstrap prod-up prod-deploy prod-scale prod-status prod-logs prod-stop prod-start prod-down prod-recover-admin prod-active-sessions prod-install-service prod-enable-archiving prod-disable-archiving prod-backup-status prod-backup-dump prod-backup-nightly prod-backup-basebackup prod-backup-push prod-backup-prune prod-backup-restore-test prod-backup-check prod-backup-install prod-backup-enable prod-backup-disable backup-drill-test
+.PHONY: prod-bootstrap prod-up prod-deploy prod-scale prod-status prod-logs prod-stop prod-start prod-down prod-recover-admin prod-active-sessions prod-install-service prod-enable-archiving prod-disable-archiving prod-backup-status prod-backup-dump prod-backup-nightly prod-backup-basebackup prod-backup-push prod-backup-prune prod-backup-restore-test prod-backup-check prod-backup-install prod-backup-enable prod-backup-disable prod-preflight backup-drill-test dr-drill scale-drill-test
 
 help:
 	@echo "make dev-up     Tạo và chạy pod dev-exam (PostgreSQL :$(POSTGRES_PORT), Redis :$(REDIS_PORT))"
@@ -54,6 +54,9 @@ help:
 	@echo "make prod-backup-enable / -disable    Bật (sau khi check đạt) hoặc tắt các timer sao lưu"
 	@echo "make prod-enable-archiving            Bật lưu liên tục WAL (dựng lại container PostgreSQL; từ chối nếu có Phiên thi)"
 	@echo "make backup-drill-test             Thử toàn bộ chuỗi sao lưu trên pod thử drill-exam (R2 giả, khóa gpg giả), khoảng 5 phút"
+	@echo "make prod-preflight                Kiểm trước Phiên thi thật (✓ ⚠ ✗): sao lưu còn mới, 2 Quản trị viên, pod khỏe, đĩa, runner, địa chỉ công khai"
+	@echo "make dr-drill                      Diễn tập khôi phục sang máy khác từ R2 trong pod dr-exam (cần ~/dr-input/backup.env và khoa-bi-mat.asc từ Bitwarden)"
+	@echo "make scale-drill-test              Thử hai bản api (prod-scale 2) trên pod thử drill-exam, tải nhẹ"
 	@echo "make prod-backup-dump | -nightly | -basebackup | -push | -prune | -restore-test   Chạy tay từng việc (ARGS=\"--dry-run\" cho prune)"
 
 dev-up:
@@ -195,3 +198,9 @@ prod-backup-disable:
 # Thử toàn bộ chuỗi sao lưu trên pod thử drill-exam (R2 giả, khóa gpg giả); KHÔNG đụng pod thật
 backup-drill-test:
 	@EXAM_STAGE=drill bash scripts/test-backup-drill.sh
+prod-preflight:
+	@$(EXAM_BACKUP) preflight
+dr-drill:
+	@bash scripts/dr-drill.sh
+scale-drill-test:
+	@EXAM_STAGE=drill bash scripts/test-scale-drill.sh

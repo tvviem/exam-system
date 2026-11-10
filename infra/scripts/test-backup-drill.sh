@@ -94,6 +94,19 @@ EOF
 umask 022
 ok "chuẩn bị xong (khóa gpg $FPR; R2 giả $FAKE_R2)"
 
+step "0. Bắt đầu từ trạng thái HOÀN TOÀN TRỐNG (chưa có thư mục sao lưu, sổ, bản nào): các lệnh đọc không được hỏng"
+# Bài học 9/11/2026 (khoi-phuc.md 4.9.9): máy mới chưa có daily/, base/, wal/ làm hỏng status và catchup, mà bài thử cũ luôn có sẵn thư mục.
+check "thư mục sao lưu chưa tồn tại" test ! -e "$BACKUP"
+check "status chạy được trên trạng thái trống (thoát 0)" backup status
+check "status nói chưa có bản nào" bash -c "bash '$SCRIPT' status 2>&1 | grep -q 'Bản đêm mới nhất:     chưa có'"
+check "wal-gaps trên trạng thái trống không lỗi" backup wal-gaps
+check "prune --dry-run trên trạng thái trống không lỗi" backup prune --dry-run
+check "push trên trạng thái trống không lỗi (chưa có gì để đẩy)" backup push
+PF_OUT="$(bash "$SCRIPT" preflight 2>&1)"
+check "preflight chạy hết trên trạng thái trống (không lỗi cú pháp, không biến chưa đặt)" bash -c "! printf '%s' '$PF_OUT' | grep -Eq 'unbound variable|command not found|syntax error|: line [0-9]+:'"
+check "preflight báo KHÔNG ĐẠT khi chưa có sao lưu (mục ✗), không im lặng" bash -c "printf '%s' '$PF_OUT' | grep -q 'KHÔNG ĐẠT'"
+rm -rf "$STATE/backup-failing" "$STATE/backup-report.jsonl" "$STATE/backup-report.cursor"
+
 step "1. Điều kiện trước khi bật lưu liên tục"
 check_fail "check báo chưa đủ (lưu liên tục chưa bật)" backup check
 check "enable-archiving dựng lại PostgreSQL với archive_mode=on" bash "$CTL" enable-archiving
@@ -176,7 +189,8 @@ backup prune --dry-run >/dev/null 2>&1
 check "--dry-run không xóa gì" test "$(ls "$BACKUP"/daily/*-nightly.dump | wc -l)" = "$N1"
 KEEP_LOCAL_DAILY=0 bash "$SCRIPT" prune >/dev/null 2>&1
 check "giữ đúng 1 bản đêm khi đặt giữ 0 (không bao giờ xóa bản mới nhất)" test "$(ls "$BACKUP"/daily/*-nightly.dump | wc -l)" = 1
-check "bản còn lại là bản mới nhất" bash -c "ls '$BACKUP'/daily/*-nightly.dump | grep -q 2026110"
+# Các bản giả dựng ở trên đều đặt tên tháng 1 năm 2026; bản thật còn lại phải mang ngày hôm nay (không phụ thuộc ngày trong tháng).
+check "bản còn lại là bản mới nhất (không phải một trong các bản giả cũ)" bash -c "ls '$BACKUP'/daily/*-nightly.dump | grep -q \"exam-$(date +%Y%m%d)-\""
 # Làm lại một bản đêm thật để các bước sau (thử khôi phục) có bản dump hợp lệ.
 backup dump >/dev/null 2>&1
 
@@ -265,6 +279,39 @@ backup push >/dev/null 2>&1
 check "sau phục hồi, đẩy thành công bình thường không ghi thêm" test "$(runs 'count(*)' "where kind='push'")" = 2
 check "chi tiết ngắn, không chứa bí mật (không có địa chỉ healthchecks hay khóa)" test "$(runs 'count(*)' "where detail ~* '(hc-ping|SECRET|PASSWORD|BEGIN PGP)'")" = 0
 pg "drop table if exists backup_runs; drop type if exists backup_run_status" >/dev/null
+
+step "9d. fetch-r2 (máy mới giả định): lấy từ R2 giả và giải mã bằng khóa giả (PR 6e, Q370 điểm 1)"
+FETCH="$WORK/fetched"
+# Ở bước 4 bài thử sửa rồi trả lại api.env; ngoài đời timer đẩy mỗi phút sẽ lưu bản đã trả lại. Ở đây đẩy tay để bản MỚI NHẤT trên R2 giả
+# đúng bằng file hiện tại (fetch-r2 lấy bản mới nhất theo giờ ghi trên R2).
+sleep 2
+backup push >/dev/null 2>&1
+check_fail "fetch-r2 từ chối khi keyring không có khóa BÍ MẬT (chỉ có khóa công khai)" env GNUPGHOME="$WORK/gnupg-pub" bash "$SCRIPT" fetch-r2 "$WORK/fetched-khong-khoa"
+# Keyring có khóa BÍ MẬT giả ($FULL_HOME), giống lúc chủ dự án nhập tạm khóa từ Bitwarden ở máy mới. backup.env của bài thử đặt
+# GNUPGHOME vào keyring chỉ-có-khóa-công-khai (mô phỏng máy chạy thật), nên tạm đổi dòng đó rồi trả lại sau phần này.
+cp "$SECRETS/backup.env" "$SECRETS/backup.env.pub"
+sed -i "s#^GNUPGHOME=.*#GNUPGHOME=$FULL_HOME#" "$SECRETS/backup.env"
+if backup fetch-r2 "$FETCH" >"$WORK/fetch.out" 2>&1; then
+  ok "fetch-r2 lấy về và giải mã"
+else
+  bad "fetch-r2 lấy về và giải mã"
+  tail -15 "$WORK/fetch.out" | sed 's/^/     /'
+  tail -5 "$FETCH/fetch-errors.log" 2>/dev/null | sed 's/^/     /'
+fi
+check "lấy về api.env giống hệt file thật" cmp -s "$FETCH/secrets/api.env" "$SECRETS/api.env"
+check "lấy về postgres.env giống hệt file thật" cmp -s "$FETCH/secrets/postgres.env" "$SECRETS/postgres.env"
+check "file bí mật lấy về quyền 600" test "$(stat -c %a "$FETCH/secrets/api.env")" = 600
+check "có bản nền và sổ phụ .info đã giải mã" bash -c "ls '$FETCH'/base/exam-*-base.tar.gz '$FETCH'/base/exam-*-base.tar.gz.info >/dev/null 2>&1"
+START_WAL="$(sed -n 's/^start_wal=//p' "$(ls "$FETCH"/base/exam-*-base.tar.gz.info | tail -1)")"
+check "có ít nhất một đoạn WAL .gz đúng tên" bash -c "ls '$FETCH'/wal/*.gz >/dev/null 2>&1"
+check "WAL lấy về liền nhau từ điểm bắt đầu của bản nền ($START_WAL)" test -z "$(EXAM_BACKUP_DIR="$FETCH" bash -c "source '$SCRIPT'; wal_gaps '$START_WAL'")"
+check "dump lấy về và sổ phụ .counts đọc được" bash -c "ls '$FETCH'/daily/exam-*.dump '$FETCH'/daily/exam-*.dump.counts >/dev/null 2>&1"
+check "không còn file .gpg hay .dl- tạm trong thư mục lấy về" bash -c "test -z \"\$(find '$FETCH' -name '*.gpg' -o -name '.dl-*')\""
+check "pitr dựng được PostgreSQL tạm TỪ THƯ MỤC LẤY VỀ (không dùng thư mục sao lưu gốc)" env EXAM_BACKUP_DIR="$FETCH" bash "$SCRIPT" pitr latest
+check "bản khôi phục từ thư mục lấy về có dữ liệu (bảng users)" test "$("$PODMAN" exec pitr-drill sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select count(*) from users"')" -ge 1
+env EXAM_BACKUP_DIR="$FETCH" bash "$SCRIPT" pitr-stop >/dev/null 2>&1
+mv -f "$SECRETS/backup.env.pub" "$SECRETS/backup.env"
+rm -rf "$FETCH" "$WORK/fetched-khong-khoa"
 
 step "10. Timer systemd: cài, bật, chạy một dịch vụ bằng systemd, tắt"
 backup install >/dev/null 2>&1

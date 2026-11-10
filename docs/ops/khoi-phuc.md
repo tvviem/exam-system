@@ -109,6 +109,9 @@ Khi chuyển sang máy chủ chạy 24/7 thì thêm tín hiệu "còn sống" m�
 | `make -C infra prod-enable-archiving` / `prod-disable-archiving` | bật / tắt lưu liên tục WAL (dựng lại **chỉ** container PostgreSQL; từ chối nếu có Phiên thi) |
 | `bash infra/scripts/exam-backup.sh pitr "2026-11-20 10:04:00"` | PostgreSQL tạm khôi phục về một thời điểm (mục 5.3) |
 | `bash infra/scripts/exam-backup.sh restore-dump <file>` | thay cơ sở dữ liệu thật bằng một bản dump (mục 5.2) |
+| `make -C infra prod-preflight` | kiểm trước Phiên thi thật (✓ ⚠ ✗): sao lưu còn mới, 2 Quản trị viên, pod khỏe, đĩa, runner, địa chỉ công khai ([checklist-phien-thi.md](./checklist-phien-thi.md)) |
+| `bash infra/scripts/exam-backup.sh fetch-r2 <thư mục>` | máy mới: tải từ R2 bản nền, WAL, dump, khóa bí mật mới nhất và giải mã vào `<thư mục>` (cần khóa gpg bí mật nhập tạm; mục 5.6) |
+| `make -C infra dr-drill` | diễn tập khôi phục sang máy khác trong pod `dr-exam` (cần `~/dr-input/` từ Bitwarden; mục 5.6) |
 
 Thêm `EXAM_STAGE=drill` để thử trên pod `drill-exam` mà không đụng pod thật.
 
@@ -471,6 +474,10 @@ Theo đúng quy trình `trien-khai.md` ("Deploy bằng GitHub"):
 
 Ghi chú: chuông chưa kêu (đúng, vì bản đêm mới hơn 26 giờ và không có việc lỗi). Để thấy chuông thật cần một lần lỗi hoặc bản đêm quá hạn; bài integration đã chứng minh quy tắc, việc thử trên máy thật để lại khi có dịp (ví dụ khi sao lưu lỗi thật).
 
+#### 4.9.12 Diễn tập khôi phục sang máy khác (mục 5.6): CHƯA LÀM
+
+Công cụ đã viết và thử trên R2 giả (PR 6e): `exam-backup.sh fetch-r2`, `make -C infra dr-drill`. Việc còn lại là **chủ dự án cùng Trợ lý chạy thật một lần**: (1) tạo thư mục `~/dr-input` (quyền 700) và đặt vào đó `backup.env` (từ Bitwarden, mục `exam-backup backup.env (prod)`) và `khoa-bi-mat.asc` (từ Bitwarden, mục `exam-backup gpg KHOA BI MAT`); (2) trong **cửa sổ Ubuntu thật**: `export GPG_TTY=$(tty)` rồi `make -C infra dr-drill`, dán mật khẩu của khóa khi được hỏi (bộ gõ tiếng Anh, dán từ Bitwarden); (3) sau khi xong: `shred -u ~/dr-input/*; rmdir ~/dr-input` và xóa khóa khỏi keyring nếu đã nhập vào keyring chính. Kết quả (từng bước, số đo, lỗi) sẽ ghi vào đây và mục 5.6 sẽ được sửa thành "đã chứng minh".
+
 #### 4.9.9 Bài học tổng hợp
 
 Về thao tác (người vận hành):
@@ -487,6 +494,9 @@ Về thiết kế và kiểm thử (cho người sửa script):
 9. Khóa Object Read & Write của R2 **xóa được** file: "không xóa trên R2" chỉ là quy ước (xem 4.9.3 và mục 6 về giới hạn).
 10. rclone 1.60.1 trả `501` ở lần tải đầu mỗi lần rồi tự thành công: không phải sự cố (4.9.3, 4.9.6).
 11. **Số file WAL trên R2 thường nhiều hơn ổ D: và WSL, không phải lỗi** (thấy 10/11/2026: R2 có `…01`, `…02`, `…03` mà hai nơi kia không có). Bản nền duy nhất bắt đầu từ WAL số 4 (`.info`: `start_wal=…04`); WAL nằm **trước** mọi bản nền không dùng để khôi phục theo thời điểm được nữa nên script dọn ở máy xóa (quy tắc "vô dụng", Q325). R2 không có lệnh xóa nào của script (Q352), chỉ quy tắc vòng đời tự xóa sau 7 ngày. Sau mỗi bản nền mới (Chủ nhật hằng tuần) sẽ lặp lại với vài đoạn WAL cũ. So sánh ba nơi: lấy danh sách `wal/` của R2 (bỏ đuôi `.gpg`), ổ D: và WSL rồi `comm`; chỉ cần lo khi **thiếu** đoạn nằm sau điểm bắt đầu của bản nền mới nhất.
+12. **Bản sao khóa bí mật phải có tên riêng cho MỖI lần đổi** (phát hiện 10/11/2026 khi viết bài diễn tập). Tên cũ `<tên>-NGÀY-<sha8>.gpg` khiến đổi A→B→A trong cùng ngày tạo lại đúng tên bản A cũ (đã đẩy), nên không lên R2 nữa và `fetch-r2` lấy nhầm B làm bản mới nhất; lấy nhầm khóa mã hóa thì không đọc được phiếu tài khoản. Sửa: tên mới `<tên>-NGÀY-GIỜ-<sha8>.gpg`; `fetch-r2` đọc được cả hai dạng. Các bản `khoa/` cũ trên R2 vẫn dùng được (dạng tên cũ).
+13. **Bài thử không được phụ thuộc ngày trong tháng:** một bài của bộ drill so tên file với mẫu `2026110`, chỉ đúng vào ngày 1 đến 9 nên lỗi từ 10/11. Sửa bằng ngày hôm nay (`date +%Y%m%d`).
+14. **Bài thử R2 giả phải dùng đúng keyring:** `backup.env` của bài drill đặt `GNUPGHOME` vào keyring chỉ-có-khóa-công-khai (mô phỏng máy chạy thật); phần thử `fetch-r2` phải tạm đổi sang keyring có khóa bí mật giả.
 
 #### 4.9.10 Việc còn lại sau mục 4
 
@@ -580,17 +590,24 @@ rm -rf "$GNUPGHOME"; unset GNUPGHOME
 
 ### 5.6 Mất cả máy: dựng ở máy khác
 
-Đây là kịch bản mà R2 sinh ra để cứu. Tóm tắt các bước (chi tiết cài đặt máy mới: [chuyen-len-vps.md](./chuyen-len-vps.md) mục 2–6: máy, Podman, mã nguồn, tunnel, runner):
+Đây là kịch bản R2 sinh ra để cứu. Chi tiết cài máy mới (Podman, mã nguồn, tunnel, runner): [chuyen-len-vps.md](./chuyen-len-vps.md) mục 2–6. Các bước dưới đây dùng lệnh `fetch-r2` (PR 6e) để **một lệnh** tải và giải mã mọi thứ cần, thay cho việc giải mã từng file bằng tay (mỗi đoạn WAL phải giải mã riêng).
 
-1. Máy mới: cài Podman, `rclone`, `gpg`, `jq`, clone repo (theo chuyen-len-vps.md).
-2. Lấy từ Bitwarden: **khóa bí mật gpg** và bản `backup.env`.
-3. Lấy từ **R2** (hoặc **ổ D:** nếu còn, dạng thường và không cần giải mã): `khoa/` (mới nhất), `base/` (bản nền mới nhất kèm `.info`), `wal/` (mọi đoạn sau điểm bắt đầu của bản nền), `daily/` (dump mới nhất, để dự phòng), `media/`. Giải mã từng file `.gpg` (mục 4.8). Mỗi đoạn WAL phải giải mã **riêng** ra file `.gz` đúng tên.
-4. Đặt file bí mật đã giải mã vào `~/exam-prod-secrets/` (mục 5.5).
-5. Dựng pod mới theo chuyen-len-vps.md mục 7.3 (dựng pod, đừng cho người dùng vào, rồi khôi phục dữ liệu), rồi `pitr latest` với `EXAM_BACKUP_DIR` trỏ vào thư mục vừa tải để **kiểm** dữ liệu khôi phục được; nếu đạt, lấy dump từ PostgreSQL tạm và `restore-dump`. Nếu chỉ có dump hằng đêm (không có bản nền/WAL): `restore-dump` thẳng bản dump mới nhất.
-6. Khôi phục ảnh (mục 5.4), bật lại tunnel và đổi DNS (chuyen-len-vps.md mục 5 và 7.4).
-7. Cài lại timer sao lưu và bật lưu liên tục WAL ở máy mới (mục 4.5–4.6).
+> **Trạng thái:** quy trình này được viết theo thiết kế (Q370) và **chờ diễn tập thật** bằng `make -C infra dr-drill` (môi trường sạch `dr-exam` trên laptop này, chỉ dùng R2, Bitwarden và `backup.env`). Sau lần diễn tập, mục này được sửa theo đúng những gì thử thật và ghi "đã chứng minh" kèm ngày, số đo, lỗi gặp; xem nhật ký ở mục 4.9.12. Cho tới lúc đó coi kịch bản này là **chưa được chứng minh**.
 
-**Chưa diễn tập đầy đủ bằng R2 thật:** diễn tập "khôi phục ở máy khác từ R2" nằm trong PR 6e; trước đó coi kịch bản này là **chưa được chứng minh**.
+**Cần có trên tay (cất ngoài máy):** Bitwarden (mục `exam-backup gpg KHOA BI MAT`, `exam-backup gpg MAT KHAU`, `exam-backup backup.env (prod)`); nếu mất cả Bitwarden thì giấy A, B, C (mục 4.1.1) và email đăng ký Cloudflare để tạo lại khóa R2.
+
+1. **Máy mới:** cài Podman, `rclone`, `gpg`, `jq`, `curl`, `git`; clone repo (theo chuyen-len-vps.md).
+2. **`backup.env`:** tạo `~/exam-prod-secrets/` (quyền 700), dán nội dung bản `backup.env` từ Bitwarden vào `~/exam-prod-secrets/backup.env` (quyền 600). File này cho script biết địa chỉ R2 và khóa công khai.
+3. **Khóa bí mật (tạm thời):** lưu khối khóa từ Bitwarden vào một file tạm rồi `export GPG_TTY=$(tty); gpg --import khoa-bi-mat.asc` (dán mật khẩu của khóa; bộ gõ tiếng Anh). **Xóa file khóa và khóa khỏi máy sau khi xong** (bước 10).
+4. **Tải và giải mã từ R2:** `bash infra/scripts/exam-backup.sh fetch-r2 ~/khoi-phuc-r2`. Lệnh lấy `khoa/` mới nhất (đặt `api.env`, `postgres.env` đã giải mã vào `~/khoi-phuc-r2/secrets/`), bản nền mới nhất và `.info`, **mọi đoạn WAL từ điểm bắt đầu của bản nền** (kiểm dãy liền nhau, đứt thì báo và dừng), dump mới nhất và `.counts`; kiểm dump đọc được. Ổ D: còn nguyên thì dùng nó thay R2 (dạng thường, không cần giải mã).
+5. **Đặt bí mật:** `install -m 600 ~/khoi-phuc-r2/secrets/api.env ~/khoi-phuc-r2/secrets/postgres.env ~/exam-prod-secrets/` (chép từng file; mục 5.5).
+6. **Dựng pod:** `make -C infra prod-bootstrap TAG=<mã commit đang chạy trước khi mất>` (đã có hai file env nên **không sinh khóa mới**). Lệnh hỏi một Quản trị viên tạm: nhập tên và mật khẩu bất kỳ, tài khoản này **bị thay hoàn toàn** ở bước 8. Không cho người dùng vào (chưa đổi DNS hay tunnel).
+7. **Kiểm dữ liệu khôi phục được:** `EXAM_BACKUP_DIR=~/khoi-phuc-r2 bash infra/scripts/exam-backup.sh pitr latest`, rồi `podman exec pitr-prod sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > ~/khoi-phuc-pitr.dump`, rồi `bash infra/scripts/exam-backup.sh pitr-stop`. Chỉ có dump hằng đêm (không có bản nền hoặc WAL) thì dùng thẳng `~/khoi-phuc-r2/daily/exam-*.dump`.
+8. **Nạp vào pod mới:** `bash infra/scripts/exam-backup.sh restore-dump ~/khoi-phuc-pitr.dump --yes` (gõ `KHOI PHUC` nếu không có `--yes`). Kiểm: `/api/health` ok; đúng số Quản trị viên; số dòng các bảng `audit_logs`, `users`, `exams`, `attempts` không ít hơn trong `.counts` của dump.
+9. **Ảnh minh họa:** khôi phục theo mục 5.4 (nếu đã có ảnh); bật tunnel và đổi DNS (chuyen-len-vps.md mục 5 và 7.4).
+10. **Dọn và bật sao lưu ở máy mới:** `shred -u khoa-bi-mat.asc`; `gpg --delete-secret-keys <dấu vân tay>` (máy chỉ giữ khóa công khai); `rm -rf ~/khoi-phuc-r2 ~/khoi-phuc-pitr.dump` khi đã chắc hệ thống ổn; cài lại timer và bật lưu liên tục WAL (mục 4.5, 4.6); chạy `make -C infra prod-preflight`.
+
+**Thời gian:** ghi lại số thật sau lần diễn tập (mục 4.9.12). Thời gian chủ yếu là tải từ R2 và chạy `pitr`; dữ liệu càng lớn thì càng lâu.
 
 ### 5.7 Khi khôi phục hỏng
 
