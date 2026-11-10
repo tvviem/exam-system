@@ -316,6 +316,7 @@ Mục này ghi lại **đúng những gì đã làm trên máy thật**, theo th
 | 4.9.6 | Cài và bật 6 timer, đẩy lần đầu | 16:15 đến 16:20 | đạt; 1 lỗi script sửa |
 | 4.9.7 | Dump, bản nền, thử khôi phục lần đầu | 16:22 | đạt, **27 giây** (CSDL gần trống) |
 | 4.9.8 | Giải mã thử bản `khoa/` trên R2 | khoảng 16:30 | dấu băm khớp |
+| 4.9.12 | Diễn tập khôi phục sang máy khác từ R2 (10/11, 14:3x) | sau 6e merge | **đạt**: 21 đạt, 0 lỗi, 144 giây |
 | 4.9.11 | Đưa PR 6d lên `prod-exam` (10/11, 04:40 đến 04:55) | sau 6d merge | đạt: `87d86f7`, conmon sống, `backup_runs` có 6 dòng, màn hình Sao lưu đúng |
 
 #### 4.9.1 Cặp khóa gpg (mục 4.1)
@@ -474,9 +475,54 @@ Theo đúng quy trình `trien-khai.md` ("Deploy bằng GitHub"):
 
 Ghi chú: chuông chưa kêu (đúng, vì bản đêm mới hơn 26 giờ và không có việc lỗi). Để thấy chuông thật cần một lần lỗi hoặc bản đêm quá hạn; bài integration đã chứng minh quy tắc, việc thử trên máy thật để lại khi có dịp (ví dụ khi sao lưu lỗi thật).
 
-#### 4.9.12 Diễn tập khôi phục sang máy khác (mục 5.6): CHƯA LÀM
+#### 4.9.12 Diễn tập khôi phục sang máy khác (mục 5.6): ĐẠT, 10/11/2026
 
-Công cụ đã viết và thử trên R2 giả (PR 6e): `exam-backup.sh fetch-r2`, `make -C infra dr-drill`. Việc còn lại là **chủ dự án cùng Trợ lý chạy thật một lần**: (1) tạo thư mục `~/dr-input` (quyền 700) và đặt vào đó `backup.env` (từ Bitwarden, mục `exam-backup backup.env (prod)`) và `khoa-bi-mat.asc` (từ Bitwarden, mục `exam-backup gpg KHOA BI MAT`); (2) trong **cửa sổ Ubuntu thật**: `export GPG_TTY=$(tty)` rồi `make -C infra dr-drill`, dán mật khẩu của khóa khi được hỏi (bộ gõ tiếng Anh, dán từ Bitwarden); (3) sau khi xong: `shred -u ~/dr-input/*; rmdir ~/dr-input` và xóa khóa khỏi keyring nếu đã nhập vào keyring chính. Kết quả (từng bước, số đo, lỗi) sẽ ghi vào đây và mục 5.6 sẽ được sửa thành "đã chứng minh".
+**Cách làm:** `make -C infra dr-drill` (PR 6e, Q367 phương án A) trong "sân chơi" tạm trên chính laptop này, giả vờ máy đã mất: chỉ dùng thứ cất ngoài máy. Đầu vào do chủ dự án lấy từ Bitwarden đặt vào `~/dr-input/` (`backup.env` 16 dòng, `khoa-bi-mat.asc` 17 dòng), dán mật khẩu khóa gpg một lần; ảnh dùng bản đang chạy thật `87d86f7` (`TAG=87d86f774a1e5d6ae32c37177427a423f0fdb240 make -C infra dr-drill`). Bài **không đọc** file nào của `prod` (keyring gpg, thư mục trạng thái, bí mật, thư mục sao lưu đều ở thư mục tạm) và **không đụng** `prod-exam`.
+
+**Kết quả: 21 đạt, 0 lỗi, tổng 144 giây** (không tính lúc nhập mật khẩu và đọc kết quả):
+
+| Bước | Việc | Kết quả | Thời gian |
+|---|---|---|---|
+| 1 | Nhập khóa bí mật vào keyring tạm | đạt | (nhập mật khẩu tay) |
+| 2 | `fetch-r2`: tải và giải mã từ R2 thật | khóa bí mật (`api.env`, `postgres.env`), bản nền `exam-20261109-162232-base.tar.gz`, **22 đoạn WAL liền nhau**, dump `exam-20261110-020003-nightly.dump` | 57 giây |
+| 3 | Dựng pod `dr-exam` bằng bí mật lấy về (không sinh khóa mới) | api trong pod mới trả ok | 28 giây |
+| 4 | `pitr latest` từ bản nền và WAL lấy về, lấy dump từ PostgreSQL tạm | có dump, có 2 Quản trị viên | 11 giây |
+| 5 | `restore-dump` vào pod mới | api trả ok sau khôi phục | 16 giây |
+| 6 | Đối chiếu | 2 Quản trị viên; Quản trị viên tạm của bootstrap **không còn** (dữ liệu được thay hoàn toàn); `audit_logs` 13 dòng (sổ phụ của dump: không ít hơn 9); `users` 2 dòng (không ít hơn 1); `exams`, `questions`, `attempts`, `responses` 0 dòng (đúng 0 trong sổ phụ); worker và web của pod mới chạy | 7 giây |
+| Dọn | xóa pod, volume, thư mục tạm, khóa bí mật tạm | đạt; sau đó Trợ lý kiểm: không còn pod `dr-exam`, volume `dr_*`, container `pitr-dr`, thư mục `/tmp/tmp.*`, không có khóa bí mật trong keyring chính, `prod-exam` vẫn chạy | |
+
+Sau bài, `~/dr-input/` được `shred` và xóa; clipboard Windows còn 1.947 ký tự nên được xóa trắng (nhớ xóa clipboard sau mỗi lần dán bí mật).
+
+**Đọc kết quả đúng cách:**
+- **144 giây là cận dưới.** CSDL thật hiện gần như trống (0 đề thi, 0 Lượt làm bài); thời gian thật tăng theo dữ liệu và lượng WAL phải phát lại. Đo lại khi có dữ liệu thật.
+- **Đã chứng minh:** từ **R2 + Bitwarden + `backup.env`** lấy về và giải mã đúng bản mới nhất, dựng lại pod trống, khôi phục theo thời điểm (bản nền + WAL), nạp vào pod mới và hệ thống chạy; dữ liệu khớp sổ phụ. Lần diễn tập này **không phát hiện lỗi nào** của `fetch-r2` hay `dr-drill` trên R2 thật.
+- **Chưa chứng minh (làm khi chuyển máy thật):** khôi phục **ảnh minh họa** (R2 chưa có ảnh nào, mục 5.4); đổi **DNS và tunnel** sang máy mới (chuyen-len-vps.md mục 5 và 7.4); cài Podman và công cụ trên một **máy trống thật** (diễn tập này chạy trên laptop đã có sẵn công cụ); băng thông tải thật khi dữ liệu lớn; mất cả Bitwarden (chỉ còn giấy A, B, C).
+
+**Diễn tập này khác gì "deploy hệ thống sang máy khác"?** Chỉ **một phần** của việc chuyển máy.
+
+Hai kịch bản dễ lẫn nhau:
+
+| | Chuyển sang máy khác (có kế hoạch) | Khôi phục khi mất máy (thảm họa) |
+|---|---|---|
+| Máy cũ | còn sống | đã mất hoặc hỏng |
+| Nguồn dữ liệu | chụp một bản dump **mới** ngay trên máy cũ | chỉ có **bản sao lưu** (R2, ổ D:) |
+| Dữ liệu có thể mất | gần như không | đến lần đẩy cuối (khoảng 1 phút) |
+| Hướng dẫn | [chuyen-len-vps.md](./chuyen-len-vps.md) | mục 5.6 (bài `dr-drill` thử đúng kịch bản này) |
+
+Phần "nạp dữ liệu vào pod mới" của hai kịch bản dùng chung. Chuyển máy thật còn thêm những việc `dr-drill` **chưa làm**:
+
+| Việc khi chuyển máy thật | Vì sao `dr-drill` chưa kiểm |
+|---|---|
+| Cài hệ điều hành, Podman, `rclone`, `gpg`, `jq`, `git` trên **máy trống** | bài chạy trên laptop đã có sẵn mọi công cụ |
+| Clone mã nguồn, đăng nhập GHCR để tải ảnh | ảnh đã nằm sẵn trong máy |
+| **Cloudflare tunnel và đổi DNS** sang máy mới | bài chỉ chạy ở `127.0.0.1:8195`, không ra Internet |
+| Cài lại **runner GitHub** để deploy tiếp | không thuộc bài |
+| Cài lại dịch vụ systemd, **timer sao lưu**, bật lưu liên tục WAL ở máy mới | bài dọn sạch sau khi chạy xong |
+| Khôi phục **ảnh minh họa** | R2 chưa có ảnh nào |
+| Đăng nhập thật qua địa chỉ công khai, thử Socket.IO qua tunnel | chỉ kiểm `/api/health` trong máy |
+| Cắm sạc, tắt ngủ, cấu hình nguồn của máy mới | việc của người vận hành |
+
+Cách nhớ: `dr-drill` trả lời câu hỏi "**bản sao lưu có đủ để dựng lại không**" (đáp án: có, 144 giây). Chuyển máy thật trả lời thêm "**máy mới đã sẵn sàng đón hệ thống chưa**".
 
 #### 4.9.9 Bài học tổng hợp
 
@@ -592,7 +638,7 @@ rm -rf "$GNUPGHOME"; unset GNUPGHOME
 
 Đây là kịch bản R2 sinh ra để cứu. Chi tiết cài máy mới (Podman, mã nguồn, tunnel, runner): [chuyen-len-vps.md](./chuyen-len-vps.md) mục 2–6. Các bước dưới đây dùng lệnh `fetch-r2` (PR 6e) để **một lệnh** tải và giải mã mọi thứ cần, thay cho việc giải mã từng file bằng tay (mỗi đoạn WAL phải giải mã riêng).
 
-> **Trạng thái:** quy trình này được viết theo thiết kế (Q370) và **chờ diễn tập thật** bằng `make -C infra dr-drill` (môi trường sạch `dr-exam` trên laptop này, chỉ dùng R2, Bitwarden và `backup.env`). Sau lần diễn tập, mục này được sửa theo đúng những gì thử thật và ghi "đã chứng minh" kèm ngày, số đo, lỗi gặp; xem nhật ký ở mục 4.9.12. Cho tới lúc đó coi kịch bản này là **chưa được chứng minh**.
+> **Trạng thái: ĐÃ CHỨNG MINH ngày 10/11/2026** bằng `make -C infra dr-drill` (môi trường sạch `dr-exam`, chỉ dùng R2 thật, Bitwarden và `backup.env`): 21 đạt, 0 lỗi, dựng lại trong 144 giây với dữ liệu hiện có (cận dưới). Nhật ký ở mục 4.9.12, kèm những gì **chưa** chứng minh (ảnh minh họa, DNS và tunnel, máy trống thật). Nên diễn tập lại khi dữ liệu đã lớn và sau mỗi thay đổi lớn của script, ít nhất mỗi quý.
 
 **Cần có trên tay (cất ngoài máy):** Bitwarden (mục `exam-backup gpg KHOA BI MAT`, `exam-backup gpg MAT KHAU`, `exam-backup backup.env (prod)`); nếu mất cả Bitwarden thì giấy A, B, C (mục 4.1.1) và email đăng ký Cloudflare để tạo lại khóa R2.
 
@@ -607,7 +653,7 @@ rm -rf "$GNUPGHOME"; unset GNUPGHOME
 9. **Ảnh minh họa:** khôi phục theo mục 5.4 (nếu đã có ảnh); bật tunnel và đổi DNS (chuyen-len-vps.md mục 5 và 7.4).
 10. **Dọn và bật sao lưu ở máy mới:** `shred -u khoa-bi-mat.asc`; `gpg --delete-secret-keys <dấu vân tay>` (máy chỉ giữ khóa công khai); `rm -rf ~/khoi-phuc-r2 ~/khoi-phuc-pitr.dump` khi đã chắc hệ thống ổn; cài lại timer và bật lưu liên tục WAL (mục 4.5, 4.6); chạy `make -C infra prod-preflight`.
 
-**Thời gian:** ghi lại số thật sau lần diễn tập (mục 4.9.12). Thời gian chủ yếu là tải từ R2 và chạy `pitr`; dữ liệu càng lớn thì càng lâu.
+**Thời gian đã đo (10/11/2026, dữ liệu nhỏ):** tải và giải mã từ R2 57 giây, dựng pod 28 giây, `pitr` 11 giây, `restore-dump` 16 giây, đối chiếu 7 giây, tổng 144 giây (mục 4.9.12). Dữ liệu càng lớn thì tải và `pitr` càng lâu; đo lại khi có dữ liệu thật.
 
 ### 5.7 Khi khôi phục hỏng
 
@@ -653,6 +699,27 @@ Dựng khóa gpg giả, "R2" là một thư mục (rclone kiểu local), healthc
 - **WAL viết tắt của gì, nghĩa là gì (ghi chú thuật ngữ).** **WAL = Write-Ahead Log**, tiếng Việt: **nhật ký ghi trước**. "Write-Ahead" nghĩa là "ghi *trước*": trước khi PostgreSQL sửa dữ liệu thật trong các file bảng, nó **ghi một dòng mô tả thay đổi vào nhật ký trước**; nhật ký chắc chắn nằm trên đĩa rồi mới sửa dữ liệu. Nhờ vậy mất điện giữa chừng thì lúc bật lại PostgreSQL đọc nhật ký và làm nốt hoặc hoàn tác, dữ liệu không bị hỏng nửa vời. Ví dụ đời thường: kế toán ghi vào **sổ nhật ký** "chuyển 100 nghìn từ A sang B" rồi mới sửa số dư trong **sổ cái**. Hỏng sổ cái thì đọc lại sổ nhật ký dựng lại được. PostgreSQL ghi nhật ký thành từng **đoạn 16 MB** (segment); tên đoạn là 24 ký tự hex, ví dụ `000000010000000000000004` = 8 ký tự nhánh thời gian (`00000001`) + 8 ký tự số nhật ký + 8 ký tự số đoạn; số tăng dần nên kiểm "dãy liền nhau" là so số thứ tự.
 
   **Vì sao WAL dùng được để sao lưu:** vì nhật ký ghi *mọi thay đổi theo thứ tự*, nên **bản nền** (ảnh cả thư mục dữ liệu lúc nào đó) **cộng** các đoạn WAL sinh ra sau đó có thể **phát lại** đến một thời điểm bất kỳ (PITR, Point-In-Time Recovery, khôi phục theo thời điểm). Ví dụ: bản nền Chủ nhật 03:00 cộng WAL đến Thứ ba 14:05 cho phép về đúng 14:04 của Thứ ba, trước khi ai đó xóa nhầm lúc 14:05. Còn bản dump (`pg_dump`) chỉ về được đúng lúc chụp. `archive_command` là lệnh PostgreSQL gọi để **cất từng đoạn WAL đã đầy** sang chỗ an toàn; `archive_timeout=60` ép đóng đoạn mỗi 60 giây khi có ghi mới, nên mất tối đa khoảng 1 phút dữ liệu (Q323). Đoạn WAL nằm **trước** mọi bản nền thì vô dụng (không có điểm xuất phát để phát lại), nên bị dọn (xem bài học 11 ở 4.9.9).
+
+- **Diễn tập khôi phục sang máy khác: từng bước và vì sao (ghi chú học tập).** Mục đích: chứng minh "có sao lưu" thật sự là "dựng lại được", **trước** khi cần đến nó. Mã: `infra/scripts/dr-drill.sh` (chạy bằng `make -C infra dr-drill`), dùng lệnh `fetch-r2` của `exam-backup.sh` và stage `dr` của `exam-ctl.sh`. Nguyên tắc thiết kế: **sân chơi tách biệt**, giả vờ máy đã mất.
+
+  **Sân chơi tách biệt nghĩa là gì.** Bài đặt bốn biến môi trường trỏ vào một thư mục tạm duy nhất (`mktemp -d`): `GNUPGHOME` (keyring gpg riêng, chỉ chứa khóa bí mật nhập tạm), `XDG_STATE_HOME` (thư mục trạng thái và sổ), `EXAM_BACKUP_DIR` (nơi tải bản sao lưu về), `EXAM_DR_SECRETS_DIR` (bí mật của ứng dụng). Nhờ vậy script **không thể** đọc nhầm `~/exam-prod-secrets` hay `~/exam-prod-backups`: nếu nó vô tình dùng đồ của máy thật thì bài diễn tập trở nên vô nghĩa (thử bằng chính thứ đang có sẵn chứ không phải thứ lấy từ R2). Pod thử tên `dr-exam` (web 8195, PostgreSQL 5438), khác `prod-exam` (8180, 5436) nên chạy song song được.
+
+  **Đầu vào duy nhất** là hai file chủ dự án lấy từ Bitwarden đặt vào `~/dr-input/`: `backup.env` (cho script biết địa chỉ R2 và khóa công khai) và `khoa-bi-mat.asc` (khóa giải mã). Chúng giống hệt thứ bạn có trên tay nếu laptop mất: Bitwarden còn, máy thì không. Sau bài, hai file bị `shred` rồi xóa.
+
+  **Sáu bước của bài, và vì sao từng bước:**
+
+  1. **Nhập khóa bí mật vào keyring tạm** (`gpg --import khoa-bi-mat.asc`, dán mật khẩu khóa). Khóa nằm trong **keyring riêng của sân chơi**, không phải keyring thường dùng, nên khi dọn chỉ cần xóa thư mục tạm là khóa biến mất khỏi máy. Mật khẩu hỏi qua `pinentry` nên cần cửa sổ Ubuntu thật và `GPG_TTY`.
+  2. **`fetch-r2`: tải và giải mã.** Lệnh tự chọn đúng thứ cần cho một lần khôi phục, không phải tải cả R2: (a) **khóa bí mật của ứng dụng** (`khoa/`): lấy bản **mới nhất theo giờ ghi trên R2** của từng tên (`api.env`, `postgres.env`); (b) **bản nền mới nhất** cùng sổ phụ `.info`, đọc `start_wal` (đoạn WAL đầu tiên cần để phát lại từ bản nền); (c) **mọi đoạn WAL từ `start_wal` trở đi** (đoạn nằm trước đó vô dụng, không tải), rồi kiểm dãy số **liền nhau**: đứt chỗ nào thì dừng và báo, vì phát lại WAL không nhảy cóc được; (d) **dump mới nhất** và sổ phụ `.counts`, kiểm `pg_restore --list` đọc được. Mọi file trên R2 có đuôi `.gpg` (mã hóa bằng khóa công khai) nên **mỗi file giải mã riêng** ra đúng tên gốc. Kết quả nằm trong thư mục cùng cấu trúc thư mục sao lưu thật (`base/`, `wal/`, `daily/`, cộng `secrets/`) để các lệnh `pitr` và `restore-dump` dùng được ngay.
+  3. **Dựng pod `dr-exam` bằng bí mật lấy về** (`exam-ctl.sh bootstrap`). Điểm mấu chốt: bí mật (`api.env`, `postgres.env`) đã có sẵn nên `bootstrap` **giữ nguyên, không sinh khóa mới** (xem `create_secrets`). Lý do sống còn: `SLIP_ENCRYPTION_KEY` mã hóa Phiếu tài khoản; sinh khóa mới thì mọi phiếu cũ không giải mã được. `bootstrap` bắt buộc tạo một Quản trị viên: bài dùng một tài khoản tạm với mật khẩu ngẫu nhiên, vì dữ liệu thật sẽ **thay thế hoàn toàn** ở bước 5.
+  4. **`pitr latest`: kiểm bản nền cộng WAL.** Dựng một PostgreSQL **tạm** từ bản nền (giải nén vào volume, đặt `recovery.signal`, đặt `restore_command` để PostgreSQL tự lấy từng đoạn WAL từ thư mục đã tải), cho nó phát lại đến đoạn WAL cuối rồi mở lên. Đây là bằng chứng bản nền và chuỗi WAL **dùng được thật**, không chỉ "có file". Sau đó lấy `pg_dump` từ chính PostgreSQL tạm này: dump đó là **dữ liệu mới nhất có thể** (mới hơn dump hằng đêm, vì có thêm mọi thay đổi ghi trong WAL).
+  5. **`restore-dump`: nạp vào pod mới.** Lệnh chạy qua các lưới an toàn: kiểm dump hợp lệ, chốt chặn Phiên thi, tự `pg_dump` bản "trước khi khôi phục", dừng api và worker, `DROP DATABASE ... WITH (FORCE)` rồi `CREATE` và `pg_restore`, bật lại, ghi `audit_logs` (`ops.restore`). Vì thay cả cơ sở dữ liệu nên Quản trị viên tạm của bước 3 biến mất, thay bằng tài khoản thật.
+  6. **Đối chiếu.** Kiểm: `/api/health` ok sau khôi phục; có ít nhất một Quản trị viên hoạt động; tài khoản tạm không còn (chứng minh dữ liệu được thay hoàn toàn); với các bảng chỉ tăng (`audit_logs`, `users`, `exams`, `questions`, `attempts`, `responses`) số dòng sau khôi phục **không ít hơn** số nhỏ nhất ghi trong sổ phụ `.counts` của dump (dữ liệu mới hơn dump nên không được ít hơn; nếu ít hơn là mất dữ liệu); worker và web của pod mới chạy.
+
+  **Dọn sạch** (tự động ở cuối bài, kể cả khi lỗi giữa chừng nhờ `trap EXIT`): `pitr-stop`, xóa pod và volume, tắt `gpg-agent`, `shred` các file trong thư mục bí mật và keyring, rồi xóa thư mục tạm. Đây là phần quan trọng không kém phần dựng: bài có chứa khóa bí mật, để sót là rò khóa.
+
+  **Vì sao con số 144 giây chưa phải con số cuối.** Dữ liệu hiện gần như trống. Thời gian thật phụ thuộc: tải từ R2 (theo dung lượng và băng thông), giải mã từng đoạn WAL (theo số đoạn), phát lại WAL ở bước 4 (theo lượng thay đổi từ bản nền), `pg_restore` ở bước 5 (theo cỡ dữ liệu). Mỗi Phiên thi lớn làm cả bốn thứ này tăng. Vì vậy mục 5.6 dặn diễn tập lại khi dữ liệu đã lớn.
+
+  **Điều rút ra cho người vận hành.** Một bản sao lưu chưa từng được khôi phục thử thì chưa phải là bản sao lưu, chỉ là một nhóm file nghi là bản sao lưu. Ba lớp kiểm chứng của dự án bổ sung nhau: **thử khôi phục hằng tháng** (tự động, trong pod tạm, kiểm dump và WAL của chính máy này), **giải mã bằng tay mỗi quý** (mục 4.8, kiểm khóa bí mật của bạn còn mở được bản trên R2) và **diễn tập `dr-drill`** (toàn bộ đường từ R2 và Bitwarden đến một hệ thống chạy được, kiểm cả những thứ chỉ máy mới mới thiếu).
 
 - **Healthchecks.io: người gác từ bên ngoài (giải thích chi tiết).** Mọi cảnh báo nằm *bên trong* hệ thống có chung một điểm mù: hệ thống chết thì cảnh báo chết theo. Healthchecks.io nằm ngoài máy, trên Internet, nên không chịu cùng số phận với laptop. Nó chỉ biết một điều: **lần cuối nghe tín hiệu từ ta là lúc nào**, như một đồng hồ đếm ngược. Hai việc nó làm: (1) nhận `/fail` thì gửi email lỗi ngay; (2) quá hạn mà **không nghe gì** thì gửi email "im lặng".
 
