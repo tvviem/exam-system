@@ -5,7 +5,7 @@ Hệ thống cho phép Người ra đề xây dựng Bộ đề từ ngân hàng
 ## Người dùng
 
 **Người dùng** (`User`):
-Một tài khoản đăng nhập bằng email hoặc tên đăng nhập kèm mật khẩu, do Quản trị viên tạo.
+Một tài khoản đăng nhập bằng email hoặc tên đăng nhập kèm mật khẩu, được tạo bởi Quản trị viên, qua Lời mời hoặc qua Yêu cầu cấp tài khoản.
 _Avoid_: tài khoản sinh viên, thành viên
 
 **Quản trị viên** (`Admin`):
@@ -25,8 +25,24 @@ Người dùng mang Nhãn vai trò Người dự thi; chỉ những người nà
 _Avoid_: sinh viên, học viên, thí sinh, Student, Examinee
 
 **Lời mời** (`Invitation`):
-Đề nghị Quản trị viên gửi tới một người để họ trở thành Người ra đề.
+Đề nghị Quản trị viên gửi tới một người để họ trở thành Người ra đề. Lời mời chưa phải tài khoản; chỉ khi người nhận chấp nhận mới có Người dùng.
 _Avoid_: đăng ký, sign-up
+
+**Chờ kích hoạt** (`PendingActivation`):
+Trạng thái của một Người dùng đã có tài khoản nhưng chưa đặt mật khẩu nên chưa đăng nhập được; khác với Lời mời, người này đã là Người dùng.
+_Avoid_: chưa duyệt, tài khoản treo
+
+**Liên kết một lần** (`AuthLink`):
+Liên kết gửi cho một Người dùng để làm đúng một việc nhạy cảm (kích hoạt tài khoản, đặt lại mật khẩu, xác thực email), dùng được một lần và có hạn.
+_Avoid_: mã, token, link kích hoạt
+
+**Liên kết hỗ trợ** (`SupportLink`):
+Liên kết một lần do người có quyền tạo hộ khi thư không đến được; người nhận tự đặt mật khẩu nên không ai biết mật khẩu của người khác.
+_Avoid_: liên kết thủ công, mật khẩu tạm
+
+**Email đã xác thực** (`verified email`):
+Email của Người dùng đã được chính chủ hộp thư xác nhận bằng cách mở Liên kết một lần gửi tới đó.
+_Avoid_: email hợp lệ, email chính thức
 
 **Yêu cầu cấp tài khoản** (`AccountRequest`):
 Danh sách người do Người ra đề tập hợp và gửi Quản trị viên để cấp tài khoản Người dự thi.
