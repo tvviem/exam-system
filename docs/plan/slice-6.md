@@ -1119,6 +1119,8 @@ Toàn bộ nhật ký (lệnh, số đo, lỗi) ở [khoi-phuc.md mục 4.9](../
 
 **Cách bật thật sau khi merge:** deploy bản mới bằng workflow (chạy migration 0022), rồi `make -C infra prod-backup-install` để timer dùng script mới; lần chạy `release-check` đầu tiên (trong 5 phút) chèn bù toàn bộ lịch sử từ sổ gốc. Kiểm: mở "Sao lưu dữ liệu" thấy bản đêm và bản nền đã có từ 9/11/2026.
 
+**Đã bật thật ngày 10/11/2026** (PR #82 merge, `main` = `87d86f7`; workflow deploy xanh; migration `0022` chạy; chèn bù 6 dòng; màn hình "Sao lưu dữ liệu" đúng, chủ dự án xác nhận). Từng bước ở [khoi-phuc.md mục 4.9.11](../ops/khoi-phuc.md). Chuông chưa được thử trên máy thật (chưa có lỗi hay bản đêm quá hạn), quy tắc đã được bài integration chứng minh.
+
 ## Câu hỏi còn mở
 
 - PR 6b (#79) và 6b.1 (#80) đã merge; workflow deploy đã chạy thật qua runner (deploy, lùi bản, deploy lại) và đạt. Hệ thống đang chạy thật ở `exam.plotrackerbluni.site`, bản `75e57eb`.
