@@ -1174,6 +1174,8 @@ Toàn bộ nhật ký (lệnh, số đo, lỗi) ở [khoi-phuc.md mục 4.9](../
 
 **Phương án đã bỏ:** B (như A kèm bài 500 người ngay trong PR: đẩy CPU hết cỡ trên máy đang chạy hệ thống thật, để chủ dự án quyết lúc rảnh); C (bỏ qua: hai bản api trong pod thật vẫn chưa kiểm).
 
+**Kết quả bài 500 người, hai api (10/11/2026, chủ dự án báo máy rảnh, Trợ lý chạy hai lần):** 0 lỗi, CPU trung bình 66 đến 69 %, RAM đỉnh 1,2 GB, nối lại 500 kết nối trong 1,1 giây, chấm và Đính chính đúng và nhanh như số gốc; phần đuôi p99 dao động giữa hai lần và có lúc vượt ngưỡng nội bộ ở hai khoảnh khắc cực đoan chủ ý (nối lại đồng loạt, 500 người mở Kết quả cùng lúc). Cách đo, điều kiện máy, bảng số và cách đọc ở [hieu-nang.md](../hieu-nang.md) mục "Đo lại 10/11/2026 trên máy chạy thật".
+
 ### Q369: checklist "đưa lên chạy thật" dạng gì (ĐÃ DUYỆT 10/11/2026: phương án B)
 
 **Bối cảnh.** Mọi công cụ đã có (6a đến 6d); còn thiếu **danh sách việc cố định** trước, trong và sau mỗi Phiên thi thật để không phải nhớ từ đầu. Nhiều mục máy kiểm được; có mục chỉ người làm được.
