@@ -206,7 +206,7 @@ Tóm tắt ghi ở `~/.local/state/exam-prod/last-deploy-summary.md`, log lỗi 
 
 ## 5. Quên mật khẩu Quản trị viên
 
-Hệ thống không có email nên không có "quên mật khẩu" tự phục vụ; người có quyền vào máy khôi phục:
+Hệ thống không có email nên không có "quên mật khẩu" tự phục vụ. **Người ra đề và Người dự thi quên mật khẩu:** Quản trị viên dùng "Cấp lại mật khẩu tạm" trong giao diện; cách làm từng bước, quy trình xác minh danh tính và giới hạn của cách này: [tai-khoan-va-mat-khau.md](./tai-khoan-va-mat-khau.md). **Quản trị viên quên mật khẩu** (hoặc không còn ai đăng nhập được): người có quyền vào máy khôi phục:
 
 ```bash
 make -C infra prod-recover-admin ADMIN=quantri

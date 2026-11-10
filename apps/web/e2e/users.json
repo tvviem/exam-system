@@ -1452,5 +1452,51 @@
     "password": "mat-khau-on-dinh",
     "isAdmin": true,
     "mustChangePassword": false
+  },
+  {
+    "username": "e2e-quen-mk-qt-desktop",
+    "fullName": "Quản trị Quên MK desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-quen-mk-gv-desktop",
+    "fullName": "Giảng viên Quên MK desktop",
+    "password": "mat-khau-da-doi-lau",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-quen-mk-nt-desktop",
+    "fullName": "Sinh viên Quên MK desktop",
+    "password": "mat-khau-da-doi-lau",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"]
+  },
+  {
+    "username": "e2e-quen-mk-qt-mobile",
+    "fullName": "Quản trị Quên MK mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-quen-mk-gv-mobile",
+    "fullName": "Giảng viên Quên MK mobile",
+    "password": "mat-khau-da-doi-lau",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-quen-mk-nt-mobile",
+    "fullName": "Sinh viên Quên MK mobile",
+    "password": "mat-khau-da-doi-lau",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"]
   }
 ]
