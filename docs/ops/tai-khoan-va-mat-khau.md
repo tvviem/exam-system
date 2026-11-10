@@ -2,6 +2,8 @@
 
 Tài liệu cho người vận hành (chủ dự án, Quản trị viên), để **tra cứu và học lâu dài**. Mô tả **đúng những gì hệ thống đang làm** (đã kiểm bằng mã và bài kiểm thử, 10/11/2026), kể cả điểm yếu đã biết. Thiết kế gốc: [docs/plan/slice-1.md](../plan/slice-1.md) (Q44 đến Q70). Kế hoạch cải tiến cách cấp lại mật khẩu: [docs/plan/slice-7.md](../plan/slice-7.md).
 
+> **Sắp đổi (11/11/2026):** chủ dự án đã mở lại phương án B (email chính chủ, kích hoạt và quên mật khẩu qua email, bỏ mật khẩu tạm). Tài liệu này vẫn **đúng với hệ thống đang chạy** cho tới khi các PR 7b đến 7d xong; thiết kế ở [slice-7-phuong-an-b-email.md](../plan/slice-7-phuong-an-b-email.md), quyết định ở [ADR-0009](../adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md).
+
 > **Tóm tắt một dòng:** hệ thống **không gửi email**, nên "quên mật khẩu" luôn do **Quản trị viên** (hoặc người vận hành có quyền vào máy) **cấp lại mật khẩu tạm**; người đó đăng nhập bằng mật khẩu tạm rồi **tự đặt mật khẩu mới**.
 
 ## 1. Ba loại tài khoản và cách mỗi loại được tạo

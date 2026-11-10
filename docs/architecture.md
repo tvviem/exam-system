@@ -143,6 +143,7 @@ Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pu
   - Phiên hết hạn sau 12 giờ không hoạt động, tối đa 7 ngày; với Quản trị viên là 30 phút và 12 giờ. Được đăng nhập nhiều thiết bị cùng lúc.
   - Chống CSRF: ngoài `SameSite=Lax`, mọi request đổi dữ liệu phải có header `Origin` đúng.
   - Giai đoạn 1 không gửi email: Lời mời là link do Quản trị viên tự gửi, mật khẩu tạm giao qua Phiếu tài khoản.
+  - **Đang đề xuất (chưa áp dụng): [ADR-0009](./adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md).** Email chính chủ làm gốc danh tính; kích hoạt và quên mật khẩu qua email; bỏ Phiếu tài khoản và mật khẩu tạm (trừ `prod-bootstrap`, `prod-recover-admin`). Các dòng "không gửi email" và "buộc đổi mật khẩu ở lần đăng nhập đầu" ở trên sẽ đổi khi PR 7c, 7d xong.
 - **Phân quyền:**
   - Kiểm tra vai trò bằng guard.
   - Kiểm tra quyền sở hữu ở tầng service: Người ra đề chỉ thấy Chủ đề, Bộ đề và Phiên thi của mình.
@@ -299,5 +300,5 @@ Số đo sau giờ thi (8/11/2026, PR 5e, `pnpm -C apps/api load:exam`, 100 ngư
 - Tải ảnh hoặc file trong Câu tự luận.
 - Giao diện tiếng Anh.
 - Chuyển hạ tầng sang VPS.
-- Gửi email (Lời mời, link đặt mật khẩu, tự đặt lại mật khẩu khi quên) qua interface `MailSender`; chọn nhà cung cấp bằng ADR.
+- Gửi email (Lời mời, link đặt mật khẩu, tự đặt lại mật khẩu khi quên) qua interface `MailSender`; chọn nhà cung cấp bằng ADR. **Đã mở lại 11/11/2026, đang thiết kế (lát cắt 7): [ADR-0009](./adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md), `accepted` (11/11/2026).**
 - Xác thực hai lớp (TOTP) cho Quản trị viên.
