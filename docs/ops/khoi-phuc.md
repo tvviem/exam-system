@@ -720,7 +720,7 @@ rm -rf "$GNUPGHOME"; unset GNUPGHOME
 
 Đây là kịch bản R2 sinh ra để cứu. Chi tiết cài máy mới (Podman, mã nguồn, tunnel, runner): [chuyen-len-vps.md](./chuyen-len-vps.md) mục 2–6. Các bước dưới đây dùng lệnh `fetch-r2` (PR 6e) để **một lệnh** tải và giải mã mọi thứ cần, thay cho việc giải mã từng file bằng tay (mỗi đoạn WAL phải giải mã riêng).
 
-> **Trạng thái: ĐÃ CHỨNG MINH ngày 10/11/2026** bằng `make -C infra dr-drill` (môi trường sạch `dr-exam`, chỉ dùng R2 thật, Bitwarden và `backup.env`): 21 đạt, 0 lỗi, dựng lại trong 144 giây với dữ liệu hiện có (cận dưới). Nhật ký ở mục 4.9.12, kèm những gì **chưa** chứng minh (ảnh minh họa, DNS và tunnel, máy trống thật). Nên diễn tập lại khi dữ liệu đã lớn và sau mỗi thay đổi lớn của script, ít nhất mỗi quý.
+> **Trạng thái: ĐÃ CHỨNG MINH ngày 10/11/2026** bằng `make -C infra dr-drill` (môi trường sạch `dr-exam`, chỉ dùng R2 thật, Bitwarden và `backup.env`): 21 đạt, 0 lỗi, dựng lại trong 144 giây với dữ liệu hiện có (cận dưới). Nhật ký ở mục 4.9.12, kèm những gì **chưa** chứng minh (ảnh minh họa, DNS và tunnel, máy trống thật). Nên diễn tập lại khi dữ liệu đã lớn và sau mỗi thay đổi lớn của script, ít nhất mỗi quý. **Máy mới khác kiến trúc CPU hoặc khác ảnh PostgreSQL** (ví dụ VPS ARM): bản nền và WAL của WSL không dùng được, chỉ dùng được dump; điều kiện đầy đủ ở [chuyen-len-vps.md](./chuyen-len-vps.md) mục 7.0.
 
 **Cần có trên tay (cất ngoài máy):** Bitwarden (mục `exam-backup gpg KHOA BI MAT`, `exam-backup gpg MAT KHAU`, `exam-backup backup.env (prod)`); nếu mất cả Bitwarden thì giấy A, B, C (mục 4.1.1) và email đăng ký Cloudflare để tạo lại khóa R2.
 

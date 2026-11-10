@@ -190,6 +190,34 @@ Tham chiếu: tài liệu GitHub "Adding self-hosted runners" và "Configuring t
 
 **Làm lúc không có Phiên thi** (`make -C infra prod-active-sessions` ở WSL phải báo không có), nên chọn đêm hoặc cuối tuần. Dự trù khoảng 1 đến 2 giờ cho lần đầu. Mục tiêu: **tại mọi thời điểm chỉ một máy nhận người dùng**.
 
+### 7.0. Bản sao lưu của WSL có dùng được trên máy mới không? (đọc trước khi chọn cách cắt chuyển)
+
+**Có dùng được**, với các điều kiện dưới đây. Có hai đường:
+
+| | Đường 1: chuyển có kế hoạch (mục 7.1 đến 7.5) | Đường 2: khôi phục từ sao lưu ([khoi-phuc.md](./khoi-phuc.md) mục 5.6, lệnh `fetch-r2`) |
+|---|---|---|
+| Khi nào | bạn chủ động chuyển, WSL còn sống | laptop hỏng hoặc mất |
+| Nguồn dữ liệu | **một bản dump mới** chụp ngay trên WSL (lệnh `make -C infra prod-backup-dump`, hoặc bản dump hằng đêm mới nhất) | **chỉ bản sao lưu** ở R2 (hoặc ổ D: nếu còn), qua `fetch-r2` |
+| Dữ liệu có thể mất | gần như không (WSL dừng êm trước khi chụp) | đến lần đẩy cuối, khoảng 1 phút nếu dùng bản nền và WAL |
+| Ưu tiên | **dùng đường này khi có thể**; R2 giữ làm lưới an toàn | dùng khi không còn lựa chọn khác |
+
+**Điều kiện để bản sao lưu của WSL khôi phục được trên máy mới:**
+
+| Điều kiện | Vì sao | Cách kiểm |
+|---|---|---|
+| **Cùng bản chính của PostgreSQL (17)** | dump và bản nền đều gắn với phiên bản; dùng ảnh `postgres:17` ở cả hai máy | `podman exec prod-exam-postgres postgres --version` ở WSL; máy mới dùng cùng ảnh (script đã đặt `docker.io/library/postgres:17`) |
+| **Cùng kiến trúc CPU nếu dùng bản nền và WAL** (vật lý) | bản nền là ảnh nguyên thư mục dữ liệu, không chuyển được giữa kiến trúc khác nhau (x86_64 và ARM). **Dump (logic) không phụ thuộc kiến trúc** | `uname -m` ở cả hai máy; WSL của bạn hiện là `x86_64` (đã kiểm 10/11/2026). VPS ARM (`aarch64`) thì **chỉ dùng được đường dump** |
+| **Cùng ảnh PostgreSQL (cùng bản vá, cùng hệ điều hành trong ảnh) nếu dùng bản nền và WAL** | thứ tự sắp xếp chữ (collation) phụ thuộc thư viện hệ thống trong ảnh; khác thư viện thì chỉ mục chữ có thể sai. Thẻ `postgres:17` **trôi theo thời gian** nên hai máy kéo ảnh ở hai thời điểm có thể khác bản vá | so `podman image inspect docker.io/library/postgres:17 --format '{{.Digest}}'` ở hai máy; khác nhau thì ưu tiên đường dump |
+| **Ảnh ứng dụng cùng mã (`TAG`) hoặc mới hơn** bản đã tạo dữ liệu | migration chạy theo ảnh; ảnh cũ hơn cơ sở dữ liệu thì không chạy được | dùng đúng `TAG` đang chạy ở WSL (mục 7.1) |
+| **Cùng file bí mật** (`api.env`, `postgres.env`) | `SLIP_ENCRYPTION_KEY` mã hóa Phiếu tài khoản; khóa mới thì phiếu cũ không đọc được; mật khẩu PostgreSQL phải khớp | lấy từ Bitwarden hoặc từ `khoa/` trên R2 (`fetch-r2` đã làm); xem mục 7.1 |
+| **Ảnh minh họa** chép riêng | nằm trong volume `exam_media`, không nằm trong cơ sở dữ liệu | khoi-phuc.md mục 5.4; R2 có bản `media/` khi đã có ảnh |
+
+**Chọn kiến trúc VPS cho dễ:** nên thuê **VPS x86_64** để cả hai đường đều dùng được. Thuê ARM (rẻ hơn) thì chuyển có kế hoạch vẫn làm được bằng dump, nhưng nếu thảm họa xảy ra **trước khi VPS tự có bản sao lưu của chính nó**, bạn chỉ khôi phục được đến bản dump hằng đêm gần nhất (có thể mất tối đa khoảng một ngày), vì bản nền và WAL của WSL không dùng được trên ARM. **Sau khi cắt chuyển**, sao lưu mới do chính VPS tạo ra luôn cùng kiến trúc với VPS, nên giới hạn này chỉ áp dụng cho các bản sao lưu cũ của WSL.
+
+**Những gì sao lưu KHÔNG mang theo** (phải làm lại trên máy mới, đã nằm ở các mục 2 đến 6, 8 và 10): hệ điều hành, Podman, công cụ; Cloudflare Tunnel và DNS; GitHub runner; dịch vụ systemd và timer sao lưu; `backup.env` (lấy từ Bitwarden); mã healthchecks.io mới; thay thế cho ổ D:.
+
+**Đã chứng minh đến đâu:** bài `dr-drill` (10/11/2026) dựng lại hệ thống từ R2 và Bitwarden trong 144 giây trên **cùng một máy x86_64 đã có sẵn công cụ**; nó chứng minh bản sao lưu đủ để dựng lại, **chưa** chứng minh các điều kiện khác máy ở bảng trên (kiến trúc, ảnh PostgreSQL, máy trống thật). Vì vậy nên **diễn tập trước trên chính VPS**: chụp một bản dump bằng `prod-backup-dump`, chép sang VPS và khôi phục (mục 7.3), **không đổi DNS** (WSL vẫn phục vụ), đo thời gian và ghi vào tài liệu; chỉ sau đó mới cắt chuyển thật.
+
 ### 7.1. Chuẩn bị trước (máy mới đã sẵn sàng từ mục 2 đến 6, hệ thống cũ vẫn chạy)
 
 - Mở trình quản lý mật khẩu (Bitwarden): lấy `POSTGRES_PASSWORD` và `SLIP_ENCRYPTION_KEY`. **Phải dùng đúng các giá trị cũ**: đổi `SLIP_ENCRYPTION_KEY` thì Phiếu tài khoản còn hạn không mở lại được; đổi mật khẩu PostgreSQL thì phải khớp với dữ liệu đã khôi phục.
@@ -214,7 +242,8 @@ make -C infra prod-stop                 # dừng pod êm; PostgreSQL tắt sạc
 Bật lại **chỉ PostgreSQL** để chụp (hoặc dùng bản `pg_dump` sao lưu mới nhất nếu 6c đã có và vừa chạy xong): đường chắc chắn nhất là một bản `pg_dump -Fc` mới, kiểm `pg_restore --list`, cùng một bản chép volume `exam_media`:
 
 ```bash
-# Ví dụ khái niệm; lệnh chính xác sẽ nằm ở docs/ops/khoi-phuc.md (PR 6c) và đã thử trên pod drill
+# Bản dump mới: make -C infra prod-backup-dump (kiểm pg_restore --list tự làm; file nằm ở ~/exam-prod-backups/daily/)
+# Ảnh minh họa (nếu đã có ảnh): chép volume exam_media
 podman volume export exam_media -o ~/exam-media-chuyen.tar
 ```
 
@@ -224,7 +253,7 @@ Chép hai file (bản dump và `exam-media-chuyen.tar`) sang máy mới bằng `
 
 Trên **máy mới**:
 
-1. Dựng pod và hạ tầng với `TAG` cũ nhưng **chưa cho người dùng vào**: `make -C infra prod-up TAG=<TAG>` (đã có hai file env nên không sinh khóa mới). *Chưa thử trên máy thật; nếu `prod-up` yêu cầu pod đã có, dựng bằng bước tương ứng của `prod-bootstrap` rồi ngắt phần tạo Quản trị viên. Ghi lại cách đúng vào tài liệu này.*
+1. Dựng pod và hạ tầng với `TAG` cũ nhưng **chưa cho người dùng vào**: dùng **`make -C infra prod-bootstrap TAG=<TAG>`** (đã có hai file env nên **giữ nguyên khóa, không sinh mới**). `prod-up` không dùng được vì pod chưa tồn tại. Lệnh hỏi một Quản trị viên tạm: nhập tên và mật khẩu bất kỳ, tài khoản này **bị thay hoàn toàn** ở bước 3 khi nạp dữ liệu thật. *Cách này đã được chứng minh trong bài `dr-drill` ngày 10/11/2026 (khoi-phuc.md mục 4.9.12); chưa thử trên một VPS thật.*
 2. **Dừng api, worker, web** trong lúc khôi phục (chỉ để PostgreSQL và Redis chạy).
 3. Khôi phục dữ liệu vào CSDL trống theo [khoi-phuc.md](./khoi-phuc.md) mục 5.2 (`restore-dump` bản dump vừa chụp ở bước 7.2; cần pod đã có, nên làm sau bước 1) và nạp ảnh theo mục 5.4 (`podman unshare` chép vào volume `exam_media` rồi trả quyền cho uid 1000; `podman volume import` cũng dùng được nếu bạn đã xuất volume thành `.tar`).
 4. **Đối chiếu số dòng** trên cả hai máy trước khi đi tiếp (đề thi, Lượt làm bài, Câu trả lời, người dùng): các số phải bằng nhau. Chỉ bước tiếp khi khớp.
@@ -283,6 +312,8 @@ Danh sách để không bỏ sót khi làm; chưa sửa vì hiện còn chạy �
 - [ ] Chạy ổn định ở WSL; sao lưu (6c, 6d) đã chạy và **đã thử khôi phục sang máy khác** (6e)
 - [ ] Máy mới: Ubuntu 24.04, đồng hồ đúng, SSH khóa, ufw, cập nhật bảo mật tự động không tự khởi động lại (mục 2)
 - [ ] Podman 4.x rootless chạy được, `Linger=yes` (mục 3)
+- [ ] Đã kiểm điều kiện dùng bản sao lưu của WSL trên máy mới (mục 7.0): `uname -m` hai máy (cùng x86_64, hoặc chấp nhận chỉ dùng đường dump), cùng bản chính PostgreSQL 17, so dấu ảnh PostgreSQL
+- [ ] **Đã diễn tập trên chính VPS** bằng một bản dump (không đổi DNS), có thời gian đo (mục 7.0)
 - [ ] Mã nguồn đã clone; hai file env đặt đúng, quyền 600, đúng giá trị cũ (mục 4, 7.1)
 - [ ] Tunnel riêng đã tạo, dịch vụ `active`, **chưa** trỏ DNS (mục 5)
 - [ ] Runner mới Idle; đã thử bấm workflow 3 lần; runner cũ đã gỡ (mục 6)
