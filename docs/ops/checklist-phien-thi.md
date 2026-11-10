@@ -8,7 +8,7 @@ Một trang, **in ra và tick**. Dành cho người vận hành (chủ dự án)
 make -C infra prod-preflight
 ```
 
-Mỗi dòng ✓ là đạt, ⚠ là nên xem, ✗ là không đạt (lệnh thoát khác 0). Có ✗ thì **chưa mở Phiên thi thật** cho tới khi xử lý xong.
+Mỗi dòng ✓ là đạt, ⚠ là nên xem, ✗ là không đạt (lệnh thoát khác 0). Có ✗ thì **chưa mở Phiên thi thật** cho tới khi xử lý xong. Hướng dẫn đọc kết quả, bảng đầy đủ các mục máy kiểm, cách chỉnh ngưỡng và điều lệnh không đảm bảo: [khoi-phuc.md mục 3.6](./khoi-phuc.md).
 
 ## Trước 1 tuần
 
