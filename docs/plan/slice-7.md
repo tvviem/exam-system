@@ -7,6 +7,7 @@ Nâng cấp sau khi bản MVP chạy thật (lát cắt 6). Câu hỏi bắt đ�
 | Q | Quyết định | Ghi chú |
 |---|---|---|
 | Q371 | Làm theo **phương án C**: trước hết bổ sung kiểm thử trọn kịch bản và tài liệu hoàn chỉnh (PR 7a), sau đó mới thiết kế và làm **liên kết đặt lại dùng một lần** (PR 7b) | Kiểm thử là "lưới an toàn" trước khi sửa khu vực đăng nhập nhạy cảm |
+| Q372 | Phạm vi bắt buộc email và số phận của Phiếu tài khoản: chọn **phương án B** (email chính chủ bắt buộc, kích hoạt và đặt lại qua email, bỏ Phiếu mật khẩu tạm, Quản trị viên có cửa thoát hiểm bằng liên kết thủ công có nhật ký) | **10/11/2026: chọn B nhưng TẠM DỪNG nâng cấp, chuyển vào backlog** (xem mục "Backlog" bên dưới); chưa hỏi các câu Q373 trở đi |
 
 ## Hai PR
 
@@ -86,6 +87,16 @@ Không đọc file bí mật nào (không mở `.env`, `backend.env`). Các nơi
 | **7c** | **xác thực email và kích hoạt tài khoản**; **quên mật khẩu qua email** (có trả lời chung, giới hạn tần suất, mã hạn ngắn, một lần); lối thoát khẩn cấp của Quản trị viên; nhật ký; kiểm thử; cập nhật tài liệu `tai-khoan-va-mat-khau.md` |
 
 Các câu thiết kế dự kiến (hỏi từng câu): phạm vi bắt buộc email và số phận của Phiếu tài khoản (Q372); nhà cung cấp gửi thư và hạn mức (Q373); mã: băm, mã hóa, hạn, một lần (Q374); mật khẩu cũ còn hiệu lực đến khi dùng mã không (Q375); lối thoát khẩn cấp của Quản trị viên (Q376); thông báo cho chủ tài khoản khi đổi mật khẩu (Q377); chuyển dữ liệu cũ (người dùng hiện có chưa có email) (Q378); các thiết lập kỹ thuật còn lại (Q379).
+
+## Backlog: nâng cấp tài khoản bằng xác thực chính chủ (tạm dừng ngày 10/11/2026)
+
+**Trạng thái: TẠM DỪNG theo ý chủ dự án; chưa làm.** Khi chủ dự án quay lại, **nhắc ngay** việc này.
+
+- **Quyết định đã có:** Q372 phương án **B**. Email chính chủ là gốc danh tính cho mọi tài khoản mới; kích hoạt và quên mật khẩu qua email (liên kết một lần: kích hoạt hạn 24 giờ, đặt lại hạn 60 phút); **bỏ Phiếu tài khoản mật khẩu tạm** và nút "Cấp lại mật khẩu tạm"; Quản trị viên có **cửa thoát hiểm** bằng "Gửi lại thư", sửa email, hoặc "Tạo liên kết kích hoạt thủ công" gửi qua Zalo, **có nhật ký**, để Quản trị viên **không bao giờ biết mật khẩu**.
+- **Tài liệu sẵn sàng khi làm lại:** mục "Hướng mới của chủ dự án" ở trên (rà soát `plo-tracker-bluni`, các điều cần cân nhắc, đề xuất tổ chức lại 7b và 7c, danh sách câu Q373 đến Q379).
+- **Việc còn lại khi tiếp tục:** hỏi từng câu Q373 trở đi (nhà cung cấp gửi thư và hạn mức, cách lưu mã, mật khẩu cũ còn hiệu lực đến khi dùng liên kết, chặn đặt lại khi đang làm bài, thông báo cho chủ tài khoản, chuyển dữ liệu cũ, thiết lập kỹ thuật), rồi làm 7b (hạ tầng email) và 7c (kích hoạt, quên mật khẩu).
+- **Đang dùng trong lúc chờ:** "Cấp lại mật khẩu tạm" của Quản trị viên, đã có kiểm thử trọn kịch bản (PR 7a) và tài liệu [tai-khoan-va-mat-khau.md](../ops/tai-khoan-va-mat-khau.md).
+- **Phương án thay thế do chủ dự án nêu (không dùng email):** xác thực chính chủ bằng **mã gửi qua SMS tới số điện thoại**; đã đánh giá ở [docs/research/xac-thuc-chinh-chu-bang-sms.md](../research/xac-thuc-chinh-chu-bang-sms.md).
 
 ## Quy trình ghi chú cho các nâng cấp tiếp theo
 
