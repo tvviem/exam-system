@@ -20,6 +20,7 @@ export class FakeClock implements Clock {
   }
 }
 
+export const seconds = (n: number) => n * 1000;
 export const minutes = (n: number) => n * 60_000;
 export const hours = (n: number) => minutes(n * 60);
 export const days = (n: number) => hours(n * 24);

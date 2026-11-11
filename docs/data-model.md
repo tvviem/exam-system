@@ -113,9 +113,31 @@ backup_runs (
   created_at
 )  -- INDEX (finished_at), (kind, finished_at). Chỉ ghi: việc quan trọng thành công, mọi lỗi (mỗi đợt lỗi một dòng), dòng "đã phục hồi" của
    -- việc đẩy; đẩy thành công mỗi phút KHÔNG ghi.
+
+-- Lát cắt 7 (PR 7b, module `mail`, migration 0023, plan/slice-7b-thiet-ke-kiem-thu.md, ADR-0009): hàng đợi thư bền. Worker lấy
+-- từng thư ra gửi theo hạn mức (400 thư/24 giờ trượt, thư hàng loạt tối đa 300, thư khẩn dự trữ 100, cách nhau 6 giây).
+-- KHÔNG BAO GIỜ lưu mã hay nội dung có mã (Q381): worker dựng thư và sinh mã lúc gửi.
+email_outbox (
+  id uuid PK,
+  kind enum('activation','invitation','password_reset','password_changed','email_change','email_changed_notice'),
+  lane enum('urgent','bulk'),                       -- urgent dùng phần dự trữ; bulk tối đa 300 (và theo lịch warm-up)
+  to_email text,
+  status enum('pending','sending','sent','failed','rejected','skipped') DEFAULT 'pending',
+      -- pending: chờ gửi hoặc chờ thử lại; sending: worker đang gửi (kẹt quá 10 phút thì được nhận lại);
+      -- sent: máy chủ thư đã nhận; failed: hết 5 lần thử; rejected: máy chủ thư từ chối cứng địa chỉ;
+      -- skipped: chưa cấu hình SMTP (chế độ không gửi), không tính hạn mức
+  attempt_count int DEFAULT 0, next_attempt_at timestamptz,   -- chờ thử lại: 60, 120, 240, 480 giây (tối đa 1 giờ)
+  locked_at timestamptz NULL,                       -- giờ nhận việc, khi status = 'sending'
+  sent_at timestamptz NULL,                         -- giờ NHẬN VIỆC của lần gửi thành công (căn cứ hạn mức và khoảng cách)
+  last_error text NULL,                             -- đã che mật khẩu SMTP; có thể chứa địa chỉ người nhận (đã có ở to_email)
+  user_id uuid NULL → users, requested_by uuid NULL → users,   -- requested_by: xoay vòng giữa các Người ra đề
+  created_at timestamptz
+)  -- INDEX (status, next_attempt_at), (sent_at). Hạn mức đếm từ bảng này (sent trong 24 giờ trượt + sending), không từ Redis
+   -- hay bộ nhớ, nên khởi động lại không đếm lại từ 0.
 ```
 
 Quy tắc ràng buộc ở tầng service:
+- **Hàng đợi thư (`email_outbox`):** chọn thư kế tiếp và đánh dấu `sending` trong **một giao dịch có khóa tư vấn** (`pg_advisory_xact_lock`), nên nhiều tiến trình không chọn trùng thư và không vượt khoảng cách hay hạn mức. Thư `sending` cũng tính vào hạn mức. Địa chỉ đã có thư `rejected` thì thư sau tới địa chỉ đó bị đánh dấu `rejected` luôn, không gửi và không đốt hạn mức. Hàm chọn thư là hàm thuần `planBatch` (`modules/mail/plan-batch.ts`), kiểm thử bằng bảng kịch bản.
 - Quản trị viên không được tự Khóa đăng nhập hoặc tự Xóa mình.
 - Khóa đăng nhập hoặc Xóa người dùng sẽ thu hồi mọi `auth_sessions` của người đó, xóa luôn trong Redis.
 - Mỗi người dùng phải có ít nhất một trong hai: `username` hoặc `email`.

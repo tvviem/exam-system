@@ -162,6 +162,13 @@
       "when": 1794229562099,
       "tag": "0022_sao_luu",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794367015267,
+      "tag": "0023_thu_dien_tu",
+      "breakpoints": true
     }
   ]
 }

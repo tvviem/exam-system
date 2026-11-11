@@ -13,6 +13,7 @@
 #   exam-ctl.sh start            Bật lại pod đã dừng (dịch vụ systemd gọi lệnh tương đương khi mở WSL)
 #   exam-ctl.sh install-service  Cài lại dịch vụ systemd (mở WSL thì dựng lại pod)
 #   exam-ctl.sh recover-admin <tên>   Khôi phục tài khoản Quản trị viên (mật khẩu tạm in một lần)
+#   exam-ctl.sh mail-test <email>     Gửi thư thử để kiểm cấu hình gửi thư (SMTP_* trong api.env)
 #   exam-ctl.sh enable-archiving    Bật lưu liên tục WAL (archive_mode=on, dựng lại container PostgreSQL; PR 6c)
 #   exam-ctl.sh disable-archiving   Tắt lưu liên tục WAL
 #   exam-ctl.sh active-sessions  In số Phiên thi đang diễn ra hoặc sắp bắt đầu; thoát 1 nếu có
@@ -203,13 +204,24 @@ run_redis() {
     "$REDIS_IMAGE" redis-server --maxmemory-policy noeviction >/dev/null
 }
 
+# Pod thử (drill, dr) chạy trên dữ liệu thử hoặc bản sao dữ liệu thật; nếu api.env có cấu hình SMTP thì thư kích hoạt,
+# đặt lại mật khẩu còn đang chờ trong bản sao sẽ bị gửi thật tới người thật (ADR-0009, docs/plan/slice-7b-thiet-ke-kiem-thu.md E-01).
+guard_mail_stage() {
+  [ "$EXAM_STAGE" = prod ] && return 0
+  if grep -Eq '^[[:space:]]*SMTP_HOST=' "$SECRETS_DIR/api.env" 2>/dev/null; then
+    die "Pod thử ($EXAM_STAGE) không được cấu hình gửi thư: bỏ các dòng SMTP_* và EMAIL_* khỏi $SECRETS_DIR/api.env (thư sẽ tới người thật)."
+  fi
+}
+
 run_api() { # tên container, cổng
+  guard_mail_stage
   "$PODMAN" run -d --name "$1" --pod "$POD" --restart always --memory 1g --cpus 4 "${LOG_OPTS[@]}" \
     --env-file "$SECRETS_DIR/api.env" -e "PORT=$2" -e "APP_VERSION=$VERSION_LABEL" \
     -v "$MEDIA_VOLUME":/var/lib/exam/media "$API_IMAGE" >/dev/null
 }
 
 run_worker() {
+  guard_mail_stage
   "$PODMAN" run -d --name "$C_WORKER" --pod "$POD" --restart always --memory 512m --cpus 2 "${LOG_OPTS[@]}" \
     --env-file "$SECRETS_DIR/api.env" -e "APP_VERSION=$VERSION_LABEL" \
     -v "$MEDIA_VOLUME":/var/lib/exam/media "$API_IMAGE" node dist/worker/main.js >/dev/null
@@ -789,6 +801,15 @@ cmd_recover_admin() {
   ops_log "recover-admin $name"
 }
 
+cmd_mail_test() {
+  local address="${1:-}"
+  [ -n "$address" ] || die "Cách dùng: mail-test <địa chỉ email>"
+  pod_exists || die "Chưa có pod $POD."
+  "$PODMAN" run --rm --pod "$POD" --env-file "$SECRETS_DIR/api.env" "$(current_api_image)" \
+    node dist/cli/main.js mail-test "$address"
+  ops_log "mail-test"
+}
+
 main() {
   local command="${1:-}"
   [ $# -gt 0 ] && shift
@@ -804,6 +825,7 @@ main() {
     install-service) cmd_install_service "$@" ;;
     down) cmd_down "$@" ;;
     recover-admin) cmd_recover_admin "$@" ;;
+    mail-test) cmd_mail_test "$@" ;;
     enable-archiving) cmd_enable_archiving "$@" ;;
     disable-archiving) cmd_disable_archiving "$@" ;;
     active-sessions) cmd_active_sessions "$@" ;;

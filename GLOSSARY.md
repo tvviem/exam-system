@@ -44,6 +44,18 @@ _Avoid_: liên kết thủ công, mật khẩu tạm
 Email của Người dùng đã được chính chủ hộp thư xác nhận bằng cách mở Liên kết một lần gửi tới đó.
 _Avoid_: email hợp lệ, email chính thức
 
+**Thư khẩn** (`UrgentMail`) và **Thư hàng loạt** (`BulkMail`):
+Hai loại thư theo mức ưu tiên khi gửi. Thư khẩn là thư một người đang chờ để làm tiếp việc của mình (quên mật khẩu, báo mật khẩu đã đổi, Lời mời, Liên kết hỗ trợ) và luôn có phần hạn mức dành riêng; Thư hàng loạt là thư gửi cho cả danh sách một lúc (kích hoạt tài khoản cả lớp) và có thể phải chờ sang ngày sau.
+_Avoid_: thư quan trọng, thư thường
+
+**Hạn mức gửi thư** (`MailQuota`):
+Số thư tối đa hệ thống gửi trong 24 giờ liên tục, thấp hơn trần của nhà cung cấp thư để không bao giờ chạm trần đó. Thư vượt hạn mức chờ sang cửa sổ sau, không bị mất và không tính là lỗi.
+_Avoid_: giới hạn ngày, quota
+
+**Thư bị từ chối** (`RejectedMail`):
+Thư mà máy chủ thư báo ngay lúc nhận rằng địa chỉ người nhận không dùng được. Khác với thư đã gửi nhưng người nhận không kích hoạt, vì nhà cung cấp thư thường không báo lại.
+_Avoid_: thư lỗi, thư bounce
+
 **Yêu cầu cấp tài khoản** (`AccountRequest`):
 Danh sách người do Người ra đề tập hợp và gửi Quản trị viên để cấp tài khoản Người dự thi.
 _Avoid_: đăng ký hộ, import

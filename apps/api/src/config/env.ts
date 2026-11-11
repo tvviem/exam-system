@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const envSchema = z.object({
+const baseEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
@@ -47,6 +47,84 @@ const envSchema = z.object({
         .map((origin) => origin.trim())
         .filter(Boolean),
     ),
+  // Gửi email (ADR-0009). Không đặt nhóm SMTP_* thì hệ thống ở chế độ "không gửi"; đặt thì phải đặt đủ.
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USERNAME: z.string().min(1).optional(),
+  SMTP_PASSWORD: z.string().min(1).optional(),
+  EMAIL_FROM: z.email().optional(),
+  EMAIL_REPLY_TO: z.email().optional(),
+  EMAIL_FROM_NAME: z.string().min(1).default('Hệ thống kiểm tra đánh giá trực tuyến'),
+  EMAIL_SUPPORT_CONTACT: z
+    .string()
+    .min(1)
+    .default('Cần trợ giúp, hãy liên hệ Người ra đề hoặc quản trị viên của bạn.'),
+  SMTP_TIMEOUT_SECONDS: z.coerce.number().int().min(1).max(120).default(15),
+  // Hạn mức gửi thư (Q375, Q382): tổng mỗi 24 giờ trượt, phần dành cho thư hàng loạt, khoảng cách giữa hai thư,
+  // và trần thư hàng loạt các ngày đầu (warm-up, rỗng là tắt).
+  EMAIL_LIMIT_TOTAL: z.coerce.number().int().min(1).default(400),
+  EMAIL_LIMIT_BULK: z.coerce.number().int().min(1).default(300),
+  EMAIL_MIN_GAP_SECONDS: z.coerce.number().min(0).default(6),
+  EMAIL_WARMUP_BULK: z
+    .string()
+    .default('50,100,150,200,300')
+    .transform((value, ctx) => {
+      const numbers = value
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map(Number);
+      if (numbers.some((n) => !Number.isInteger(n) || n < 1)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'phải là danh sách số nguyên dương cách nhau bằng dấu phẩy, hoặc rỗng để tắt',
+        });
+        return z.NEVER;
+      }
+      return numbers;
+    }),
+});
+
+const envSchema = baseEnvSchema.superRefine((env, ctx) => {
+  const smtp = {
+    SMTP_HOST: env.SMTP_HOST,
+    SMTP_USERNAME: env.SMTP_USERNAME,
+    SMTP_PASSWORD: env.SMTP_PASSWORD,
+    EMAIL_FROM: env.EMAIL_FROM,
+  };
+  const set = Object.entries(smtp).filter(([, value]) => value !== undefined);
+  if (set.length > 0 && set.length < Object.keys(smtp).length) {
+    for (const [name, value] of Object.entries(smtp)) {
+      if (value === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: 'thiếu: đã đặt một phần cấu hình SMTP thì phải đặt đủ bốn biến',
+        });
+      }
+    }
+  }
+  // Gmail ghi đè người gửi bằng tài khoản đăng nhập, nên thư sẽ mang địa chỉ khác với cấu hình.
+  if (
+    env.SMTP_HOST &&
+    /(^|\.)(gmail|googlemail)\.com$/i.test(env.SMTP_HOST) &&
+    env.EMAIL_FROM &&
+    env.SMTP_USERNAME &&
+    env.EMAIL_FROM.toLowerCase() !== env.SMTP_USERNAME.toLowerCase()
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['EMAIL_FROM'],
+      message: 'với Gmail phải trùng SMTP_USERNAME (Gmail sẽ ghi đè người gửi)',
+    });
+  }
+  if (env.EMAIL_LIMIT_BULK > env.EMAIL_LIMIT_TOTAL) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['EMAIL_LIMIT_BULK'],
+      message: 'không được vượt EMAIL_LIMIT_TOTAL (phải còn chỗ dự trữ cho thư khẩn)',
+    });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -72,7 +150,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
 
 /** Chỉ `DATABASE_URL`: lệnh migration chạy trước khi triển khai nên không được đòi các khóa khác. */
 export function loadDatabaseUrl(source: NodeJS.ProcessEnv = process.env): string {
-  const result = envSchema.pick({ DATABASE_URL: true }).safeParse(source);
+  const result = baseEnvSchema.pick({ DATABASE_URL: true }).safeParse(source);
   if (!result.success) {
     throw new Error(`Biến môi trường không hợp lệ:\n${z.prettifyError(result.error)}`);
   }

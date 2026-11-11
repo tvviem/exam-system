@@ -36,6 +36,8 @@ export interface JobPayloads {
   'maintenance.cleanup': Record<string, never>;
   /** Báo chuông cho Quản trị viên khi bản đêm quá 26 giờ hoặc một việc sao lưu lỗi (Q363, Q364), mỗi 30 phút. */
   'backup.check': Record<string, never>;
+  /** Gửi các thư đến hạn trong hàng đợi `email_outbox` (ADR-0009); `enqueue` kích ngay, cron mỗi phút làm lưới an toàn. */
+  'mail.dispatch': Record<string, never>;
 }
 export type JobName = keyof JobPayloads;
 export type JobHandler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;

@@ -10,6 +10,7 @@ import { MediaModule } from './media/media-store';
 import { AuditModule } from './modules/audit/audit.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { MailModule } from './modules/mail/mail.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { QuestionBankModule } from './modules/question-bank/question-bank.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
@@ -36,6 +37,7 @@ import { SessionUsageWiringModule } from './session-usage-wiring.module';
     BackupModule,
     NotificationsModule,
     IdentityModule,
+    MailModule,
     QuestionBankModule,
     OwnedContentWiringModule,
     ExamUsageWiringModule,
