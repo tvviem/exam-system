@@ -1,6 +1,6 @@
 # exam-system
 
-Nền tảng Khảo thí Trực tuyến BLUNI, ưu tiên làm bài trên điện thoại. Viết tài liệu, nội dung giao diện và trao đổi với chủ dự án bằng tiếng Việt; tên trong mã nguồn bằng tiếng Anh.
+Hệ thống khảo thí trực tuyến BLUNI, ưu tiên làm bài trên điện thoại. Viết tài liệu, nội dung giao diện và trao đổi với chủ dự án bằng tiếng Việt; tên trong mã nguồn bằng tiếng Anh.
 
 ## Ngôn ngữ nghiệp vụ
 
