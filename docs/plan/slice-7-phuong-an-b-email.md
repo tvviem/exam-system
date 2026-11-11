@@ -1,6 +1,6 @@
 # Phương án B chi tiết: email chính chủ, kích hoạt tài khoản và quên mật khẩu qua email
 
-**Trạng thái: THIẾT KẾ ĐÃ DUYỆT (11/11/2026, ADR-0009 accepted). PR 7b (hạ tầng gửi thư) đã làm xong theo TDD, chưa commit; 7c và 7d chưa viết mã.** Chủ dự án đã duyệt **từng câu một** Q372 đến Q384 (bảng ở mục 11 và [slice-7.md](./slice-7.md)); các chỗ sửa theo quyết định được đánh dấu **[Qxxx]**. Chi tiết không có dấu [Qxxx] là phác thảo kỹ thuật (tên bảng, cột, giao diện) sẽ chốt ở thiết kế chi tiết của từng PR 7b, 7c, 7d. Quyết định kiến trúc: [ADR-0009](../adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md) (`proposed`). Cơ sở: rà soát `plo-tracker-bluni` (mục "Hướng mới của chủ dự án" trong slice-7.md) và đánh giá SMS ([docs/research/xac-thuc-chinh-chu-bang-sms.md](../research/xac-thuc-chinh-chu-bang-sms.md)).
+**Trạng thái: THIẾT KẾ ĐÃ DUYỆT (11/11/2026, ADR-0009 accepted). PR 7b (hạ tầng gửi thư) đã làm xong theo TDD (PR #92); 7c và 7d chưa viết mã.** Chủ dự án đã duyệt **từng câu một** Q372 đến Q384 (bảng ở mục 11 và [slice-7.md](./slice-7.md)); các chỗ sửa theo quyết định được đánh dấu **[Qxxx]**. Chi tiết không có dấu [Qxxx] là phác thảo kỹ thuật (tên bảng, cột, giao diện) sẽ chốt ở thiết kế chi tiết của từng PR 7b, 7c, 7d. Quyết định kiến trúc: [ADR-0009](../adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md) (`proposed`). Cơ sở: rà soát `plo-tracker-bluni` (mục "Hướng mới của chủ dự án" trong slice-7.md) và đánh giá SMS ([docs/research/xac-thuc-chinh-chu-bang-sms.md](../research/xac-thuc-chinh-chu-bang-sms.md)).
 
 ## 1. Nguyên tắc và mục tiêu
 
