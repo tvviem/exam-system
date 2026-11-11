@@ -4,6 +4,7 @@ export * from '../modules/backup/backup.schema';
 export * from '../modules/exam/exam.schema';
 export * from '../modules/grading/grading.schema';
 export * from '../modules/identity/identity.schema';
+export * from '../modules/mail/mail.schema';
 export * from '../modules/notifications/notifications.schema';
 export * from '../modules/question-bank/question-bank.schema';
 export * from '../modules/session/session.schema';

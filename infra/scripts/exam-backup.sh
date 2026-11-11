@@ -1574,6 +1574,40 @@ free_gb() { # đường dẫn -> số GB còn trống (làm tròn xuống); rỗ
   df -P -BG "$1" 2>/dev/null | awk 'NR==2 {gsub("G", "", $4); print $4}'
 }
 
+# Mục "Thư" của preflight: in từng dòng dạng `<ok|warn|fail|info>|<nội dung>` để cmd_preflight chuyển cho `pf`
+# (tách riêng để thử được không cần pod: scripts/test-mail-ops.sh).
+preflight_mail() {
+  local stats pending age errs skipped configured=0
+  if [ "$EXAM_STAGE" != prod ]; then
+    echo "info|bỏ qua việc gửi thư (stage $EXAM_STAGE không bao giờ gửi thư thật)"
+    return 0
+  fi
+  grep -Eq '^SMTP_HOST=.+' "$SECRETS_DIR/api.env" 2>/dev/null && configured=1
+  stats="$(psql_scalar "SELECT CASE WHEN to_regclass('public.email_outbox') IS NULL THEN '' ELSE (SELECT count(*) FILTER (WHERE status = 'pending') || '|' || COALESCE(floor(extract(epoch FROM now() - min(created_at) FILTER (WHERE status = 'pending')) / 3600), 0) || '|' || count(*) FILTER (WHERE status IN ('failed', 'rejected') AND created_at > now() - interval '7 days') || '|' || count(*) FILTER (WHERE status = 'skipped') FROM email_outbox) END" 2>/dev/null || true)"
+  IFS='|' read -r pending age errs skipped <<<"$stats"
+  if [ "$configured" = 1 ]; then
+    echo "ok|đã cấu hình gửi thư (SMTP_* trong api.env); thử bằng: make -C infra prod-mail-test ADDRESS=<email>"
+  elif [ "${skipped:-0}" -gt 0 ]; then
+    echo "fail|chưa cấu hình gửi thư (api.env thiếu SMTP_*) mà đã có $skipped thư bị bỏ qua: người dùng không nhận được thư (docs/ops/gui-thu.md)"
+  else
+    echo "warn|chưa cấu hình gửi thư (api.env thiếu SMTP_*): chưa cần khi chưa dùng kích hoạt hoặc quên mật khẩu bằng email (docs/ops/gui-thu.md)"
+  fi
+  if [ -z "$stats" ]; then
+    echo "warn|chưa đọc được bảng email_outbox (migration chưa chạy hoặc cơ sở dữ liệu không trả lời)"
+    return 0
+  fi
+  if [ "${pending:-0}" -gt 0 ] && [ "${age:-0}" -gt 48 ]; then
+    echo "fail|có $pending thư chờ gửi, thư cũ nhất đã $age giờ (quá 48 giờ): người dùng chưa kích hoạt được; xem hạn mức và lỗi SMTP"
+  elif [ "${pending:-0}" -gt 0 ]; then
+    echo "warn|còn $pending thư chờ gửi (hạn mức 24 giờ đang xả dần), thư cũ nhất $age giờ"
+  else
+    echo "ok|hàng đợi thư trống"
+  fi
+  if [ "${errs:-0}" -gt 0 ]; then
+    echo "warn|$errs thư lỗi hoặc bị từ chối trong 7 ngày qua (xem màn hình theo dõi hoặc bảng email_outbox)"
+  fi
+}
+
 cmd_preflight() {
   local fails=0 warns=0 f hrs days n out health c pid gaps ready1 ready2 admins issues free rt_ok rt_at url local_ver pub
   pf() {
@@ -1687,6 +1721,10 @@ cmd_preflight() {
     -1 | '') pf warn "chưa đọc được bảng backup_runs (migration 0022 chưa chạy hoặc cơ sở dữ liệu không trả lời)" ;;
     *) pf fail "có $issues việc sao lưu đang lỗi (mở màn hình Sao lưu dữ liệu để xem)" ;;
   esac
+
+  echo "Thư"
+  local level text
+  while IFS='|' read -r level text; do pf "$level" "$text"; done < <(preflight_mail)
 
   echo "Đĩa"
   free="$(free_gb "$BACKUP_DIR")"

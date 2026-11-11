@@ -6,6 +6,7 @@ import { DbModule } from '../db/db.module';
 import { ExamUsageWiringModule } from '../exam-usage-wiring.module';
 import { MediaModule } from '../media/media-store';
 import { IdentityModule } from '../modules/identity/identity.module';
+import { MailModule } from '../modules/mail/mail.module';
 import { RealtimeNotifierModule } from '../modules/realtime/realtime-notifier.module';
 import { OwnedContentWiringModule } from '../owned-content-wiring.module';
 import { QueueModule } from '../queue/job-queue';
@@ -28,6 +29,7 @@ export class CliModule {
         MediaModule,
         QueueModule,
         IdentityModule,
+        MailModule,
         OwnedContentWiringModule,
         ExamUsageWiringModule,
         SessionUsageWiringModule,

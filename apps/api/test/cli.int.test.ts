@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli/run-cli';
 import { createTestApp, type TestApp } from './support/app';
 import { call, login } from './support/http';
@@ -116,5 +116,45 @@ describe('pnpm cli recover-admin', () => {
     const missing = await runCli(['recover-admin'], {});
     expect(missing.exitCode).toBe(1);
     expect(missing.output).toContain('--username');
+  });
+});
+
+describe('pnpm cli mail-test <địa chỉ>', () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it('thiếu địa chỉ: báo cách dùng, thoát khác 0', async () => {
+    const result = await runCli(['mail-test'], {});
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('mail-test <địa chỉ email>');
+  });
+
+  it('L-02: production chưa cấu hình SMTP thì nói rõ "chưa cấu hình gửi thư" và thoát khác 0', async () => {
+    process.env.NODE_ENV = 'production';
+    for (const name of ['SMTP_HOST', 'SMTP_USERNAME', 'SMTP_PASSWORD', 'EMAIL_FROM']) {
+      delete process.env[name];
+    }
+    const result = await runCli(['mail-test', 'kiem-tra@example.com'], {});
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('Chưa cấu hình gửi thư');
+  });
+
+  it('địa chỉ sai định dạng: thoát khác 0 và nêu lý do', async () => {
+    const result = await runCli(['mail-test', 'khong-phai-email'], {});
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('không hợp lệ');
+  });
+
+  it('L-01: gửi được thì báo đã gửi, nhắc kiểm hộp thư và thư gốc, không in thông tin đăng nhập', async () => {
+    // Không có SMTP trong môi trường test: dùng bộ in ra bảng điều khiển.
+    for (const name of ['SMTP_HOST', 'SMTP_USERNAME', 'SMTP_PASSWORD', 'EMAIL_FROM']) {
+      delete process.env[name];
+    }
+    const result = await runCli(['mail-test', 'kiem-tra@example.com'], {});
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toContain('Đã gửi thư thử tới kiem-tra@example.com');
+    expect(result.output).toContain('SPF');
   });
 });

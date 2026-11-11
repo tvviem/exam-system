@@ -4,6 +4,7 @@ import {
   AdminAccountError,
   AdminAccountsService,
 } from '../modules/identity/admin-accounts.service';
+import { MailService } from '../modules/mail/mail.service';
 import { CliModule } from './cli.module';
 
 export interface CliResult {
@@ -15,7 +16,8 @@ type CliEnv = Record<string, string | undefined>;
 
 const USAGE = `Cách dùng: pnpm cli <lệnh>
   bootstrap-admin                 Tạo Quản trị viên đầu tiên từ biến BOOTSTRAP_ADMIN_*
-  recover-admin --username <tên>  Khôi phục một tài khoản Quản trị viên`;
+  recover-admin --username <tên>  Khôi phục một tài khoản Quản trị viên
+  mail-test <địa chỉ email>       Gửi thư thử để kiểm cấu hình gửi thư (SMTP_*)`;
 
 /** Chạy một lệnh CLI. `env` chứa tham số của lệnh; kết nối DB và Redis lấy từ process.env. */
 export async function runCli(
@@ -27,7 +29,7 @@ export async function runCli(
   const print = (line: string) => lines.push(line);
   const [command] = argv;
 
-  if (command !== 'bootstrap-admin' && command !== 'recover-admin') {
+  if (command !== 'bootstrap-admin' && command !== 'recover-admin' && command !== 'mail-test') {
     print(USAGE);
     return { exitCode: command ? 1 : 0, output: lines.join('\n') };
   }
@@ -36,6 +38,7 @@ export async function runCli(
     logger: false,
   });
   try {
+    if (command === 'mail-test') return await mailTest(app.get(MailService), argv[1]);
     const accounts = app.get(AdminAccountsService);
     if (command === 'bootstrap-admin') {
       const input = requireVars(env, [
@@ -82,4 +85,29 @@ function requireVars<K extends string>(env: CliEnv, names: K[]): Record<K, strin
 function optionValue(argv: string[], name: string): string | undefined {
   const index = argv.indexOf(name);
   return index >= 0 ? argv[index + 1] : undefined;
+}
+
+async function mailTest(mail: MailService, address: string | undefined): Promise<CliResult> {
+  if (!address) return { exitCode: 1, output: 'Cách dùng: pnpm cli mail-test <địa chỉ email>' };
+  const result = await mail.sendTest(address);
+  switch (result.status) {
+    case 'sent':
+      return {
+        exitCode: 0,
+        output: [
+          `Đã gửi thư thử tới ${address}.`,
+          'Hãy kiểm hộp thư (cả Spam), mở "Hiện thư gốc" để xem SPF, DKIM, DMARC đều PASS.',
+        ].join('\n'),
+      };
+    case 'not_configured':
+      return {
+        exitCode: 1,
+        output:
+          'Chưa cấu hình gửi thư: đặt SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, EMAIL_FROM trong api.env.',
+      };
+    case 'invalid_address':
+      return { exitCode: 1, output: `Địa chỉ email không hợp lệ: ${address}` };
+    case 'failed':
+      return { exitCode: 1, output: `Gửi thư thử thất bại (${result.kind}): ${result.message}` };
+  }
 }

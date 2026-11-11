@@ -16,6 +16,7 @@ Mỗi dòng ✓ là đạt, ⚠ là nên xem, ✗ là không đạt (lệnh tho�
 - [ ] **(máy)** Lần thử khôi phục gần nhất **ĐẠT** và không quá 35 ngày.
 - [ ] **(máy)** Có ít nhất **2 Quản trị viên** đang hoạt động.
 - [ ] Quản trị viên thứ hai **đăng nhập thử được** (không chỉ có tài khoản).
+- [ ] **(máy)** Mục "Thư" của `prod-preflight` không có ✗: nếu đã dùng kích hoạt hoặc quên mật khẩu bằng email thì phải đã cấu hình gửi thư, và không có thư chờ gửi quá 48 giờ ([gui-thu.md](./gui-thu.md) mục 6). Đã chạy `make -C infra prod-mail-test ADDRESS=<email của bạn>` và thư vào hộp thư đến.
 - [ ] Ba tờ giấy (A khóa gpg, B mật khẩu khóa, C mã khôi phục 2FA Bitwarden) **còn đủ**, cất ở các nơi khác nhau ([khoi-phuc.md](./khoi-phuc.md) mục 4.1.1).
 - [ ] Đã đọc email của healthchecks.io gần đây: không có thư LỖI hoặc IM LẶNG chưa xử lý.
 - [ ] Đã diễn tập khôi phục sang máy khác từ R2 trong vòng 3 tháng qua (`make -C infra dr-drill`, [khoi-phuc.md](./khoi-phuc.md) mục 5.6), hoặc chấp nhận rủi ro ghi rõ.
@@ -65,5 +66,6 @@ Mỗi dòng ✓ là đạt, ⚠ là nên xem, ✗ là không đạt (lệnh tho�
 | ✗ thử khôi phục không đạt hoặc quá cũ | `make -C infra prod-backup-restore-test` rồi đọc kết quả ([khoi-phuc.md](./khoi-phuc.md) mục 5.7) |
 | ✗ archive lỗi hoặc dãy WAL đứt | **xử lý ngay** (đĩa có thể đầy): [khoi-phuc.md](./khoi-phuc.md) mục 4.5 "Rủi ro cần nhớ" |
 | ✗ chỉ 1 Quản trị viên | tạo người thứ hai trước khi mở Phiên thi |
+| ✗ thư chờ gửi quá 48 giờ, hoặc chưa cấu hình gửi thư mà đã có thư bị bỏ qua | xem [gui-thu.md](./gui-thu.md) mục 6 và 8 |
 | ✗ conmon CHẾT | khôi phục theo [trien-khai.md](./trien-khai.md) mục "Lỗi thường gặp" (dòng 502 và `Stopping`), lúc không có Phiên thi |
 | ✗ địa chỉ công khai không trả ok | kiểm Cloudflare tunnel ([trien-khai.md](./trien-khai.md) mục 2); hệ thống trong máy vẫn chạy |

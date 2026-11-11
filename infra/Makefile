@@ -23,7 +23,7 @@ REDIS_CONTAINER ?= $(STAGE)-exam-redis
 PG_DATA_VOLUME ?= $(STAGE)_exam_pgdata
 
 .PHONY: help pod postgres redis up wait down stop logs psql redis-cli dev-up dev-down ci-up ci-wait ci-down
-.PHONY: prod-bootstrap prod-up prod-deploy prod-scale prod-status prod-logs prod-stop prod-start prod-down prod-recover-admin prod-active-sessions prod-install-service prod-enable-archiving prod-disable-archiving prod-backup-status prod-backup-dump prod-backup-nightly prod-backup-basebackup prod-backup-push prod-backup-prune prod-backup-restore-test prod-backup-check prod-backup-install prod-backup-enable prod-backup-disable prod-preflight backup-drill-test dr-drill scale-drill-test
+.PHONY: prod-bootstrap prod-up prod-deploy prod-scale prod-status prod-logs prod-stop prod-start prod-down prod-recover-admin prod-mail-test mail-ops-test prod-active-sessions prod-install-service prod-enable-archiving prod-disable-archiving prod-backup-status prod-backup-dump prod-backup-nightly prod-backup-basebackup prod-backup-push prod-backup-prune prod-backup-restore-test prod-backup-check prod-backup-install prod-backup-enable prod-backup-disable prod-preflight backup-drill-test dr-drill scale-drill-test
 
 help:
 	@echo "make dev-up     Tạo và chạy pod dev-exam (PostgreSQL :$(POSTGRES_PORT), Redis :$(REDIS_PORT))"
@@ -45,6 +45,8 @@ help:
 	@echo "make prod-stop / prod-start           Dừng hoặc bật lại pod (giữ dữ liệu)"
 	@echo "make prod-down                        Xóa pod và container, GIỮ volume dữ liệu"
 	@echo "make prod-recover-admin ADMIN=<tên>   Khôi phục tài khoản Quản trị viên"
+	@echo "make prod-mail-test ADDRESS=<email>   Gửi thư thử để kiểm cấu hình gửi thư (SMTP_* trong api.env)"
+	@echo "make mail-ops-test                 Thử phần vận hành gửi thư (không cần pod)"
 	@echo "make prod-install-service          Cài lại dịch vụ systemd (mở WSL thì dựng lại pod)"
 	@echo "make prod-active-sessions             Có Phiên thi đang diễn ra hoặc sắp bắt đầu không"
 	@echo "Sao lưu (docs/ops/khoi-phuc.md, script scripts/exam-backup.sh):"
@@ -162,6 +164,12 @@ prod-install-service:
 	@$(EXAM_CTL) install-service
 prod-recover-admin:
 	@$(EXAM_CTL) recover-admin $(ADMIN)
+
+prod-mail-test:
+	@$(EXAM_CTL) mail-test $(ADDRESS)
+
+mail-ops-test:
+	@bash scripts/test-mail-ops.sh
 prod-active-sessions:
 	@$(EXAM_CTL) active-sessions
 prod-enable-archiving:

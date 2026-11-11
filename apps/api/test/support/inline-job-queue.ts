@@ -11,6 +11,8 @@ export class InlineJobQueue implements JobQueue {
   registry?: JobRegistry;
   /** Đặt true để lần `enqueue` kế tiếp ném lỗi (giả lập Redis hỏng). */
   failNextEnqueue = false;
+  /** Đặt true để job chạy ngay trong `enqueue`, như BullMQ giao ngay cho một chỗ chạy job đang rảnh. */
+  runImmediately = false;
 
   /** Test gọi job định kỳ trực tiếp qua JobRegistry, nên ở đây không cần lịch. */
   async schedule(): Promise<void> {}
@@ -20,8 +22,12 @@ export class InlineJobQueue implements JobQueue {
       this.failNextEnqueue = false;
       throw new Error('Redis không sẵn sàng');
     }
-    this.jobs.push({ name, payload });
     this.history.push({ name, payload });
+    if (this.runImmediately) {
+      await this.registry?.run(name, payload);
+      return;
+    }
+    this.jobs.push({ name, payload });
   }
 
   /** Bỏ hết job đang chờ, như thể worker không bao giờ nhận được chúng. */
