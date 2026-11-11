@@ -645,7 +645,7 @@ describe('gửi thử (mail-test): kiểm cấu hình thật trước production
       to: 'kiem-tra@example.com',
       subject: expect.stringContaining('Thư thử'),
     });
-    expect(t.mail.sent[0]?.text).toContain('Hệ thống kiểm tra đánh giá');
+    expect(t.mail.sent[0]?.text).toContain('BLUni Exam');
     expect(t.mail.sent[0]?.text).not.toMatch(/https?:\/\//); // thư thử không chứa liên kết nào
     expect(t.messages.calls).toEqual([]);
     expect(await mail.counts()).toMatchObject({ pending: 0, sent: 0 });

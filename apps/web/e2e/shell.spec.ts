@@ -41,7 +41,7 @@ test.describe('khung ứng dụng thích ứng', () => {
   test('từ 1024 px: tên hệ thống trên thanh bên nằm trọn một dòng', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1024, height: 800 });
     await signIn(page, `e2e-khung-${testInfo.project.name}`);
-    const title = page.locator('#app-sidebar').getByText('Hệ thống thi trực tuyến');
+    const title = page.locator('#app-sidebar').getByText('BLUni Exam');
     await expect(title).toBeVisible();
     const lineHeight = await title.evaluate((el) =>
       Number.parseFloat(getComputedStyle(el).lineHeight),

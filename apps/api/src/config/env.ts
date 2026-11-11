@@ -54,7 +54,7 @@ const baseEnvSchema = z.object({
   SMTP_PASSWORD: z.string().min(1).optional(),
   EMAIL_FROM: z.email().optional(),
   EMAIL_REPLY_TO: z.email().optional(),
-  EMAIL_FROM_NAME: z.string().min(1).default('Hệ thống kiểm tra đánh giá trực tuyến'),
+  EMAIL_FROM_NAME: z.string().min(1).default('BLUni Exam'),
   EMAIL_SUPPORT_CONTACT: z
     .string()
     .min(1)
