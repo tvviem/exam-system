@@ -27,7 +27,13 @@ export interface MailTransport {
  */
 export const MESSAGE_BUILDER = Symbol('MESSAGE_BUILDER');
 export interface MessageBuilder {
-  build(request: { kind: MailKind; toEmail: string; userId: string | null }): Promise<MailContent>;
+  build(request: {
+    kind: MailKind;
+    toEmail: string;
+    userId: string | null;
+    requestedBy: string | null;
+    context: Record<string, string> | null;
+  }): Promise<MailContent>;
 }
 
 /** Phân loại lỗi gửi: `temporary` thử lại, `permanent` địa chỉ bị từ chối, `auth` lỗi cấu hình (ngắt mạch). */
@@ -50,3 +56,20 @@ export const MAIL_SECRETS = Symbol('MAIL_SECRETS');
 
 /** Tên hệ thống và dòng liên hệ hỗ trợ đưa vào mẫu thư. */
 export const MAIL_BRAND = Symbol('MAIL_BRAND');
+
+/**
+ * `MESSAGE_BUILDER` thật của ứng dụng: bộ đăng ký để `identity` (bên cài đặt) tự đăng ký lúc khởi động. Nhờ vậy `mail`
+ * không phải import `identity` (không vòng phụ thuộc, không phạm architecture.test A1).
+ */
+export class MessageBuilderRegistry implements MessageBuilder {
+  private builder: MessageBuilder | null = null;
+
+  register(builder: MessageBuilder): void {
+    this.builder = builder;
+  }
+
+  async build(request: Parameters<MessageBuilder['build']>[0]): Promise<MailContent> {
+    if (!this.builder) throw new Error('Chưa có bộ dựng thư nào được đăng ký');
+    return this.builder.build(request);
+  }
+}

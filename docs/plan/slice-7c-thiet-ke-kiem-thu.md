@@ -115,3 +115,38 @@ Chủ dự án đồng ý **toàn bộ đề xuất**:
 Các câu b, d, e, f, g, h (mục 4) thực hiện đúng như đề xuất. Tiêu chí 15 của tài liệu thiết kế email nay chốt "dùng lại được".
 
 **Bước kế:** viết bài kiểm thử và mã cho 7c-1 theo TDD (lát 1: A-01), mỗi bài đỏ rồi xanh; kiểm thử đột biến; cập nhật tài liệu cùng PR.
+
+## 11. Kết quả triển khai 7c-1 (12/11/2026)
+
+Làm theo TDD: bài viết trước, thấy đỏ đúng lý do rồi mới viết mã, bản giả và hạ tầng test dựng khi cần. **Ngoại lệ phải nói rõ:** bài E2E (lát 10) tôi viết trước nhưng làm giao diện liền sau đó nên **chưa thấy đỏ** trước khi xanh; đã bù bằng kiểm thử đột biến phía web (mục 11.3).
+
+### 11.1 Số bài
+
+| Nhóm | Tệp | Bài |
+|---|---|---|
+| `AuthLinks` (K1, K5): A-01 đến A-11 | `test/auth-links.int.test.ts` | 20 |
+| Bộ dựng thư thật (K2): A-12 đến A-15 | `test/auth-links-mail.int.test.ts` | 4 |
+| API quên mật khẩu, giới hạn, bất biến, hiệu năng (K3, K4, K5, K7): A-16 đến A-27, H-A đến H-D, H-01, H-02 | `test/auth-recovery.int.test.ts` | 17 |
+| Nhận diện trình duyệt cho thư báo | `src/modules/identity/auth-links/describe-client.test.ts` | 6 |
+| Định dạng giờ trên trang (`formatWhen`) | `apps/web/src/lib/format-when.test.ts` | 2 |
+| Giao diện (K6): E-01 đến E-06 | `apps/web/e2e/auth-links.spec.ts` | 11 bài, chạy desktop và mobile |
+
+### 11.2 Điều chỉnh so với thiết kế (phát hiện khi làm)
+
+| # | Điều chỉnh | Lý do |
+|---|---|---|
+| i | **Giới hạn tần suất tính theo người đã tra ra** (id), không theo chuỗi gõ | cùng một người gõ tên đăng nhập hay email vẫn là một người (A-23b) |
+| ii | Thêm cột **`email_outbox.context`** (migration 0025) cho dữ liệu không bí mật của mẫu thư | thư "mật khẩu đã đổi" cần giờ, trình duyệt, hệ điều hành mà `MessageBuilder` không có |
+| iii | `MessageBuilderRegistry` ở `mail`, `identity` tự đăng ký | tránh vòng phụ thuộc mà không phạm `architecture.test` A1 |
+| iv | Chọn "kích hoạt" hay "đặt lại" cho nhật ký theo **`password_hash`**, không theo `activated_at` | dữ liệu cũ có thể rỗng `activated_at` (A-10c) |
+| v | `status` và `consume` đều trả **200 kèm `state`** (trừ lỗi chính sách: 400 `PASSWORD_POLICY`) | trang cần phân biệt từng lý do mà không gặp lỗi mạng |
+| vi | Thẻ `<meta name="referrer" content="no-referrer">` đặt ở `index.html` (mọi trang) | trang do nginx phục vụ, không phải API; mã ở mảnh `#` nên vốn không vào `Referer`, thẻ là lớp thêm |
+| vii | Migration `0024` có bước chuyển dữ liệu: tài khoản đang có mật khẩu thành đã kích hoạt | không thì hai Quản trị viên của production bị coi là Chờ kích hoạt |
+
+### 11.3 Kiểm thử đột biến
+
+27 đột biến phía máy chủ (băm mã, mã cũ, hạn từng loại, mốc hết hạn, chặn Khóa/Xóa, loại mã, chính sách mật khẩu, nhận mã đồng thời, thu hồi phiên, nhật ký, email xác thực, `status` tiêu mã, ai nhận thư, giới hạn tần suất, thư báo, liên kết trong thư, ánh xạ lỗi): **26 bị bắt ngay, 1 sống sót** (X11: không bài nào kiểm `email_verified_at` sau kích hoạt), đã thêm bài A-01b rồi bị bắt. Phía web 3 đột biến: 2 bị bắt (không xóa mã khỏi thanh địa chỉ; bỏ thẻ `referrer`), **1 sống sót** (bấm nút khi hai mật khẩu khác nhau vẫn gửi), đã thêm kiểm "không gửi yêu cầu nào" vào E-03b rồi bị bắt.
+
+### 11.4 Chưa làm (7c-2, 7d)
+
+Tạo tài khoản Chờ kích hoạt từ nhập Excel và Lời mời tự gửi thư, đổi email và thư xác thực, thư `email_changed_notice`; liên kết hỗ trợ, gửi lại, sửa email, bảng theo dõi, chuông. **Chưa bật ở production:** chưa có đường nào tạo tài khoản Chờ kích hoạt (7c-2), nên các trang chỉ dùng được với liên kết được phát hành tay.

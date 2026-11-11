@@ -57,6 +57,10 @@ export const users = pgTable(
     passwordExpiresAt: timestamp('password_expires_at', { withTimezone: true }),
     failedLoginCount: integer('failed_login_count').notNull().default(0),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+    /** Lúc người dùng đặt mật khẩu lần đầu; NULL kèm `password_hash` NULL là Chờ kích hoạt (ADR-0009). */
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    /** Lúc chính chủ hộp thư xác nhận email bằng Liên kết một lần; NULL là email chưa xác thực. */
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
     createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
     removedAt: timestamp('removed_at', { withTimezone: true }),
     removedBy: uuid('removed_by').references((): AnyPgColumn => users.id),
@@ -254,4 +258,38 @@ export const credentialSlips = pgTable(
     ...timestamps,
   },
   (t) => [index('credential_slips_request_idx').on(t.requestId)],
+);
+
+export const authTokenPurposeEnum = pgEnum('auth_token_purpose', [
+  'activation',
+  'password_reset',
+  'email_change',
+  'support_link',
+]);
+
+/**
+ * Liên kết một lần (ADR-0009): kích hoạt, đặt lại mật khẩu, đổi email, liên kết hỗ trợ. CHỈ lưu SHA-256 của mã,
+ * không bao giờ lưu mã đọc được. Mỗi người dùng chỉ có một mã còn hiệu lực mỗi loại (mã mới làm mã cũ `replaced_at`).
+ */
+export const authTokens = pgTable(
+  'auth_tokens',
+  {
+    id: idColumn(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    purpose: authTokenPurposeEnum('purpose').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    /** Chỉ cho `email_change`: địa chỉ mới, chỉ đổi khi liên kết được bấm. */
+    newEmail: citext('new_email'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    replacedAt: timestamp('replaced_at', { withTimezone: true }),
+    /** NULL: người dùng tự yêu cầu; có giá trị: Quản trị viên hoặc Người ra đề tạo. */
+    createdBy: uuid('created_by').references(() => users.id),
+    /** Bắt buộc với `support_link`. */
+    reason: text('reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('auth_tokens_user_purpose_idx').on(t.userId, t.purpose)],
 );

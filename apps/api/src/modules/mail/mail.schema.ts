@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { idColumn } from '../../db/columns';
 import { users } from '../identity/identity.schema';
 
@@ -48,6 +48,8 @@ export const emailOutbox = pgTable(
     lastError: text('last_error'),
     userId: uuid('user_id').references(() => users.id),
     requestedBy: uuid('requested_by').references(() => users.id),
+    /** Dữ liệu không bí mật cho mẫu thư (giờ, trình duyệt, hệ điều hành của thư "mật khẩu đã đổi"); KHÔNG BAO GIỜ chứa mã. */
+    context: jsonb('context').$type<Record<string, string>>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (t) => [

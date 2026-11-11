@@ -46,6 +46,8 @@ export async function createTestApp(
     mailLimits?: Partial<PlanLimits>;
     /** `none`: như production chưa cấu hình SMTP (chế độ không gửi); mặc định là vận chuyển giả. */
     mailTransport?: 'fake' | 'none';
+    /** true: dùng bộ dựng thư THẬT của `identity` (sinh Liên kết một lần) thay cho bản giả của test. */
+    realMessageBuilder?: boolean;
   } = {},
 ): Promise<TestApp> {
   const clock = new FakeClock();
@@ -60,8 +62,6 @@ export async function createTestApp(
     .useValue(queue)
     .overrideProvider(MAIL_TRANSPORT)
     .useValue(options.mailTransport === 'none' ? null : mail)
-    .overrideProvider(MESSAGE_BUILDER)
-    .useValue(messages)
     // Chờ giữa hai thư thì tua đồng hồ giả thay vì chờ thật.
     .overrideProvider(MAIL_LIMITS)
     .useFactory({
@@ -73,6 +73,7 @@ export async function createTestApp(
     .overrideProvider(MAIL_PAUSE)
     .useValue(async (ms: number) => clock.advance(ms));
   if (!options.realSlips) builder.overrideProvider(SLIP_RENDERER).useValue(slips);
+  if (!options.realMessageBuilder) builder.overrideProvider(MESSAGE_BUILDER).useValue(messages);
   const moduleRef = await builder.compile();
   queue.registry = moduleRef.get(JobRegistry);
   const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {

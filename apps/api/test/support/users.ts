@@ -15,9 +15,20 @@ export interface SeedUser {
   passwordExpiresAt?: Date | null;
   status?: 'active' | 'locked';
   removed?: boolean;
+  /** Chờ kích hoạt: chưa có mật khẩu, chưa kích hoạt (ADR-0009). */
+  pending?: boolean;
+  emailVerified?: boolean;
 }
 
 export const DEFAULT_PASSWORD = 'mat-khau-on-dinh';
+
+// Băm Argon2 chậm có chủ đích (khoảng 70 ms); mật khẩu mặc định băm một lần dùng chung để seed nhiều người nhanh.
+let defaultHash: Promise<string> | undefined;
+function hashFor(password: string | undefined): Promise<string> {
+  if (password !== undefined) return hashPassword(password);
+  defaultHash ??= hashPassword(DEFAULT_PASSWORD);
+  return defaultHash;
+}
 
 /** Tạo sẵn Người dùng cho phần chuẩn bị của test, không đi qua API. */
 export async function seedUser(
@@ -30,21 +41,23 @@ export async function seedUser(
   try {
     await pg.query(
       `INSERT INTO users (id, username, email, code, full_name, password_hash, is_admin,
-         must_change_password, password_expires_at, status, removed_at, class_label)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+         must_change_password, password_expires_at, status, removed_at, class_label, activated_at, email_verified_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
         id,
         username,
         input.email ?? null,
         input.code ?? null,
         input.fullName ?? 'Nguyễn Văn An',
-        await hashPassword(input.password ?? DEFAULT_PASSWORD),
+        input.pending ? null : await hashFor(input.password),
         input.isAdmin ?? false,
         input.mustChangePassword ?? false,
         input.passwordExpiresAt ?? null,
         input.status ?? 'active',
         input.removed ? new Date() : null,
         input.classLabel ?? null,
+        input.pending ? null : new Date(),
+        input.emailVerified ? new Date() : null,
       ],
     );
     for (const tag of input.roleTags ?? []) {

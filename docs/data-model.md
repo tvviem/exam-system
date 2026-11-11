@@ -131,9 +131,26 @@ email_outbox (
   sent_at timestamptz NULL,                         -- giờ NHẬN VIỆC của lần gửi thành công (căn cứ hạn mức và khoảng cách)
   last_error text NULL,                             -- đã che mật khẩu SMTP; có thể chứa địa chỉ người nhận (đã có ở to_email)
   user_id uuid NULL → users, requested_by uuid NULL → users,   -- requested_by: xoay vòng giữa các Người ra đề
+  context jsonb NULL,                               -- migration 0025: dữ liệu KHÔNG bí mật cho mẫu thư (giờ, trình duyệt, hệ điều hành); không bao giờ chứa mã
   created_at timestamptz
 )  -- INDEX (status, next_attempt_at), (sent_at). Hạn mức đếm từ bảng này (sent trong 24 giờ trượt + sending), không từ Redis
    -- hay bộ nhớ, nên khởi động lại không đếm lại từ 0.
+
+-- Lát cắt 7 (PR 7c-1, module `identity`, migration 0024, plan/slice-7c-thiet-ke-kiem-thu.md, ADR-0009): Liên kết một lần.
+-- `users` thêm: activated_at timestamptz NULL (lúc đặt mật khẩu lần đầu), email_verified_at timestamptz NULL (lúc chính chủ hộp thư
+-- bấm liên kết). Chờ kích hoạt = `password_hash` NULL và `activated_at` NULL (quy tắc dựa vào `password_hash`, không dựa vào
+-- `activated_at`, vì dữ liệu cũ có thể rỗng). Migration chuyển tài khoản đang có mật khẩu thành đã kích hoạt (`activated_at = created_at`),
+-- email vẫn chưa xác thực.
+auth_tokens (
+  id uuid PK, user_id uuid → users,
+  purpose enum('activation','password_reset','email_change','support_link'),
+  token_hash text UNIQUE,                           -- CHỈ SHA-256 của mã; không bao giờ lưu mã đọc được
+  new_email citext NULL,                            -- chỉ email_change (7c-2)
+  expires_at timestamptz,                           -- kích hoạt 7 ngày, đặt lại 60 phút, đổi email 24 giờ, hỗ trợ 60 phút
+  used_at timestamptz NULL, replaced_at timestamptz NULL,   -- một người chỉ có MỘT mã còn hiệu lực mỗi loại: mã mới đặt replaced_at cho mã cũ
+  created_by uuid NULL → users, reason text NULL,   -- cho liên kết hỗ trợ (7d)
+  created_at timestamptz
+)  -- INDEX (user_id, purpose). Còn hạn tới TRƯỚC expires_at, hết hạn từ đúng lúc đó.
 ```
 
 Quy tắc ràng buộc ở tầng service:

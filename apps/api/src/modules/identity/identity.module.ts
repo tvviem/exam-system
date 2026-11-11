@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AuditModule } from '../audit/audit.module';
+import { MailModule } from '../mail/mail.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AccountController } from './account/account.controller';
 import { AccountService } from './account/account.service';
@@ -19,6 +20,11 @@ import { AuthSessionStore } from './auth/auth-session-store';
 import { LoginBlock } from './auth/login-block';
 import { LoginRateLimiter } from './auth/login-rate-limiter';
 import { TokenAuthenticator } from './auth/token-authenticator';
+import { AccountRecoveryService } from './auth-links/account-recovery.service';
+import { AuthLinksController } from './auth-links/auth-links.controller';
+import { AuthLinks } from './auth-links/auth-links.service';
+import { AuthLinksMessageBuilder } from './auth-links/auth-links-message-builder';
+import { RecoveryRateLimiter } from './auth-links/recovery-rate-limiter';
 import { CandidateDirectoryService } from './candidate-directory.service';
 import { CredentialSlipsController } from './credential-slips/credential-slips.controller';
 import { CredentialSlipsService } from './credential-slips/credential-slips.service';
@@ -40,7 +46,7 @@ import { UserManagementService } from './users/user-management.service';
 import { UsersRepository } from './users.repository';
 
 @Module({
-  imports: [AuditModule, NotificationsModule],
+  imports: [AuditModule, NotificationsModule, MailModule],
   controllers: [
     AuthController,
     AccountController,
@@ -50,6 +56,7 @@ import { UsersRepository } from './users.repository';
     LoginEventsController,
     AuditLogsController,
     InvitationsController,
+    AuthLinksController,
     PublicInvitationsController,
     AccountRequestsController,
     CredentialSlipsController,
@@ -66,6 +73,10 @@ import { UsersRepository } from './users.repository';
     UserManagementService,
     UnitsService,
     LoginEventsService,
+    AuthLinks,
+    AuthLinksMessageBuilder,
+    AccountRecoveryService,
+    RecoveryRateLimiter,
     InvitationsService,
     InvitationAcceptanceService,
     InvitationRateLimiter,
@@ -84,6 +95,7 @@ import { UsersRepository } from './users.repository';
   ],
   // CLI và các module khác chỉ dùng những gì được xuất ở đây.
   exports: [
+    AuthLinks,
     AuthSessionStore,
     TokenAuthenticator,
     AdminAccountsService,

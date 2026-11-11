@@ -56,7 +56,8 @@
     "identifier": "Tên đăng nhập hoặc email",
     "password": "Mật khẩu",
     "submit": "Đăng nhập",
-    "submitting": "Đang đăng nhập…"
+    "submitting": "Đang đăng nhập…",
+    "forgot": "Quên mật khẩu?"
   },
   "changePassword": {
     "heading": "Đổi mật khẩu",
@@ -2072,5 +2073,59 @@
     "warnBody": "Điểm tự động đã đổi từ {{from}} thành {{to}} sau khi Người dự thi gửi Phúc khảo. Hãy xem điểm hiện tại trước khi đặt điểm mới.",
     "viaAppeal": "Đính chính cho cả Phiên thi",
     "askOwner": "Nếu nghi Đáp án đúng bị nhập sai, hãy báo chủ Bộ đề để Đính chính đáp án."
+  },
+  "authLinks": {
+    "password": "Mật khẩu mới",
+    "passwordHint": "Từ 10 ký tự, không quá phổ biến, không chứa tên đăng nhập hoặc Mã định danh.",
+    "confirm": "Nhập lại mật khẩu",
+    "mismatch": "Hai mật khẩu chưa giống nhau.",
+    "submitting": "Đang lưu…",
+    "login": "Đăng nhập",
+    "requestNew": "Yêu cầu liên kết mới",
+    "doneText": "Vì an toàn, hệ thống không tự đăng nhập. Hãy đăng nhập bằng mật khẩu vừa đặt.",
+    "activation": {
+      "heading": "Kích hoạt tài khoản",
+      "intro": "Đặt mật khẩu để bắt đầu dùng tài khoản.",
+      "submit": "Kích hoạt",
+      "doneHeading": "Đã kích hoạt tài khoản",
+      "name": "kích hoạt"
+    },
+    "password_reset": {
+      "heading": "Đặt lại mật khẩu",
+      "intro": "Chọn mật khẩu mới. Các phiên đăng nhập cũ sẽ bị đăng xuất.",
+      "submit": "Đặt mật khẩu mới",
+      "doneHeading": "Đã đặt lại mật khẩu",
+      "name": "đặt lại mật khẩu"
+    },
+    "forgot": {
+      "heading": "Quên mật khẩu",
+      "intro": "Nhập tên đăng nhập hoặc email của tài khoản. Nếu tài khoản có thể nhận thư, chúng tôi sẽ gửi hướng dẫn.",
+      "submit": "Gửi hướng dẫn",
+      "sending": "Đang gửi…",
+      "sent": "Nếu tài khoản tồn tại, chúng tôi đã gửi thư hướng dẫn tới email của tài khoản. Không thấy thư thì kiểm tra mục Spam hoặc Quảng cáo.",
+      "back": "Quay lại đăng nhập"
+    },
+    "problem": {
+      "unknown": {
+        "heading": "Liên kết không hợp lệ",
+        "text": "Liên kết không đúng hoặc đã bị cắt bớt khi sao chép. Hãy mở lại liên kết từ thư gần nhất, hoặc yêu cầu liên kết mới."
+      },
+      "expired": {
+        "heading": "Liên kết đã hết hạn",
+        "text": "Liên kết này hết hạn lúc {{when}}. Hãy yêu cầu liên kết mới."
+      },
+      "used": {
+        "heading": "Liên kết đã được dùng",
+        "text": "Liên kết này đã được dùng lúc {{when}}. Nếu là bạn, hãy đăng nhập bằng mật khẩu đã đặt."
+      },
+      "replaced": {
+        "heading": "Liên kết đã được thay",
+        "text": "Bạn đã nhận một thư mới hơn. Hãy dùng liên kết trong thư mới nhất, hoặc yêu cầu liên kết mới."
+      },
+      "blocked": {
+        "heading": "Tài khoản chưa dùng được",
+        "text": "Tài khoản này đang bị khóa hoặc đã bị xóa. Hãy liên hệ Người ra đề hoặc quản trị viên của bạn."
+      }
+    }
   }
 }
