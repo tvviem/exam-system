@@ -27,7 +27,7 @@ Nâng cấp sau khi bản MVP chạy thật (lát cắt 6). Câu hỏi bắt đ�
 |---|---|---|
 | **7a** | kiểm thử trọn kịch bản quên mật khẩu (API 16 bài, trình duyệt 4 bài), tài liệu `tai-khoan-va-mat-khau.md`, kế hoạch lát cắt này; **không đổi hành vi hệ thống** | đã merge (#89) |
 | **7b** | hạ tầng gửi email: cấu hình SMTP, `email_outbox`, hàng đợi có trần và xoay vòng, mẫu thư, lệnh gửi thử, bộ gửi giả, tắt gửi ở môi trường diễn tập | **đã làm theo TDD 11/11/2026** (mã và kiểm thử xong, chưa commit): [slice-7b-thiet-ke-kiem-thu.md](./slice-7b-thiet-ke-kiem-thu.md) mục 10, vận hành [ops/gui-thu.md](../ops/gui-thu.md) |
-| **7c** | `auth_tokens`, kích hoạt tài khoản, Lời mời tự gửi thư, quên mật khẩu, đổi email, nhật ký, màn hình, kiểm thử trọn kịch bản | chờ thiết kế |
+| **7c** (đã duyệt cắt thành 7c-1 và 7c-2, 11/11/2026; xem [slice-7c-thiet-ke-kiem-thu.md](./slice-7c-thiet-ke-kiem-thu.md)) | `auth_tokens`, kích hoạt tài khoản, Lời mời tự gửi thư, quên mật khẩu, đổi email, nhật ký, màn hình, kiểm thử trọn kịch bản | chờ thiết kế |
 | **7d** | màn hình Quản trị viên và Người ra đề (gửi lại, sửa email, liên kết hỗ trợ, hạn mức, bảng theo dõi kích hoạt), biểu ngữ và trang xác thực email cho 2 Quản trị viên hiện có (Q380), bỏ Phiếu tài khoản và "Cấp lại mật khẩu tạm", cập nhật `prod-preflight` và checklist, tài liệu | chờ thiết kế |
 
 (Tên "7b" trong bản kế hoạch ban đầu là "liên kết đặt lại một lần do Quản trị viên gửi tay"; hướng đó **đã bị thay** bằng phương án B nên 7b, 7c, 7d nay theo bảng trên.)
