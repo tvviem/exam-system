@@ -42,3 +42,19 @@ test('sai mật khẩu hiển thị lỗi chung', async ({ page }) => {
   await page.getByRole('button', { name: 'Đăng nhập' }).click();
   await expect(page.getByRole('alert')).toHaveText('Tên đăng nhập hoặc mật khẩu không đúng.');
 });
+
+test('trang đăng nhập có đúng một logo nhãn hiệu BLUni (chân trang, trên nền trắng), không logo nào ở nơi khác', async ({
+  page,
+}) => {
+  await page.goto('/login');
+  const logo = page.getByRole('img', { name: 'BLUni' });
+  await expect(logo).toBeVisible();
+  await expect(logo).toHaveCount(1);
+  // Hình nằm trên thẻ trắng nên đọc được cả ở giao diện tối (chữ xanh đậm không nằm trực tiếp trên nền tối).
+  const bg = await logo.evaluate(
+    (el) => getComputedStyle(el.parentElement as HTMLElement).backgroundColor,
+  );
+  expect(bg).toBe('rgb(255, 255, 255)');
+  // Không có hình nào khác mang nhãn hiệu: chỉ một ảnh trên trang.
+  await expect(page.locator('main img')).toHaveCount(1);
+});

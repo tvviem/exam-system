@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import bluniWordmark from '../assets/brand/bluni-wordmark.svg';
 import { login, meQuery, safeRedirect } from '../lib/auth';
 import { errorMessage } from '../lib/errors';
 import { Card, ErrorMessage, PrimaryButton, TextField } from '../lib/ui';
@@ -72,6 +73,10 @@ function LoginPage() {
           </PrimaryButton>
         </form>
       </Card>
+      {/* Nhãn hiệu của trường, chỉ ở đây; thẻ trắng để đọc được cả ở giao diện tối. */}
+      <div className="mx-auto mt-6 rounded-lg bg-white px-4 py-2">
+        <img src={bluniWordmark} alt="BLUni" className="block h-6 w-auto" />
+      </div>
     </main>
   );
 }

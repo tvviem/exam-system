@@ -1,4 +1,4 @@
-# Hệ thống khảo thí trực tuyến BLUNI
+# Hệ thống khảo thí trực tuyến BLUni
 
 Hệ thống cho phép Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi để Người dự thi làm bài trên điện thoại hoặc máy tính. Tên tiếng Anh trong ngoặc là tên dùng trong mã nguồn.
 

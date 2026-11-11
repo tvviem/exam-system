@@ -46,7 +46,7 @@ describe('cấu hình SMTP trong loadEnv', () => {
 
   it('C-05: tên hệ thống và dòng liên hệ hỗ trợ có mặc định và đổi được bằng cấu hình', () => {
     const env = loadEnv(base);
-    expect(env.EMAIL_FROM_NAME).toBe('BLUNI Exam');
+    expect(env.EMAIL_FROM_NAME).toBe('BLUni Exam');
     expect(env.EMAIL_SUPPORT_CONTACT).toBe(
       'Cần trợ giúp, hãy liên hệ Người ra đề hoặc quản trị viên của bạn.',
     );

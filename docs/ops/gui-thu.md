@@ -23,7 +23,7 @@ Không đặt nhóm `SMTP_*` thì hệ thống ở chế độ **không gửi**:
 | `EMAIL_FROM` | có (nhóm) | | địa chỉ người gửi; **với Gmail phải trùng `SMTP_USERNAME`** (Gmail ghi đè nếu khác, nên hệ thống từ chối khởi động) |
 | `SMTP_PORT` | không | 587 | 587 dùng STARTTLS; 465 dùng TLS ngay |
 | `EMAIL_REPLY_TO` | không | `EMAIL_FROM` | hộp thư thật để người nhận trả lời |
-| `EMAIL_FROM_NAME` | không | BLUNI Exam | tên hiển thị của người gửi và tên hệ thống trong thư |
+| `EMAIL_FROM_NAME` | không | BLUni Exam | tên hiển thị của người gửi và tên hệ thống trong thư |
 | `EMAIL_SUPPORT_CONTACT` | không | "Cần trợ giúp, hãy liên hệ Người ra đề hoặc quản trị viên của bạn." | dòng liên hệ hỗ trợ cuối mỗi thư |
 | `SMTP_TIMEOUT_SECONDS` | không | 15 | chờ máy chủ thư tối đa chừng này |
 | `EMAIL_LIMIT_TOTAL` | không | 400 | tổng số thư mỗi 24 giờ trượt |
