@@ -24,6 +24,8 @@ export interface Account {
   fullName: string;
   username: string | null;
   email: string | null;
+  /** Email đã được chính chủ hộp thư xác nhận bằng liên kết gửi tới đó. */
+  emailVerified: boolean;
   code: string | null;
   classLabel: string | null;
   dateOfBirth: string | null;
@@ -54,3 +56,11 @@ export const accountQuery = queryOptions({
 
 export const updateAccount = (changes: AccountChanges) =>
   apiFetch<Account>('/account', { method: 'PATCH', body: changes });
+
+/** Xin đổi email: thư có liên kết gửi tới địa chỉ MỚI; email chỉ đổi khi bấm liên kết. */
+export const requestEmailChange = (newEmail: string, currentPassword: string) =>
+  apiFetch<{ ok: true }>('/account/email', { method: 'POST', body: { newEmail, currentPassword } });
+
+/** "Gửi thư xác thực" cho email đang lưu (chưa xác thực). */
+export const requestEmailVerification = () =>
+  apiFetch<{ ok: true }>('/account/email/verify', { method: 'POST' });

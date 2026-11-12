@@ -176,6 +176,25 @@ export class MailService {
     }
   }
 
+  /**
+   * Bỏ các thư loại `kind` còn đang chờ mà `context` chứa đúng cặp khóa-giá trị này (ví dụ Lời mời bị thu hồi trước khi thư
+   * kịp gửi). Thư đã gửi hay đang gửi không đụng tới. Trả số thư đã bỏ.
+   */
+  async cancelPending(kind: MailKind, context: Record<string, string>): Promise<number> {
+    const rows = await this.db
+      .update(emailOutbox)
+      .set({ status: 'skipped', lastError: 'Đã hủy trước khi gửi' })
+      .where(
+        and(
+          eq(emailOutbox.kind, kind),
+          eq(emailOutbox.status, 'pending'),
+          sql`${emailOutbox.context} @> ${JSON.stringify(context)}::jsonb`,
+        ),
+      )
+      .returning({ id: emailOutbox.id });
+    return rows.length;
+  }
+
   /** Số thư theo trạng thái (chỉ đọc), cho màn hình theo dõi và cho test. */
   async counts(): Promise<Record<MailRecord['status'], number>> {
     const rows = await this.db

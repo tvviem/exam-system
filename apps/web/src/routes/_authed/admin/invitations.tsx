@@ -1,17 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Link2, Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createInvitation,
   INVITATION_STATUSES,
   type Invitation,
-  type InvitationLink,
   type InvitationParams,
+  type InvitationSent,
   type InvitationStatus,
   invitationsQuery,
-  invitationUrl,
   regenerateInvitation,
   revokeInvitation,
   unitsQuery,
@@ -28,7 +27,7 @@ import {
   SelectField,
   TextField,
 } from '../../../lib/ui';
-import { EmptyState, ListSkeleton, Pagination, ShowOnceDialog } from '../../../lib/ui/admin';
+import { EmptyState, ListSkeleton, Pagination } from '../../../lib/ui/admin';
 import { PageHeader } from '../../../lib/ui/page-header';
 import { useToast } from '../../../lib/ui/toast';
 
@@ -49,22 +48,18 @@ const statusTone = {
   revoked: 'neutral',
 } as const;
 
-type LinkValue = InvitationLink & { title: string };
-
 function InvitationsPage() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const invitations = useQuery(invitationsQuery(search));
   const [creating, setCreating] = useState(false);
-  const [link, setLink] = useState<LinkValue | null>(null);
+  const toast = useToast();
   // Lời mời đang chờ xác nhận Thu hồi / Tạo lại link.
   const [confirm, setConfirm] = useState<{
     kind: 'revoke' | 'regenerate';
     item: Invitation;
   } | null>(null);
-  const showLink = (value: InvitationLink) =>
-    setLink({ ...value, title: t('admin.invitations.linkTitle', { name: value.fullName }) });
 
   return (
     <section className="flex flex-col gap-4">
@@ -134,7 +129,7 @@ function InvitationsPage() {
           onClose={() => setCreating(false)}
           onCreated={(created) => {
             setCreating(false);
-            showLink(created);
+            toast(t('admin.invitations.sent', { email: created.email }));
           }}
         />
       )}
@@ -144,11 +139,10 @@ function InvitationsPage() {
           onClose={() => setConfirm(null)}
           onRegenerated={(regenerated) => {
             setConfirm(null);
-            showLink(regenerated);
+            toast(t('admin.invitations.resent', { email: regenerated.email }));
           }}
         />
       )}
-      <InvitationLinkDialog value={link} onClose={() => setLink(null)} />
     </section>
   );
 }
@@ -203,7 +197,7 @@ function CreateInvitationDialog({
   onCreated,
 }: {
   onClose: () => void;
-  onCreated: (link: InvitationLink) => void;
+  onCreated: (sent: InvitationSent) => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -286,14 +280,14 @@ function ConfirmDialog({
   kind: 'revoke' | 'regenerate';
   item: Invitation;
   onClose: () => void;
-  onRegenerated: (link: InvitationLink) => void;
+  onRegenerated: (sent: InvitationSent) => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const toast = useToast();
   const mutation = useMutation({
-    // Chỉ Tạo lại link trả link mới; Thu hồi trả null.
-    mutationFn: async (): Promise<InvitationLink | null> => {
+    // Tạo lại link gửi thư mới; Thu hồi trả null.
+    mutationFn: async (): Promise<InvitationSent | null> => {
       if (kind === 'regenerate') return regenerateInvitation(item.id);
       await revokeInvitation(item.id);
       return null;
@@ -328,35 +322,5 @@ function ConfirmDialog({
         <Button onClick={onClose}>{t('common.cancel')}</Button>
       </div>
     </Dialog>
-  );
-}
-
-function InvitationLinkDialog({
-  value,
-  onClose,
-}: {
-  value: LinkValue | null;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  if (!value) return null;
-  const url = invitationUrl(value.token);
-  return (
-    <ShowOnceDialog
-      title={value.title}
-      warning={t('admin.invitations.linkOnlyOnce')}
-      copyLabel={t('admin.invitations.copyLink')}
-      note={t('admin.invitations.linkExpires', { time: formatDateTime(value.expiresAt) })}
-      confirmLabel={t('admin.invitations.linkSaved')}
-      testId="invitation-link"
-      display={
-        <>
-          <Link2 aria-hidden className="size-4 shrink-0 text-fg-muted" />
-          <span className="text-sm">{url}</span>
-        </>
-      }
-      copyText={url}
-      onClose={onClose}
-    />
   );
 }

@@ -281,14 +281,13 @@ export interface Invitation {
   createdAt: string;
 }
 
-/** Trả về từ tạo / Tạo lại link: `token` chỉ có đúng lần này. */
-export interface InvitationLink {
+/** Trả về từ tạo / Tạo lại link: hệ thống tự gửi thư, nên KHÔNG có mã (mã chỉ nằm trong thư). */
+export interface InvitationSent {
   id: string;
   email: string;
   fullName: string;
   status: InvitationStatus;
   expiresAt: string;
-  token: string;
 }
 
 export interface InvitationParams {
@@ -305,13 +304,10 @@ export const invitationsQuery = (params: InvitationParams) =>
   });
 
 export const createInvitation = (body: { email: string; fullName: string; unitId: string }) =>
-  apiFetch<InvitationLink>('/admin/invitations', { method: 'POST', body });
+  apiFetch<InvitationSent>('/admin/invitations', { method: 'POST', body });
 
 export const revokeInvitation = (id: string) =>
   apiFetch<Invitation>(`/admin/invitations/${id}/revoke`, { method: 'POST' });
 
 export const regenerateInvitation = (id: string) =>
-  apiFetch<InvitationLink>(`/admin/invitations/${id}/regenerate`, { method: 'POST' });
-
-/** Link gửi cho người được mời; dựng từ địa chỉ trang đang mở nên đúng ở cả dev lẫn production. */
-export const invitationUrl = (token: string) => `${window.location.origin}/invite/${token}`;
+  apiFetch<InvitationSent>(`/admin/invitations/${id}/regenerate`, { method: 'POST' });

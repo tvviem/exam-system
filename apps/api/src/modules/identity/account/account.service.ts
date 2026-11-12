@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Actor } from '../../../common/actor';
 import { ApiError } from '../../../common/api-error';
 import { type Database, DB } from '../../../db/db.module';
@@ -43,6 +43,7 @@ export class AccountService {
         fullName: users.fullName,
         username: users.username,
         email: users.email,
+        emailVerified: sql<boolean>`${users.emailVerifiedAt} IS NOT NULL`,
         code: users.code,
         classLabel: users.classLabel,
         dateOfBirth: users.dateOfBirth,

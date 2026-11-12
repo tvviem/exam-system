@@ -4,10 +4,12 @@ import { type FormEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   consumeLink,
+  type EmailConfirmState,
   type LinkPurpose,
   type LinkState,
   linkStatus,
-  takeTokenFromHash,
+  type PasswordPurpose,
+  useLinkToken,
 } from '../auth-links';
 import { errorMessage } from '../errors';
 import { formatWhen } from '../format';
@@ -33,9 +35,14 @@ export function PublicShell({ children }: { children: ReactNode }) {
  * Trang dùng Liên kết một lần (kích hoạt, đặt lại mật khẩu): đọc mã từ mảnh `#`, xem mã còn dùng được không TRƯỚC khi
  * người dùng gõ mật khẩu, nêu rõ lý do và việc làm tiếp khi không dùng được. Không tự đăng nhập sau khi xong (OWASP).
  */
-export function AuthLinkPage({ purpose }: { purpose: LinkPurpose }) {
+export function AuthLinkPage({ purpose }: { purpose: PasswordPurpose }) {
+  const token = useLinkToken();
+  // `key` theo mã: dán liên kết khác vào cùng tab thì dựng lại từ đầu.
+  return <AuthLinkContent key={token} purpose={purpose} token={token} />;
+}
+
+function AuthLinkContent({ purpose, token }: { purpose: PasswordPurpose; token: string }) {
   const { t } = useTranslation();
-  const [token] = useState(takeTokenFromHash);
   const [done, setDone] = useState(false);
   const [problem, setProblem] = useState<LinkState | null>(null);
 
@@ -81,7 +88,7 @@ function PasswordStep({
   onDone,
   onProblem,
 }: {
-  purpose: LinkPurpose;
+  purpose: PasswordPurpose;
   token: string;
   onDone: () => void;
   onProblem: (link: LinkState) => void;
@@ -137,7 +144,7 @@ function PasswordStep({
   );
 }
 
-function Done({ purpose }: { purpose: LinkPurpose }) {
+function Done({ purpose }: { purpose: PasswordPurpose }) {
   const { t } = useTranslation();
   return (
     <PublicShell>
@@ -150,14 +157,10 @@ function Done({ purpose }: { purpose: LinkPurpose }) {
   );
 }
 
+export type ProblemState = Exclude<EmailConfirmState, { state: 'ok' }>;
+
 /** Một trang riêng cho mỗi lý do không dùng được: nêu lý do, giờ liên quan và việc làm tiếp (không bắt người dùng đoán). */
-function Problem({
-  purpose,
-  link,
-}: {
-  purpose: LinkPurpose;
-  link: Exclude<LinkState, { state: 'ok' }>;
-}) {
+export function Problem({ purpose, link }: { purpose: LinkPurpose; link: ProblemState }) {
   const { t } = useTranslation();
   const when =
     link.state === 'expired'
@@ -165,9 +168,11 @@ function Problem({
       : link.state === 'used'
         ? formatWhen(link.usedAt)
         : '';
-  const wantsLogin = link.state === 'used';
+  const emailChange = purpose === 'email_change';
+  const wantsLogin = !emailChange && link.state === 'used';
   const needsNewLink =
-    link.state === 'expired' || link.state === 'unknown' || link.state === 'replaced';
+    !emailChange &&
+    (link.state === 'expired' || link.state === 'unknown' || link.state === 'replaced');
   return (
     <PublicShell>
       <h1 className="mb-2 text-2xl font-semibold">
@@ -188,6 +193,11 @@ function Problem({
         {needsNewLink && (
           <Link to="/forgot-password" className={buttonClass('primary')}>
             {t('authLinks.requestNew')}
+          </Link>
+        )}
+        {emailChange && (
+          <Link to="/account" className={buttonClass('primary')}>
+            {t('authLinks.backToAccount')}
           </Link>
         )}
       </div>

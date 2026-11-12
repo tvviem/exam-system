@@ -44,7 +44,7 @@ test('Người ra đề xem và sửa thông tin, đổi mật khẩu rồi đă
   await expect(page.getByLabel('Ngày sinh')).toHaveValue('1985-04-02');
 
   // mật khẩu: lệch thì báo, đúng thì đổi và vẫn đang đăng nhập
-  await page.getByLabel('Mật khẩu hiện tại').fill(PASSWORD);
+  await page.getByLabel('Mật khẩu hiện tại', { exact: true }).fill(PASSWORD);
   await page.getByLabel('Mật khẩu mới', { exact: true }).fill('mot-mat-khau-moi-kha-dai');
   await page.getByLabel('Nhập lại mật khẩu mới').fill('khac-mat-khau-moi-kha-dai');
   await page.getByRole('button', { name: 'Đổi mật khẩu' }).click();
@@ -52,7 +52,7 @@ test('Người ra đề xem và sửa thông tin, đổi mật khẩu rồi đă
   await page.getByLabel('Nhập lại mật khẩu mới').fill('mot-mat-khau-moi-kha-dai');
   await page.getByRole('button', { name: 'Đổi mật khẩu' }).click();
   await expect(page.getByText('Đã đổi mật khẩu.')).toBeVisible();
-  await expect(page.getByLabel('Mật khẩu hiện tại')).toHaveValue('');
+  await expect(page.getByLabel('Mật khẩu hiện tại', { exact: true })).toHaveValue('');
   await expect(page.getByRole('heading', { name: 'Tài khoản của tôi', level: 1 })).toBeVisible();
 
   // đăng xuất rồi vào lại bằng mật khẩu mới

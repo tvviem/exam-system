@@ -123,6 +123,9 @@ export class InvitationAcceptanceService {
         fullName: invitation.fullName,
         passwordHash: await hashPassword(input.password),
         mustChangePassword: false,
+        // Bấm liên kết trong thư gửi tới email này là bằng chứng chính chủ hộp thư (ADR-0009).
+        activatedAt: now,
+        emailVerifiedAt: now,
         createdBy: invitation.invitedBy,
       })
       .returning({ id: users.id, isAdmin: users.isAdmin });

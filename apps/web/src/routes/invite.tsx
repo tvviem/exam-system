@@ -10,6 +10,7 @@ import {
 } from '../lib/admin';
 import { ApiError } from '../lib/api';
 import { logout, meQuery } from '../lib/auth';
+import { useLinkToken } from '../lib/auth-links';
 import { errorMessage } from '../lib/errors';
 import {
   acceptInvitation,
@@ -29,15 +30,20 @@ import { ListSkeleton } from '../lib/ui/admin';
 import { BrandMark } from '../lib/ui/brand';
 import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
-// Trang công khai: người được mời mở link, không cần đăng nhập để xem (Q81, Q86).
-export const Route = createFileRoute('/invite/$token')({
+// Trang công khai: người được mời mở liên kết trong thư (mã ở mảnh #, xóa khỏi thanh địa chỉ sau khi đọc), không cần đăng nhập
+// để xem (Q81, Q86).
+export const Route = createFileRoute('/invite')({
   component: InvitePage,
 });
 
 function InvitePage() {
+  const token = useLinkToken();
+  return <InviteContentPage key={token} token={token} />;
+}
+
+function InviteContentPage({ token }: { token: string }) {
   const { t } = useTranslation();
-  const { token } = Route.useParams();
-  const invitation = useQuery(invitationPreviewQuery(token));
+  const invitation = useQuery({ ...invitationPreviewQuery(token), enabled: token !== '' });
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
@@ -47,7 +53,9 @@ function InvitePage() {
       </div>
       <Card>
         <h1 className="mb-4 text-2xl font-semibold">{t('invite.heading')}</h1>
-        {invitation.isPending ? (
+        {token === '' ? (
+          <ErrorMessage>{t('errors.INVITATION_UNAVAILABLE')}</ErrorMessage>
+        ) : invitation.isPending ? (
           <ListSkeleton rows={2} />
         ) : invitation.isError ? (
           <ErrorMessage>{errorMessage(t, invitation.error)}</ErrorMessage>
@@ -101,7 +109,7 @@ function InviteContent({ token, invitation }: { token: string; invitation: Invit
         <p>{t('invite.existingNeedLogin', { email: invitation.email })}</p>
         <Link
           to="/login"
-          search={{ redirect: `/invite/${token}` }}
+          search={{ redirect: `/invite#${token}` }}
           className={buttonClass('primary')}
         >
           {t('invite.login')}

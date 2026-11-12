@@ -14,6 +14,7 @@ import {
 } from '../../../lib/account';
 import { errorMessage } from '../../../lib/errors';
 import { Badge, Card, ErrorMessage, PrimaryButton, SelectField, TextField } from '../../../lib/ui';
+import { AccountEmailCard } from '../../../lib/ui/account-email-card';
 import { BackToTake } from '../../../lib/ui/back-to-take';
 import { PageHeader } from '../../../lib/ui/page-header';
 import { PasswordForm } from '../../../lib/ui/password-form';
@@ -37,7 +38,10 @@ function AccountPage() {
       ) : account.isError ? (
         <ErrorMessage>{errorMessage(t, account.error)}</ErrorMessage>
       ) : (
-        <ProfileCard account={account.data} />
+        <>
+          <ProfileCard account={account.data} />
+          <AccountEmailCard account={account.data} />
+        </>
       )}
       <Card className="flex flex-col gap-4">
         <h2 className="text-base font-semibold">{t('changePassword.heading')}</h2>
