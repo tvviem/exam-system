@@ -7,11 +7,22 @@ import { clientIpOf } from '../auth/auth-request';
 import { AccountRecoveryService } from './account-recovery.service';
 
 const purposeSchema = z.enum(['activation', 'password_reset']);
+/** `status` dùng cả cho liên kết đổi email (trang xác nhận xem mã trước khi người dùng bấm nút). */
+const statusPurposeSchema = z.enum(['activation', 'password_reset', 'email_change']);
 const forgotSchema = z.object({ identifier: z.string().min(1).max(320) }).strict();
 const statusSchema = z
-  .object({ purpose: purposeSchema, token: z.string().min(1).max(200) })
+  .object({ purpose: statusPurposeSchema, token: z.string().min(1).max(200) })
   .strict();
-const consumeSchema = statusSchema.extend({ newPassword: z.string().max(1024) }).strict();
+const consumeSchema = z
+  .object({
+    purpose: purposeSchema,
+    token: z.string().min(1).max(200),
+    newPassword: z.string().max(1024),
+  })
+  .strict();
+const confirmEmailSchema = z
+  .object({ purpose: z.literal('email_change'), token: z.string().min(1).max(200) })
+  .strict();
 
 /**
  * Người dùng chưa đăng nhập: quên mật khẩu, xem và dùng Liên kết một lần. Mã đi trong thân yêu cầu (POST), không ở URL,
@@ -41,11 +52,13 @@ export class AuthLinksController {
   @Post('links/consume')
   @HttpCode(200)
   async consume(@Body() body: unknown, @Req() req: FastifyRequest) {
+    const client = { ip: clientIpOf(req), userAgent: req.headers['user-agent'] ?? null };
+    // Liên kết đổi email không đặt mật khẩu: chỉ xác nhận địa chỉ mới.
+    if ((body as { purpose?: unknown } | null)?.purpose === 'email_change') {
+      return this.recovery.confirmEmail(confirmEmailSchema.parse(body).token, client);
+    }
     const { purpose, token, newPassword } = consumeSchema.parse(body);
-    const result = await this.recovery.complete(token, purpose, newPassword, {
-      ip: clientIpOf(req),
-      userAgent: req.headers['user-agent'] ?? null,
-    });
+    const result = await this.recovery.complete(token, purpose, newPassword, client);
     if (result.state === 'policy') {
       throw new ApiError('PASSWORD_POLICY', { violations: result.violations });
     }

@@ -76,6 +76,30 @@ export class AccountRecoveryService {
     return this.links.status(token, purpose);
   }
 
+  /** Bấm liên kết đổi email; đổi xong báo tới email CŨ (không liên kết, địa chỉ mới che bớt). Không trả email cũ cho người gọi. */
+  async confirmEmail(
+    token: string,
+    client: LinkClient,
+  ): Promise<
+    Exclude<Awaited<ReturnType<AuthLinks['confirmEmail']>>, { state: 'ok' }> | { state: 'ok' }
+  > {
+    const result = await this.links.confirmEmail(token, client);
+    if (result.state !== 'ok') return result;
+    if (
+      result.previousEmail &&
+      result.previousEmail.toLowerCase() !== result.newEmail.toLowerCase()
+    ) {
+      await this.mail.enqueue({
+        kind: 'email_changed_notice',
+        toEmail: result.previousEmail,
+        lane: 'urgent',
+        userId: result.userId,
+        context: { newEmail: result.newEmail },
+      });
+    }
+    return { state: 'ok' };
+  }
+
   /** Dùng liên kết đặt mật khẩu; đặt lại xong thì báo cho chủ tài khoản bằng một thư (không kèm mật khẩu). */
   async complete(
     token: string,

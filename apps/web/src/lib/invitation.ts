@@ -13,7 +13,9 @@ export interface InvitationPreview {
 export const invitationPreviewQuery = (token: string) =>
   queryOptions({
     queryKey: ['invitation', token],
-    queryFn: () => apiFetch<InvitationPreview>(`/invitations/${token}`),
+    // Mã đi trong thân POST (liên kết trong thư dùng mảnh #), không ở URL nên không vào nhật ký máy chủ.
+    queryFn: () =>
+      apiFetch<InvitationPreview>('/invitations/preview', { method: 'POST', body: { token } }),
     retry: false,
     staleTime: Number.POSITIVE_INFINITY,
   });
@@ -26,7 +28,7 @@ export const acceptInvitation = (
     academicTitle: AcademicTitle | null;
   },
 ) =>
-  apiFetch<{ ok: true; createdAccount: boolean }>(`/invitations/${token}/accept`, {
+  apiFetch<{ ok: true; createdAccount: boolean }>('/invitations/accept', {
     method: 'POST',
-    body,
+    body: { token, ...body },
   });

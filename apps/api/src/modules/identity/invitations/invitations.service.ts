@@ -6,6 +6,7 @@ import { CLOCK, type Clock } from '../../../common/clock';
 import { type Page, paginate } from '../../../common/pagination';
 import { type Database, DB, type Transaction as Tx } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
+import { MailService } from '../../mail/mail.service';
 import { invitations, units, userRoleTags, users } from '../identity.schema';
 import { findActiveUserByEmail } from '../users.repository';
 import {
@@ -32,6 +33,7 @@ export class InvitationsService {
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: AuditService,
+    private readonly mail: MailService,
   ) {}
 
   async list({ page, pageSize, status }: Page & { status?: InvitationStatus }) {
@@ -72,10 +74,13 @@ export class InvitationsService {
     };
   }
 
-  /** Trả kèm `token` đúng một lần; sau đó không lấy lại được. */
+  /**
+   * Tạo Lời mời và xếp thư mời. Mã KHÔNG được sinh ở đây mà sinh LÚC GỬI (Q381, bộ dựng thư của `identity`): hàng đợi thư không
+   * chứa mã. Tới lúc đó `token_hash` là giá trị tạm không ai biết, nên chưa có liên kết nào dùng được.
+   */
   async create(actor: Actor, input: InvitationInput) {
     const email = input.email.trim();
-    const { token, tokenHash } = generateInvitationToken();
+    const { tokenHash } = generateInvitationToken();
     const now = this.clock.now();
     const row = await this.db.transaction(async (tx) => {
       await this.lockEmail(tx, email);
@@ -110,7 +115,19 @@ export class InvitationsService {
       );
       return created;
     });
-    return { ...this.present(row, now), token };
+    await this.queueMail(actor, row);
+    return this.present(row, now);
+  }
+
+  /** Xếp thư mời; `invitationId` là dữ liệu không bí mật để bộ dựng thư tìm đúng Lời mời lúc gửi. */
+  private queueMail(actor: Actor, row: InvitationRow) {
+    return this.mail.enqueue({
+      kind: 'invitation',
+      toEmail: row.email,
+      lane: 'urgent',
+      requestedBy: actor.id,
+      context: { invitationId: row.id },
+    });
   }
 
   async revoke(actor: Actor, id: string) {
@@ -129,13 +146,15 @@ export class InvitationsService {
       );
       return updated ?? invitation;
     });
+    // Thu hồi trước khi thư kịp gửi thì thư không gửi nữa.
+    await this.mail.cancelPending('invitation', { invitationId: id });
     return this.present(row, now);
   }
 
-  /** Link cũ mất hiệu lực ngay vì `token_hash` bị thay. */
+  /** Liên kết cũ chết NGAY (`token_hash` đổi thành giá trị tạm); liên kết mới do thư mới mang tới lúc gửi. */
   async regenerate(actor: Actor, id: string) {
     const now = this.clock.now();
-    const { token, tokenHash } = generateInvitationToken();
+    const { tokenHash } = generateInvitationToken();
     const row = await this.db.transaction(async (tx) => {
       const invitation = await this.lockOrThrow(tx, id);
       const status = invitationStatusOf(invitation, now);
@@ -161,7 +180,8 @@ export class InvitationsService {
       );
       return updated ?? invitation;
     });
-    return { ...this.present(row, now), token };
+    await this.queueMail(actor, row);
+    return this.present(row, now);
   }
 
   /** Hai Quản trị viên cùng mời hoặc Tạo lại link cho một email: tuần tự hóa để kiểm tra không bị lọt. */

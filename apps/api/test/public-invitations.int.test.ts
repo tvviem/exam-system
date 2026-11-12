@@ -14,13 +14,14 @@ const EMAIL = 'giang.vien@example.edu.vn';
 const NEW_PASSWORD = 'mat-khau-moi-rat-dai';
 
 beforeAll(async () => {
-  t = await createTestApp();
+  t = await createTestApp({ realMessageBuilder: true });
 });
 afterAll(async () => {
   await t.app.close();
 });
 beforeEach(async () => {
   await resetState();
+  t.mail.reset();
   await seedUser({ username: 'qt', isAdmin: true, fullName: 'Quản Trị' });
   adminCookie = (await login(t.app, 'qt', DEFAULT_PASSWORD)).cookie as string;
   unitId = (await seedUnit('CNTT', 'Khoa CNTT')).id;
@@ -32,24 +33,28 @@ const asAdmin = (
   body?: unknown,
 ) => call(t.app, method, url, { cookie: adminCookie, body });
 
-/** Quản trị viên tạo Lời mời; trả token như người dùng nhận được trong link. */
+/** Quản trị viên tạo Lời mời; trả token như người dùng nhận được trong liên kết của thư (mảnh sau dấu #). */
 async function invite(email = EMAIL): Promise<{ id: string; token: string }> {
   const res = await asAdmin('POST', '/api/admin/invitations', {
     email,
     fullName: 'Lê Thị Giảng',
     unitId,
   });
-  return res.json();
+  await t.queue.drain();
+  const mail = [...t.mail.sent].reverse().find((m) => m.to === email);
+  const url = (mail?.text.match(/https?:\/\/[^\s<>"')]+/g) ?? [])[0];
+  return { id: res.json().id, token: new URL(url as string).hash.slice(1) };
 }
 /** Quản trị viên đăng nhập lại sau khi kéo Clock (phiên Quản trị viên sống 30 phút). */
 const advance = async (ms: number) => {
   t.clock.advance(ms);
   adminCookie = (await login(t.app, 'qt', DEFAULT_PASSWORD)).cookie as string;
 };
+// Mã đi trong thân POST (liên kết trong thư dùng mảnh #), không ở URL.
 const preview = (token: string, ip?: string) =>
-  call(t.app, 'GET', `/api/invitations/${token}`, { ip });
+  call(t.app, 'POST', '/api/invitations/preview', { body: { token }, ip });
 const accept = (token: string, body: unknown, cookie?: string) =>
-  call(t.app, 'POST', `/api/invitations/${token}/accept`, { body, cookie });
+  call(t.app, 'POST', '/api/invitations/accept', { body: { token, ...(body as object) }, cookie });
 const statusOf = async (id: string) =>
   (await asAdmin('GET', '/api/admin/invitations'))
     .json()
@@ -112,10 +117,10 @@ describe('xem Lời mời bằng link (không cần đăng nhập)', () => {
     expect((await preview('x'.repeat(43), '10.9.9.10')).statusCode).toBe(404);
   });
 
-  it('POST accept dùng chung bộ đếm với GET', async () => {
+  it('accept dùng chung bộ đếm với preview', async () => {
     for (let i = 0; i < 30; i++) await preview('x'.repeat(43), '10.9.9.9');
-    const res = await call(t.app, 'POST', `/api/invitations/${'x'.repeat(43)}/accept`, {
-      body: { password: NEW_PASSWORD },
+    const res = await call(t.app, 'POST', '/api/invitations/accept', {
+      body: { token: 'x'.repeat(43), password: NEW_PASSWORD },
       ip: '10.9.9.9',
     });
     expect(res.statusCode).toBe(429);

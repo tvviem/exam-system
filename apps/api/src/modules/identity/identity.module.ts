@@ -5,6 +5,7 @@ import { MailModule } from '../mail/mail.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AccountController } from './account/account.controller';
 import { AccountService } from './account/account.service';
+import { AccountEmailService } from './account/account-email.service';
 import { AccountRequestApproveJob } from './account-requests/account-request-approve.job';
 import { AccountRequestParseJob } from './account-requests/account-request-parse.job';
 import { AccountRequestsController } from './account-requests/account-requests.controller';
@@ -64,6 +65,7 @@ import { UsersRepository } from './users.repository';
   providers: [
     AuthService,
     AccountService,
+    AccountEmailService,
     AuthSessionStore,
     TokenAuthenticator,
     LoginRateLimiter,

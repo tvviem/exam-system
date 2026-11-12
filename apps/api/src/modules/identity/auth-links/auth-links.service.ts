@@ -12,6 +12,7 @@ import {
   type PasswordOwner,
   type PasswordPolicyViolation,
 } from '../password/password-policy';
+import { findActiveUserByEmail } from '../users.repository';
 
 export type LinkPurpose = 'activation' | 'password_reset' | 'email_change' | 'support_link';
 
@@ -22,6 +23,12 @@ export type LinkProblem =
   | { state: 'replaced' }
   | { state: 'blocked' };
 export type LinkStatus = { state: 'ok'; expiresAt: Date } | LinkProblem;
+/** Kết quả bấm liên kết đổi email; `previousEmail` chỉ để lớp trên gửi thư báo, không trả cho người gọi HTTP. */
+export type ConfirmEmailResult =
+  | { state: 'ok'; previousEmail: string | null; userId: string; newEmail: string }
+  | LinkProblem
+  | { state: 'email_taken' };
+
 export type ConsumeResult =
   | { state: 'ok' }
   | LinkProblem
@@ -64,7 +71,11 @@ export class AuthLinks {
   ) {}
 
   /** Phát hành mã mới và vô hiệu mã cũ cùng loại của người đó (mỗi loại chỉ một mã còn hiệu lực). */
-  async issue(userId: string, purpose: LinkPurpose): Promise<{ token: string; expiresAt: Date }> {
+  async issue(
+    userId: string,
+    purpose: LinkPurpose,
+    options: { newEmail?: string } = {},
+  ): Promise<{ token: string; expiresAt: Date }> {
     const now = this.clock.now();
     const token = randomBytes(32).toString('base64url');
     const expiresAt = new Date(now.getTime() + TTL_MS[purpose]);
@@ -80,9 +91,14 @@ export class AuthLinks {
             isNull(authTokens.replacedAt),
           ),
         );
-      await tx
-        .insert(authTokens)
-        .values({ userId, purpose, tokenHash: hashToken(token), expiresAt, createdAt: now });
+      await tx.insert(authTokens).values({
+        userId,
+        purpose,
+        tokenHash: hashToken(token),
+        newEmail: options.newEmail ?? null,
+        expiresAt,
+        createdAt: now,
+      });
     });
     return { token, expiresAt };
   }
@@ -152,6 +168,56 @@ export class AuthLinks {
     }
     await this.sessions.revokeAllForUser(link.userId, 'password_reset');
     return { state: 'ok' };
+  }
+
+  /**
+   * Bấm liên kết đổi email (hoặc xác thực email đang lưu): email chỉ đổi lúc này, không phải lúc xin. Người bấm không cần
+   * đăng nhập (có thể mở trên máy khác); việc chứng minh là họ nhận được thư ở địa chỉ mới.
+   */
+  async confirmEmail(token: string, client: LinkClient): Promise<ConfirmEmailResult> {
+    const found = await this.evaluate(token, 'email_change');
+    if ('problem' in found) return found.problem;
+    const { link } = found;
+    if (!link.newEmail) return { state: 'unknown' };
+    // Trong lúc chờ liên kết, người khác có thể đã lấy địa chỉ này: kiểm lại trước khi đổi.
+    const holder = await findActiveUserByEmail(this.db, link.newEmail);
+    if (holder && holder.id !== link.userId) return { state: 'email_taken' };
+
+    const now = this.clock.now();
+    let previousEmail: string | null = null;
+    const claimed = await this.db.transaction(async (tx) => {
+      const [taken] = await tx
+        .update(authTokens)
+        .set({ usedAt: now })
+        .where(
+          and(eq(authTokens.id, link.id), isNull(authTokens.usedAt), isNull(authTokens.replacedAt)),
+        )
+        .returning({ id: authTokens.id });
+      if (!taken) return false;
+      const [before] = await tx
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, link.userId));
+      previousEmail = before?.email ?? null;
+      await tx
+        .update(users)
+        .set({ email: link.newEmail, emailVerifiedAt: now })
+        .where(eq(users.id, link.userId));
+      await this.audit.record(
+        {
+          actor: { id: link.userId, ip: client.ip },
+          action: 'account.email-changed',
+          entityType: 'user',
+          entityId: link.userId,
+          before: { email: before?.email ?? null },
+          after: { email: link.newEmail, userAgent: client.userAgent },
+        },
+        tx,
+      );
+      return true;
+    });
+    if (!claimed) return { state: 'replaced' };
+    return { state: 'ok', previousEmail, userId: link.userId, newEmail: link.newEmail };
   }
 
   /** Chủ của mã (không kiểm trạng thái), để gửi thư báo sau khi dùng xong. */

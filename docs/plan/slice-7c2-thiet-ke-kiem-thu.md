@@ -1,6 +1,6 @@
 # PR 7c-2: thiết kế kiểm thử (tạo tài khoản bằng email, Lời mời gửi thư, đổi và xác thực email), làm theo TDD
 
-**Trạng thái: CHỜ CHỦ DỰ ÁN DUYỆT.** Chưa viết bài kiểm thử hay mã nào. Cách làm như [7b](./slice-7b-thiet-ke-kiem-thu.md) và [7c-1](./slice-7c-thiet-ke-kiem-thu.md): điểm tiếp xúc, hành vi, lát dọc, cách tự kiểm; duyệt xong mới vòng đỏ rồi xanh.
+**Trạng thái: 7c-2b ĐÃ LÀM XONG (mục 11); 7c-2a chưa làm** (chờ chủ dự án có email sinh viên). Điều kiện đổi email và hai quyết định về Lời mời đã được duyệt (mục 10 và 11.1). Cách làm như [7b](./slice-7b-thiet-ke-kiem-thu.md) và [7c-1](./slice-7c-thiet-ke-kiem-thu.md): điểm tiếp xúc, hành vi, lát dọc, cách tự kiểm; duyệt xong mới vòng đỏ rồi xanh.
 
 Căn cứ: [ADR-0009](../adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md); [slice-7-phuong-an-b-email.md](./slice-7-phuong-an-b-email.md) mục 3.1, 3.2, 3.4, 3.6, 3.7 và tiêu chí 1, 5, 10, 16; hạ tầng thư (7b, #92) và `AuthLinks` (7c-1, #95).
 
@@ -119,3 +119,46 @@ Mọi bài mục 5 xanh; đột biến chạy và ghi kết quả; lint, `tsc`, 
 - **Đề xuất kèm theo, chốt khi tới lát đổi email:** không thu hồi các phiên khác khi đổi email; thư báo chưa có nút "đây không phải tôi"; `quantri` chưa có email cũng đi đúng luồng này, không đường tắt; không tự đổi tên đăng nhập khi đổi email.
 
 **Chủ dự án yêu cầu các câu chi tiết còn lại được hỏi đúng lúc tới lát cắt tương ứng**, không hỏi trước. Năm câu ở mục 9 (cắt 7c-2a/2b, mảnh `#` cho Lời mời, tự đăng nhập sau nhận Lời mời, mã định danh tùy chọn, email sinh viên) sẽ được xác nhận khi bắt đầu từng lát liên quan.
+
+## 11. Kết quả triển khai 7c-2b (12/11/2026)
+
+Làm theo TDD: bài viết trước, thấy đỏ đúng lý do rồi mới viết mã. **Lần này bài E2E đã chạy thấy đỏ (6/6) trước khi làm giao diện** (khác 7c-1).
+
+### 11.1 Quyết định của chủ dự án trong lúc làm (12/11/2026)
+
+- **Mã Lời mời ở mảnh `#`** (`/invite#mã`), nhất quán với các liên kết khác; liên kết kiểu cũ `/invite/<mã>` báo không dùng được.
+- **Giữ tự đăng nhập sau khi nhận Lời mời** (như hiện nay).
+- **Làm 7c-2b trước 7c-2a**, vì chủ dự án chưa thu thập email sinh viên.
+
+### 11.2 Số bài
+
+| Nhóm | Tệp | Bài |
+|---|---|---|
+| Đổi và xác thực email (K12), bất biến (K14): B-01 đến B-10, B-17b, B-18 | `apps/api/test/account-email.int.test.ts` | 16 |
+| Lời mời gửi thư (K11): B-10 đến B-17 | `apps/api/test/invitation-mail.int.test.ts` | 8 |
+| Lời mời cũ chuyển sang luồng mới (assertion hành vi giữ nguyên) | `admin-invitations.int.test.ts`, `public-invitations.int.test.ts` | 14 và 15 |
+| Giao diện (K13): E-01 đến E-05 | `apps/web/e2e/account-email.spec.ts` | 5 bài, chạy desktop và mobile |
+| Lời mời trên giao diện (đã viết lại) | `apps/web/e2e/invitations.spec.ts` | 1 bài |
+
+Toàn bộ bộ tích hợp của dự án: **1009 đạt**, 1 bỏ qua (có sẵn).
+
+### 11.3 Điều chỉnh so với thiết kế (phát hiện khi làm)
+
+| # | Điều chỉnh | Lý do |
+|---|---|---|
+| i | API Lời mời đổi sang **`POST /api/invitations/preview` và `accept` với mã trong thân** (bỏ hai đường có mã trong URL) | mã trong đường dẫn API vào nhật ký máy chủ dù trang dùng mảnh `#` |
+| ii | Trang `/verify-email` **xác nhận bằng nút bấm**, không tự xác nhận khi mở | trình quét liên kết của hộp thư không bấm nút nên không vô tình xác nhận thay người dùng |
+| iii | `MailService.cancelPending(kind, context)` | Thu hồi Lời mời trước khi thư kịp gửi phải hủy thư (không để kẹt thử lại rồi thất bại) |
+| iv | Ô mật khẩu trong mục Email đặt nhãn **"Mật khẩu hiện tại để đổi email"** | trang có hai ô "Mật khẩu hiện tại" gây khó cho trình đọc màn hình (E2E cũ phát hiện) |
+| v | `useLinkToken` dựng lại trang khi dán liên kết khác vào **cùng tab** (chỉ đổi mảnh `#`) | trang giữ kết quả của liên kết cũ (E2E phát hiện) |
+| vi | Route Lời mời kiểu cũ đặt tên `invite_.$token` | tên `invite.$token` bị TanStack coi là con của `invite` nên không hiển thị |
+
+### 11.4 Kiểm thử đột biến
+
+18 đột biến (kiểm mật khẩu hiện tại, email giống hiện tại, trùng lúc xin và lúc bấm, giới hạn tần suất, xác thực email đã xác thực rồi, đánh dấu xác thực, thư báo tới email cũ và địa chỉ che bớt, sinh mã lúc gửi, thu hồi và Tạo lại, Lời mời đã thu hồi, hạn 7 ngày, xác thực khi nhận Lời mời, làn thư, người mời): **15 bị bắt ngay, 2 sống sót ban đầu rồi bị bắt sau khi siết bài, 1 phòng thủ hai lớp.** Lỗ hổng của bộ bài đã vá: B-13 kiểm thư bị hủy (`skipped`) chứ không chỉ "không gửi", B-01 kiểm làn `urgent`. Đột biến Y11 (xây thư cho Lời mời đã thu hồi) không tách riêng được vì hủy thư đã chặn trước; giữ kiểm ở bộ dựng như lớp phòng thủ thứ hai.
+
+Một lỗi thật bắt được ngay trong lúc làm: biến `previousEmail` chưa được gán nên thư báo tới email cũ không bao giờ gửi (B-08 bắt).
+
+### 11.5 Chưa làm
+
+7c-2a (email bắt buộc ở file Excel, duyệt tạo Chờ kích hoạt, Quản trị viên tạo Quản trị viên bằng email). 7d: gửi lại, sửa email, liên kết hỗ trợ, bảng theo dõi, chuông, bỏ Phiếu và "Cấp lại mật khẩu tạm". **Việc của chủ dự án sau khi deploy:** hai Quản trị viên vào trang Tài khoản bấm "Gửi thư xác thực" để xác thực email, rồi mới nhận được thư đặt lại mật khẩu.

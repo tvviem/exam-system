@@ -1,4 +1,27 @@
+import { createHash, randomBytes } from 'node:crypto';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
+
+// Mã Lời mời chỉ có trong thư (hàng đợi thư không chứa mã), nên E2E đặt mã đã biết thẳng vào database E2E cho Lời mời vừa tạo.
+const apiRequire = createRequire(path.resolve(process.cwd(), '../api/package.json'));
+const { Client } = apiRequire('pg');
+const databaseUrl = process.env.E2E_DATABASE_URL ?? 'postgres://exam:exam@127.0.0.1:5434/exam_e2e';
+
+async function knownTokenFor(email: string): Promise<string> {
+  const token = randomBytes(32).toString('base64url');
+  const db = new Client({ connectionString: databaseUrl });
+  await db.connect();
+  try {
+    await db.query(
+      `UPDATE invitations SET token_hash = $1, expires_at = now() + interval '7 days' WHERE email = $2`,
+      [createHash('sha256').update(token).digest('hex'), email],
+    );
+  } finally {
+    await db.end();
+  }
+  return token;
+}
 
 const PASSWORD = 'mat-khau-on-dinh';
 
@@ -9,12 +32,10 @@ async function signIn(page: Page, username: string) {
   await page.getByRole('button', { name: 'Đăng nhập' }).click();
 }
 
-test('Quản trị viên tạo Lời mời, người được mời mở link, đặt mật khẩu và vào hệ thống với vai trò Người ra đề', async ({
+test('Quản trị viên tạo Lời mời (hệ thống tự gửi thư), người được mời mở liên kết, đặt mật khẩu và vào hệ thống với vai trò Người ra đề', async ({
   page,
   browser,
-  context,
 }, testInfo) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const project = testInfo.project.name;
   const email = `giang-vien-${project}@example.edu.vn`;
 
@@ -37,22 +58,22 @@ test('Quản trị viên tạo Lời mời, người được mời mở link, �
   await dialog
     .getByLabel('Đơn vị')
     .selectOption({ label: `CNTT-${project} · Khoa CNTT ${project}` });
-  await dialog.getByRole('button', { name: 'Tạo link mời' }).click();
+  await dialog.getByRole('button', { name: 'Gửi thư mời' }).click();
 
-  const link = (await page.getByTestId('invitation-link').textContent())?.trim() as string;
-  expect(link).toMatch(/\/invite\/[A-Za-z0-9_-]{43}$/);
-  // Nút Sao chép đưa đúng link vào clipboard.
-  await page.getByRole('button', { name: 'Sao chép link', exact: true }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
-  await page.getByRole('button', { name: 'Tôi đã sao chép link' }).click();
+  // Hệ thống tự gửi thư; không còn hộp "sao chép link" vì mã chỉ nằm trong thư.
+  await expect(page.getByText(`Đã gửi thư mời tới ${email}`)).toBeVisible();
+  await expect(page.getByTestId('invitation-link')).toHaveCount(0);
   // Hai project (desktop, mobile) dùng chung database nên chỉ nhìn dòng của email này.
   const row = page.getByRole('listitem').filter({ hasText: email });
   await expect(row.getByText('Đang chờ')).toBeVisible();
 
-  // Người được mời mở link ở một trình duyệt khác, chưa đăng nhập.
+  // Người được mời mở liên kết trong thư (mã ở mảnh #) ở một trình duyệt khác, chưa đăng nhập.
+  const token = await knownTokenFor(email);
+  const link = `/invite#${token}`;
   const invitee = await browser.newPage();
   await invitee.goto(link);
   await expect(invitee.getByRole('heading', { name: 'Lời mời làm Người ra đề' })).toBeVisible();
+  expect(new URL(invitee.url()).hash).toBe(''); // mã bị xóa khỏi thanh địa chỉ
   await expect(invitee.getByText(email)).toBeVisible();
   await invitee.getByLabel('Mật khẩu', { exact: true }).fill('mat-khau-moi-rat-dai');
   await invitee.getByLabel('Nhập lại mật khẩu').fill('mat-khau-moi-rat-dai');
@@ -63,9 +84,12 @@ test('Quản trị viên tạo Lời mời, người được mời mở link, �
     invitee.getByRole('heading', { name: 'Yêu cầu cấp tài khoản', level: 1 }),
   ).toBeVisible();
 
-  // Link dùng một lần.
+  // Liên kết dùng một lần.
   await invitee.goto(link);
   await expect(invitee.getByRole('alert')).toContainText('không còn dùng được');
+  // Liên kết kiểu cũ (mã trong đường dẫn) không dùng được và báo rõ.
+  await invitee.goto(`/invite/${token}`);
+  await expect(invitee.getByText('liên kết kiểu cũ')).toBeVisible();
   await invitee.close();
 
   await page.reload();

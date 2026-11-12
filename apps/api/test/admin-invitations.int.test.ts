@@ -11,13 +11,14 @@ let admin: { id: string; cookie: string };
 let unitId: string;
 
 beforeAll(async () => {
-  t = await createTestApp();
+  t = await createTestApp({ realMessageBuilder: true });
 });
 afterAll(async () => {
   await t.app.close();
 });
 beforeEach(async () => {
   await resetState();
+  t.mail.reset();
   const user = await seedUser({ username: 'qt', isAdmin: true, fullName: 'Quản Trị' });
   admin = {
     id: user.id,
@@ -40,7 +41,22 @@ const invite = (overrides: Record<string, unknown> = {}) =>
     unitId,
     ...overrides,
   });
-const created = async (overrides: Record<string, unknown> = {}) => (await invite(overrides)).json();
+/** Mã trong liên kết của thư mời mới nhất tới `email` (mảnh sau dấu #): mã chỉ có trong thư, không có trong phản hồi API. */
+const tokenSentTo = async (email = 'giang.vien@example.edu.vn') => {
+  await t.queue.drain();
+  const mail = [...t.mail.sent].reverse().find((m) => m.to === email);
+  const url = (mail?.text.match(/https?:\/\/[^\s<>"')]+/g) ?? [])[0];
+  return new URL(url as string).hash.slice(1);
+};
+const created = async (overrides: Record<string, unknown> = {}) => {
+  const body = (await invite(overrides)).json();
+  return {
+    ...body,
+    token: await tokenSentTo((overrides.email as string) ?? 'giang.vien@example.edu.vn'),
+  };
+};
+const previewToken = (token: string) =>
+  call(t.app, 'POST', '/api/invitations/preview', { body: { token } });
 const listOf = async (query = '') => (await as('GET', `/api/admin/invitations${query}`)).json();
 const signedIn = async (input: SeedUser) => {
   const user = await seedUser(input);
@@ -58,11 +74,13 @@ describe('tạo và xem danh sách Lời mời', () => {
     expect((await call(t.app, 'GET', '/api/admin/invitations')).statusCode).toBe(401);
   });
 
-  it('tạo trả token một lần, hạn 7 ngày; danh sách không lộ token', async () => {
+  it('tạo KHÔNG trả token (mã chỉ nằm trong thư), hạn 7 ngày; danh sách không lộ token', async () => {
     const res = await invite();
     expect(res.statusCode).toBe(201);
     const body = res.json();
-    expect(body.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(body).not.toHaveProperty('token');
+    const token = await tokenSentTo();
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(body).toMatchObject({
       email: 'giang.vien@example.edu.vn',
       fullName: 'Lê Thị Giảng',
@@ -75,7 +93,7 @@ describe('tạo và xem danh sách Lời mời', () => {
       total: 1,
       items: [{ id: body.id, unitName: 'Khoa CNTT', invitedByName: 'Quản Trị', status: 'pending' }],
     });
-    expect(JSON.stringify(list)).not.toContain(body.token);
+    expect(JSON.stringify(list)).not.toContain(token);
   });
 
   it('lọc theo trạng thái; hết hạn tính theo Clock', async () => {
@@ -167,15 +185,16 @@ describe('Thu hồi và Tạo lại link (Q80)', () => {
     await advance(days(8));
     const res = await as('POST', `/api/admin/invitations/${first.id}/regenerate`);
     expect(res.statusCode).toBe(200);
-    const again = res.json();
+    const again = { ...res.json(), token: await tokenSentTo() };
+    expect(res.json()).not.toHaveProperty('token');
     expect(again).toMatchObject({
       id: first.id,
       status: 'pending',
       expiresAt: new Date(t.clock.now().getTime() + days(7)).toISOString(),
     });
     expect(again.token).not.toBe(first.token);
-    expect((await call(t.app, 'GET', `/api/invitations/${first.token}`)).statusCode).toBe(404);
-    expect((await call(t.app, 'GET', `/api/invitations/${again.token}`)).statusCode).toBe(200);
+    expect((await previewToken(first.token)).statusCode).toBe(404);
+    expect((await previewToken(again.token)).statusCode).toBe(200);
     expect((await listOf()).total).toBe(1);
     const logs = (await as('GET', `/api/admin/audit-logs?entityId=${first.id}`)).json();
     expect(logs.items[0].action).toBe('invitation.regenerate');

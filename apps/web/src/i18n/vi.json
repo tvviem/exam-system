@@ -85,7 +85,23 @@
     "managedByAdmin": "Do Quản trị viên quản lý",
     "managedHint": "Cần đổi các thông tin này thì hãy liên hệ Quản trị viên.",
     "username": "Tên đăng nhập",
-    "email": "Email",
+    "email": {
+      "heading": "Email",
+      "none": "Chưa có email",
+      "verified": "Đã xác thực",
+      "unverified": "Chưa xác thực",
+      "intro": "Email dùng để nhận thư kích hoạt và đặt lại mật khẩu. Chỉ email đã xác thực mới nhận được thư đặt lại mật khẩu.",
+      "sendVerification": "Gửi thư xác thực",
+      "sendingVerification": "Đang gửi…",
+      "verificationSent": "Đã gửi thư xác thực tới {{email}}. Hãy mở thư và bấm liên kết (có hiệu lực 24 giờ).",
+      "changeHeading": "Đổi email",
+      "newEmail": "Email mới",
+      "currentPassword": "Mật khẩu hiện tại để đổi email",
+      "currentPasswordHint": "Cần mật khẩu hiện tại để đổi email.",
+      "changeSubmit": "Gửi thư xác nhận",
+      "changeSending": "Đang gửi…",
+      "changeSent": "Đã gửi thư xác nhận tới {{email}}. Email chỉ đổi khi bạn bấm liên kết trong thư."
+    },
     "code": "Mã định danh",
     "classLabel": "Lớp",
     "unit": "Đơn vị",
@@ -215,7 +231,8 @@
     "VALIDATION_key_unknown_option": "Đáp án mới có Phương án không thuộc câu này.",
     "VALIDATION_key_single_needs_one": "Câu chọn một cần đúng một Phương án đúng.",
     "VALIDATION_key_statements": "Đáp án mới cần đủ các Mệnh đề của chùm.",
-    "VALIDATION_essay_has_no_key": "Câu tự luận không có đáp án để đính chính."
+    "VALIDATION_essay_has_no_key": "Câu tự luận không có đáp án để đính chính.",
+    "VALIDATION_same_email": "Email mới trùng với email hiện tại."
   },
   "passwordPolicy": {
     "too_short": "Mật khẩu mới phải có ít nhất 10 ký tự.",
@@ -621,7 +638,7 @@
     "invitations": {
       "heading": "Lời mời",
       "add": "Mời Người ra đề",
-      "intro": "Hệ thống không gửi email. Sau khi tạo, hãy sao chép link và gửi cho người được mời qua Zalo hoặc email của bạn.",
+      "intro": "Hệ thống tự gửi thư mời tới email của người được mời. Liên kết trong thư dùng được một lần, hạn 7 ngày kể từ lúc thư được gửi.",
       "status": "Trạng thái",
       "allStatuses": "Tất cả",
       "empty": "Chưa có Lời mời nào.",
@@ -630,21 +647,18 @@
       "unit": "Đơn vị",
       "unitPlaceholder": "Chọn Đơn vị",
       "noUnits": "Chưa có Đơn vị nào. Hãy thêm Đơn vị trước khi mời.",
-      "createSubmit": "Tạo link mời",
+      "createSubmit": "Gửi thư mời",
       "expires": "Hết hạn {{time}}",
       "invitedBy": "Mời bởi {{name}}",
       "accepted": "Nhận lúc {{time}}",
       "revoke": "Thu hồi",
       "revokeTitle": "Thu hồi Lời mời?",
-      "revokeConfirm": "Link đã gửi cho {{name}} sẽ không dùng được nữa.",
-      "regenerate": "Tạo lại link",
-      "regenerateTitle": "Tạo lại link cho {{name}}?",
-      "regenerateConfirm": "Link cũ mất hiệu lực ngay, link mới có hạn 7 ngày.",
-      "linkTitle": "Link mời {{name}}",
-      "linkOnlyOnce": "Link chỉ hiển thị lần này. Hãy sao chép và gửi cho người được mời trước khi đóng.",
-      "copyLink": "Sao chép link",
-      "linkExpires": "Hết hạn lúc {{time}}. Mỗi link chỉ dùng được một lần.",
-      "linkSaved": "Tôi đã sao chép link"
+      "revokeConfirm": "Liên kết đã gửi cho {{name}} sẽ không dùng được nữa.",
+      "regenerate": "Gửi lại thư mời",
+      "regenerateTitle": "Gửi lại thư mời cho {{name}}?",
+      "regenerateConfirm": "Liên kết cũ mất hiệu lực ngay; thư mới có liên kết hạn 7 ngày kể từ lúc gửi.",
+      "sent": "Đã gửi thư mời tới {{email}}",
+      "resent": "Đã gửi lại thư mời tới {{email}}"
     },
     "transfer": {
       "cardTitle": "Nội dung",
@@ -734,7 +748,11 @@
     "acceptSubmit": "Nhận lời mời",
     "otherAccount": "Bạn đang đăng nhập bằng một tài khoản khác. Nhận lời mời này sẽ tạo tài khoản mới và chuyển sang tài khoản đó.",
     "wrongAccount": "Lời mời này dành cho tài khoản có email {{email}}. Hãy đăng xuất rồi đăng nhập bằng tài khoản đó.",
-    "logout": "Đăng xuất"
+    "logout": "Đăng xuất",
+    "legacy": {
+      "heading": "Liên kết mời đã đổi cách dùng",
+      "text": "Đây là liên kết kiểu cũ nên không còn dùng được. Hãy nhờ Quản trị viên gửi lại thư mời, rồi mở liên kết trong thư mới."
+    }
   },
   "accountRequestStatus": {
     "parsing": "Đang đọc file",
@@ -2125,7 +2143,20 @@
       "blocked": {
         "heading": "Tài khoản chưa dùng được",
         "text": "Tài khoản này đang bị khóa hoặc đã bị xóa. Hãy liên hệ Người ra đề hoặc quản trị viên của bạn."
+      },
+      "email_taken": {
+        "heading": "Địa chỉ email này đã có người dùng",
+        "text": "Có người khác đã dùng địa chỉ này trong lúc chờ. Hãy đổi sang địa chỉ khác ở trang Tài khoản."
       }
-    }
+    },
+    "email_change": {
+      "heading": "Xác nhận email",
+      "intro": "Bấm nút dưới đây để dùng địa chỉ email này cho tài khoản của bạn.",
+      "submit": "Xác nhận email",
+      "doneHeading": "Đã xác nhận email",
+      "name": "xác nhận email"
+    },
+    "backToAccount": "Về trang Tài khoản",
+    "emailDoneText": "Email của tài khoản đã được cập nhật và xác thực."
   }
 }

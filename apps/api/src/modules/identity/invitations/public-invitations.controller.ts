@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { CurrentUserOrNull, OptionalAuth, Public } from '../auth/auth.decorators';
@@ -7,8 +7,11 @@ import { authSessionMetaFrom, clientIpOf, setAuthSessionCookie } from '../auth/a
 import { academicDegreeEnum, academicTitleEnum } from '../identity.schema';
 import { InvitationAcceptanceService } from './invitation-acceptance.service';
 
+const previewSchema = z.object({ token: z.string().min(1).max(200) }).strict();
+
 const acceptSchema = z
   .object({
+    token: z.string().min(1).max(200),
     password: z.string().max(1024).optional(),
     academicDegree: z.enum(academicDegreeEnum.enumValues).nullable().optional(),
     academicTitle: z.enum(academicTitleEnum.enumValues).nullable().optional(),
@@ -21,24 +24,27 @@ const acceptSchema = z
 export class PublicInvitationsController {
   constructor(private readonly acceptance: InvitationAcceptanceService) {}
 
-  @Get(':token')
-  preview(@Param('token') token: string, @Req() req: FastifyRequest) {
+  /** Mã đi trong thân POST (liên kết trong thư dùng mảnh `#`), không ở URL nên không vào nhật ký máy chủ. */
+  @Post('preview')
+  @HttpCode(200)
+  preview(@Body() body: unknown, @Req() req: FastifyRequest) {
+    const { token } = previewSchema.parse(body ?? {});
     return this.acceptance.preview(token, clientIpOf(req));
   }
 
   @OptionalAuth()
-  @Post(':token/accept')
+  @Post('accept')
   @HttpCode(200)
   async accept(
-    @Param('token') token: string,
     @Body() body: unknown,
     @CurrentUserOrNull() current: AuthenticatedUser | null,
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
+    const { token, ...input } = acceptSchema.parse(body ?? {});
     const { createdAccount, session } = await this.acceptance.accept(
       token,
-      acceptSchema.parse(body ?? {}),
+      input,
       current,
       authSessionMetaFrom(req),
     );
