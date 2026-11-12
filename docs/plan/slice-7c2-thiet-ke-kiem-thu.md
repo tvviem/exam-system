@@ -108,3 +108,14 @@ Mọi bài mục 5 xanh; đột biến chạy và ghi kết quả; lint, `tsc`, 
 3. **Duyệt các quyết định a đến j** (mục 4), nhất là **b** (ngừng sinh Phiếu khi duyệt, giữ Phiếu và "Cấp lại mật khẩu tạm" tới 7d), **c** (Lời mời dùng mảnh `#`), **d** (giữ tự đăng nhập sau khi nhận Lời mời), **e** (mã định danh vẫn tùy chọn).
 4. Danh sách hành vi và thứ tự lát (mục 5), và **danh sách bài cũ phải sửa** (mục 6): có bài nào anh muốn giữ nguyên hành vi không.
 5. **Một câu cho anh về dữ liệu thật:** trước khi bật 7c-2a ở production, lớp của anh có **email của từng sinh viên** chưa (email trường hay email cá nhân)? Nếu chưa có, đường tạo tài khoản mới sẽ bị chặn ở bước nhập file; khi đó nên làm 2b trước và hoãn 2a.
+
+## 10. Quyết định đã duyệt (12/11/2026)
+
+**Điều kiện đổi email của người dùng: chủ dự án đồng ý toàn bộ đề xuất** (cuộc trao đổi 12/11/2026):
+
+- **Ai làm:** chỉ chính người đó, đang đăng nhập, tài khoản Hoạt động. Người ra đề không đổi hộ email của Người dự thi đã kích hoạt.
+- **Khi xin:** bắt buộc mật khẩu hiện tại; email mới đúng định dạng, không trùng tài khoản chưa Xóa, khác email hiện tại (trừ "Gửi thư xác thực" cho chính email đang lưu); tối đa 3 lần mỗi giờ, cách nhau 60 giây.
+- **Hiệu lực:** chỉ khi bấm liên kết gửi tới email **mới** (một lần, 24 giờ, xin lần hai làm liên kết cũ chết); kiểm lại trùng email lúc bấm; bấm xong email mới được coi là đã xác thực; gửi thư báo tới email cũ.
+- **Đề xuất kèm theo, chốt khi tới lát đổi email:** không thu hồi các phiên khác khi đổi email; thư báo chưa có nút "đây không phải tôi"; `quantri` chưa có email cũng đi đúng luồng này, không đường tắt; không tự đổi tên đăng nhập khi đổi email.
+
+**Chủ dự án yêu cầu các câu chi tiết còn lại được hỏi đúng lúc tới lát cắt tương ứng**, không hỏi trước. Năm câu ở mục 9 (cắt 7c-2a/2b, mảnh `#` cho Lời mời, tự đăng nhập sau nhận Lời mời, mã định danh tùy chọn, email sinh viên) sẽ được xác nhận khi bắt đầu từng lát liên quan.
