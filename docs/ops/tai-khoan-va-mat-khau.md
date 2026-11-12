@@ -6,6 +6,8 @@ Tài liệu cho người vận hành (chủ dự án, Quản trị viên), để
 
 > **Tóm tắt một dòng:** hệ thống **không gửi email**, nên "quên mật khẩu" luôn do **Quản trị viên** (hoặc người vận hành có quyền vào máy) **cấp lại mật khẩu tạm**; người đó đăng nhập bằng mật khẩu tạm rồi **tự đặt mật khẩu mới**.
 
+> **Đã có từ PR 7c-1 (12/11/2026), chưa bật ở production:** trang **"Quên mật khẩu?"** ở màn hình đăng nhập và hai trang **kích hoạt** (`/activate`) và **đặt lại mật khẩu** (`/reset-password`) bằng **Liên kết một lần** gửi qua email. Người có email đã xác thực tự đặt lại mật khẩu, không cần Quản trị viên. Còn các luồng tạo tài khoản bằng email (Lời mời tự gửi thư, nhập Excel bắt buộc email, đổi email) ở PR 7c-2 và 7d, và nút "Cấp lại mật khẩu tạm" bên dưới vẫn dùng được cho tới khi 7d bỏ. Chi tiết: [plan/slice-7c-thiet-ke-kiem-thu.md](../plan/slice-7c-thiet-ke-kiem-thu.md) mục 11.
+
 ## 1. Ba loại tài khoản và cách mỗi loại được tạo
 
 | Vai | Tạo bằng cách nào | Mật khẩu ban đầu |

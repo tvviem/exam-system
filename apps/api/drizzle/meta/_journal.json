@@ -169,6 +169,20 @@
       "when": 1794367015267,
       "tag": "0023_thu_dien_tu",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794436872970,
+      "tag": "0024_lien_ket_mot_lan",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794437300154,
+      "tag": "0025_thu_ngu_canh",
+      "breakpoints": true
     }
   ]
 }

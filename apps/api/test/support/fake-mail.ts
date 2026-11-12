@@ -75,7 +75,13 @@ export class FakeMailTransport implements MailTransport {
  * người nhận là hết hiệu lực (Q381). Ghi lại mọi lần được gọi để test kiểm "mã chỉ sinh lúc gửi".
  */
 export class FakeMessageBuilder implements MessageBuilder {
-  calls: { kind: MailKind; toEmail: string; userId: string | null }[] = [];
+  calls: {
+    kind: MailKind;
+    toEmail: string;
+    userId: string | null;
+    requestedBy: string | null;
+    context: Record<string, string> | null;
+  }[] = [];
   /** Mọi mã đã sinh, theo thứ tự. */
   issued: string[] = [];
   private activeByRecipient = new Map<string, string>();
@@ -99,6 +105,8 @@ export class FakeMessageBuilder implements MessageBuilder {
     kind: MailKind;
     toEmail: string;
     userId: string | null;
+    requestedBy: string | null;
+    context: Record<string, string> | null;
   }): Promise<MailContent> {
     this.calls.push(request);
     if (this.failuresLeft > 0) {

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import bluniWordmark from '../assets/brand/bluni-wordmark.svg';
@@ -72,6 +72,11 @@ function LoginPage() {
             {mutation.isPending ? t('login.submitting') : t('login.submit')}
           </PrimaryButton>
         </form>
+        <p className="mt-4 text-center text-sm">
+          <Link to="/forgot-password" className="text-primary underline underline-offset-2">
+            {t('login.forgot')}
+          </Link>
+        </p>
       </Card>
       {/* Nhãn hiệu của trường, chỉ ở đây; thẻ trắng để đọc được cả ở giao diện tối. */}
       <div className="mx-auto mt-6 rounded-lg bg-white px-4 py-2">

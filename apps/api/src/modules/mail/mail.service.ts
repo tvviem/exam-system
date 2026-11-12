@@ -36,6 +36,8 @@ export interface EnqueueMail {
   lane: 'urgent' | 'bulk';
   userId?: string;
   requestedBy?: string;
+  /** Dữ liệu không bí mật cho mẫu thư (không bao giờ là mã hay mật khẩu). */
+  context?: Record<string, string>;
 }
 
 export type TestMailResult =
@@ -146,6 +148,7 @@ export class MailService {
           toEmail: mail.toEmail,
           userId: mail.userId ?? null,
           requestedBy: mail.requestedBy ?? null,
+          context: mail.context ?? null,
           nextAttemptAt: now,
           createdAt: now,
         })),
@@ -351,6 +354,8 @@ export class MailService {
         kind: row.kind,
         toEmail: row.toEmail,
         userId: row.userId,
+        requestedBy: row.requestedBy,
+        context: row.context,
       });
       const message = renderMail(row.kind, content, this.brand);
       await this.transport.send({ to: row.toEmail, ...message });

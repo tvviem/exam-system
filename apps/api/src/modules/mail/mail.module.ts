@@ -11,15 +11,11 @@ import {
   MAIL_TRANSPORT,
   type MailTransport,
   MESSAGE_BUILDER,
+  MessageBuilderRegistry,
 } from './mail.ports';
 import { MailService } from './mail.service';
 import { MailDispatchJob } from './mail-dispatch.job';
 import { SmtpTransport } from './smtp-transport';
-
-// Bộ dựng thư của `identity` ở PR 7c; tới lúc đó mới thay. Test luôn ghi đè bằng bản giả.
-const notConfigured = (what: string) => async () => {
-  throw new Error(`Chưa cấu hình ${what}`);
-};
 
 function transportFor(env: Env, clock: Clock): MailTransport | null {
   switch (selectMailTransport(env)) {
@@ -72,8 +68,9 @@ function transportFor(env: Env, clock: Clock): MailTransport | null {
       provide: MAIL_PAUSE,
       useValue: (ms: number) => new Promise<void>((done) => setTimeout(done, ms)),
     },
-    { provide: MESSAGE_BUILDER, useValue: { build: notConfigured('bộ dựng thư') } },
+    MessageBuilderRegistry,
+    { provide: MESSAGE_BUILDER, useExisting: MessageBuilderRegistry },
   ],
-  exports: [MailService],
+  exports: [MailService, MessageBuilderRegistry],
 })
 export class MailModule {}
