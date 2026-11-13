@@ -109,16 +109,16 @@ describe('kiểm tra từng dòng (Q88)', () => {
   it('báo đúng mã lỗi cho từng loại dòng sai', async () => {
     expect(
       await errorsOf(
-        ',B1,,,,', // thiếu họ tên
+        ',B1,x@example.edu.vn,,,', // thiếu họ tên
         'A,,,,,', // thiếu cả mã và email
         'B,B2,khong-phai-email,,,',
-        'C,B3,,,31/02/2005,',
-        'D,B4,,,2005-03-15,Không rõ',
-        'E,B5,,,2005-03-15,Nam', // đúng, định dạng ngày yyyy-mm-dd cũng được
+        'C,B3,c@example.edu.vn,,31/02/2005,',
+        'D,B4,d@example.edu.vn,,2005-03-15,Không rõ',
+        'E,B5,e@example.edu.vn,,2005-03-15,Nam', // đúng, định dạng ngày yyyy-mm-dd cũng được
       ),
     ).toEqual([
       'missing_full_name',
-      'missing_code_and_email',
+      'missing_email',
       'invalid_email',
       'invalid_date_of_birth',
       'invalid_gender',
@@ -130,11 +130,41 @@ describe('kiểm tra từng dòng (Q88)', () => {
     expect(
       await errorsOf(
         'A,b2103456,a@example.edu.vn,,,',
-        'B,B2103456,,,,',
+        'B,B2103456,b@example.edu.vn,,,',
         'C,,A@Example.edu.vn,,,',
-        'D,B9,,,,',
+        'D,B9,d@example.edu.vn,,,',
       ),
     ).toEqual([null, 'duplicate_in_file', 'duplicate_in_file', null]);
+  });
+});
+
+describe('email bắt buộc (7c-2a)', () => {
+  const errorsOf = async (...lines: string[]) =>
+    (await rowsOf(csv(HEADER, ...lines))).map((r) => r.error);
+
+  it('B-18/B-20: dòng không có email là lỗi missing_email, kể cả khi có mã định danh', async () => {
+    expect(await errorsOf('Chỉ Có Mã,B7,,,,', 'Không Gì Cả,,,,,')).toEqual([
+      'missing_email',
+      'missing_email',
+    ]);
+  });
+
+  it('B-21: mã định danh vẫn tùy chọn, dòng chỉ có họ tên và email hợp lệ', async () => {
+    const rows = await rowsOf(csv(HEADER, 'Chỉ Có Email,,ce@example.edu.vn,,,'));
+    expect(rows[0]).toMatchObject({ code: null, email: 'ce@example.edu.vn', error: null });
+  });
+
+  it('file không có cột Email thì mọi dòng thiếu email', async () => {
+    const rows = await rowsOf(csv('Họ tên,Mã định danh', 'An,B1', 'Bình,B2'));
+    expect(rows.map((r) => r.error)).toEqual(['missing_email', 'missing_email']);
+  });
+
+  it('thứ tự báo lỗi: thiếu họ tên trước, rồi thiếu email, rồi sai định dạng', async () => {
+    expect(await errorsOf(',B1,,,,', 'A,B2,,,,', 'A,B3,sai,,,')).toEqual([
+      'missing_full_name',
+      'missing_email',
+      'invalid_email',
+    ]);
   });
 });
 

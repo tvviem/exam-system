@@ -1,6 +1,6 @@
 # PR 7c-2: thiết kế kiểm thử (tạo tài khoản bằng email, Lời mời gửi thư, đổi và xác thực email), làm theo TDD
 
-**Trạng thái: 7c-2b ĐÃ LÀM XONG (mục 11); 7c-2a chưa làm** (chờ chủ dự án có email sinh viên). Điều kiện đổi email và hai quyết định về Lời mời đã được duyệt (mục 10 và 11.1). Cách làm như [7b](./slice-7b-thiet-ke-kiem-thu.md) và [7c-1](./slice-7c-thiet-ke-kiem-thu.md): điểm tiếp xúc, hành vi, lát dọc, cách tự kiểm; duyệt xong mới vòng đỏ rồi xanh.
+**Trạng thái: 7c-2b ĐÃ LÀM XONG và merge (#97, mục 11); 7c-2a ĐÃ LÀM XONG, chờ PR (mục 12).** Điều kiện đổi email và hai quyết định về Lời mời đã được duyệt (mục 10 và 11.1). Cách làm như [7b](./slice-7b-thiet-ke-kiem-thu.md) và [7c-1](./slice-7c-thiet-ke-kiem-thu.md): điểm tiếp xúc, hành vi, lát dọc, cách tự kiểm; duyệt xong mới vòng đỏ rồi xanh.
 
 Căn cứ: [ADR-0009](../adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md); [slice-7-phuong-an-b-email.md](./slice-7-phuong-an-b-email.md) mục 3.1, 3.2, 3.4, 3.6, 3.7 và tiêu chí 1, 5, 10, 16; hạ tầng thư (7b, #92) và `AuthLinks` (7c-1, #95).
 
@@ -162,3 +162,48 @@ Một lỗi thật bắt được ngay trong lúc làm: biến `previousEmail` c
 ### 11.5 Chưa làm
 
 7c-2a (email bắt buộc ở file Excel, duyệt tạo Chờ kích hoạt, Quản trị viên tạo Quản trị viên bằng email). 7d: gửi lại, sửa email, liên kết hỗ trợ, bảng theo dõi, chuông, bỏ Phiếu và "Cấp lại mật khẩu tạm". **Việc của chủ dự án sau khi deploy:** hai Quản trị viên vào trang Tài khoản bấm "Gửi thư xác thực" để xác thực email, rồi mới nhận được thư đặt lại mật khẩu.
+
+## 12. Kết quả triển khai 7c-2a (13/11/2026)
+
+Làm theo TDD: bài viết trước, thấy đỏ đúng lý do rồi mới viết mã (riêng B-29 ban đầu "xanh giả" vì thiếu tên đăng nhập nên lỗi 400 không do email; đã sửa bài cho có tên đăng nhập hợp lệ rồi mới thấy đỏ).
+
+### 12.1 Quyết định của chủ dự án (13/11/2026)
+
+- **Email bắt buộc trong Excel** (không cho thiếu rồi điền sau ở màn duyệt): giảng viên tự gom email sinh viên rồi mới tải lên.
+- **Chưa duyệt Yêu cầu nào cho tới khi 7c-2a lên production** (bản trước 7c-2a duyệt vẫn sinh mật khẩu tạm và Phiếu).
+- Bốn điểm còn lại giữ theo đề xuất (câu b, e, f, g mục 4): duyệt ngừng sinh Phiếu ngay; mã định danh tùy chọn; tài khoản có sẵn giữ nguyên email và không nhận thư; thư của Quản trị viên mới đi làn khẩn, thư của sinh viên đi làn hàng loạt.
+
+### 12.2 Số bài
+
+| Bộ | Trước | Sau |
+|---|---|---|
+| Tích hợp toàn dự án | 1009 | **1023** đạt (1 bỏ qua) |
+| Unit api | 310 | **314** |
+| Unit web | 294 | 294 |
+| E2E | 246 | **245 đạt, 3 bỏ qua** trong một lượt chạy đầy đủ; 2 bài chập chờn đã biết (`invitations`, E-05 `auth-links`) đỏ ở lượt đó rồi xanh khi chạy lại riêng; bài mới của 7c-2a đều xanh |
+
+Bài mới: `account-activation-approval.int.test.ts` (B-22 đến B-28 và các biến thể, 10 bài), `admin-create-activation.int.test.ts` (B-29 đến B-31c, 7 bài), 4 bài trong `account-request-file.test.ts` (B-18, B-20, B-21 và thứ tự lỗi), 2 bài E2E (thiếu email và duyệt một phần; Quản trị viên tạo Quản trị viên bằng email).
+
+### 12.3 Điều chỉnh so với thiết kế (phát hiện khi làm)
+
+| # | Điều chỉnh | Lý do |
+|---|---|---|
+| i | `MailService.enqueueIn(tx, mails)` và `wake()` công khai | Thư kích hoạt phải cùng giao dịch với việc tạo tài khoản (không có tài khoản mà thiếu thư và ngược lại); job kích worker **một lần** cho cả đợt thay vì mỗi dòng |
+| ii | Tên đăng nhập của Quản trị viên tạo mới **tùy chọn**, mặc định là email | Cùng quy tắc với Người dự thi không có mã; giảm một ô phải nhập |
+| iii | API tạo Quản trị viên trả `{ id, username }`, không còn `temporaryPassword` | Không còn mật khẩu do người khác biết |
+| iv | Trang Yêu cầu đã duyệt hiện ghi chú về thư kích hoạt (gửi dần, khoảng 300 thư mỗi ngày, nhắc kiểm thư rác) | Người dùng cần biết vì sao sinh viên chưa nhận thư ngay |
+| v | Bài về Phiếu (tải, hết hạn, PDF thật, dọn dẹp) giữ lại nhưng **dựng Phiếu sẵn bằng `seedSlip`** | Duyệt không còn sinh Phiếu; mã tải và dọn dẹp Phiếu còn sống tới 7d. Bài về mật khẩu tạm trên Phiếu và bài job chết giữa chừng dựng lại Phiếu đã **xóa** (không còn hành vi đó); thay bằng bài job chết giữa chừng không nhân đôi tài khoản và thư, và bài xếp thư lỗi thì không có tài khoản |
+| vi | Cột email của file Excel mẫu và thông báo lỗi `missing_email` ("Thiếu Email: mỗi người cần một email để nhận thư kích hoạt tài khoản.") | Giảng viên cần biết lý do dòng bị loại |
+
+### 12.4 Hiệu năng
+
+- API duyệt 300 dòng phản hồi **dưới 300 ms** (B-25, bài khẳng định).
+- Job duyệt ở worker: **khoảng 14 ms mỗi dòng** (300 dòng ≈ 4,2 giây; 2.000 dòng ≈ 28 giây), mỗi dòng một giao dịch để một dòng lỗi không kéo cả đợt. Trước đây mỗi dòng còn băm Argon2 (đo ở vòng đỏ: 300 dòng mất 8,9 giây), nên nhanh hơn rõ. Gộp nhiều dòng một giao dịch nhanh hơn nữa nhưng bỏ cô lập lỗi từng dòng, **chưa làm** vì thời gian gửi thư (6 giây một thư, 300 thư ≈ 30 phút) lớn hơn nhiều.
+
+### 12.5 Kiểm thử đột biến
+
+17 đột biến, **17 bị bắt**: bỏ xếp thư kích hoạt (job), làn sai (job và Quản trị viên), bỏ `requestedBy` (job và Quản trị viên), bỏ `userId` của thư, xếp thư **ngoài** giao dịch (17 bài đỏ), không `wake`, tài khoản mới có mật khẩu (sinh viên và Quản trị viên), người có sẵn cũng nhận thư, gửi sai địa chỉ, tên đăng nhập mặc định sai, bỏ xếp thư (Quản trị viên), email không bắt buộc (controller và parser). Lần chạy đầu bị hỏng vì **hai tiến trình đột biến chạy chồng nhau** trên cùng tệp (một dòng bị bỏ sót sau khi khôi phục; đã phát hiện, khôi phục và chạy lại một tiến trình duy nhất). Bài học: một tiến trình đột biến mỗi lần, và kiểm `git diff` của mã nguồn trước và sau.
+
+### 12.6 Chưa làm
+
+7d (gửi lại thư kích hoạt, sửa email, liên kết hỗ trợ, bảng theo dõi kích hoạt, chuông hạn mức, **xóa hẳn** Phiếu tài khoản và "Cấp lại mật khẩu tạm", `prod-preflight` bắt buộc SMTP). Chưa thử thật: gửi thư kích hoạt hàng loạt tới nhà cung cấp không phải Gmail; **việc của anh sau deploy**: thử một Yêu cầu nhỏ (2 dòng, email của anh) trước khi nhận file của giảng viên.

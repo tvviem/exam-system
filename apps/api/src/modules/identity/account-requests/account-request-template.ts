@@ -21,7 +21,8 @@ export async function buildAccountRequestTemplate(): Promise<Buffer> {
   const lines = [
     'Điền danh sách ở sheet "Danh sách", mỗi người một dòng, bắt đầu từ dòng 2. Xóa hoặc để trống các dòng không dùng.',
     'Họ tên: bắt buộc.',
-    'Mã định danh và Email: cần ít nhất một trong hai. Mã định danh (nếu có) làm tên đăng nhập, nếu không có thì dùng Email.',
+    'Email: bắt buộc. Hệ thống gửi thư kích hoạt tới email này để người đó tự đặt mật khẩu (không còn mật khẩu tạm), nên cần email người đó đọc được.',
+    'Mã định danh: không bắt buộc. Nếu có thì làm tên đăng nhập, nếu không có thì dùng Email.',
     'Lớp: không bắt buộc.',
     'Ngày sinh: dạng 15/03/2005 (không bắt buộc).',
     'Giới tính: Nam, Nữ hoặc Khác (không bắt buộc).',

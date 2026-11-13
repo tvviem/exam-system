@@ -450,26 +450,13 @@ describe('Nhãn vai trò, mật khẩu tạm, Quản trị viên mới', () => {
     expect(res.json()).toMatchObject({ code: 'CANNOT_TARGET_SELF' });
   });
 
-  it('tạo Quản trị viên mới bằng mật khẩu tạm, không có Nhãn vai trò (Q23, Q70)', async () => {
-    const res = await as('POST', '/api/admin/admins', {
-      username: 'qt2',
-      fullName: 'Quản Trị Hai',
-    });
-    expect(res.statusCode).toBe(201);
-    const { id, temporaryPassword } = res.json();
-
-    const fresh = await login(t.app, 'qt2', temporaryPassword);
-    const me = await call(t.app, 'GET', '/api/auth/me', { cookie: fresh.cookie });
-    expect(me.json()).toMatchObject({ isAdmin: true, roleTags: [], mustChangePassword: true });
-    const logs = await auditLogs(id);
-    expect(logs.map((l: { action: string }) => l.action)).toEqual(['admin.create']);
-    expect(JSON.stringify(logs)).not.toContain(temporaryPassword);
-  });
+  // Tạo Quản trị viên bằng email (Chờ kích hoạt, thư kích hoạt): xem `admin-create-activation.int.test.ts` (PR 7c-2a).
 
   it('tạo Quản trị viên trùng tên đăng nhập trả CONFLICT', async () => {
     await seedUser({ username: 'qt2' });
     const res = await as('POST', '/api/admin/admins', {
       username: 'QT2',
+      email: 'qt2@example.edu.vn',
       fullName: 'Quản Trị Hai',
     });
     expect(res.statusCode).toBe(409);
