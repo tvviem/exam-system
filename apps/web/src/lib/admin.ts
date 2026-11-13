@@ -251,8 +251,8 @@ export const setRoleTag = (id: string, tag: RoleTag, granted: boolean) =>
 export const reissueTemporaryPassword = (id: string) =>
   apiFetch<TemporaryPassword>(`/admin/users/${id}/temporary-password`, { method: 'POST' });
 
-export const createAdmin = (body: { username: string; email: string | null; fullName: string }) =>
-  apiFetch<TemporaryPassword & { id: string }>('/admin/admins', { method: 'POST', body });
+export const createAdmin = (body: { username?: string; email: string; fullName: string }) =>
+  apiFetch<{ id: string; username: string }>('/admin/admins', { method: 'POST', body });
 
 export const createUnit = (body: { code: string; name: string }) =>
   apiFetch<Unit>('/admin/units', { method: 'POST', body });

@@ -195,6 +195,12 @@ export function AccountRequestView({
             <BusyNotice title={t('accountRequests.approvingHint')} hint={t('busy.longWait')} />
           )}
 
+          {(request.data.status === 'approved' || request.data.status === 'partially_approved') && (
+            <p role="note" className="rounded-lg border border-border bg-surface p-3 text-sm">
+              {t('accountRequests.activationNote')}
+            </p>
+          )}
+
           <SlipsSection requestId={id} status={request.data.status} />
 
           {data && data.status !== 'parsing' && data.status !== 'parse_failed' && (

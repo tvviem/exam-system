@@ -43,13 +43,13 @@ describe('quyền và file mẫu', () => {
     expect((await call(t.app, 'GET', '/api/account-requests')).statusCode).toBe(401);
     const candidate = await signedIn({ roleTags: ['candidate'] });
     expect((await get(candidate.cookie, '/api/account-requests')).statusCode).toBe(403);
-    const res = await send(candidate.cookie, csvFile('A,B1,,,,'));
+    const res = await send(candidate.cookie, csvFile('A,B1,b1@example.edu.vn,,,'));
     expect(res.statusCode).toBe(403);
   });
 
   it('Quản trị viên không gửi yêu cầu (chỉ Người ra đề gửi)', async () => {
     const admin = await signedIn({ isAdmin: true });
-    expect((await send(admin.cookie, csvFile('A,B1,,,,'))).statusCode).toBe(403);
+    expect((await send(admin.cookie, csvFile('A,B1,b1@example.edu.vn,,,'))).statusCode).toBe(403);
   });
 
   it('tải được file mẫu xlsx đúng sáu cột', async () => {
@@ -79,7 +79,11 @@ describe('tải lên và phân tích', () => {
   });
 
   it('tải lên trả "đang xử lý" ngay, worker xử lý xong thì thành "chờ duyệt"', async () => {
-    const res = await send(examiner.cookie, csvFile('Phạm Mới,B500,,K21,,Nam'), 'Lớp K21');
+    const res = await send(
+      examiner.cookie,
+      csvFile('Phạm Mới,B500,b500@example.edu.vn,K21,,Nam'),
+      'Lớp K21',
+    );
     expect(res.statusCode).toBe(201);
     const { id } = res.json();
     expect(res.json().status).toBe('parsing');
@@ -113,15 +117,15 @@ describe('tải lên và phân tích', () => {
     const id = await submitted(
       examiner.cookie,
       csvFile(
-        'nguyen van an,b100,,,,', // exact (mã, khác hoa thường và dấu)
+        'nguyen van an,b100,b100@example.edu.vn,,,', // exact (mã, khác hoa thường và dấu)
         'Lê Văn Khác,,BINH@example.edu.vn,,,', // name_mismatch (email)
         'Quản Trị,,qt@example.edu.vn,,,', // blocked: Quản trị viên
-        'Đã Xóa,B300,,,,', // blocked: đã bị Xóa
+        'Đã Xóa,B300,b300@example.edu.vn,,,', // blocked: đã bị Xóa
         'Ai Đó,B400,b400@example.edu.vn,,,', // blocked: mã và email là hai người khác nhau
-        'Bị Khóa,B600,,,,', // exact dù đang bị Khóa
-        'Phạm Mới,B500,,,,', // new
-        ',B700,,,,', // blocked: thiếu họ tên
-        'Trùng,B500,,,,', // blocked: trùng trong file
+        'Bị Khóa,B600,b600@example.edu.vn,,,', // exact dù đang bị Khóa
+        'Phạm Mới,B500,b500@example.edu.vn,,,', // new
+        ',B700,b700@example.edu.vn,,,', // blocked: thiếu họ tên
+        'Trùng,B500,b500@example.edu.vn,,,', // blocked: trùng trong file
       ),
     );
 
@@ -166,7 +170,7 @@ describe('tải lên và phân tích', () => {
     await seedUser({ isAdmin: true, email: 'qt@example.edu.vn' });
     const id = await submitted(
       examiner.cookie,
-      csvFile('Nguyễn Văn An,B100,,,,', 'Quản Trị,,qt@example.edu.vn,,,'),
+      csvFile('Nguyễn Văn An,B100,b100@example.edu.vn,,,', 'Quản Trị,,qt@example.edu.vn,,,'),
     );
     const [exact, blocked] = await itemsOf(examiner.cookie, id);
     expect(exact).toMatchObject({ matchStatus: 'exact', matchedUser: null });
@@ -178,7 +182,10 @@ describe('tải lên và phân tích', () => {
   });
 
   it('job phân tích chạy lại không chèn dòng lần hai', async () => {
-    const id = await submitted(examiner.cookie, csvFile('A,B1,,,,', 'B,B2,,,,'));
+    const id = await submitted(
+      examiner.cookie,
+      csvFile('A,B1,b1@example.edu.vn,,,', 'B,B2,b2@example.edu.vn,,,'),
+    );
     await t.app.get(JobRegistry).run('account-request.parse', { requestId: id });
     expect(await itemsOf(examiner.cookie, id)).toHaveLength(2);
     expect((await get(examiner.cookie, `/api/account-requests/${id}`)).json().rowCount).toBe(2);
@@ -188,7 +195,12 @@ describe('tải lên và phân tích', () => {
     await seedUser({ fullName: 'Nguyễn Văn An', code: 'B100' });
     const id = await submitted(
       examiner.cookie,
-      csvFile('Nguyễn Văn An,B100,,,,', 'Một,B1,,,,', 'Hai,B2,,,,', 'Ba,B3,,,,'),
+      csvFile(
+        'Nguyễn Văn An,B100,b100@example.edu.vn,,,',
+        'Một,B1,b1@example.edu.vn,,,',
+        'Hai,B2,b2@example.edu.vn,,,',
+        'Ba,B3,b3@example.edu.vn,,,',
+      ),
     );
     expect(await itemsOf(examiner.cookie, id, '&matchStatus=new')).toHaveLength(3);
     expect(await itemsOf(examiner.cookie, id, '&matchStatus=exact')).toHaveLength(1);
@@ -219,7 +231,7 @@ describe('tải lên và phân tích', () => {
   });
 
   it('xóa file tải lên tạm sau khi phân tích', async () => {
-    await submitted(examiner.cookie, csvFile('A,B1,,,,'));
+    await submitted(examiner.cookie, csvFile('A,B1,b1@example.edu.vn,,,'));
     const uploads = await readdir(path.join(process.env.MEDIA_DIR as string, 'uploads')).catch(
       () => [],
     );
@@ -228,7 +240,7 @@ describe('tải lên và phân tích', () => {
 
   it('ghi nhật ký account-request.create', async () => {
     const admin = await signedIn({ isAdmin: true });
-    const id = await submitted(examiner.cookie, csvFile('A,B1,,,,'));
+    const id = await submitted(examiner.cookie, csvFile('A,B1,b1@example.edu.vn,,,'));
     const logs = (await get(admin.cookie, `/api/admin/audit-logs?entityId=${id}`)).json().items;
     expect(logs).toMatchObject([
       {
@@ -274,7 +286,7 @@ describe('file không dùng được', () => {
 
   it('xếp job lỗi (Redis hỏng) thì yêu cầu thành parse_failed, không kẹt ở "đang đọc"', async () => {
     t.queue.failNextEnqueue = true;
-    const res = await send(examiner.cookie, csvFile('A,B1,,,,'));
+    const res = await send(examiner.cookie, csvFile('A,B1,b1@example.edu.vn,,,'));
     expect(res.statusCode).toBe(500);
     const [request] = (await get(examiner.cookie, '/api/account-requests')).json().items;
     expect(request).toMatchObject({ status: 'parse_failed', parseError: 'internal_error' });
@@ -316,8 +328,8 @@ describe('ai thấy yêu cầu nào', () => {
     const gv1 = await signedIn({ roleTags: ['examiner'], fullName: 'Giảng Viên Một' });
     const gv2 = await signedIn({ roleTags: ['examiner'], fullName: 'Giảng Viên Hai' });
     const admin = await signedIn({ isAdmin: true });
-    const id1 = await submitted(gv1.cookie, csvFile('A,B1,,,,'));
-    await submitted(gv2.cookie, csvFile('B,B2,,,,'));
+    const id1 = await submitted(gv1.cookie, csvFile('A,B1,b1@example.edu.vn,,,'));
+    await submitted(gv2.cookie, csvFile('B,B2,b2@example.edu.vn,,,'));
     await submitted(gv2.cookie, { filename: 'sai.csv', content: Buffer.from('Email\nx@y.vn') });
 
     expect((await get(gv1.cookie, '/api/account-requests')).json().total).toBe(1);
@@ -344,7 +356,10 @@ describe('thông báo (Q95)', () => {
     const admin1 = await signedIn({ isAdmin: true });
     const admin2 = await signedIn({ isAdmin: true });
     await seedUser({ isAdmin: true, removed: true });
-    const id = await submitted(examiner.cookie, csvFile('A,B1,,,,', 'B,B2,,,,'));
+    const id = await submitted(
+      examiner.cookie,
+      csvFile('A,B1,b1@example.edu.vn,,,', 'B,B2,b2@example.edu.vn,,,'),
+    );
 
     for (const admin of [admin1, admin2]) {
       const bell = (await get(admin.cookie, '/api/notifications')).json();
@@ -367,8 +382,8 @@ describe('thông báo (Q95)', () => {
     const examiner = await signedIn({ roleTags: ['examiner'] });
     const admin1 = await signedIn({ isAdmin: true });
     const admin2 = await signedIn({ isAdmin: true });
-    await submitted(examiner.cookie, csvFile('A,B1,,,,'));
-    await submitted(examiner.cookie, csvFile('B,B2,,,,'));
+    await submitted(examiner.cookie, csvFile('A,B1,b1@example.edu.vn,,,'));
+    await submitted(examiner.cookie, csvFile('B,B2,b2@example.edu.vn,,,'));
 
     const mine = (await get(admin1.cookie, '/api/notifications')).json();
     expect(mine.unreadCount).toBe(2);
@@ -408,7 +423,10 @@ describe('Quản trị viên Từ chối cả yêu cầu', () => {
     call(t.app, 'POST', `/api/account-requests/${id}/reject`, { cookie, body: { note } });
 
   it('chuyển sang rejected, ghi chú và nhật ký, báo cho người gửi', async () => {
-    const id = await submitted(examiner.cookie, csvFile('A,B1,,,,', 'B,B2,,,,'));
+    const id = await submitted(
+      examiner.cookie,
+      csvFile('A,B1,b1@example.edu.vn,,,', 'B,B2,b2@example.edu.vn,,,'),
+    );
     const res = await reject(admin.cookie, id, 'File sai lớp');
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({
@@ -435,10 +453,10 @@ describe('Quản trị viên Từ chối cả yêu cầu', () => {
   });
 
   it('Người ra đề không Từ chối được; yêu cầu không còn "chờ duyệt" thì INVALID_STATE', async () => {
-    const id = await submitted(examiner.cookie, csvFile('A,B1,,,,'));
+    const id = await submitted(examiner.cookie, csvFile('A,B1,b1@example.edu.vn,,,'));
     expect((await reject(examiner.cookie, id)).statusCode).toBe(403);
 
-    const parsing = await send(examiner.cookie, csvFile('B,B2,,,,'));
+    const parsing = await send(examiner.cookie, csvFile('B,B2,b2@example.edu.vn,,,'));
     expect((await reject(admin.cookie, parsing.json().id)).json()).toMatchObject({
       code: 'INVALID_STATE',
     });

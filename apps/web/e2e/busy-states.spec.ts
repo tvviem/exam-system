@@ -41,7 +41,7 @@ test('Yêu cầu cấp tài khoản: tải lên và server đọc file đều b�
 
   const csv = [
     'Họ tên,Mã định danh,Email,Lớp,Ngày sinh,Giới tính',
-    `Bận ${p},BUSY-${p}-1,,K1,,Nam`,
+    `Bận ${p},BUSY-${p}-1,ban.${p}@example.edu.vn,K1,,Nam`,
   ].join('\n');
   await page.getByLabel('File danh sách').setInputFiles({
     name: `ban-${p}.csv`,

@@ -152,14 +152,7 @@ function UsersPage() {
         </>
       )}
 
-      <CreateAdminDialog
-        open={creatingAdmin}
-        onClose={() => setCreatingAdmin(false)}
-        onCreated={(result) => {
-          setCreatingAdmin(false);
-          setPassword({ ...result, title: t('admin.users.adminCreated') });
-        }}
-      />
+      <CreateAdminDialog open={creatingAdmin} onClose={() => setCreatingAdmin(false)} />
       <TemporaryPasswordDialog value={password} onClose={() => setPassword(null)} />
     </section>
   );
@@ -263,68 +256,85 @@ function UserList({ items }: { items: UserListItem[] }) {
   );
 }
 
-/** Chỉ định Quản trị viên = tạo tài khoản Quản trị viên riêng (Q23, Q70). */
-function CreateAdminDialog({
-  open,
-  onClose,
-  onCreated,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCreated: (result: TemporaryPassword) => void;
-}) {
+/**
+ * Tạo Quản trị viên bằng email (ADR-0009): hệ thống gửi thư kích hoạt, người đó tự đặt mật khẩu. Không còn mật khẩu
+ * tạm để Quản trị viên chuyển cho người khác.
+ */
+function CreateAdminDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ username: '', email: '', fullName: '' });
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: () =>
       createAdmin({
-        username: form.username.trim(),
-        email: form.email.trim() || null,
+        username: form.username.trim() || undefined,
+        email: form.email.trim(),
         fullName: form.fullName.trim(),
       }),
-    onSuccess: async (result) => {
+    onSuccess: async () => {
+      setSentTo(form.email.trim());
       setForm({ username: '', email: '', fullName: '' });
       await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      onCreated(result);
     },
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
     mutation.mutate();
   };
+  const close = () => {
+    setSentTo(null);
+    mutation.reset();
+    onClose();
+  };
   return (
-    <Dialog open={open} onClose={onClose} title={t('admin.users.createAdmin')}>
-      <p className="text-sm text-fg-muted">{t('admin.users.createAdminIntro')}</p>
-      <form className="flex flex-col gap-4" onSubmit={submit}>
-        <TextField
-          id="admin-full-name"
-          label={t('admin.users.fullName')}
-          required
-          value={form.fullName}
-          onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-        />
-        <TextField
-          id="admin-username"
-          label={t('admin.users.username')}
-          autoCapitalize="none"
-          required
-          value={form.username}
-          onChange={(e) => setForm({ ...form, username: e.target.value })}
-        />
-        <TextField
-          id="admin-email"
-          label={t('admin.users.emailOptional')}
-          type="email"
-          hint={t('admin.users.adminEmailHint')}
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-        />
-        <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
-        <PrimaryButton type="submit" disabled={mutation.isPending}>
-          {t('admin.users.createAdminSubmit')}
-        </PrimaryButton>
-      </form>
+    <Dialog open={open} onClose={close} title={t('admin.users.createAdmin')}>
+      {sentTo ? (
+        <div className="flex flex-col gap-4">
+          <div role="status" className="flex flex-col gap-1 text-sm">
+            <p className="font-medium">{t('admin.users.adminSent', { email: sentTo })}</p>
+            <p className="text-fg-muted">{t('admin.users.adminSentText')}</p>
+          </div>
+          <PrimaryButton type="button" onClick={close}>
+            {t('common.close')}
+          </PrimaryButton>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm text-fg-muted">{t('admin.users.createAdminIntro')}</p>
+          <form className="flex flex-col gap-4" onSubmit={submit}>
+            <TextField
+              id="admin-full-name"
+              label={t('admin.users.fullName')}
+              required
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+            />
+            <TextField
+              id="admin-email"
+              label={t('admin.users.adminEmail')}
+              type="email"
+              autoCapitalize="none"
+              required
+              hint={t('admin.users.adminEmailHint')}
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            <TextField
+              id="admin-username"
+              label={t('admin.users.usernameOptional')}
+              autoCapitalize="none"
+              hint={t('admin.users.adminUsernameHint')}
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+            />
+            <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
+            <PrimaryButton type="submit" disabled={mutation.isPending}>
+              {t('admin.users.createAdminSubmit')}
+            </PrimaryButton>
+          </form>
+        </>
+      )}
     </Dialog>
   );
 }

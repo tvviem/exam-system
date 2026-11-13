@@ -145,8 +145,8 @@ Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pu
   - Buộc đổi mật khẩu ở lần đăng nhập đầu tiên. Mật khẩu dài 10–128 ký tự, chặn mật khẩu phổ biến; mật khẩu tạm hết hạn sau 7 ngày.
   - Phiên hết hạn sau 12 giờ không hoạt động, tối đa 7 ngày; với Quản trị viên là 30 phút và 12 giờ. Được đăng nhập nhiều thiết bị cùng lúc.
   - Chống CSRF: ngoài `SameSite=Lax`, mọi request đổi dữ liệu phải có header `Origin` đúng.
-  - Giai đoạn 1 không gửi email: Lời mời là link do Quản trị viên tự gửi, mật khẩu tạm giao qua Phiếu tài khoản.
-  - **Đang đề xuất (chưa áp dụng): [ADR-0009](./adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md).** Email chính chủ làm gốc danh tính; kích hoạt và quên mật khẩu qua email; bỏ Phiếu tài khoản và mật khẩu tạm (trừ `prod-bootstrap`, `prod-recover-admin`). Các dòng "không gửi email" và "buộc đổi mật khẩu ở lần đăng nhập đầu" ở trên sẽ đổi khi PR 7c, 7d xong.
+  - (Cũ, đã thay từ PR 7c) Giai đoạn 1 không gửi email: Lời mời là link do Quản trị viên tự gửi, mật khẩu tạm giao qua Phiếu tài khoản.
+  - **Đã duyệt, áp dụng dần (PR 7b đến 7d; tới 7c-2a các đường tạo tài khoản đã đổi sang Chờ kích hoạt và thư kích hoạt): [ADR-0009](./adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md).** Email chính chủ làm gốc danh tính; kích hoạt và quên mật khẩu qua email; bỏ Phiếu tài khoản và mật khẩu tạm (trừ `prod-bootstrap`, `prod-recover-admin`). Các dòng "không gửi email" và "buộc đổi mật khẩu ở lần đăng nhập đầu" ở trên sẽ đổi khi PR 7c, 7d xong.
 - **Phân quyền:**
   - Kiểm tra vai trò bằng guard.
   - Kiểm tra quyền sở hữu ở tầng service: Người ra đề chỉ thấy Chủ đề, Bộ đề và Phiên thi của mình.

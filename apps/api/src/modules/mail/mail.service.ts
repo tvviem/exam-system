@@ -114,7 +114,7 @@ export class MailService {
       const [row] = await this.insertRows(tx, [mail], now);
       return { queued: true as const, id: (row as { id: string }).id };
     });
-    if (outcome.queued) await this.kick();
+    if (outcome.queued) await this.wake();
     return outcome;
   }
 
@@ -122,7 +122,17 @@ export class MailService {
   async enqueueMany(mails: EnqueueMail[]): Promise<string[]> {
     if (mails.length === 0) return [];
     const rows = await this.insertRows(this.db, mails, this.clock.now());
-    await this.kick();
+    await this.wake();
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Xếp thư TRONG giao dịch của người gọi: thư và việc nghiệp vụ (tạo tài khoản…) cùng lưu hoặc cùng hủy, không có tài
+   * khoản mà thiếu thư hay thư mà thiếu tài khoản. Không kích job gửi: người gọi gọi `wake()` một lần sau khi commit.
+   */
+  async enqueueIn(tx: Transaction, mails: EnqueueMail[]): Promise<string[]> {
+    if (mails.length === 0) return [];
+    const rows = await this.insertRows(tx, mails, this.clock.now());
     return rows.map((row) => row.id);
   }
 
@@ -130,7 +140,7 @@ export class MailService {
    * Báo worker có thư mới. Thư đã nằm bền trong cơ sở dữ liệu nên nếu Redis hỏng thì chỉ chậm tới lần cron kế (mỗi
    * phút), không được làm hỏng luồng nghiệp vụ của người gọi (ví dụ trang Quên mật khẩu).
    */
-  private async kick(): Promise<void> {
+  async wake(): Promise<void> {
     try {
       await this.queue.enqueue('mail.dispatch', {});
     } catch (error) {
@@ -256,7 +266,7 @@ export class MailService {
     } finally {
       if (this.dispatchingSince === startedAt) this.dispatchingSince = null;
       // Xếp lần chạy kế sau khi đã nhả cờ, nếu không lần chạy kế thấy cờ còn bật và bỏ về ngay.
-      if (continueLater) await this.kick();
+      if (continueLater) await this.wake();
     }
   }
 

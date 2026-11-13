@@ -29,9 +29,9 @@ test('Người ra đề tải file mẫu và gửi yêu cầu; Quản trị viê
 
   const csv = [
     'Họ tên,Mã định danh,Email,Lớp,Ngày sinh,Giới tính',
-    `Nguyễn Văn An,E2E-${project}-1,,CNTT-K21,15/03/2005,Nam`,
-    `Trần Thị Bình,E2E-${project}-2,,CNTT-K21,,Nữ`,
-    `,E2E-${project}-3,,,,`, // thiếu họ tên: dòng lỗi
+    `Nguyễn Văn An,E2E-${project}-1,an.${project}@example.edu.vn,CNTT-K21,15/03/2005,Nam`,
+    `Trần Thị Bình,E2E-${project}-2,binh.${project}@example.edu.vn,CNTT-K21,,Nữ`,
+    `,E2E-${project}-3,loi.${project}@example.edu.vn,,,`, // thiếu họ tên: dòng lỗi
   ].join('\n');
   await page.getByLabel('File danh sách').setInputFiles({
     name: `lop-${project}.csv`,
@@ -80,7 +80,7 @@ test('Người ra đề tải file mẫu và gửi yêu cầu; Quản trị viê
   ).toBeVisible();
 });
 
-test('Quản trị viên duyệt yêu cầu; Phiếu tài khoản PDF và Excel tải được cho cả Quản trị viên lẫn Người ra đề', async ({
+test('Thiếu email thì dòng bị loại ngay; Quản trị viên duyệt dòng hợp lệ, hệ thống tạo tài khoản Chờ kích hoạt và gửi thư (không còn Phiếu)', async ({
   page,
   browser,
 }, testInfo) => {
@@ -88,11 +88,12 @@ test('Quản trị viên duyệt yêu cầu; Phiếu tài khoản PDF và Excel 
   const fileName = `duyet-${project}.csv`;
   const csv = [
     'Họ tên,Mã định danh,Email,Lớp,Ngày sinh,Giới tính',
-    `Phạm Văn Một,E2E-D-${project}-1,,CNTT-K22,01/02/2006,Nam`,
-    `Lê Thị Hai,E2E-D-${project}-2,,CNTT-K22,,Nữ`,
+    `Phạm Văn Một,E2E-D-${project}-1,mot.${project}@example.edu.vn,CNTT-K22,01/02/2006,Nam`,
+    `Lê Thị Hai,E2E-D-${project}-2,hai.${project}@example.edu.vn,CNTT-K22,,Nữ`,
+    `Thiếu Email,E2E-D-${project}-3,,CNTT-K22,,`,
   ].join('\n');
 
-  // Người ra đề gửi yêu cầu.
+  // Người ra đề gửi yêu cầu: dòng thiếu email báo lỗi ngay.
   await signIn(page, `e2e-yc-gv-${project}`);
   await page.getByLabel('File danh sách').setInputFiles({
     name: fileName,
@@ -101,40 +102,32 @@ test('Quản trị viên duyệt yêu cầu; Phiếu tài khoản PDF và Excel 
   });
   await page.getByRole('button', { name: 'Gửi yêu cầu' }).click();
   await expect(page.getByText('Chờ duyệt').first()).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: /Không duyệt được \(1\)/ }).click();
+  await expect(
+    page.getByText(/Thiếu Email: mỗi người cần một email/).filter({ visible: true }),
+  ).toBeVisible();
 
-  // Quản trị viên duyệt cả lô hợp lệ.
+  // Quản trị viên duyệt các dòng hợp lệ.
   const admin = await browser.newPage();
   await signIn(admin, `e2e-yc-qt-${project}`);
   await expect(admin.getByRole('heading', { name: 'Người dùng' })).toBeVisible();
   await admin.goto('/admin/account-requests');
   await admin.getByRole('link', { name: new RegExp(fileName) }).click();
   await admin.getByRole('button', { name: /^Duyệt các dòng hợp lệ \(2\)$/ }).click();
-  await expect(admin.getByText('Đã duyệt', { exact: true }).first()).toBeVisible({
+  // Còn một dòng thiếu email không duyệt được nên trạng thái là "Duyệt một phần".
+  await expect(admin.getByText('Duyệt một phần', { exact: true }).first()).toBeVisible({
     timeout: 20_000,
   });
-  await expect(admin.getByRole('heading', { name: 'Phiếu tài khoản' })).toBeVisible();
-  await expect(admin.getByText('2 tài khoản')).toBeVisible();
-
-  // Tải PDF: file hợp lệ và đã được giải mã.
-  const pdfDownload = admin.waitForEvent('download');
-  await admin.getByRole('link', { name: /Tải PDF/ }).click();
-  const pdf = await pdfDownload;
-  expect(pdf.suggestedFilename()).toMatch(/^phieu-tai-khoan-\d{8}\.pdf$/);
-  const pdfBytes = await (await import('node:fs/promises')).readFile(await pdf.path());
-  expect(pdfBytes.subarray(0, 5).toString()).toBe('%PDF-');
-
-  const xlsxDownload = admin.waitForEvent('download');
-  await admin.getByRole('link', { name: /Tải Excel/ }).click();
-  expect((await xlsxDownload).suggestedFilename()).toMatch(/\.xlsx$/);
+  // Không còn Phiếu tài khoản; có ghi chú về thư kích hoạt.
+  await expect(admin.getByRole('heading', { name: 'Phiếu tài khoản' })).toHaveCount(0);
+  await expect(admin.getByRole('note').filter({ hasText: 'Chờ kích hoạt' })).toBeVisible();
   await admin.close();
 
-  // Người ra đề cũng thấy và tải được phiếu của yêu cầu mình gửi.
+  // Người ra đề thấy kết quả và ghi chú tương tự.
   await page.reload();
-  await expect(page.getByText('Đã duyệt', { exact: true }).first()).toBeVisible({
+  await expect(page.getByText('Duyệt một phần', { exact: true }).first()).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByRole('heading', { name: 'Phiếu tài khoản' })).toBeVisible();
-  const examinerDownload = page.waitForEvent('download');
-  await page.getByRole('link', { name: /Tải PDF/ }).click();
-  expect((await examinerDownload).suggestedFilename()).toMatch(/\.pdf$/);
+  await expect(page.getByRole('note').filter({ hasText: 'Chờ kích hoạt' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Tải PDF/ })).toHaveCount(0);
 });

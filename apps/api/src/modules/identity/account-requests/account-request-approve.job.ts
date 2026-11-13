@@ -1,34 +1,13 @@
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { v7 as uuidv7 } from 'uuid';
 import { CLOCK, type Clock } from '../../../common/clock';
 import { uniqueViolationOf } from '../../../common/pg-error';
-import { ENV } from '../../../config/config.module';
-import type { Env } from '../../../config/env';
 import { type Database, DB, type Transaction } from '../../../db/db.module';
-import { MEDIA_STORE, type MediaStore } from '../../../media/media-store';
 import { type JobPayloads, JobRegistry } from '../../../queue/job-queue';
 import { AuditService } from '../../audit/audit.service';
+import { MailService } from '../../mail/mail.service';
 import { NotificationsService } from '../../notifications/notifications.service';
-import {
-  SLIP_RENDERER,
-  type SlipEntry,
-  type SlipListRow,
-  type SlipRenderer,
-} from '../credential-slips/slip-renderer';
-import { SlipVault } from '../credential-slips/slip-vault';
-import {
-  accountRequestItems,
-  accountRequests,
-  credentialSlips,
-  userRoleTags,
-  users,
-} from '../identity.schema';
-import { hashPassword } from '../password/password-hasher';
-import {
-  generateTemporaryPassword,
-  TEMPORARY_PASSWORD_TTL_MS,
-} from '../password/temporary-password';
+import { accountRequestItems, accountRequests, userRoleTags, users } from '../identity.schema';
 import { settleRequest } from './account-request-settle';
 
 type Payload = JobPayloads['account-request.approve'];
@@ -48,9 +27,10 @@ const TAKEN_BY_CONSTRAINT: Record<string, string> = {
 };
 
 /**
- * Job "account-request.approve" (Q91–Q93): tạo tài khoản Người dự thi hoặc thêm vai trò cho các dòng đã
- * duyệt, rồi dựng Phiếu tài khoản. Băm Argon2 nặng nên chạy ở worker. Mật khẩu dạng rõ chỉ tồn tại trong
- * bộ nhớ tiến trình này: sang phiếu mã hóa trên MediaStore, không vào DB, nhật ký, thông báo hay log.
+ * Job "account-request.approve" (Q91–Q93, ADR-0009): tạo tài khoản Người dự thi Chờ kích hoạt (không mật khẩu) hoặc thêm
+ * vai trò cho các dòng đã duyệt. Mỗi tài khoản mới xếp MỘT thư kích hoạt trong cùng giao dịch với việc tạo tài khoản
+ * (làn hàng loạt, người xếp là Người ra đề tạo Yêu cầu); người dùng tự đặt mật khẩu bằng liên kết trong thư, nên không
+ * còn mật khẩu tạm hay Phiếu tài khoản và không ai khác biết mật khẩu.
  */
 @Injectable()
 export class AccountRequestApproveJob implements OnModuleInit {
@@ -59,10 +39,7 @@ export class AccountRequestApproveJob implements OnModuleInit {
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(ENV) private readonly env: Env,
-    @Inject(MEDIA_STORE) private readonly media: MediaStore,
-    @Inject(SLIP_RENDERER) private readonly renderer: SlipRenderer,
-    private readonly vault: SlipVault,
+    private readonly mail: MailService,
     private readonly registry: JobRegistry,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
@@ -79,8 +56,6 @@ export class AccountRequestApproveJob implements OnModuleInit {
       .where(and(eq(accountRequests.id, requestId), eq(accountRequests.status, 'approving')));
     if (!request) return; // đã xử lý xong (job giao lại) hoặc yêu cầu không còn ở trạng thái duyệt
 
-    // Một hạn chung cho cả đợt: mật khẩu tạm của mọi tài khoản và Phiếu tài khoản cùng hết hạn (Q21).
-    const expiresAt = new Date(this.clock.now().getTime() + TEMPORARY_PASSWORD_TTL_MS);
     const pending = await this.db
       .select()
       .from(accountRequestItems)
@@ -97,7 +72,7 @@ export class AccountRequestApproveJob implements OnModuleInit {
     for (const item of pending) {
       try {
         if (item.userId) await this.addCandidateTag(item, reviewerId);
-        else await this.createCandidate(item, reviewerId, expiresAt);
+        else await this.createCandidate(item, reviewerId, request.requestedBy);
       } catch (error) {
         // Lỗi bất ngờ: dừng ở đây. Các dòng chưa xử lý vẫn `pending`, Quản trị viên duyệt lại được.
         this.logger.error(`Duyệt dòng ${item.rowNumber} của yêu cầu ${requestId} lỗi`, error);
@@ -106,8 +81,8 @@ export class AccountRequestApproveJob implements OnModuleInit {
       }
     }
 
-    // Dựng phiếu từ thông tin đã mã hóa lưu lúc tạo tài khoản, không từ bộ nhớ: job chết rồi chạy lại vẫn dựng đủ.
-    const slip = await this.createSlip(requestId, reviewerId, request.requestedBy, itemIds);
+    // Một lần kích job gửi cho cả đợt (thư đã nằm bền trong cơ sở dữ liệu, kích chỉ để gửi sớm).
+    await this.mail.wake();
 
     await this.db.transaction(async (tx) => {
       const [tally] = await tx
@@ -136,7 +111,6 @@ export class AccountRequestApproveJob implements OnModuleInit {
             tagAdded: tally?.tagAdded ?? 0,
             skipped: tally?.skipped ?? 0,
             rejected: rejectedCount,
-            ...(slip ? { slipId: slip.id } : {}),
           },
         },
         tx,
@@ -189,11 +163,13 @@ export class AccountRequestApproveJob implements OnModuleInit {
     });
   }
 
-  /** Người mới: tên đăng nhập = `lower(code)`, không có mã thì dùng email (data-model). */
-  private async createCandidate(item: Item, reviewerId: string, expiresAt: Date): Promise<void> {
+  /** Người mới: tên đăng nhập = `lower(code)`, không có mã thì dùng email (data-model). Không mật khẩu: Chờ kích hoạt. */
+  private async createCandidate(
+    item: Item,
+    reviewerId: string,
+    requesterId: string,
+  ): Promise<void> {
     const username = item.code ? item.code.toLowerCase() : (item.email as string);
-    const temporaryPassword = generateTemporaryPassword();
-    const passwordHash = await hashPassword(temporaryPassword);
     const now = this.clock.now();
 
     try {
@@ -215,9 +191,6 @@ export class AccountRequestApproveJob implements OnModuleInit {
             classLabel: item.classLabel,
             dateOfBirth: item.dateOfBirth,
             gender: item.gender,
-            passwordHash,
-            mustChangePassword: true,
-            passwordExpiresAt: expiresAt,
             createdBy: reviewerId,
           })
           .returning({ id: users.id });
@@ -225,19 +198,16 @@ export class AccountRequestApproveJob implements OnModuleInit {
         await tx
           .insert(userRoleTags)
           .values({ userId: created.id, tag: 'candidate', grantedBy: reviewerId, grantedAt: now });
-        const entry: SlipEntry = {
-          fullName: item.fullName ?? '',
-          code: item.code,
-          classLabel: item.classLabel,
-          username,
-          temporaryPassword,
-        };
-        // Ghi thông tin phiếu (mã hóa) trước khi commit: tài khoản đã có thì mật khẩu chắc chắn còn lấy lại được.
-        // Nếu commit lỗi, file mồ côi vô hại vì phiếu chỉ lấy theo các dòng đã `created`.
-        await this.media.put(
-          this.credentialKey(item),
-          this.vault.encrypt(Buffer.from(JSON.stringify({ entry, expiresAt }))),
-        );
+        // Thư kích hoạt cùng giao dịch với tài khoản: không có tài khoản mà thiếu thư, hay thư mà thiếu tài khoản.
+        await this.mail.enqueueIn(tx, [
+          {
+            kind: 'activation',
+            toEmail: item.email as string,
+            lane: 'bulk',
+            userId: created.id,
+            requestedBy: requesterId,
+          },
+        ]);
         await this.markItem(tx, item, { outcome: 'created', userId: created.id });
       });
     } catch (error) {
@@ -271,116 +241,5 @@ export class AccountRequestApproveJob implements OnModuleInit {
         outcomeNote: result.outcome === 'skipped' ? result.note : null,
       })
       .where(and(eq(accountRequestItems.id, item.id), eq(accountRequestItems.outcome, 'pending')));
-  }
-
-  private credentialKey(item: Pick<Item, 'id' | 'requestId'>) {
-    return `slips/pending/${item.requestId}/${item.id}.enc`;
-  }
-
-  /**
-   * Dựng và lưu Phiếu tài khoản của đợt duyệt từ các file thông tin đã mã hóa (một file mỗi tài khoản mới).
-   * Trả null nếu không còn file nào (không có tài khoản mới, hoặc phiếu đã dựng ở lần chạy trước).
-   * Dựng lỗi thì ghi phiếu `failed`: tài khoản đã tạo, người quản trị dùng "Cấp lại mật khẩu tạm".
-   */
-  private async createSlip(
-    requestId: string,
-    reviewerId: string,
-    requesterId: string,
-    itemIds: string[],
-  ) {
-    const items = await this.db
-      .select()
-      .from(accountRequestItems)
-      .where(
-        and(
-          eq(accountRequestItems.requestId, requestId),
-          inArray(accountRequestItems.id, itemIds),
-          inArray(accountRequestItems.outcome, ['created', 'tag_added']),
-        ),
-      )
-      .orderBy(asc(accountRequestItems.rowNumber));
-
-    const entries: SlipEntry[] = [];
-    const listRows: SlipListRow[] = [];
-    const credentialKeys: string[] = [];
-    let expiresAt: Date | null = null;
-    for (const item of items) {
-      let entry: SlipEntry | null = null;
-      if (item.outcome === 'created') {
-        const stored = await this.readCredential(item);
-        if (stored) {
-          entry = stored.entry;
-          entries.push(stored.entry);
-          credentialKeys.push(this.credentialKey(item));
-          if (!expiresAt || stored.expiresAt < expiresAt) expiresAt = stored.expiresAt;
-        }
-      }
-      listRows.push({
-        fullName: item.fullName ?? '',
-        code: item.code,
-        classLabel: item.classLabel,
-        username: entry?.username ?? item.code?.toLowerCase() ?? item.email,
-        outcome: item.outcome === 'created' ? 'created' : 'tag_added',
-      });
-    }
-    if (entries.length === 0 || !expiresAt) return null;
-
-    const id = uuidv7();
-    const base = {
-      id,
-      requestId,
-      createdBy: reviewerId,
-      itemCount: entries.length,
-      expiresAt,
-      createdAt: this.clock.now(),
-    };
-    let slip: typeof credentialSlips.$inferInsert;
-    try {
-      const files = await this.renderer.render({
-        entries,
-        listRows: listRows.map((row) =>
-          row.outcome === 'tag_added' ? { ...row, username: null } : row,
-        ),
-        loginUrl: `${this.env.APP_ORIGINS[0] ?? ''}/login`,
-        expiresAt,
-      });
-      const pdfKey = `slips/${id}.pdf.enc`;
-      const xlsxKey = `slips/${id}.xlsx.enc`;
-      await this.media.put(pdfKey, this.vault.encrypt(files.pdf));
-      await this.media.put(xlsxKey, this.vault.encrypt(files.xlsx));
-      slip = { ...base, status: 'ready', pdfKey, xlsxKey };
-    } catch (error) {
-      this.logger.error(`Không dựng được Phiếu tài khoản của yêu cầu ${requestId}`, error);
-      slip = { ...base, status: 'failed' };
-    }
-
-    // Lưu phiếu và báo "phiếu sẵn sàng" trong một transaction: lỗi ở đây thì file thông tin còn đó, job chạy lại sẽ dựng lại.
-    await this.db.transaction(async (tx) => {
-      await tx.insert(credentialSlips).values(slip);
-      await this.notifications.notify(
-        {
-          userIds: [reviewerId, requesterId],
-          type: 'credential_slip.ready',
-          data: { requestId, slipId: id, status: slip.status },
-        },
-        tx,
-      );
-    });
-    // Phiếu đã lưu: thông tin tạm không còn cần, xóa để mật khẩu không nằm lại trên đĩa.
-    for (const key of credentialKeys) await this.media.delete(key);
-    return { id, status: slip.status };
-  }
-
-  private async readCredential(item: Item): Promise<{ entry: SlipEntry; expiresAt: Date } | null> {
-    try {
-      const raw = await this.media.get(this.credentialKey(item));
-      const parsed = JSON.parse(this.vault.decrypt(raw).toString('utf8')) as {
-        entry: SlipEntry;
-        expiresAt: string;
-      };
-      return { entry: parsed.entry, expiresAt: new Date(parsed.expiresAt) };
-    } catch {
-      return null; // không có file: phiếu đã dựng ở lần chạy trước
-    }
   }
 }

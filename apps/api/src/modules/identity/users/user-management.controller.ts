@@ -76,8 +76,8 @@ const unlockSchema = z.object({ reason: z.string().trim().max(500).optional() })
 
 const createAdminSchema = z
   .object({
-    username: z.string().trim().min(1).max(100),
-    email: z.email().max(320).nullable().default(null),
+    username: z.string().trim().min(1).max(100).optional(),
+    email: z.email().max(320),
     fullName: z.string().trim().min(1).max(200),
   })
   .strict();

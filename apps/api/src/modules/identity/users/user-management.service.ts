@@ -31,6 +31,7 @@ import {
 } from '../../../common/user-deactivation';
 import { type Database, DB, type Transaction as Tx } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
+import { MailService } from '../../mail/mail.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import type { RoleTag } from '../auth/auth.types';
 import { type AuthSessionRevokeReason, AuthSessionStore } from '../auth/auth-session-store';
@@ -114,6 +115,7 @@ export class UserManagementService {
     private readonly loginBlock: LoginBlock,
     private readonly usersRepository: UsersRepository,
     private readonly notifications: NotificationsService,
+    private readonly mail: MailService,
     @Inject(OWNED_CONTENT) private readonly ownedContent: OwnedContent,
     @Inject(USER_DEACTIVATION_HOOKS) private readonly deactivation: UserDeactivationHooks,
     @Inject(LIVE_SESSION_GUARD) private readonly liveGuard: LiveSessionGuard,
@@ -607,35 +609,53 @@ export class UserManagementService {
   }
 
   /** Chỉ định Quản trị viên = tạo tài khoản Quản trị viên riêng, không mang Nhãn vai trò (Q23, Q70). */
+  /**
+   * Tạo Quản trị viên bằng EMAIL (ADR-0009): tài khoản Chờ kích hoạt (không mật khẩu) và một thư kích hoạt làn khẩn, cùng
+   * một giao dịch. Người đó tự đặt mật khẩu bằng liên kết trong thư; không ai khác biết mật khẩu. Tên đăng nhập mặc
+   * định là email.
+   */
   async createAdmin(
     actor: Actor,
-    input: { username: string; email: string | null; fullName: string },
-  ) {
-    const temporaryPassword = generateTemporaryPassword();
-    const passwordHash = await hashPassword(temporaryPassword);
-    const passwordExpiresAt = new Date(this.clock.now().getTime() + TEMPORARY_PASSWORD_TTL_MS);
+    input: { username?: string; email: string; fullName: string },
+  ): Promise<{ id: string; username: string }> {
+    const username = input.username ?? input.email;
     const created = await mapUniqueToConflict(UNIQUE_FIELDS, () =>
       this.db.transaction(async (tx) => {
         const [row] = await tx
           .insert(users)
           .values({
-            ...input,
-            passwordHash,
+            username,
+            email: input.email,
+            fullName: input.fullName,
             isAdmin: true,
-            mustChangePassword: true,
-            passwordExpiresAt,
             createdBy: actor.id,
           })
           .returning({ id: users.id });
         if (!row) throw new Error('Không tạo được Quản trị viên');
+        await this.mail.enqueueIn(tx, [
+          {
+            kind: 'activation',
+            toEmail: input.email,
+            lane: 'urgent',
+            userId: row.id,
+            requestedBy: actor.id,
+          },
+        ]);
         await this.audit.record(
-          { actor, action: 'admin.create', entityType: 'user', entityId: row.id, after: input },
+          {
+            actor,
+            action: 'admin.create',
+            entityType: 'user',
+            entityId: row.id,
+            after: { username, email: input.email, fullName: input.fullName },
+          },
           tx,
         );
         return row;
       }),
     );
-    return { id: created.id, temporaryPassword, passwordExpiresAt };
+    await this.mail.wake();
+    return { id: created.id, username };
   }
 
   /** Người dùng chưa bị Xóa và không phải Quản trị viên. */

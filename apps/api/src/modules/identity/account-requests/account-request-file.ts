@@ -22,7 +22,7 @@ export class AccountRequestFileError extends Error {
 
 export type RowErrorCode =
   | 'missing_full_name'
-  | 'missing_code_and_email'
+  | 'missing_email'
   | 'field_too_long'
   | 'invalid_email'
   | 'invalid_date_of_birth'
@@ -134,7 +134,7 @@ function rowError(
   seenEmails: Set<string>,
 ): RowErrorCode | null {
   if (!row.fullName) return 'missing_full_name';
-  if (!row.code && !row.email) return 'missing_code_and_email';
+  if (!row.email) return 'missing_email';
   for (const field of ['fullName', 'code', 'email', 'classLabel'] as const) {
     const limit = MAX_LENGTH[field];
     if (limit && (row[field]?.length ?? 0) > limit) return 'field_too_long';

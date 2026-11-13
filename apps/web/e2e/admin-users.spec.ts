@@ -40,3 +40,28 @@ test('Quản trị viên tìm một người, Khóa đăng nhập, người đó
     'Tài khoản đã bị Khóa đăng nhập. Hãy liên hệ Quản trị viên.',
   );
 });
+
+test('Quản trị viên tạo Quản trị viên bằng email: nhận báo đã gửi thư kích hoạt, không có mật khẩu tạm', async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  await signIn(page, `e2e-khoa-qt-${project}`);
+  await expect(page.getByRole('heading', { name: 'Người dùng' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Tạo Quản trị viên' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Họ tên').fill(`Quản Trị Mới ${project}`);
+  // Email bắt buộc: bỏ trống thì trình duyệt chặn gửi, không có yêu cầu nào đi.
+  await dialog.getByRole('button', { name: 'Tạo tài khoản' }).click();
+  await expect(dialog.getByLabel('Email nhận thư kích hoạt')).toBeFocused();
+
+  await dialog.getByLabel('Email nhận thư kích hoạt').fill(`qt.moi.${project}@example.edu.vn`);
+  await dialog.getByRole('button', { name: 'Tạo tài khoản' }).click();
+  await expect(
+    dialog.getByRole('status').filter({ hasText: `qt.moi.${project}@example.edu.vn` }),
+  ).toContainText('Đã gửi thư kích hoạt tới');
+  await expect(dialog.getByText(/mật khẩu tạm/i)).toHaveCount(0);
+  // Hộp thoại có nút đóng ở góc và nút "Đóng" ở cuối nội dung; bấm nút cuối.
+  await dialog.getByRole('button', { name: 'Đóng', exact: true }).last().click();
+  await expect(dialog).toBeHidden();
+});
