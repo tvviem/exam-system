@@ -4,6 +4,8 @@ import { ChevronRight, ShieldPlus } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ACTIVATION_FILTERS,
+  type ActivationFilter,
   createAdmin,
   ROLE_TAGS,
   type TemporaryPassword,
@@ -46,6 +48,9 @@ export const Route = createFileRoute('/_authed/admin/users/')({
     roleTag: ROLE_TAGS.includes(search.roleTag as RoleTag)
       ? (search.roleTag as RoleTag)
       : undefined,
+    activation: ACTIVATION_FILTERS.includes(search.activation as ActivationFilter)
+      ? (search.activation as ActivationFilter)
+      : undefined,
     page: Number(search.page) > 1 ? Number(search.page) : undefined,
   }),
   component: UsersPage,
@@ -75,7 +80,7 @@ function UsersPage() {
 
   const setFilter = (patch: Partial<UserListParams>) =>
     navigate({ search: (s) => ({ ...s, ...patch, page: undefined }) });
-  const activeFilters = [search.status, search.roleTag].filter(Boolean).length;
+  const activeFilters = [search.status, search.roleTag, search.activation].filter(Boolean).length;
 
   const filters = (
     <>
@@ -102,6 +107,21 @@ function UsersPage() {
         {ROLE_TAGS.map((tag) => (
           <option key={tag} value={tag}>
             {t(`roleTag.${tag}`)}
+          </option>
+        ))}
+      </SelectField>
+      <SelectField
+        id="filter-activation"
+        label={t('admin.users.filterActivation')}
+        value={search.activation ?? ''}
+        onChange={(e) =>
+          setFilter({ activation: (e.target.value || undefined) as ActivationFilter })
+        }
+      >
+        <option value="">{t('admin.users.activationAll')}</option>
+        {ACTIVATION_FILTERS.map((a) => (
+          <option key={a} value={a}>
+            {t(`admin.users.activation.${a}`)}
           </option>
         ))}
       </SelectField>
@@ -199,6 +219,11 @@ function UserList({ items }: { items: UserListItem[] }) {
               >
                 {user.fullName}
               </Link>
+              {user.pending && (
+                <span className="ml-2 inline-block">
+                  <Badge tone="warning">{t('admin.users.activation.pending')}</Badge>
+                </span>
+              )}
               {/* 768–1023 px: cột Mã và Lớp ẩn đi, gộp thành một dòng phụ dưới tên */}
               <p className="mt-0.5 text-fg-muted lg:hidden">
                 {[identityLine(user), user.classLabel].filter(Boolean).join(' · ')}
@@ -247,6 +272,7 @@ function UserList({ items }: { items: UserListItem[] }) {
             <div className="mt-2 flex flex-wrap gap-1">
               <StatusBadge status={user.status} />
               <RoleTags user={user} />
+              {user.pending && <Badge tone="warning">{t('admin.users.activation.pending')}</Badge>}
             </div>
           </div>
           <ChevronRight aria-hidden className="size-5 shrink-0 text-fg-muted" />

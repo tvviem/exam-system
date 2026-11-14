@@ -64,6 +64,23 @@ describe('đăng nhập thất bại', () => {
     expect(wrong.cookie).toBeUndefined();
   });
 
+  it('D-26: tài khoản Chờ kích hoạt cũng trả đúng lỗi chung (không phân biệt được với tên không tồn tại, kể cả thời gian)', async () => {
+    await seedUser({ username: 'cho-kich-hoat', pending: true, email: 'ckh@example.edu.vn' });
+    const time = async (identifier: string) => {
+      const started = performance.now();
+      const result = await login(t.app, identifier, 'sai-mat-khau-roi');
+      return { result, ms: performance.now() - started };
+    };
+    const pending = await time('cho-kich-hoat');
+    const unknown = await time('khong-co-ai-ca');
+    for (const r of [pending, unknown]) {
+      expect(r.result.res.statusCode).toBe(401);
+      expect(r.result.res.json()).toEqual({ code: 'INVALID_CREDENTIALS' });
+    }
+    // Cùng chạy Argon2 nên thời gian cùng bậc (không có đường tắt cho tài khoản chưa có mật khẩu).
+    expect(Math.abs(pending.ms - unknown.ms)).toBeLessThan(150);
+  });
+
   it('người dùng đã bị Xóa không đăng nhập được', async () => {
     await seedUser({ username: 'b2103456', removed: true });
     const { res } = await login(t.app, 'b2103456', DEFAULT_PASSWORD);

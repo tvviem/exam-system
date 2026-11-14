@@ -16,12 +16,17 @@ import type { Actor } from '../../../common/actor';
 import { pageSchema } from '../../../common/pagination';
 import { AdminOnly, CurrentActor } from '../auth/auth.decorators';
 import { academicDegreeEnum, academicTitleEnum, genderEnum, roleTagEnum } from '../identity.schema';
-import { USER_STATUSES, UserManagementService } from './user-management.service';
+import {
+  ACTIVATION_FILTERS,
+  USER_STATUSES,
+  UserManagementService,
+} from './user-management.service';
 
 const listSchema = pageSchema.extend({
   q: z.string().trim().max(100).optional(),
   status: z.enum(USER_STATUSES).optional(),
   roleTag: z.enum(roleTagEnum.enumValues).optional(),
+  activation: z.enum(ACTIVATION_FILTERS).optional(),
 });
 
 /** Chuỗi rỗng sau khi cắt khoảng trắng được hiểu là bỏ trống (null). */
@@ -38,7 +43,6 @@ const updateSchema = z
   .object({
     fullName: z.string().trim().min(1).max(200).optional(),
     username: optionalText(100),
-    email: z.email().max(320).nullable().optional(),
     code: optionalText(50),
     classLabel: optionalText(50),
     dateOfBirth: z.iso.date().nullable().optional(),

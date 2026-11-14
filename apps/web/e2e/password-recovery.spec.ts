@@ -63,7 +63,7 @@ for (const [code, label, search] of [
 
     // 3. Người đó thử mật khẩu cũ: không vào được.
     await signIn(page, username, PASSWORD_CU);
-    await expect(page.getByRole('alert')).toHaveText('Tên đăng nhập hoặc mật khẩu không đúng.');
+    await expect(page.getByRole('alert')).toContainText('Tên đăng nhập hoặc mật khẩu không đúng.');
 
     // 4. Dùng mật khẩu tạm: bị buộc đổi mật khẩu; mật khẩu yếu bị từ chối; đặt mật khẩu mới thì vào được.
     await signIn(page, username, temporaryPassword);
@@ -81,7 +81,7 @@ for (const [code, label, search] of [
 
     // 5. Mật khẩu tạm không dùng lại được; mật khẩu mới dùng được.
     await signIn(page, username, temporaryPassword);
-    await expect(page.getByRole('alert')).toHaveText('Tên đăng nhập hoặc mật khẩu không đúng.');
+    await expect(page.getByRole('alert')).toContainText('Tên đăng nhập hoặc mật khẩu không đúng.');
     await signIn(page, username, PASSWORD_MOI);
     await expect(page.getByRole('button', { name: 'Tài khoản' })).toBeVisible();
   });

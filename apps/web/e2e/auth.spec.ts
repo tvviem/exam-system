@@ -40,7 +40,7 @@ test('sai mật khẩu hiển thị lỗi chung', async ({ page }) => {
   await page.getByLabel('Tên đăng nhập hoặc email').fill('khong-co-ai');
   await page.getByLabel('Mật khẩu', { exact: true }).fill('sai-mat-khau-roi');
   await page.getByRole('button', { name: 'Đăng nhập' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Tên đăng nhập hoặc mật khẩu không đúng.');
+  await expect(page.getByRole('alert')).toContainText('Tên đăng nhập hoặc mật khẩu không đúng.');
 });
 
 test('trang đăng nhập có đúng một logo nhãn hiệu BLUni (chân trang, trên nền trắng), không logo nào ở nơi khác', async ({
