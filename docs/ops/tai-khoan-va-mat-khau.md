@@ -17,6 +17,20 @@ Tài liệu cho người vận hành (chủ dự án, Quản trị viên), để
 | **Người ra đề** | **Lời mời**: Quản trị viên tạo, hệ thống hiện một **liên kết dùng một lần** (hạn 7 ngày); Quản trị viên tự gửi liên kết (Zalo, email của bạn) | người nhận **tự đặt mật khẩu** khi mở liên kết (không có mật khẩu tạm) |
 | **Người dự thi** | **Yêu cầu cấp tài khoản**: Người ra đề tải file Excel hoặc CSV, **mỗi dòng bắt buộc có email** (mã định danh tùy chọn); Quản trị viên duyệt; **từ PR 7c-2a (13/11/2026)** hệ thống tạo tài khoản **Chờ kích hoạt** và **gửi thư kích hoạt** tới từng người (làn hàng loạt, gửi dần theo hạn mức Gmail, xoay vòng giữa các Người ra đề). **Không còn Phiếu tài khoản** khi duyệt | người dùng **tự đặt mật khẩu** bằng liên kết trong thư; tài khoản có sẵn (khớp mã hoặc email) **giữ nguyên email và không nhận thư** |
 
+## 1b. Khi thư không tới: Gửi lại, Sửa email, Liên kết hỗ trợ (từ PR 7d-1, 14/11/2026)
+
+Dành cho **Quản trị viên**: trang chi tiết người dùng có thẻ **"Kích hoạt và email"**. Người ra đề dùng cùng chức năng cho sinh viên của mình ở PR 7d-2.
+
+| Tình huống | Việc làm | Điều cần biết |
+|---|---|---|
+| Sinh viên không thấy thư | **Gửi lại thư kích hoạt** | mỗi sinh viên **1 lần mỗi 24 giờ**; liên kết cũ chết khi thư mới được dựng; nhắc kiểm cả thư rác |
+| Gõ nhầm email | **Sửa email** (bắt buộc lý do) | liên kết cũ chết; thư kích hoạt mới tới email mới ngay; tài khoản đã Hoạt động thì email mới **chưa xác thực**, email cũ nhận thư báo |
+| Thư vẫn không tới mà sinh viên đang có mặt | **Tạo liên kết hỗ trợ** (bắt buộc lý do) | liên kết **hiện một lần**, hạn **60 phút**, đưa tận tay hoặc qua Zalo; người dùng **tự đặt mật khẩu** (anh không biết); tài khoản sau đó **Hoạt động nhưng email chưa xác thực** |
+
+Mọi thao tác ghi **nhật ký** (ai, cho ai, lý do; không có mã). Không ai nhìn thấy mật khẩu của người khác. Tài khoản **Bị Khóa** hoặc **đã Xóa** không hỗ trợ được. Đặt lại mật khẩu của **Người ra đề hoặc Quản trị viên** (qua email hay liên kết hỗ trợ) gửi **chuông** cho các Quản trị viên khác để phát hiện nếu có người chiếm hộp thư.
+
+**Chống lạm dụng:** "Quên mật khẩu" có **ngân sách thư ẩn danh** toàn hệ thống (30 thư mỗi giờ, 60 thư mỗi ngày) để kẻ dùng nhiều IP không đốt hết hạn mức Gmail dành cho thư khẩn; vượt ngân sách thì người dùng vẫn nhận câu trả lời giống nhau nhưng không có thư, khi đó dùng **liên kết hỗ trợ**. Chi tiết và các lỗ hổng còn chờ quyết: [plan/slice-7d-thiet-ke-kiem-thu.md](../plan/slice-7d-thiet-ke-kiem-thu.md) mục 12. Khuyến nghị bật **Bot Fight Mode** và một **luật giới hạn tần suất** cho `/api/auth/` trên Cloudflare.
+
 ## 2. Quy tắc mật khẩu và đăng nhập (đang áp dụng)
 
 **Mật khẩu của người dùng** (khi đặt hoặc đổi):

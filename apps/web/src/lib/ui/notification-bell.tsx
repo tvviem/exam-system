@@ -49,6 +49,10 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
       await navigate({ to: '/examiner/questions' });
       return;
     }
+    if (n.type === 'account.password_reset_by_email' && typeof n.data.userId === 'string') {
+      await navigate({ to: '/admin/users/$userId', params: { userId: n.data.userId } });
+      return;
+    }
     if (n.type === 'results.released' && typeof n.data.sessionId === 'string') {
       await navigate({ to: '/take/results/$sessionId', params: { sessionId: n.data.sessionId } });
       return;

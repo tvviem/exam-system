@@ -113,7 +113,7 @@
     "noRole": "Tài khoản của bạn chưa được gắn Nhãn vai trò. Hãy liên hệ Quản trị viên."
   },
   "errors": {
-    "INVALID_CREDENTIALS": "Tên đăng nhập hoặc mật khẩu không đúng.",
+    "INVALID_CREDENTIALS": "Tên đăng nhập hoặc mật khẩu không đúng. Nếu bạn chưa kích hoạt tài khoản, hãy kiểm tra hộp thư (cả thư rác) hoặc bấm Quên mật khẩu.",
     "LOGIN_TEMPORARILY_BLOCKED": "Tạm thời không đăng nhập được do nhập sai nhiều lần. Thử lại sau 15 phút.",
     "ACCOUNT_LOCKED": "Tài khoản đã bị Khóa đăng nhập. Hãy liên hệ Quản trị viên.",
     "TEMPORARY_PASSWORD_EXPIRED": "Mật khẩu tạm đã hết hạn. Hãy liên hệ người đã cấp tài khoản để được cấp lại.",
@@ -575,7 +575,14 @@
       "reason": "Lý do",
       "reasonOptional": "Lý do (không bắt buộc)",
       "passwordReissued": "Mật khẩu tạm mới",
-      "actionsByUser": "Thao tác người này đã làm"
+      "actionsByUser": "Thao tác người này đã làm",
+      "filterActivation": "Kích hoạt",
+      "activationAll": "Tất cả",
+      "activation": {
+        "pending": "Chờ kích hoạt",
+        "unverified": "Email chưa xác thực",
+        "mail_failed": "Thư lỗi"
+      }
     },
     "units": {
       "heading": "Đơn vị",
@@ -879,6 +886,7 @@
     "session.cancelled": "Phiên thi “{{title}}” đã bị Hủy.",
     "session.grading_delegated": "Bạn được ủy quyền chấm Phiên thi “{{title}}”.",
     "session.grading_delegate_revoked": "Quyền chấm Phiên thi “{{title}}” của bạn đã được thu hồi.",
+    "account.password_reset_by_email": "{{name}} vừa đặt lại mật khẩu qua email. Nếu không phải việc đã dự kiến, hãy kiểm tra.",
     "account.password_reissued": "Mật khẩu tạm của bạn vừa được Người ra đề cấp lại. Đăng nhập bằng mật khẩu mới và đổi ngay.",
     "results.released": "Kết quả Phiên thi “{{title}}” đã được Công bố. Xem điểm của bạn.",
     "appeal.new": "Phiên thi “{{title}}” có {{count}} Phúc khảo chờ xử lý.",
@@ -2162,5 +2170,41 @@
     },
     "backToAccount": "Về trang Tài khoản",
     "emailDoneText": "Email của tài khoản đã được cập nhật và xác thực."
+  },
+  "accountSupport": {
+    "heading": "Kích hoạt và email",
+    "state": {
+      "pending": "Chờ kích hoạt",
+      "active_verified": "Hoạt động, email đã xác thực",
+      "active_unverified": "Hoạt động, email chưa xác thực"
+    },
+    "noEmail": "Chưa có email",
+    "lockedHint": "Tài khoản đang bị Khóa đăng nhập: mở khóa trước khi hỗ trợ kích hoạt.",
+    "resendActivation": "Gửi lại thư kích hoạt",
+    "resendVerify": "Gửi lại thư xác thực email",
+    "resent": "Đã xếp thư để gửi. Nhờ người nhận kiểm tra cả thư rác.",
+    "changeEmail": "Sửa email…",
+    "changeEmailTitle": "Sửa email của {{name}}",
+    "changeEmailPendingHint": "Tài khoản chưa kích hoạt: liên kết đã gửi tới email cũ sẽ hết hiệu lực và thư kích hoạt mới được gửi tới email mới.",
+    "changeEmailActiveHint": "Email mới chưa được xác thực: người này nhận thư xác thực ở email mới, email cũ nhận thư báo đã đổi.",
+    "newEmail": "Email mới",
+    "reason": "Lý do",
+    "reasonHint": "Ghi vào nhật ký, ví dụ: sinh viên báo gõ nhầm email.",
+    "changeEmailSubmit": "Sửa email",
+    "emailChanged": "Đã sửa email và gửi thư mới.",
+    "createLink": "Tạo liên kết hỗ trợ…",
+    "createLinkTitle": "Liên kết hỗ trợ cho {{name}}",
+    "createLinkPendingHint": "Dùng khi thư kích hoạt không tới mà người này đang có mặt. Họ mở liên kết và tự đặt mật khẩu; bạn không biết mật khẩu.",
+    "createLinkActiveHint": "Dùng khi người này quên mật khẩu và không vào được email. Họ mở liên kết và tự đặt mật khẩu mới; mọi phiên đăng nhập hiện có bị thu hồi.",
+    "createLinkSubmit": "Tạo liên kết",
+    "linkLabel": "Liên kết hỗ trợ",
+    "linkIntro": {
+      "activation": "Liên kết kích hoạt, dùng một lần, hết hạn lúc {{time}}.",
+      "password_reset": "Liên kết đặt lại mật khẩu, dùng một lần, hết hạn lúc {{time}}."
+    },
+    "copy": "Sao chép liên kết",
+    "copied": "Đã sao chép liên kết.",
+    "copyFailed": "Không sao chép được, hãy bôi đen và sao chép thủ công.",
+    "linkOnce": "Liên kết chỉ hiện một lần: đóng hộp thoại là mất. Đưa tận tay hoặc qua Zalo cho đúng người; tài khoản sau đó Hoạt động nhưng email vẫn chưa xác thực."
   }
 }
