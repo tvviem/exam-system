@@ -7,6 +7,8 @@ export const API_ERROR_STATUS = {
   ACCOUNT_LOCKED: HttpStatus.FORBIDDEN,
   TEMPORARY_PASSWORD_EXPIRED: HttpStatus.UNAUTHORIZED,
   RATE_LIMITED: HttpStatus.TOO_MANY_REQUESTS,
+  /** Máy chủ đang quá tải (hàng đợi băm mật khẩu đầy): thử lại sau vài giây. */
+  SERVER_BUSY: HttpStatus.SERVICE_UNAVAILABLE,
   UNAUTHENTICATED: HttpStatus.UNAUTHORIZED,
   PASSWORD_CHANGE_REQUIRED: HttpStatus.FORBIDDEN,
   FORBIDDEN_ORIGIN: HttpStatus.FORBIDDEN,

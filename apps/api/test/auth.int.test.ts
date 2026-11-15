@@ -394,11 +394,5 @@ describe('giới hạn tần suất đăng nhập', () => {
     );
   });
 
-  it('mỗi định danh được 10 lần trong 10 phút, dù đổi IP', async () => {
-    for (let i = 0; i < 10; i++) {
-      await login(t.app, 'khong-co-ai', 'sai-mat-khau-roi', `10.0.1.${i}`);
-    }
-    const limited = await login(t.app, 'Khong-Co-Ai', 'sai-mat-khau-roi', '10.0.1.200');
-    expect(limited.res.json()).toEqual({ code: 'RATE_LIMITED' });
-  });
+  // Giới hạn theo (tên đăng nhập, IP) và trần theo tên đăng nhập: xem `login-abuse.int.test.ts` (V1-a đến V1-g).
 });

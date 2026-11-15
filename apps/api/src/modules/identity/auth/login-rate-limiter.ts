@@ -6,7 +6,13 @@ import type { Env } from '../../../config/env';
 import { REDIS } from '../../../redis/redis.module';
 
 const WINDOW_MS = 10 * 60_000;
-const MAX_PER_IDENTIFIER = 10;
+/** Mỗi cặp (tên đăng nhập, IP) tối đa 10 lần thử mỗi 10 phút: kẻ tấn công chỉ làm cạn lượt của chính IP của họ. */
+const MAX_PER_IDENTIFIER_AND_IP = 10;
+/**
+ * Trần theo tên đăng nhập trên cả hệ thống, bất kể IP: chặn đoán mật khẩu của một tài khoản từ rất nhiều IP. Đủ cao để kẻ tấn công
+ * phải dùng cả mạng máy ma mới chạm tới, và chỉ đếm những lần thử đã qua giới hạn theo cặp.
+ */
+const MAX_PER_IDENTIFIER = 200;
 
 /** Đếm số lần thử đăng nhập theo cửa sổ cố định 10 phút, tính theo Clock. */
 @Injectable()
@@ -17,20 +23,22 @@ export class LoginRateLimiter {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
-  /** Ghi nhận một lần thử; trả về false nếu đã vượt giới hạn theo IP hoặc theo định danh. */
+  /** Ghi nhận một lần thử; trả về false nếu đã vượt giới hạn theo IP, theo cặp (tên, IP) hoặc theo tên. */
   async allow(ip: string | null, identifier: string): Promise<boolean> {
     const window = Math.floor(this.clock.now().getTime() / WINDOW_MS);
-    const ipKey = `auth:rl:ip:${ip ?? 'unknown'}:${window}`;
-    const idKey = `auth:rl:id:${identifier.toLowerCase()}:${window}`;
-    const results = await this.redis
-      .multi()
-      .incr(ipKey)
-      .pexpire(ipKey, WINDOW_MS)
-      .incr(idKey)
-      .pexpire(idKey, WINDOW_MS)
-      .exec();
-    const ipCount = Number(results?.[0]?.[1] ?? 0);
-    const idCount = Number(results?.[2]?.[1] ?? 0);
-    return ipCount <= this.env.LOGIN_MAX_PER_IP && idCount <= MAX_PER_IDENTIFIER;
+    const who = identifier.toLowerCase();
+    const where = ip ?? 'unknown';
+    if ((await this.count(`auth:rl:ip:${where}:${window}`)) > this.env.LOGIN_MAX_PER_IP)
+      return false;
+    if ((await this.count(`auth:rl:pair:${who}:${where}:${window}`)) > MAX_PER_IDENTIFIER_AND_IP) {
+      return false;
+    }
+    // Lượt đã bị chặn theo cặp không được đếm vào trần theo tên: một IP không thể tự đẩy trần cho cả hệ thống.
+    return (await this.count(`auth:rl:id:${who}:${window}`)) <= MAX_PER_IDENTIFIER;
+  }
+
+  private async count(key: string): Promise<number> {
+    const results = await this.redis.multi().incr(key).pexpire(key, WINDOW_MS).exec();
+    return Number(results?.[0]?.[1] ?? 0);
   }
 }
