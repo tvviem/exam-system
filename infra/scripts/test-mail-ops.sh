@@ -40,7 +40,7 @@ step "E-02. prod-preflight có mục Thư (chỉ stage prod)"
 mail_lines() { # stage, api.env, số pending, tuổi pending cũ nhất (giờ), số lỗi gần đây, số thư bị bỏ qua (mặc định 0)
   in_stage "$1" "$2" "psql_scalar() { case \"\$1\" in *'count(*) FILTER'*) echo '$3|$4|$5|${6:-0}' ;; *) echo '' ;; esac; }; preflight_mail"
 }
-check "prod thiếu SMTP_* mà chưa thư nào bị bỏ qua thì chỉ ⚠ (chưa dùng tính năng email nên chưa chặn Phiên thi)" bash -c "$(declare -f in_stage mail_lines); WORK='$WORK'; PWD='$PWD'; out=\"\$(mail_lines prod 'NODE_ENV=production' 0 0 0 0)\"; printf '%s' \"\$out\" | grep -q '^warn|.*gửi thư' && ! printf '%s' \"\$out\" | grep -q '^fail|'"
+check "prod thiếu SMTP_* thì ✗ dù chưa thư nào bị bỏ qua (7d-3: tài khoản và quên mật khẩu đều đi qua thư, thiếu SMTP là không ai kích hoạt được)" bash -c "$(declare -f in_stage mail_lines); WORK='$WORK'; PWD='$PWD'; out=\"\$(mail_lines prod 'NODE_ENV=production' 0 0 0 0)\"; printf '%s' \"\$out\" | grep -q '^fail|.*gửi thư'"
 check "prod thiếu SMTP_* mà đã có thư bị bỏ qua thì ✗ (người dùng đang không nhận được thư)" bash -c "$(declare -f in_stage mail_lines); WORK='$WORK'; PWD='$PWD'; mail_lines prod 'NODE_ENV=production' 0 0 0 4 | grep -q '^fail|.*gửi thư.*4'"
 check "prod có SMTP, hàng đợi trống thì ✓, không có ✗" bash -c "$(declare -f in_stage mail_lines); WORK='$WORK'; PWD='$PWD'; out=\"\$(mail_lines prod \"$SMTP_LINES\" 0 0 0)\"; printf '%s' \"\$out\" | grep -q '^ok|' && ! printf '%s' \"\$out\" | grep -q '^fail|'"
 check "thư chờ gửi cũ hơn 48 giờ thì ✗ (người dùng không kích hoạt được)" bash -c "$(declare -f in_stage mail_lines); WORK='$WORK'; PWD='$PWD'; mail_lines prod \"$SMTP_LINES\" 12 50 0 | grep -q '^fail|.*48'"

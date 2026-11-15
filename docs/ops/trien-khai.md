@@ -48,7 +48,7 @@ Chưa có ảnh: đợi job "Image api" và "Image web" của lần push `main` 
 make -C infra prod-bootstrap TAG=<TAG>
 ```
 
-Lệnh hỏi họ tên và mật khẩu Quản trị viên đầu tiên (tên đăng nhập `quantri`; mật khẩu từ 10 ký tự, nhập hai lần, không lưu ở đâu). Rồi nó **in các khóa vừa sinh đúng một lần**: `POSTGRES_PASSWORD` và `SLIP_ENCRYPTION_KEY`. **Chép ngay vào trình quản lý mật khẩu dùng chung và bản giấy niêm phong** (Q327), sau đó nhấn Enter. Mất `SLIP_ENCRYPTION_KEY` thì các Phiếu tài khoản còn hạn (7 ngày) không mở lại được; mất `POSTGRES_PASSWORD` thì còn đọc được từ `~/exam-prod-secrets/postgres.env` nếu máy còn.
+Lệnh hỏi họ tên và mật khẩu Quản trị viên đầu tiên (tên đăng nhập `quantri`; mật khẩu từ 10 ký tự, nhập hai lần, không lưu ở đâu). Rồi nó **in các khóa vừa sinh đúng một lần**: `POSTGRES_PASSWORD` (chỉ một khóa; từ PR 7d-3 không còn `SLIP_ENCRYPTION_KEY`). **Chép ngay vào trình quản lý mật khẩu dùng chung và bản giấy niêm phong** (Q327), sau đó nhấn Enter. Mất `POSTGRES_PASSWORD` thì còn đọc được từ `~/exam-prod-secrets/postgres.env` nếu máy còn.
 
 Lệnh tự làm: tạo `~/exam-prod-secrets/` (`700`), sinh khóa (chạy lại **không ghi đè** khóa đã có), tạo volume và pod, dựng PostgreSQL và Redis, chạy migration, dựng api, worker, web, tạo Quản trị viên và cài dịch vụ systemd. Xong thì in `Xong. Hệ thống chạy ở http://127.0.0.1:8180`.
 

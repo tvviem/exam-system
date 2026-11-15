@@ -18,7 +18,6 @@ import { pageSchema } from '../../../common/pagination';
 import { MAX_UPLOAD_BYTES } from '../../../common/spreadsheet';
 import { AdminOnly, CurrentActor, CurrentUser, RequireTag } from '../auth/auth.decorators';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { CredentialSlipsService } from '../credential-slips/credential-slips.service';
 import { accountRequestStatusEnum, matchStatusEnum } from '../identity.schema';
 import { buildAccountRequestTemplate } from './account-request-template';
 import {
@@ -52,10 +51,7 @@ function assertCanView(user: AuthenticatedUser) {
 
 @Controller('account-requests')
 export class AccountRequestsController {
-  constructor(
-    private readonly requests: AccountRequestsService,
-    private readonly credentialSlips: CredentialSlipsService,
-  ) {}
+  constructor(private readonly requests: AccountRequestsService) {}
 
   @Get('template')
   async template(
@@ -120,12 +116,6 @@ export class AccountRequestsController {
     @CurrentActor() actor: Actor,
   ) {
     return this.requests.approve(actor, id, approveSchema.parse(body ?? {}));
-  }
-
-  @Get(':id/slips')
-  slips(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
-    assertCanView(user);
-    return this.credentialSlips.listFor(user, id);
   }
 
   @AdminOnly()

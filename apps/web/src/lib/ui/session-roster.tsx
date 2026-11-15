@@ -1,7 +1,7 @@
 import { parseCodeList } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { KeyRound, Mail, MailPlus, UserMinus } from 'lucide-react';
+import { Mail, MailPlus, UserMinus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sessionAwaitingQuery, type TrackingRow } from '../account-support';
@@ -12,7 +12,6 @@ import {
   type RosterItem,
   type RosterSelector,
   type RosterSort,
-  reissueRosterPassword,
   removeFromRoster,
   rosterQuery,
   rosterSearchQuery,
@@ -30,7 +29,7 @@ import {
   SelectField,
 } from '.';
 import { ChangeEmailDialog, SupportLinkDialog } from './account-support-card';
-import { EmptyState, ListSkeleton, Pagination, TemporaryPasswordDialog } from './admin';
+import { EmptyState, ListSkeleton, Pagination } from './admin';
 import { RowMenu } from './row-menu';
 import { StickyActionBar } from './sticky-action-bar';
 import { useToast } from './toast';
@@ -277,13 +276,7 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<RosterSort>('name');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [reissuing, setReissuing] = useState<RosterItem | null>(null);
   const [support, setSupport] = useState<{ kind: 'email' | 'link'; row: TrackingRow } | null>(null);
-  const [password, setPassword] = useState<{
-    temporaryPassword: string;
-    passwordExpiresAt: string;
-    title: string;
-  } | null>(null);
   const q = useDebounced(text.trim());
   // biome-ignore lint/correctness/useExhaustiveDependencies: về trang 1 khi đổi từ khóa
   useEffect(() => setPage(1), [q, sort]);
@@ -309,17 +302,6 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
       toast(t('session.roster.removedToast', { count: result.removed }));
     },
     onError: (error) => toast(errorMessage(t, error), 'error'),
-  });
-  const reissue = useMutation({
-    mutationFn: (user: RosterItem) => reissueRosterPassword(session.id, user.userId),
-    onSuccess: (result, user) => {
-      setReissuing(null);
-      setPassword({ ...result, title: t('session.roster.reissueTitle', { name: user.fullName }) });
-    },
-    onError: (error) => {
-      setReissuing(null);
-      toast(errorMessage(t, error), 'error');
-    },
   });
 
   return (
@@ -406,11 +388,6 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
                         danger: true,
                         onSelect: () => remove.mutate([user.userId]),
                       },
-                      {
-                        label: t('session.roster.reissue'),
-                        icon: <KeyRound aria-hidden className="size-4" />,
-                        onSelect: () => setReissuing(user),
-                      },
                       ...(awaitingBy.has(user.userId)
                         ? [
                             {
@@ -492,24 +469,6 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
           onDone={() => queryClient.invalidateQueries({ queryKey: ['account-support'] })}
         />
       )}
-
-      <Dialog
-        open={reissuing !== null}
-        onClose={() => setReissuing(null)}
-        title={t('session.roster.reissueConfirmTitle', { name: reissuing?.fullName ?? '' })}
-      >
-        <p className="text-sm text-fg-muted">{t('session.roster.reissueConfirmBody')}</p>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button onClick={() => setReissuing(null)}>{t('common.cancel')}</Button>
-          <PrimaryButton
-            disabled={reissue.isPending}
-            onClick={() => reissuing && reissue.mutate(reissuing)}
-          >
-            {t('session.roster.reissueConfirm')}
-          </PrimaryButton>
-        </div>
-      </Dialog>
-      <TemporaryPasswordDialog value={password} onClose={() => setPassword(null)} />
     </div>
   );
 }

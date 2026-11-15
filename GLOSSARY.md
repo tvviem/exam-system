@@ -80,10 +80,6 @@ _Avoid_: session (đứng một mình, dễ nhầm với Phiên thi), phiên
 Trạng thái tạm thời không cho Người dùng đăng nhập; chỉ Quản trị viên đặt và mở lại được. Không đặt được khi Người dùng đang tham gia một Phiên thi đang diễn ra (chủ của Phiên thi đó, hoặc Người dự thi đang có Lượt làm bài đang làm); Quản trị viên được cảnh báo kèm danh sách Phiên thi.
 _Avoid_: cấm, ban, vô hiệu hóa
 
-**Phiếu tài khoản** (`CredentialSlip`):
-Phiếu in cho từng Người dự thi, ghi tên đăng nhập và mật khẩu tạm, được tạo khi Yêu cầu cấp tài khoản được duyệt. Mật khẩu tạm phải đổi ở lần đăng nhập đầu tiên.
-_Avoid_: phiếu mật khẩu, thẻ dự thi
-
 **Xóa người dùng** (`Remove`):
 Đưa Người dùng ra khỏi sử dụng vĩnh viễn nhưng vẫn giữ toàn bộ lịch sử và kết quả liên quan. Người ra đề còn Chủ đề, Bộ đề hoặc Phiên thi thì phải Chuyển giao cho người nhận ngay trong lúc Xóa; mọi Bộ đề của họ (nháp, đã Phát hành, đã Lưu trữ) và mọi Phiên thi (kể cả đã Hủy; Danh sách dự thi, Lượt làm bài và Câu trả lời giữ nguyên) sang người nhận cùng Chủ đề. Không Xóa được khi Người dùng đang tham gia một Phiên thi đang diễn ra (như Khóa đăng nhập).
 _Avoid_: hủy tài khoản

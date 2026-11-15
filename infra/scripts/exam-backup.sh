@@ -1590,7 +1590,7 @@ preflight_mail() {
   elif [ "${skipped:-0}" -gt 0 ]; then
     echo "fail|chưa cấu hình gửi thư (api.env thiếu SMTP_*) mà đã có $skipped thư bị bỏ qua: người dùng không nhận được thư (docs/ops/gui-thu.md)"
   else
-    echo "warn|chưa cấu hình gửi thư (api.env thiếu SMTP_*): chưa cần khi chưa dùng kích hoạt hoặc quên mật khẩu bằng email (docs/ops/gui-thu.md)"
+    echo "fail|chưa cấu hình gửi thư (api.env thiếu SMTP_*): tài khoản mới, kích hoạt và quên mật khẩu đều đi qua thư nên không ai kích hoạt hay lấy lại được mật khẩu (docs/ops/gui-thu.md)"
   fi
   if [ -z "$stats" ]; then
     echo "warn|chưa đọc được bảng email_outbox (migration chưa chạy hoặc cơ sở dữ liệu không trả lời)"

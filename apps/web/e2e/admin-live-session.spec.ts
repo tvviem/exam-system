@@ -45,7 +45,8 @@ test('Quản trị viên thấy dải cảnh báo và nút Khóa, Xóa bị vô 
   await expect(notice).toContainText('1 người đang làm bài');
   await expect(lock).toBeDisabled();
   await expect(remove).toBeDisabled();
-  await expect(admin.getByRole('button', { name: 'Cấp lại mật khẩu tạm' })).toBeEnabled();
+  // "Cấp lại mật khẩu tạm" đã bị bỏ (7d-3): chỉ còn Liên kết hỗ trợ và Quên mật khẩu.
+  await expect(admin.getByRole('button', { name: 'Cấp lại mật khẩu tạm' })).toHaveCount(0);
   expect(await overflow(admin), 'trang người dùng có dải cảnh báo').toBe(0);
 
   // Người dự thi đang làm bài.

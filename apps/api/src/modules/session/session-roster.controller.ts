@@ -118,14 +118,4 @@ export class SessionRosterController {
     const { deviceId } = pardonSchema.parse(body ?? {});
     return this.roster.pardonDevice(actor, sessionId, userId, deviceId);
   }
-
-  @Post(':userId/reissue-password')
-  @HttpCode(200)
-  reissuePassword(
-    @Param('sessionId', ParseUUIDPipe) sessionId: string,
-    @Param('userId', ParseUUIDPipe) userId: string,
-    @CurrentActor() actor: Actor,
-  ) {
-    return this.roster.reissuePassword(actor, sessionId, userId);
-  }
 }

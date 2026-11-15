@@ -8,7 +8,6 @@ import { mailLimitsFromEnv, selectMailTransport } from './mail.config';
 const base = {
   DATABASE_URL: 'postgres://exam:exam@localhost:5434/exam',
   REDIS_URL: 'redis://localhost:6381/0',
-  SLIP_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
 };
 const smtp = {
   SMTP_HOST: 'smtp.example.org',

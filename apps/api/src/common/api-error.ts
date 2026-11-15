@@ -21,7 +21,6 @@ export const API_ERROR_STATUS = {
   NOT_FOUND: HttpStatus.NOT_FOUND,
   INVITATION_UNAVAILABLE: HttpStatus.NOT_FOUND,
   CONFLICT: HttpStatus.CONFLICT,
-  SLIP_EXPIRED: HttpStatus.GONE,
   INVALID_STATE: HttpStatus.CONFLICT,
   HAS_CONTENT: HttpStatus.CONFLICT,
   /** Khóa hay Xóa người đang trong Phiên thi đang diễn ra (Q264). */

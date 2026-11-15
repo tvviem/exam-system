@@ -74,7 +74,7 @@ Sau khi Yêu cầu cấp tài khoản được duyệt, trang chi tiết **Yêu 
 | Ai quên | Ai xử lý | Cách làm |
 |---|---|---|
 | **Người ra đề** hoặc **Người dự thi** (mọi trường hợp) | **Quản trị viên** | giao diện: **Người dùng** → mở người đó → **"Cấp lại mật khẩu tạm"** (mục 3.1) |
-| **Người dự thi** (trường hợp hẹp) | **Người ra đề** đã xin cấp tài khoản cho họ | từ Danh sách dự thi của Phiên thi, **chỉ khi** người đó **chưa từng đổi mật khẩu tạm** (tình huống làm mất Phiếu). Đã đổi mật khẩu rồi thì hệ thống từ chối ("hãy nhờ Quản trị viên") |
+| **Người dự thi** (trường hợp hẹp) | **Người ra đề** đã xin cấp tài khoản cho họ | **Gửi lại**, **Sửa email**, **Liên kết hỗ trợ** cho sinh viên **còn Chờ kích hoạt** (mục 1b, 1c). Từ PR 7d-3 không còn "Cấp lại mật khẩu tạm": không ai ngoài chủ tài khoản biết mật khẩu |
 | **Quản trị viên** | Quản trị viên **khác** | như trên (được cấp lại cho Quản trị viên khác; **không tự cấp cho chính mình**) |
 | **Quản trị viên duy nhất / không ai đăng nhập được** | người có quyền vào máy chủ | `make -C infra prod-recover-admin ADMIN=<tên>`: mở Khóa đăng nhập, gỡ khóa tạm, in **một lần** mật khẩu tạm, thu hồi mọi phiên, ghi nhật ký `cli.recover-admin` ([trien-khai.md](./trien-khai.md) mục 5) |
 
@@ -143,6 +143,6 @@ Chạy lại: `make -C infra dev-up` rồi `pnpm -C apps/api exec vitest run --p
 - **Vì sao không có "quên mật khẩu" tự phục vụ.** Tự phục vụ thường dựa vào **email**: gửi liên kết đặt lại tới hộp thư của chủ tài khoản. Hệ thống này không gửi email (giai đoạn 1) và nhiều Người dự thi không có email; vì vậy cách an toàn nhất có thể hiện nay là một người có thẩm quyền xác minh rồi cấp lại.
 - **Vì sao thu hồi mọi phiên khi cấp lại.** Nếu mật khẩu bị lộ, kẻ xấu có thể đang đăng nhập sẵn; đổi mật khẩu mà không thu hồi phiên thì họ vẫn ở trong. Thu hồi buộc mọi thiết bị đăng nhập lại.
 - **Vì sao báo lỗi chung "tên đăng nhập hoặc mật khẩu không đúng".** Nói riêng "không có tài khoản này" giúp kẻ xấu dò xem tài khoản nào tồn tại. Hệ thống cũng băm một mật khẩu giả khi không tìm thấy người dùng để **thời gian phản hồi bằng nhau**.
-- **Vì sao mật khẩu tạm bỏ ký tự dễ nhầm.** Phiếu tài khoản được in; `0` với `O`, `1` với `l` và `I` dễ đọc nhầm trên giấy. Bớt ký tự dễ nhầm làm người dùng gõ đúng ngay lần đầu.
+- **Vì sao mật khẩu tạm (nay chỉ còn ở lệnh `prod-recover-admin`) bỏ ký tự dễ nhầm.** `0` với `O`, `1` với `l` và `I` dễ đọc nhầm khi chép tay. Bớt ký tự dễ nhầm làm người dùng gõ đúng ngay lần đầu.
 - **Vì sao Quản trị viên có phiên ngắn hơn (30 phút nhàn rỗi, 12 giờ tối đa).** Quyền cao thì rủi ro khi để máy mở cao; đổi lại phải đăng nhập lại thường xuyên.
 - **Vì sao tách "khóa tạm do sai mật khẩu" và "Khóa đăng nhập".** Khóa tạm (15 phút) là chống đoán mật khẩu, tự hết; Khóa đăng nhập là quyết định của Quản trị viên (nghi bị lộ tài khoản, hoặc người đó nghỉ), không tự hết. Cấp lại mật khẩu gỡ khóa tạm nhưng **không** mở Khóa đăng nhập.

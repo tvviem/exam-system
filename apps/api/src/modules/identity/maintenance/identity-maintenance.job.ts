@@ -5,7 +5,7 @@ import { type Database, DB } from '../../../db/db.module';
 import { MEDIA_STORE, type MediaStore } from '../../../media/media-store';
 import { JobRegistry } from '../../../queue/job-queue';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { accountRequests, credentialSlips, loginEvents } from '../identity.schema';
+import { accountRequests, loginEvents } from '../identity.schema';
 
 const LOGIN_EVENT_RETENTION_MONTHS = 12;
 // Q366: thông báo ĐÃ ĐỌC giữ 90 ngày (chưa đọc giữ mãi). Kết quả sao lưu quá 12 tháng do job `backup.check` dọn.
@@ -35,7 +35,6 @@ export class IdentityMaintenanceJob implements OnModuleInit {
   async run(): Promise<void> {
     const steps = [
       ['login_events', () => this.deleteOldLoginEvents()],
-      ['phiếu hết hạn', () => this.expireSlips()],
       ['yêu cầu kẹt ở parsing', () => this.failStuckParsing()],
       ['thông báo đã đọc quá 90 ngày', () => this.deleteOldReadNotifications()],
     ] as const;
@@ -60,23 +59,6 @@ export class IdentityMaintenanceJob implements OnModuleInit {
     const cutoff = this.clock.now();
     cutoff.setUTCMonth(cutoff.getUTCMonth() - LOGIN_EVENT_RETENTION_MONTHS);
     await this.db.delete(loginEvents).where(lt(loginEvents.at, cutoff));
-  }
-
-  /** Phiếu quá hạn: xóa file, đặt `expired`. */
-  private async expireSlips() {
-    const expired = await this.db
-      .select()
-      .from(credentialSlips)
-      .where(
-        and(eq(credentialSlips.status, 'ready'), lt(credentialSlips.expiresAt, this.clock.now())),
-      );
-    for (const slip of expired) {
-      for (const key of [slip.pdfKey, slip.xlsxKey]) if (key) await this.media.delete(key);
-      await this.db
-        .update(credentialSlips)
-        .set({ status: 'expired', pdfKey: null, xlsxKey: null })
-        .where(eq(credentialSlips.id, slip.id));
-    }
   }
 
   /** Worker chết giữa lúc đọc file thì yêu cầu kẹt ở `parsing`: sau 15 phút đổi thành `parse_failed`. */

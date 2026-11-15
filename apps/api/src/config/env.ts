@@ -19,11 +19,7 @@ const baseEnvSchema = z.object({
     .min(1)
     .refine((value) => !/^\d+$/.test(value.trim()), { message: 'không nhận số bước trung gian' })
     .default('loopback'),
-  // Khóa AES-256-GCM mã hóa Phiếu tài khoản (32 byte, base64). Tạo bằng: openssl rand -base64 32
-  SLIP_ENCRYPTION_KEY: z.string().refine((value) => Buffer.from(value, 'base64').length === 32, {
-    message: 'phải là 32 byte mã hóa base64 (openssl rand -base64 32)',
-  }),
-  // Thư mục lưu file (MediaStore): file tải lên tạm, Phiếu tài khoản. Trên production là volume.
+  // Thư mục lưu file (MediaStore): file tải lên tạm, Hình minh họa. Trên production là volume.
   MEDIA_DIR: z.string().default('./media-data'),
   // Hạn mức dung lượng Hình minh họa mỗi Người ra đề (Q139), mặc định 500 MB.
   ILLUSTRATION_QUOTA_BYTES: z.coerce

@@ -10,7 +10,6 @@ import { AccountRequestApproveJob } from './account-requests/account-request-app
 import { AccountRequestParseJob } from './account-requests/account-request-parse.job';
 import { AccountRequestsController } from './account-requests/account-requests.controller';
 import { AccountRequestsService } from './account-requests/account-requests.service';
-import { RequesterCredentialsService } from './account-requests/requester-credentials.service';
 import { AccountSupportController } from './account-support/account-support.controller';
 import { AccountSupportService } from './account-support/account-support.service';
 import { AccountTrackingService } from './account-support/account-tracking.service';
@@ -31,10 +30,6 @@ import { AuthLinks } from './auth-links/auth-links.service';
 import { AuthLinksMessageBuilder } from './auth-links/auth-links-message-builder';
 import { RecoveryRateLimiter } from './auth-links/recovery-rate-limiter';
 import { CandidateDirectoryService } from './candidate-directory.service';
-import { CredentialSlipsController } from './credential-slips/credential-slips.controller';
-import { CredentialSlipsService } from './credential-slips/credential-slips.service';
-import { PdfKitSlipRenderer, SLIP_RENDERER } from './credential-slips/slip-renderer';
-import { SlipVault } from './credential-slips/slip-vault';
 import { ExaminerDirectoryService } from './examiner-directory.service';
 import { InvitationAcceptanceService } from './invitations/invitation-acceptance.service';
 import { InvitationRateLimiter } from './invitations/invitation-rate-limiter';
@@ -64,7 +59,6 @@ import { UsersRepository } from './users.repository';
     AuthLinksController,
     PublicInvitationsController,
     AccountRequestsController,
-    CredentialSlipsController,
     AccountSupportController,
   ],
   providers: [
@@ -91,15 +85,11 @@ import { UsersRepository } from './users.repository';
     InvitationAcceptanceService,
     InvitationRateLimiter,
     AccountRequestsService,
-    RequesterCredentialsService,
     CandidateDirectoryService,
     ExaminerDirectoryService,
     AdminDirectoryService,
     AccountRequestParseJob,
     AccountRequestApproveJob,
-    CredentialSlipsService,
-    SlipVault,
-    { provide: SLIP_RENDERER, useClass: PdfKitSlipRenderer },
     IdentityMaintenanceJob,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
@@ -109,7 +99,6 @@ import { UsersRepository } from './users.repository';
     AuthSessionStore,
     TokenAuthenticator,
     AdminAccountsService,
-    RequesterCredentialsService,
     CandidateDirectoryService,
     ExaminerDirectoryService,
     AdminDirectoryService,

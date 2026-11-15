@@ -164,8 +164,3 @@ export const setExtraMinutes = (sessionId: string, userId: string, extraMinutes:
     method: 'PATCH',
     body: { extraMinutes },
   });
-export const reissueRosterPassword = (sessionId: string, userId: string) =>
-  apiFetch<{ temporaryPassword: string; passwordExpiresAt: string }>(
-    `/sessions/${sessionId}/roster/${userId}/reissue-password`,
-    { method: 'POST' },
-  );

@@ -8,7 +8,6 @@ import {
   type ActivationFilter,
   createAdmin,
   ROLE_TAGS,
-  type TemporaryPassword,
   type UserListItem,
   type UserListParams,
   type UserStatus,
@@ -26,13 +25,7 @@ import {
   SelectField,
   TextField,
 } from '../../../../lib/ui';
-import {
-  EmptyState,
-  ListSkeleton,
-  Pagination,
-  StatusBadge,
-  TemporaryPasswordDialog,
-} from '../../../../lib/ui/admin';
+import { EmptyState, ListSkeleton, Pagination, StatusBadge } from '../../../../lib/ui/admin';
 import { DataList } from '../../../../lib/ui/data-list';
 import { FilterBar } from '../../../../lib/ui/filter-bar';
 import { PageHeader } from '../../../../lib/ui/page-header';
@@ -63,7 +56,6 @@ function UsersPage() {
   const users = useQuery(usersQuery(search));
   const [q, setQ] = useState(search.q ?? '');
   const [creatingAdmin, setCreatingAdmin] = useState(false);
-  const [password, setPassword] = useState<(TemporaryPassword & { title: string }) | null>(null);
 
   // Tìm khi ngừng gõ 300 ms; thay URL thay vì thêm lịch sử để nút Quay lại không đi qua từng chữ.
   useEffect(() => {
@@ -173,7 +165,6 @@ function UsersPage() {
       )}
 
       <CreateAdminDialog open={creatingAdmin} onClose={() => setCreatingAdmin(false)} />
-      <TemporaryPasswordDialog value={password} onClose={() => setPassword(null)} />
     </section>
   );
 }

@@ -143,8 +143,6 @@ LOGIN_MAX_PER_IP=1000
 DB_POOL_MAX=10
 # Mặc định `loopback` là đúng khi nginx cùng pod (nginx tự đặt X-Forwarded-For từ CF-Connecting-IP).
 TRUST_PROXY=loopback
-# openssl rand -base64 32. Mất khóa này thì các Phiếu tài khoản còn hạn (7 ngày) không mở lại được.
-SLIP_ENCRYPTION_KEY=<32 byte base64>
 MEDIA_DIR=/var/lib/exam/media
 MEDIA_ACCEL_PREFIX=/_media
 ```
@@ -255,7 +253,7 @@ ls -1t ~/exam-prod-backups/exam_*.dump | tail -n +15 | xargs -r rm --
 podman exec -i prod-exam-postgres sh -c 'createdb -U "$POSTGRES_USER" restore_test && pg_restore -U "$POSTGRES_USER" -d restore_test' < ~/exam-prod-backups/<file>.dump
 ```
 
-Ngoài Postgres còn có hai thứ cần giữ: `~/exam-prod-secrets/` (đặc biệt `SLIP_ENCRYPTION_KEY`) và volume `exam_media` (ảnh minh họa). Chép chúng ra ổ khác hoặc máy khác định kỳ; cùng một laptop thì không phải là sao lưu thật.
+Ngoài Postgres còn có hai thứ cần giữ: `~/exam-prod-secrets/` (`api.env`, `postgres.env`) và volume `exam_media` (ảnh minh họa). Chép chúng ra ổ khác hoặc máy khác định kỳ; cùng một laptop thì không phải là sao lưu thật.
 
 ## 9. Kiểm tra sau triển khai
 

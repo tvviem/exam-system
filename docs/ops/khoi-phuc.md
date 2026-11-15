@@ -45,7 +45,7 @@ Ghi chú:
 
 - **Script không bao giờ xóa gì trên R2.** R2 tự xóa theo tuổi bằng quy tắc vòng đời bạn đặt trong bảng điều khiển Cloudflare (mục 4.2). Nhờ vậy khóa API nằm trên máy không cần quyền xóa, và máy bị chiếm hay script lỗi cũng không xóa sạch bản sao ngoài máy (Q352).
 - **R2 chỉ nhận bản mã hóa** bằng **khóa công khai** gpg; khóa **bí mật** không nằm trên máy (Bitwarden và giấy). Bản ở WSL và D: dạng thường để máy tự thử khôi phục hằng tháng không cần khóa bí mật (Q354). `make prod-backup-check` báo lỗi nếu thấy khóa bí mật nằm trên máy.
-- **Ảnh KHÔNG sao lưu mọi thư mục.** Chỉ `illustrations/` (ảnh minh họa câu hỏi) là dữ liệu bền. Ba thư mục tạm mà **ứng dụng tự xóa sau khi xử lý** thì bỏ qua: `tmp/` (ảnh tải lên chờ xử lý), `uploads/` (bảng tính danh sách thí sinh, có thông tin cá nhân) và `slips/` (Phiếu tài khoản, mã hóa, hạn giữ ngắn). Giữ chúng mãi ở ổ D: sẽ phá việc dọn của ứng dụng. Đổi bằng biến `MEDIA_EXCLUDE` trong `backup.env` (mặc định `tmp uploads slips`). Thư mục mới sau này (ứng dụng thêm loại file mới) **mặc định được sao lưu**; `status` liệt kê các thư mục có trong volume để bạn thấy.
+- **Ảnh KHÔNG sao lưu mọi thư mục.** Chỉ `illustrations/` (ảnh minh họa câu hỏi) là dữ liệu bền. Ba thư mục tạm mà **ứng dụng tự xóa sau khi xử lý** thì bỏ qua: `tmp/` (ảnh tải lên chờ xử lý), `uploads/` (bảng tính danh sách thí sinh, có thông tin cá nhân) và `slips/` (Phiếu tài khoản cũ, đã bỏ từ PR 7d-3; còn trong thư mục nếu có thì không chép). Giữ chúng mãi ở ổ D: sẽ phá việc dọn của ứng dụng. Đổi bằng biến `MEDIA_EXCLUDE` trong `backup.env` (mặc định `tmp uploads slips`). Thư mục mới sau này (ứng dụng thêm loại file mới) **mặc định được sao lưu**; `status` liệt kê các thư mục có trong volume để bạn thấy.
 - Số "7 ngày/15 ngày…" của R2 là tuổi file, không phải số bản. WAL ở R2 giữ 7 ngày, nên **bản nền ở R2 phải mới hơn 7 ngày** thì mới khôi phục về một thời điểm từ R2 được (xem mục 6).
 
 ## 3. Hằng ngày
@@ -270,7 +270,7 @@ echo thu | gpg -u C03E6416CDACA6645710AA3E14C0007D328A40D9 --clearsign > /dev/nu
 In `TO B DUNG` là tờ B chép đúng. Không đúng thì viết lại cho rõ (chữ in hoa, chia nhóm 4 ký tự) rồi thử lại. Sau khi xóa khóa bí mật khỏi máy thì không còn phép thử này nữa.
 
 **Những thứ KHÔNG cần ghi ra giấy** (đã nằm trong Bitwarden, và đã có đường khôi phục khác):
-- Mật khẩu PostgreSQL, `SLIP_ENCRYPTION_KEY` và các bí mật khác của `api.env` / `postgres.env`: sau khi bật sao lưu (4.6), hai file này được gpg mã hóa và chép sang D: và R2 mỗi khi đổi (thư mục `khoa/`). Có tờ A và tờ B là mở được (mục 5.5).
+- Mật khẩu PostgreSQL, mật khẩu ứng dụng SMTP và các bí mật khác của `api.env` / `postgres.env`: sau khi bật sao lưu (4.6), hai file này được gpg mã hóa và chép sang D: và R2 mỗi khi đổi (thư mục `khoa/`). Có tờ A và tờ B là mở được (mục 5.5).
 - Tài khoản Quản trị viên đầu tiên: mất mật khẩu thì dùng `make -C infra prod-recover-admin ADMIN=<tên>` (trien-khai.md) hoặc nhờ Quản trị viên thứ hai cấp lại.
 - Dấu vân tay: tính lại được từ khóa (có thể ghi thêm cho tiện).
 
@@ -622,7 +622,7 @@ Về thiết kế và kiểm thử (cho người sửa script):
 9. Khóa Object Read & Write của R2 **xóa được** file: "không xóa trên R2" chỉ là quy ước (xem 4.9.3 và mục 6 về giới hạn).
 10. rclone 1.60.1 trả `501` ở lần tải đầu mỗi lần rồi tự thành công: không phải sự cố (4.9.3, 4.9.6).
 11. **Số file WAL trên R2 thường nhiều hơn ổ D: và WSL, không phải lỗi** (thấy 10/11/2026: R2 có `…01`, `…02`, `…03` mà hai nơi kia không có). Bản nền duy nhất bắt đầu từ WAL số 4 (`.info`: `start_wal=…04`); WAL nằm **trước** mọi bản nền không dùng để khôi phục theo thời điểm được nữa nên script dọn ở máy xóa (quy tắc "vô dụng", Q325). R2 không có lệnh xóa nào của script (Q352), chỉ quy tắc vòng đời tự xóa sau 7 ngày. Sau mỗi bản nền mới (Chủ nhật hằng tuần) sẽ lặp lại với vài đoạn WAL cũ. So sánh ba nơi: lấy danh sách `wal/` của R2 (bỏ đuôi `.gpg`), ổ D: và WSL rồi `comm`; chỉ cần lo khi **thiếu** đoạn nằm sau điểm bắt đầu của bản nền mới nhất.
-12. **Bản sao khóa bí mật phải có tên riêng cho MỖI lần đổi** (phát hiện 10/11/2026 khi viết bài diễn tập). Tên cũ `<tên>-NGÀY-<sha8>.gpg` khiến đổi A→B→A trong cùng ngày tạo lại đúng tên bản A cũ (đã đẩy), nên không lên R2 nữa và `fetch-r2` lấy nhầm B làm bản mới nhất; lấy nhầm khóa mã hóa thì không đọc được phiếu tài khoản. Sửa: tên mới `<tên>-NGÀY-GIỜ-<sha8>.gpg`; `fetch-r2` đọc được cả hai dạng. Các bản `khoa/` cũ trên R2 vẫn dùng được (dạng tên cũ).
+12. **Bản sao khóa bí mật phải có tên riêng cho MỖI lần đổi** (phát hiện 10/11/2026 khi viết bài diễn tập). Tên cũ `<tên>-NGÀY-<sha8>.gpg` khiến đổi A→B→A trong cùng ngày tạo lại đúng tên bản A cũ (đã đẩy), nên không lên R2 nữa và `fetch-r2` lấy nhầm B làm bản mới nhất; lấy nhầm bản cũ thì khôi phục sai mật khẩu PostgreSQL hoặc SMTP. Sửa: tên mới `<tên>-NGÀY-GIỜ-<sha8>.gpg`; `fetch-r2` đọc được cả hai dạng. Các bản `khoa/` cũ trên R2 vẫn dùng được (dạng tên cũ).
 13. **Bài thử không được phụ thuộc ngày trong tháng:** một bài của bộ drill so tên file với mẫu `2026110`, chỉ đúng vào ngày 1 đến 9 nên lỗi từ 10/11. Sửa bằng ngày hôm nay (`date +%Y%m%d`).
 14. **Bài thử R2 giả phải dùng đúng keyring:** `backup.env` của bài drill đặt `GNUPGHOME` vào keyring chỉ-có-khóa-công-khai (mô phỏng máy chạy thật); phần thử `fetch-r2` phải tạm đổi sang keyring có khóa bí mật giả.
 
@@ -714,7 +714,7 @@ gpg -d postgres.env-<…>.gpg > ~/exam-prod-secrets/postgres.env && chmod 600 ~/
 rm -rf "$GNUPGHOME"; unset GNUPGHOME
 ```
 
-**`SLIP_ENCRYPTION_KEY` trong `api.env` đặc biệt quan trọng:** mất nó thì mọi Phiếu tài khoản đã mã hóa không mở lại được. Bitwarden vẫn là nơi lưu chính; đây là lớp thứ ba.
+**`api.env` (mật khẩu PostgreSQL, mật khẩu ứng dụng SMTP) đặc biệt quan trọng:** mất nó thì không dựng lại được hệ thống và không gửi được thư kích hoạt. Bitwarden vẫn là nơi lưu chính; đây là lớp thứ ba. (Từ PR 7d-3 không còn `SLIP_ENCRYPTION_KEY`; dòng này còn trong `api.env` cũ thì bị bỏ qua.)
 
 ### 5.6 Mất cả máy: dựng ở máy khác
 
@@ -752,7 +752,7 @@ rm -rf "$GNUPGHOME"; unset GNUPGHOME
 | Chưa biết khóa R2 Object Read & Write có xóa được không | không ảnh hưởng thiết kế | thử khi tạo khóa (mục 4.2) |
 | `pg_wal` có thể đầy đĩa nếu `archive_command` hỏng lâu | PostgreSQL dừng | `nightly` và `status` kiểm; báo `/fail` |
 | Bản trên R2 phụ thuộc khóa bí mật gpg | mất khóa bí mật thì bản R2 vô dụng | Bitwarden + giấy; thử giải mã định kỳ (mục 4.8) |
-| Ảnh chỉ sao lưu thêm, không xóa; không sao lưu `tmp/`, `uploads/`, `slips/` | ảnh đã xóa khỏi hệ thống vẫn còn ở bản sao; Phiếu tài khoản không được sao lưu | chấp nhận (ảnh nhẹ; Phiếu có hạn giữ ngắn và có thể phát hành lại) |
+| Ảnh chỉ sao lưu thêm, không xóa; không sao lưu `tmp/`, `uploads/`, `slips/` | ảnh đã xóa khỏi hệ thống vẫn còn ở bản sao | chấp nhận (ảnh nhẹ) |
 | Thử khôi phục bỏ qua khi có Phiên thi | tháng nhiều Phiên thi thì thử trễ | `catchup` và `Persistent` làm bù; báo động sau 35 + 7 ngày |
 | Khi `enable-archiving`, worker khởi động lại một lần | vài giây | làm lúc không có Phiên thi (lệnh tự chặn) |
 | `restore-test` ghi một dòng `ops.backup_test` vào `audit_logs` của hệ thống thật mỗi lần | thêm 1 dòng mỗi tháng | chấp nhận; làm bằng chứng WAL cuối đã vào bản khôi phục |
@@ -792,7 +792,7 @@ Dựng khóa gpg giả, "R2" là một thư mục (rclone kiểu local), healthc
 
   1. **Nhập khóa bí mật vào keyring tạm** (`gpg --import khoa-bi-mat.asc`, dán mật khẩu khóa). Khóa nằm trong **keyring riêng của sân chơi**, không phải keyring thường dùng, nên khi dọn chỉ cần xóa thư mục tạm là khóa biến mất khỏi máy. Mật khẩu hỏi qua `pinentry` nên cần cửa sổ Ubuntu thật và `GPG_TTY`.
   2. **`fetch-r2`: tải và giải mã.** Lệnh tự chọn đúng thứ cần cho một lần khôi phục, không phải tải cả R2: (a) **khóa bí mật của ứng dụng** (`khoa/`): lấy bản **mới nhất theo giờ ghi trên R2** của từng tên (`api.env`, `postgres.env`); (b) **bản nền mới nhất** cùng sổ phụ `.info`, đọc `start_wal` (đoạn WAL đầu tiên cần để phát lại từ bản nền); (c) **mọi đoạn WAL từ `start_wal` trở đi** (đoạn nằm trước đó vô dụng, không tải), rồi kiểm dãy số **liền nhau**: đứt chỗ nào thì dừng và báo, vì phát lại WAL không nhảy cóc được; (d) **dump mới nhất** và sổ phụ `.counts`, kiểm `pg_restore --list` đọc được. Mọi file trên R2 có đuôi `.gpg` (mã hóa bằng khóa công khai) nên **mỗi file giải mã riêng** ra đúng tên gốc. Kết quả nằm trong thư mục cùng cấu trúc thư mục sao lưu thật (`base/`, `wal/`, `daily/`, cộng `secrets/`) để các lệnh `pitr` và `restore-dump` dùng được ngay.
-  3. **Dựng pod `dr-exam` bằng bí mật lấy về** (`exam-ctl.sh bootstrap`). Điểm mấu chốt: bí mật (`api.env`, `postgres.env`) đã có sẵn nên `bootstrap` **giữ nguyên, không sinh khóa mới** (xem `create_secrets`). Lý do sống còn: `SLIP_ENCRYPTION_KEY` mã hóa Phiếu tài khoản; sinh khóa mới thì mọi phiếu cũ không giải mã được. `bootstrap` bắt buộc tạo một Quản trị viên: bài dùng một tài khoản tạm với mật khẩu ngẫu nhiên, vì dữ liệu thật sẽ **thay thế hoàn toàn** ở bước 5.
+  3. **Dựng pod `dr-exam` bằng bí mật lấy về** (`exam-ctl.sh bootstrap`). Điểm mấu chốt: bí mật (`api.env`, `postgres.env`) đã có sẵn nên `bootstrap` **giữ nguyên, không sinh khóa mới** (xem `create_secrets`). Lý do sống còn: sinh bí mật mới thì không còn khớp mật khẩu PostgreSQL của dữ liệu đã khôi phục. `bootstrap` bắt buộc tạo một Quản trị viên: bài dùng một tài khoản tạm với mật khẩu ngẫu nhiên, vì dữ liệu thật sẽ **thay thế hoàn toàn** ở bước 5.
   4. **`pitr latest`: kiểm bản nền cộng WAL.** Dựng một PostgreSQL **tạm** từ bản nền (giải nén vào volume, đặt `recovery.signal`, đặt `restore_command` để PostgreSQL tự lấy từng đoạn WAL từ thư mục đã tải), cho nó phát lại đến đoạn WAL cuối rồi mở lên. Đây là bằng chứng bản nền và chuỗi WAL **dùng được thật**, không chỉ "có file". Sau đó lấy `pg_dump` từ chính PostgreSQL tạm này: dump đó là **dữ liệu mới nhất có thể** (mới hơn dump hằng đêm, vì có thêm mọi thay đổi ghi trong WAL).
   5. **`restore-dump`: nạp vào pod mới.** Lệnh chạy qua các lưới an toàn: kiểm dump hợp lệ, chốt chặn Phiên thi, tự `pg_dump` bản "trước khi khôi phục", dừng api và worker, `DROP DATABASE ... WITH (FORCE)` rồi `CREATE` và `pg_restore`, bật lại, ghi `audit_logs` (`ops.restore`). Vì thay cả cơ sở dữ liệu nên Quản trị viên tạm của bước 3 biến mất, thay bằng tài khoản thật.
   6. **Đối chiếu.** Kiểm: `/api/health` ok sau khôi phục; có ít nhất một Quản trị viên hoạt động; tài khoản tạm không còn (chứng minh dữ liệu được thay hoàn toàn); với các bảng chỉ tăng (`audit_logs`, `users`, `exams`, `questions`, `attempts`, `responses`) số dòng sau khôi phục **không ít hơn** số nhỏ nhất ghi trong sổ phụ `.counts` của dump (dữ liệu mới hơn dump nên không được ít hơn; nếu ít hơn là mất dữ liệu); worker và web của pod mới chạy.

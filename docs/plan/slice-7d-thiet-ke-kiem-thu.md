@@ -1,6 +1,6 @@
 # PR 7d: thiết kế kiểm thử (hỗ trợ kích hoạt, theo dõi, hạn mức, bỏ Phiếu tài khoản), làm theo TDD
 
-**Trạng thái: ĐÃ DUYỆT (14/11/2026, mục 11). 7d-1 ĐÃ LÀM XONG, chờ PR (mục 13); 7d-2 và 7d-3 chưa làm.** Cách làm như [7b](./slice-7b-thiet-ke-kiem-thu.md), [7c-1](./slice-7c-thiet-ke-kiem-thu.md), [7c-2](./slice-7c2-thiet-ke-kiem-thu.md): điểm tiếp xúc, hành vi, lát dọc, cách tự kiểm; duyệt xong mới vòng đỏ rồi xanh.
+**Trạng thái: ĐÃ DUYỆT (14/11/2026, mục 11). 7d-1, 7d-2 đã merge; 7d-3 đã làm xong, chờ PR (mục 16).** Cách làm như [7b](./slice-7b-thiet-ke-kiem-thu.md), [7c-1](./slice-7c-thiet-ke-kiem-thu.md), [7c-2](./slice-7c2-thiet-ke-kiem-thu.md): điểm tiếp xúc, hành vi, lát dọc, cách tự kiểm; duyệt xong mới vòng đỏ rồi xanh.
 
 Căn cứ: [ADR-0009](../adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md); [slice-7-phuong-an-b-email.md](./slice-7-phuong-an-b-email.md) mục 3.3, 3.6, 3.7, 7, 8 và tiêu chí 5, 8, 9, 10, 12, 14 (Q374 đến Q377, Q384). Hạ tầng đã có: `MailService` (7b), `AuthLinks` kèm loại `support_link` (7c-1), đổi và xác thực email, Lời mời gửi thư (7c-2b), tạo tài khoản bằng thư kích hoạt (7c-2a). **Đã chạy thật ở production (14/11/2026)**: kích hoạt, quên mật khẩu, thư tới Gmail.
 
@@ -245,3 +245,38 @@ Chuông cho Quản trị viên khi một tài khoản chạm trần 200 lần (d
 ### 15.2 Còn lại
 
 Lát 10: giao diện và E2E (bảng theo dõi ở trang Yêu cầu và Danh sách dự thi, khung hạn mức, màn Hàng đợi thư, chuông, kiểm tra không cuộn ngang và không bị che ở 375 và 1280 px, sáng và tối).
+
+
+## 16. Kết quả 7d-3: bỏ Phiếu tài khoản và "Cấp lại mật khẩu tạm" (16/11/2026)
+
+Làm theo TDD: bài viết trước và thấy đỏ đúng lý do (D-40 đỏ vì các đường dẫn còn tồn tại, D-41 đỏ vì bảng còn, D-43 đỏ vì khóa vẫn bắt buộc, bài V1-g đỏ vì đặt lại mật khẩu bằng liên kết không gỡ khóa đăng nhập; D-42 là bài bảo vệ, xanh từ đầu và phải còn xanh sau khi gỡ).
+
+### 16.1 Đã gỡ
+
+- **API:** module `credential-slips` (controller, service, bộ dựng PDF/Excel, kho mã hóa) và các bài của chúng; `GET /account-requests/:id/slips`; `POST /admin/users/:id/temporary-password`; `POST /sessions/:id/roster/:userId/reissue-password`; `RequesterCredentialsService`; hàm `reissueTemporaryPassword`; bước "phiếu hết hạn" của job dọn dẹp; mã lỗi `SLIP_EXPIRED`; bảng `credential_slips` và kiểu `credential_slip_status` (migration `0026_bo_phieu_tai_khoan`); biến `SLIP_ENCRYPTION_KEY` (không còn bắt buộc; còn trong `api.env` cũ thì bị bỏ qua); `exam-ctl.sh` không sinh khóa này nữa.
+- **Web:** mục "Phiếu tài khoản" ở trang Yêu cầu; nút "Cấp lại mật khẩu tạm" ở trang chi tiết người dùng và ở menu Danh sách dự thi; `TemporaryPasswordDialog` và các khóa i18n liên quan. Nhật ký thao tác cũ `user.temporary-password.reissue` vẫn lọc và đọc được; nhãn thông báo cũ (`credential_slip.*`, `account.password_reissued`) giữ cho lịch sử.
+- **Giữ lại có chủ ý:** `generateTemporaryPassword` và `recoverAdmin` (lệnh `prod-recover-admin`, in mật khẩu tạm một lần trên máy chủ).
+
+### 16.2 Kết quả theo bài
+
+| Bài | Kết quả |
+|---|---|
+| D-40 | các đường tải Phiếu và cấp lại mật khẩu tạm không còn: Quản trị viên và Người ra đề đều nhận 404 "Cannot ..." (`slip-removal.int.test.ts`) |
+| D-41 | migration chạy được **trên cơ sở dữ liệu có 3 dòng Phiếu** (đủ ba trạng thái) và **trên cơ sở dữ liệu trống**; người dùng không bị đụng. Kiểm bằng tập lệnh tạm áp 0000 đến 0025, chèn dữ liệu, rồi áp 0026 (không đưa vào bộ bài thường trực); bài thường trực kiểm bảng và kiểu không còn |
+| D-42 | job dọn dẹp không còn bước Phiếu; bước lỗi không chặn bước sau (viết lại: cho bước đầu lỗi, bước "yêu cầu kẹt ở parsing" vẫn chạy) |
+| D-43 | khởi động được khi không có `SLIP_ENCRYPTION_KEY`; có khóa lạ cũng không lỗi (`env.test.ts`) |
+| D-44 | `prod-preflight`: production thiếu SMTP là ✗ cố định (trước đó chỉ ⚠ nếu chưa có thư bị bỏ qua); `test-mail-ops.sh` 15 đạt |
+| D-45 | `architecture.test` xanh sau khi gỡ module |
+| D-46 | cập nhật `GLOSSARY.md` (bỏ thuật ngữ Phiếu tài khoản), `data-model.md`, `README.md`, `architecture.md` và các tài liệu vận hành (`tai-khoan-va-mat-khau`, `demo-wsl`, `khoi-phuc`, `chuyen-len-vps`, `trien-khai`) |
+
+### 16.3 Điều chỉnh so với thiết kế (phát hiện khi làm)
+
+| # | Điều chỉnh | Lý do |
+|---|---|---|
+| i | **Đặt lại mật khẩu bằng liên kết (Quên mật khẩu, Liên kết hỗ trợ) phải gỡ mọi khóa đăng nhập tạm của tài khoản đó** (`AuthLinks.consume` gọi `LoginBlock.clear`) | "Cấp lại mật khẩu tạm" từng làm việc này. Bỏ nó đi mà không bù thì người tự khóa mình (gõ sai nhiều lần), bấm Quên mật khẩu, đặt mật khẩu mới xong vẫn chưa đăng nhập được tới khi khóa hết hạn. Bài V1-g được viết lại theo đường mới |
+| ii | E2E `password-recovery.spec.ts` viết lại: Quản trị viên tạo Liên kết hỗ trợ, người dùng tự đặt mật khẩu mới | kịch bản cũ dựa vào mật khẩu tạm |
+| iii | Giữ `slips` trong danh sách loại trừ của sao lưu | thư mục `slips/` cũ nếu còn thì vẫn không bị chép; không có job nào dọn nó nữa (production không có Phiếu nào) |
+
+### 16.4 Việc của chủ dự án khi deploy
+
+Migration `0026` **xóa bảng** (một chiều); production không có Phiếu nào (kiểm 14/11/2026). `SLIP_ENCRYPTION_KEY` còn trong `~/exam-prod-secrets/api.env` thì vô hại, có thể xóa dòng đó sau khi deploy.

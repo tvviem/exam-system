@@ -104,11 +104,6 @@ export interface AuditLog {
   at: string;
 }
 
-export interface TemporaryPassword {
-  temporaryPassword: string;
-  passwordExpiresAt: string;
-}
-
 export const ACTIVATION_FILTERS = ['pending', 'unverified', 'mail_failed'] as const;
 export type ActivationFilter = (typeof ACTIVATION_FILTERS)[number];
 
@@ -251,9 +246,6 @@ export const setRoleTag = (id: string, tag: RoleTag, granted: boolean) =>
   apiFetch<UserDetail>(`/admin/users/${id}/role-tags/${tag}`, {
     method: granted ? 'PUT' : 'DELETE',
   });
-
-export const reissueTemporaryPassword = (id: string) =>
-  apiFetch<TemporaryPassword>(`/admin/users/${id}/temporary-password`, { method: 'POST' });
 
 export const createAdmin = (body: { username?: string; email: string; fullName: string }) =>
   apiFetch<{ id: string; username: string }>('/admin/admins', { method: 'POST', body });
