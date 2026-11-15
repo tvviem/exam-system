@@ -177,6 +177,15 @@ test('PWA: có manifest và service worker điều khiển trang', async ({ page
   expect(cachedApi).toEqual([]);
 });
 
+// Máy chậm (điện thoại cấu hình thấp, mạng đông): lần mở đầu tiên vẫn phải lưu đủ vỏ ứng dụng để tải lại được lúc mất mạng.
+// CPU trình duyệt chậm 6 lần mô phỏng máy CI và điện thoại yếu; trước khi sửa `register-sw.ts` bài này thiếu 28/40 file.
+test('PWA: máy chậm (CPU chậm 6 lần) lần mở đầu vẫn lưu đủ vỏ ứng dụng', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+  await page.goto('/login');
+  await expect.poll(() => shellReady(page), { timeout: 20_000 }).toBe(true);
+});
+
 /** Các mặt chữ KaTeX đã tải xong, đọc từ `document.fonts`. */
 const loadedKatexFaces = (page: Page) =>
   page.evaluate(() =>
