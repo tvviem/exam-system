@@ -209,7 +209,7 @@ Tham chiếu: tài liệu GitHub "Adding self-hosted runners" và "Configuring t
 | **Cùng kiến trúc CPU nếu dùng bản nền và WAL** (vật lý) | bản nền là ảnh nguyên thư mục dữ liệu, không chuyển được giữa kiến trúc khác nhau (x86_64 và ARM). **Dump (logic) không phụ thuộc kiến trúc** | `uname -m` ở cả hai máy; WSL của bạn hiện là `x86_64` (đã kiểm 10/11/2026). VPS ARM (`aarch64`) thì **chỉ dùng được đường dump** |
 | **Cùng ảnh PostgreSQL (cùng bản vá, cùng hệ điều hành trong ảnh) nếu dùng bản nền và WAL** | thứ tự sắp xếp chữ (collation) phụ thuộc thư viện hệ thống trong ảnh; khác thư viện thì chỉ mục chữ có thể sai. Thẻ `postgres:17` **trôi theo thời gian** nên hai máy kéo ảnh ở hai thời điểm có thể khác bản vá | so `podman image inspect docker.io/library/postgres:17 --format '{{.Digest}}'` ở hai máy; khác nhau thì ưu tiên đường dump |
 | **Ảnh ứng dụng cùng mã (`TAG`) hoặc mới hơn** bản đã tạo dữ liệu | migration chạy theo ảnh; ảnh cũ hơn cơ sở dữ liệu thì không chạy được | dùng đúng `TAG` đang chạy ở WSL (mục 7.1) |
-| **Cùng file bí mật** (`api.env`, `postgres.env`) | `SLIP_ENCRYPTION_KEY` mã hóa Phiếu tài khoản; khóa mới thì phiếu cũ không đọc được; mật khẩu PostgreSQL phải khớp | lấy từ Bitwarden hoặc từ `khoa/` trên R2 (`fetch-r2` đã làm); xem mục 7.1 |
+| **Cùng file bí mật** (`api.env`, `postgres.env`) | mật khẩu PostgreSQL phải khớp (và mật khẩu ứng dụng SMTP phải còn) | lấy từ Bitwarden hoặc từ `khoa/` trên R2 (`fetch-r2` đã làm); xem mục 7.1 |
 | **Ảnh minh họa** chép riêng | nằm trong volume `exam_media`, không nằm trong cơ sở dữ liệu | khoi-phuc.md mục 5.4; R2 có bản `media/` khi đã có ảnh |
 
 **Chọn kiến trúc VPS cho dễ:** nên thuê **VPS x86_64** để cả hai đường đều dùng được. Thuê ARM (rẻ hơn) thì chuyển có kế hoạch vẫn làm được bằng dump, nhưng nếu thảm họa xảy ra **trước khi VPS tự có bản sao lưu của chính nó**, bạn chỉ khôi phục được đến bản dump hằng đêm gần nhất (có thể mất tối đa khoảng một ngày), vì bản nền và WAL của WSL không dùng được trên ARM. **Sau khi cắt chuyển**, sao lưu mới do chính VPS tạo ra luôn cùng kiến trúc với VPS, nên giới hạn này chỉ áp dụng cho các bản sao lưu cũ của WSL.
@@ -220,14 +220,14 @@ Tham chiếu: tài liệu GitHub "Adding self-hosted runners" và "Configuring t
 
 ### 7.1. Chuẩn bị trước (máy mới đã sẵn sàng từ mục 2 đến 6, hệ thống cũ vẫn chạy)
 
-- Mở trình quản lý mật khẩu (Bitwarden): lấy `POSTGRES_PASSWORD` và `SLIP_ENCRYPTION_KEY`. **Phải dùng đúng các giá trị cũ**: đổi `SLIP_ENCRYPTION_KEY` thì Phiếu tài khoản còn hạn không mở lại được; đổi mật khẩu PostgreSQL thì phải khớp với dữ liệu đã khôi phục.
+- Mở trình quản lý mật khẩu (Bitwarden): lấy `POSTGRES_PASSWORD` và mật khẩu ứng dụng SMTP. **Phải dùng đúng các giá trị cũ**: đổi mật khẩu PostgreSQL thì phải khớp với dữ liệu đã khôi phục.
 - Trên máy mới, tạo thư mục bí mật và **đặt trước hai file env** giống file ở WSL (cách nhanh nhất là chép nguyên từ WSL qua `scp`, rồi `chmod 600`):
   ```bash
   mkdir -p ~/exam-prod-secrets && chmod 700 ~/exam-prod-secrets
   scp tvviem@<máy-WSL-hoặc-qua-USB>:~/exam-prod-secrets/{postgres,api}.env ~/exam-prod-secrets/
   chmod 600 ~/exam-prod-secrets/*.env
   ```
-  Nếu không chép được trực tiếp, tạo lại hai file theo đúng mẫu mà `exam-ctl.sh` tạo (hàm `create_secrets`: `postgres.env` có `POSTGRES_USER=exam`, `POSTGRES_PASSWORD`, `POSTGRES_DB=exam`; `api.env` có các biến `NODE_ENV`, `PORT`, `DATABASE_URL`, `REDIS_URL`, `APP_ORIGINS`, `SLIP_ENCRYPTION_KEY`, `MEDIA_DIR`, …), điền giá trị từ Bitwarden. `APP_ORIGINS` phải là `https://exam.plotrackerbluni.site`.
+  Nếu không chép được trực tiếp, tạo lại hai file theo đúng mẫu mà `exam-ctl.sh` tạo (hàm `create_secrets`: `postgres.env` có `POSTGRES_USER=exam`, `POSTGRES_PASSWORD`, `POSTGRES_DB=exam`; `api.env` có các biến `NODE_ENV`, `PORT`, `DATABASE_URL`, `REDIS_URL`, `APP_ORIGINS`, `MEDIA_DIR`, …), điền giá trị từ Bitwarden. `APP_ORIGINS` phải là `https://exam.plotrackerbluni.site`.
 - Kiểm ảnh của bản đang chạy có sẵn: `cat ~/.local/state/exam-prod/tag` ở WSL cho biết `TAG` đang chạy; dùng **cùng TAG** cho máy mới để dữ liệu và mã khớp nhau.
 
 ### 7.2. Đóng băng máy cũ và chụp dữ liệu (bắt đầu thời gian ngừng dịch vụ)

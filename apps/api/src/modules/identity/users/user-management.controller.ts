@@ -183,12 +183,6 @@ export class UserManagementController {
     await this.users.revokeRoleTag(actor, id, roleTagParam.parse(tag));
     return this.users.detail(id);
   }
-
-  @Post(':id/temporary-password')
-  @HttpCode(200)
-  reissueTemporaryPassword(@Param('id', ParseUUIDPipe) id: string, @CurrentActor() actor: Actor) {
-    return this.users.reissueTemporaryPassword(actor, id);
-  }
 }
 
 @AdminOnly()

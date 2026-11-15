@@ -23,7 +23,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetState();
   t.mail.reset();
-  t.slips.calls.length = 0;
 });
 
 async function signedIn(input: SeedUser) {
@@ -85,8 +84,6 @@ describe('duyệt Yêu cầu tạo tài khoản Chờ kích hoạt (K9)', () => 
       created_by: admin.id,
       tags: ['candidate'],
     });
-    expect(await sql('SELECT 1 FROM credential_slips')).toHaveLength(0);
-    expect(t.slips.calls).toHaveLength(0);
     // Không còn thông tin phiếu mã hóa nằm lại trong kho tệp.
     const reply = await call(t.app, 'GET', `/api/account-requests/${id}`, { cookie: admin.cookie });
     expect(reply.json()).not.toHaveProperty('slipId');

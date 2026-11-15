@@ -15,7 +15,6 @@ import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
-import { RequesterCredentialsService } from '../identity/account-requests/requester-credentials.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { sessionRoster } from './session.schema';
 import { findOwnedSession, lockOwnedSession, requireNotOver } from './session-access';
@@ -46,7 +45,6 @@ export class SessionRosterService {
     private readonly audit: AuditService,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     private readonly notifications: NotificationsService,
-    private readonly credentials: RequesterCredentialsService,
   ) {}
 
   async list(
@@ -256,18 +254,6 @@ export class SessionRosterService {
       if (!row) throw new ApiError('NOT_FOUND');
       return row;
     });
-  }
-
-  /** Cấp lại mật khẩu tạm cho một người trong Danh sách; điều kiện chi tiết ở `RequesterCredentialsService`. */
-  async reissuePassword(actor: Actor, sessionId: string, userId: string) {
-    const session = await findOwnedSession(this.db, actor.id, sessionId);
-    requireNotOver(session, this.clock.now());
-    const [member] = await this.db
-      .select({ userId: sessionRoster.userId })
-      .from(sessionRoster)
-      .where(and(eq(sessionRoster.sessionId, sessionId), eq(sessionRoster.userId, userId)));
-    if (!member) throw new ApiError('NOT_FOUND');
-    return this.credentials.reissueTemporaryPassword(actor, userId, { sessionId });
   }
 
   /** Thu hồi thiết bị đang gắn của một người (ADR-0007): máy cũ bị chặn ngay, máy mới nhập mã sẽ làm tiếp Lượt cũ. */

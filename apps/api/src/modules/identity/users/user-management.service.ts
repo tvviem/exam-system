@@ -35,13 +35,7 @@ import { MailService } from '../../mail/mail.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import type { RoleTag } from '../auth/auth.types';
 import { type AuthSessionRevokeReason, AuthSessionStore } from '../auth/auth-session-store';
-import { LoginBlock } from '../auth/login-block';
 import { examinerProfiles, units, userRoleTags, users } from '../identity.schema';
-import { hashPassword } from '../password/password-hasher';
-import {
-  generateTemporaryPassword,
-  TEMPORARY_PASSWORD_TTL_MS,
-} from '../password/temporary-password';
 import { type UserRow, UsersRepository } from '../users.repository';
 
 export const USER_STATUSES = ['active', 'locked', 'removed'] as const;
@@ -100,14 +94,6 @@ const isUniqueViolation = (error: unknown) =>
 
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
-/** Móc để bên khác (Người ra đề cấp lại cho Người dự thi trong Danh sách) đặt điều kiện và việc đi kèm trong cùng giao dịch. */
-export interface ReissueHooks {
-  /** Ghi thêm vào nhật ký thao tác (ví dụ Phiên thi nào, do Người ra đề cấp). */
-  auditContext?: Record<string, unknown>;
-  guard?(tx: Tx, target: UserRow): Promise<void>;
-  onApplied?(tx: Tx): Promise<void>;
-}
-
 /** Quản lý Người dùng của Quản trị viên (PR 1b). */
 @Injectable()
 export class UserManagementService {
@@ -116,7 +102,6 @@ export class UserManagementService {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: AuditService,
     private readonly authSessions: AuthSessionStore,
-    private readonly loginBlock: LoginBlock,
     private readonly usersRepository: UsersRepository,
     private readonly notifications: NotificationsService,
     private readonly mail: MailService,
@@ -582,39 +567,6 @@ export class UserManagementService {
         tx,
       );
     });
-  }
-
-  /**
-   * Cấp lại mật khẩu tạm (Q61): hạn 7 ngày, buộc đổi khi đăng nhập, thu hồi mọi phiên và gỡ khóa tạm.
-   * Không mở Khóa đăng nhập. Mật khẩu chỉ trả về một lần, không ghi vào DB hay nhật ký.
-   */
-  async reissueTemporaryPassword(actor: Actor, id: string, hooks: ReissueHooks = {}) {
-    const temporaryPassword = generateTemporaryPassword();
-    const passwordHash = await hashPassword(temporaryPassword);
-    const passwordExpiresAt = new Date(this.clock.now().getTime() + TEMPORARY_PASSWORD_TTL_MS);
-    await this.db.transaction(async (tx) => {
-      const target = await this.lockTargetOrThrow(tx, actor, id);
-      // Kiểm điều kiện sau khi đã khóa dòng: người dùng vừa đổi mật khẩu thì không bị đè (cấp lại cho người khác).
-      await hooks.guard?.(tx, target);
-      await tx
-        .update(users)
-        .set({ passwordHash, mustChangePassword: true, passwordExpiresAt })
-        .where(eq(users.id, id));
-      await this.audit.record(
-        {
-          actor,
-          action: 'user.temporary-password.reissue',
-          entityType: 'user',
-          entityId: id,
-          after: { passwordExpiresAt, ...hooks.auditContext },
-        },
-        tx,
-      );
-      await hooks.onApplied?.(tx);
-      await this.revokeBeforeCommit(id, 'password_reissued');
-    });
-    await this.loginBlock.clear(id);
-    return { temporaryPassword, passwordExpiresAt };
   }
 
   /** Chỉ định Quản trị viên = tạo tài khoản Quản trị viên riêng, không mang Nhãn vai trò (Q23, Q70). */

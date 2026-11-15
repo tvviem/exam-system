@@ -91,23 +91,30 @@ describe('V1: kẻ tấn công không khóa được sinh viên khác', () => {
     expect(await limiter.allow('192.0.2.251', 'sv-c')).toBe(false); // đủ 10 + 190 = 200
   });
 
-  it('V1-g: Quản trị viên cấp lại mật khẩu thì mọi khóa theo cặp của tài khoản đó được gỡ', async () => {
-    const admin = await seedUser({ username: 'qt-hoi', isAdmin: true });
+  it('V1-g: đặt lại mật khẩu bằng liên kết (7d-3 thay cho "Cấp lại mật khẩu tạm") gỡ mọi khóa theo cặp của tài khoản đó', async () => {
+    await seedUser({ username: 'qt-hoi', isAdmin: true });
     const victim = await seedUser({ username: 'sv-nan-nhan' });
     const adminSession = await login(t.app, 'qt-hoi', DEFAULT_PASSWORD, '10.9.9.9');
     for (let i = 0; i < 5; i++) await wrong('sv-nan-nhan', ATTACKER);
     expect((await login(t.app, 'sv-nan-nhan', DEFAULT_PASSWORD, ATTACKER)).res.statusCode).toBe(
       429,
     );
-    const res = await call(t.app, 'POST', `/api/admin/users/${victim.id}/temporary-password`, {
+
+    // Người ra đề hoặc Quản trị viên đưa Liên kết hỗ trợ; người dùng tự đặt mật khẩu mới (không ai khác biết mật khẩu).
+    const created = await call(t.app, 'POST', `/api/account-support/${victim.id}/link`, {
       cookie: adminSession.cookie as string,
+      body: { reason: 'Sinh viên bị khóa vì gõ sai nhiều lần' },
     });
-    expect(res.statusCode).toBeLessThan(300);
-    expect(admin.id).toBeTruthy();
-    const { temporaryPassword } = res.json();
-    expect((await login(t.app, 'sv-nan-nhan', temporaryPassword, ATTACKER)).res.statusCode).toBe(
-      200,
-    );
+    expect(created.statusCode, created.body).toBe(201);
+    const token = new URL(created.json().link).hash.slice(1);
+    const consumed = await call(t.app, 'POST', '/api/auth/links/consume', {
+      body: { purpose: 'password_reset', token, newPassword: 'hoa-sen-no-sang-moi-2026' },
+    });
+    expect(consumed.json().state, consumed.body).toBe('ok');
+
+    expect(
+      (await login(t.app, 'sv-nan-nhan', 'hoa-sen-no-sang-moi-2026', ATTACKER)).res.statusCode,
+    ).toBe(200);
   });
 });
 

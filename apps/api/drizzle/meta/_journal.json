@@ -183,6 +183,13 @@
       "when": 1794437300154,
       "tag": "0025_thu_ngu_canh",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794771175505,
+      "tag": "0026_bo_phieu_tai_khoan",
+      "breakpoints": true
     }
   ]
 }

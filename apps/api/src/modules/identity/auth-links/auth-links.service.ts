@@ -5,6 +5,7 @@ import { CLOCK, type Clock } from '../../../common/clock';
 import { type Database, DB } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
 import { AuthSessionStore } from '../auth/auth-session-store';
+import { LoginBlock } from '../auth/login-block';
 import { authTokens, users } from '../identity.schema';
 import { hashPassword } from '../password/password-hasher';
 import {
@@ -68,6 +69,7 @@ export class AuthLinks {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly audit: AuditService,
     private readonly sessions: AuthSessionStore,
+    private readonly loginBlock: LoginBlock,
   ) {}
 
   /** Phát hành mã mới và vô hiệu mã cũ cùng loại của người đó (mỗi loại chỉ một mã còn hiệu lực). */
@@ -204,6 +206,8 @@ export class AuthLinks {
       return latest?.usedAt ? { state: 'used', usedAt: latest.usedAt } : { state: 'replaced' };
     }
     await this.sessions.revokeAllForUser(link.userId, 'password_reset');
+    // Có mật khẩu mới thì mọi khóa đăng nhập tạm theo cặp (tài khoản, IP) hết ý nghĩa: người dùng vào được ngay (7d-3).
+    await this.loginBlock.clear(link.userId);
     return { state: 'ok' };
   }
 

@@ -2,7 +2,6 @@ import { Ban, Check, ChevronLeft, ChevronRight, Copy, Lock, TriangleAlert, X } f
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UserStatus } from '../admin';
-import { formatDateTime } from '../format';
 import { Badge, Button, Dialog, PrimaryButton } from '.';
 
 // Mẫu dùng cho trang quản trị (docs/ui-design.md mục 7).
@@ -162,32 +161,5 @@ export function ShowOnceDialog({
       <p className="text-sm text-fg-muted">{note}</p>
       <PrimaryButton onClick={onClose}>{confirmLabel}</PrimaryButton>
     </Dialog>
-  );
-}
-
-/** Mật khẩu tạm: chữ đơn cách cỡ lớn. */
-export function TemporaryPasswordDialog({
-  value,
-  onClose,
-}: {
-  value: { temporaryPassword: string; passwordExpiresAt: string; title: string } | null;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  if (!value) return null;
-  return (
-    <ShowOnceDialog
-      title={value.title}
-      warning={t('temporaryPassword.onlyOnce')}
-      copyLabel={t('temporaryPassword.copy')}
-      note={t('temporaryPassword.expires', { time: formatDateTime(value.passwordExpiresAt) })}
-      confirmLabel={t('temporaryPassword.saved')}
-      testId="temporary-password"
-      display={
-        <span className="font-mono text-2xl tracking-widest">{value.temporaryPassword}</span>
-      }
-      copyText={value.temporaryPassword}
-      onClose={onClose}
-    />
   );
 }

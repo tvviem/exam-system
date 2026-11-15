@@ -68,7 +68,6 @@ async function main() {
     // Hạn mức thư như production (6 giây giữa hai thư, làm nóng 50/100/... thư) làm các bài E2E xếp thư chờ nhau quá 15 giây.
     EMAIL_MIN_GAP_SECONDS: '0',
     EMAIL_WARMUP_BULK: '',
-    SLIP_ENCRYPTION_KEY: Buffer.alloc(32, 5).toString('base64'),
     MEDIA_DIR: path.join(require('node:os').tmpdir(), 'exam-e2e-media'),
   });
   require(path.join(apiDir, 'dist/main.js'));

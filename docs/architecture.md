@@ -39,7 +39,7 @@
                     │     │      │
                     │     │  ┌───┴────────┐
                     │     │  │ worker     │  tự Nộp bài · xử lý ảnh · import Excel
-                    │     │  └───┬────────┘  Phiếu tài khoản · Chốt kết quả
+                    │     │  └───┬────────┘  Gửi thư · Chốt kết quả
                     ▼     ▼      ▼
    ┌──────────────────────┐   ┌────────────────────────┐
    │ postgres :5432       │   │ volume `exam_media`    │  ảnh gốc + biến thể WebP
@@ -62,7 +62,7 @@
 | Frontend | **React 19 + Vite**, TanStack Router + Query, Tailwind CSS | SPA nhẹ, tách code theo route; giao diện thiết kế cho điện thoại trước |
 | PWA | vite-plugin-pwa (Workbox) | Cài lên màn hình chính, cache vỏ ứng dụng, chịu được mạng chập chờn |
 | Soạn nội dung | TipTap (rich text) + **MathLive** (soạn công thức trực quan, có bàn phím toán ảo) + KaTeX (hiển thị) | Công thức lưu dạng LaTeX trong node riêng của TipTap. Trang làm bài chỉ tải KaTeX (nhẹ); MathLive chỉ tải ở trang soạn câu hỏi |
-| Excel | ExcelJS (trong worker) | Nhập câu hỏi theo mẫu, nhập Yêu cầu cấp tài khoản, xuất Kết quả, xuất Phiếu tài khoản |
+| Excel | ExcelJS (trong worker) | Nhập câu hỏi theo mẫu, nhập Yêu cầu cấp tài khoản, xuất Kết quả |
 | Ngôn ngữ giao diện | i18next | Giai đoạn 1 chỉ có tiếng Việt; chuỗi giao diện tách ra file |
 | Ảnh | sharp (trong worker) + lưu trên volume | Tạo biến thể WebP 480/960/1600 px để điện thoại tải nhanh. Việc lưu file nằm sau một interface `MediaStore`, hiện dùng filesystem, sau này đổi sang S3/R2 mà không sửa nghiệp vụ ([ADR-0006](./adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)) |
 | Mật khẩu | Argon2id | Chuẩn OWASP hiện hành |
@@ -146,7 +146,7 @@ Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pu
   - Phiên hết hạn sau 12 giờ không hoạt động, tối đa 7 ngày; với Quản trị viên là 30 phút và 12 giờ. Được đăng nhập nhiều thiết bị cùng lúc.
   - Chống CSRF: ngoài `SameSite=Lax`, mọi request đổi dữ liệu phải có header `Origin` đúng.
   - (Cũ, đã thay từ PR 7c) Giai đoạn 1 không gửi email: Lời mời là link do Quản trị viên tự gửi, mật khẩu tạm giao qua Phiếu tài khoản.
-  - **Đã duyệt, áp dụng dần (PR 7b đến 7d; tới 7c-2a các đường tạo tài khoản đã đổi sang Chờ kích hoạt và thư kích hoạt): [ADR-0009](./adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md).** Email chính chủ làm gốc danh tính; kích hoạt và quên mật khẩu qua email; bỏ Phiếu tài khoản và mật khẩu tạm (trừ `prod-bootstrap`, `prod-recover-admin`). Các dòng "không gửi email" và "buộc đổi mật khẩu ở lần đăng nhập đầu" ở trên sẽ đổi khi PR 7c, 7d xong.
+  - **Đã duyệt, áp dụng dần (PR 7b đến 7d; tới 7c-2a các đường tạo tài khoản đã đổi sang Chờ kích hoạt và thư kích hoạt): [ADR-0009](./adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md).** Email chính chủ làm gốc danh tính; kích hoạt và quên mật khẩu qua email; bỏ Phiếu tài khoản và mật khẩu tạm (trừ `prod-bootstrap`, `prod-recover-admin`). Từ PR 7d-3 (16/11/2026) Phiếu tài khoản và "Cấp lại mật khẩu tạm" đã bị bỏ hẳn (migration `0026_bo_phieu_tai_khoan`).
 - **Phân quyền:**
   - Kiểm tra vai trò bằng guard.
   - Kiểm tra quyền sở hữu ở tầng service: Người ra đề chỉ thấy Chủ đề, Bộ đề và Phiên thi của mình.
@@ -290,7 +290,7 @@ Số đo sau giờ thi (8/11/2026, PR 5e, `pnpm -C apps/api load:exam`, 100 ngư
 ## 12. Phạm vi giai đoạn 1 và backlog
 
 **Giai đoạn 1** gồm các nghiệp vụ đã chốt trong [GLOSSARY.md](../GLOSSARY.md):
-- Người dùng: Quản trị viên, Nhãn vai trò, Lời mời, Yêu cầu cấp tài khoản kèm Phiếu tài khoản, Khóa đăng nhập, Xóa người dùng, Chuyển giao.
+- Người dùng: Quản trị viên, Nhãn vai trò, Lời mời, Yêu cầu cấp tài khoản (kèm bảng theo dõi kích hoạt), Khóa đăng nhập, Xóa người dùng, Chuyển giao.
 - Ngân hàng câu hỏi: 4 Loại câu hỏi, Hình minh họa, soạn công thức trực quan, nhập Excel cả bốn Loại (mỗi Loại một sheet).
 - Bộ đề: danh sách câu cố định, Phần, đặt điểm nhanh, Phát hành, Xem thử.
 - Phiên thi: Mã vào thi, Khung giờ, nhiều lượt làm bài, theo dõi trực tiếp, cộng giờ, Cho phép đổi thiết bị, Vi phạm và Đình chỉ.

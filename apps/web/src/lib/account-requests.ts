@@ -144,21 +144,3 @@ export const approveAccountRequest = (id: string, selection: ApprovalSelection) 
     method: 'POST',
     body: selection,
   });
-
-export interface CredentialSlip {
-  id: string;
-  status: 'ready' | 'failed' | 'expired';
-  itemCount: number;
-  createdAt: string;
-  expiresAt: string;
-}
-
-/** `refreshKey` (trạng thái yêu cầu) đổi thì tải lại, ví dụ khi worker vừa dựng xong phiếu. */
-export const credentialSlipsQuery = (requestId: string, refreshKey?: string) =>
-  queryOptions({
-    queryKey: ['account-requests', 'slips', requestId, refreshKey],
-    queryFn: () => apiFetch<CredentialSlip[]>(`/account-requests/${requestId}/slips`),
-  });
-
-export const slipUrl = (slipId: string, format: 'pdf' | 'xlsx') =>
-  `/api/credential-slips/${slipId}/${format}`;

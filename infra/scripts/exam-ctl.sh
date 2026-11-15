@@ -297,9 +297,8 @@ create_secrets() {
     created="$created POSTGRES_PASSWORD=$pw"$'\n'
   fi
   if [ ! -f "$SECRETS_DIR/api.env" ]; then
-    local pw key origin
+    local pw origin
     pw="$(env_value "$SECRETS_DIR/postgres.env" POSTGRES_PASSWORD)"
-    key="$(openssl rand -base64 32)"
     origin="${APP_ORIGIN:-$DEFAULT_ORIGIN}"
     (umask 077 && cat >"$SECRETS_DIR/api.env" <<EOF
 NODE_ENV=production
@@ -311,12 +310,10 @@ APP_ORIGINS=$origin
 LOGIN_MAX_PER_IP=1000
 DB_POOL_MAX=10
 TRUST_PROXY=loopback
-SLIP_ENCRYPTION_KEY=$key
 MEDIA_DIR=/var/lib/exam/media
 MEDIA_ACCEL_PREFIX=/_media
 EOF
     )
-    created="$created SLIP_ENCRYPTION_KEY=$key"$'\n'
   fi
   chmod 600 "$SECRETS_DIR"/*.env
   if [ -n "$created" ]; then

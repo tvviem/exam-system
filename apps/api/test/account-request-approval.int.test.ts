@@ -1,19 +1,11 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import path from 'node:path';
-import ExcelJS from 'exceljs';
-import { v7 as uuidv7 } from 'uuid';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MEDIA_STORE, type MediaStore } from '../src/media/media-store';
 import { AuditService } from '../src/modules/audit/audit.service';
-import {
-  SLIP_RENDERER,
-  type SlipRenderer,
-} from '../src/modules/identity/credential-slips/slip-renderer';
-import { SlipVault } from '../src/modules/identity/credential-slips/slip-vault';
+import { IdentityMaintenanceJob } from '../src/modules/identity/maintenance/identity-maintenance.job';
 import { MailService } from '../src/modules/mail/mail.service';
 import { JobRegistry } from '../src/queue/job-queue';
 import { createTestApp, type TestApp } from './support/app';
-import { FAKE_PDF, FAKE_XLSX } from './support/capturing-slip-renderer';
 import { sql } from './support/db';
 import { days, minutes } from './support/fake-clock';
 import { csvFile } from './support/files';
@@ -23,42 +15,6 @@ import { DEFAULT_PASSWORD, type SeedUser, seedUser } from './support/users';
 
 let t: TestApp;
 
-/**
- * Dựng sẵn một Phiếu tài khoản (từ PR 7c-2a, duyệt Yêu cầu không còn sinh Phiếu nhưng Phiếu cũ vẫn tải được tới hết hạn,
- * cho tới khi 7d bỏ hẳn): ghi hai tệp mã hóa lên MediaStore và một dòng `credential_slips`.
- */
-async function seedSlip(
-  requestId: string,
-  createdBy: string,
-  options: {
-    status?: 'ready' | 'failed';
-    app?: TestApp;
-    files?: { pdf: Buffer; xlsx: Buffer };
-  } = {},
-) {
-  const app = options.app ?? t;
-  const id = uuidv7();
-  const status = options.status ?? 'ready';
-  const now = app.clock.now();
-  let pdfKey: string | null = null;
-  let xlsxKey: string | null = null;
-  if (status === 'ready') {
-    const vault = app.app.get(SlipVault);
-    const media = app.app.get<MediaStore>(MEDIA_STORE);
-    const files = options.files ?? { pdf: FAKE_PDF, xlsx: FAKE_XLSX };
-    pdfKey = `slips/${id}.pdf.enc`;
-    xlsxKey = `slips/${id}.xlsx.enc`;
-    await media.put(pdfKey, vault.encrypt(files.pdf));
-    await media.put(xlsxKey, vault.encrypt(files.xlsx));
-  }
-  await sql(
-    `INSERT INTO credential_slips (id, request_id, created_by, item_count, status, pdf_key, xlsx_key, expires_at, created_at)
-     VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8)`,
-    [id, requestId, createdBy, status, pdfKey, xlsxKey, new Date(now.getTime() + days(7)), now],
-  );
-  return { id };
-}
-
 beforeAll(async () => {
   t = await createTestApp();
 });
@@ -67,7 +23,6 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await resetState();
-  t.slips.calls.length = 0;
   t.mail.reset();
 });
 
@@ -118,7 +73,7 @@ describe('duyệt Yêu cầu cấp tài khoản (PR 1e)', () => {
     await t.queue.drain();
     return res;
   }
-  const advance = async (ms: number) => {
+  const _advance = async (ms: number) => {
     t.clock.advance(ms);
     admin.cookie = (await login(t.app, admin.username as string, DEFAULT_PASSWORD))
       .cookie as string;
@@ -378,118 +333,6 @@ describe('duyệt Yêu cầu cấp tài khoản (PR 1e)', () => {
     });
   });
 
-  describe('Phiếu tài khoản còn lại (cho tới 7d xóa hẳn)', () => {
-    // Duyệt Yêu cầu KHÔNG còn sinh Phiếu (7c-2a); Phiếu cũ vẫn tải được tới hết hạn, nên dựng sẵn để kiểm.
-    it('duyệt Yêu cầu không sinh Phiếu, không có mật khẩu tạm ở bất kỳ đâu', async () => {
-      await seedUser({ fullName: 'Nguyễn Văn An', code: 'B100' });
-      const id = await pending(
-        csvFile('Mới,B500,b500@example.edu.vn,,,', 'Nguyễn Văn An,B100,b100@example.edu.vn,,,'),
-      );
-      await approved(id, { allValid: true });
-      expect((await get(examiner.cookie, `/api/account-requests/${id}/slips`)).json()).toEqual([]);
-      expect(await sql('SELECT 1 FROM credential_slips')).toHaveLength(0);
-      expect(t.slips.calls).toHaveLength(0);
-      const dir = path.join(process.env.MEDIA_DIR as string, 'slips');
-      expect((await readdir(dir).catch(() => [])).filter((f) => f.endsWith('.enc'))).toEqual([]);
-      expect(
-        await sql('SELECT 1 FROM users WHERE password_hash IS NOT NULL AND code = $1', ['B500']),
-      ).toHaveLength(0);
-    });
-
-    it('liệt kê Phiếu của yêu cầu; lưu dạng mã hóa trên MediaStore', async () => {
-      const id = await pending(csvFile('Mới,B500,b500@example.edu.vn,,,'));
-      const slip = await seedSlip(id, admin.id);
-      const slips = (await get(examiner.cookie, `/api/account-requests/${id}/slips`)).json();
-      expect(slips).toEqual([
-        {
-          id: slip.id,
-          status: 'ready',
-          itemCount: 1,
-          createdAt: t.clock.now().toISOString(),
-          expiresAt: new Date(t.clock.now().getTime() + days(7)).toISOString(),
-        },
-      ]);
-      const dir = path.join(process.env.MEDIA_DIR as string, 'slips');
-      const files = (await readdir(dir)).filter((f) => f.endsWith('.enc'));
-      expect(files.sort()).toEqual([`${slip.id}.pdf.enc`, `${slip.id}.xlsx.enc`]);
-      const onDisk = await readFile(path.join(dir, `${slip.id}.pdf.enc`));
-      expect(onDisk.includes(FAKE_PDF)).toBe(false);
-    });
-
-    it('Quản trị viên và người gửi tải được PDF và Excel; mỗi lần tải ghi nhật ký', async () => {
-      const id = await pending(csvFile('Mới,B500,b500@example.edu.vn,,,'));
-      const slip = await seedSlip(id, admin.id);
-
-      const pdf = await get(examiner.cookie, `/api/credential-slips/${slip.id}/pdf`);
-      expect(pdf.statusCode).toBe(200);
-      expect(pdf.headers['content-type']).toBe('application/pdf');
-      expect(pdf.headers['content-disposition']).toMatch(
-        /attachment; filename="phieu-tai-khoan-\d{8}\.pdf"/,
-      );
-      expect(pdf.rawPayload.equals(FAKE_PDF)).toBe(true);
-
-      const xlsx = await get(admin.cookie, `/api/credential-slips/${slip.id}/xlsx`);
-      expect(xlsx.statusCode).toBe(200);
-      expect(xlsx.headers['content-type']).toContain('spreadsheetml');
-      expect(xlsx.rawPayload.equals(FAKE_XLSX)).toBe(true);
-
-      const logs = (await get(admin.cookie, `/api/admin/audit-logs?entityId=${slip.id}`)).json()
-        .items;
-      expect(logs).toMatchObject([
-        { action: 'credential-slip.download', actorName: 'Quản Trị', after: { format: 'xlsx' } },
-        {
-          action: 'credential-slip.download',
-          actorName: 'Lê Giảng Viên',
-          after: { format: 'pdf' },
-        },
-      ]);
-    });
-
-    it('Người ra đề khác và Người dự thi không thấy phiếu', async () => {
-      const id = await pending(csvFile('Mới,B500,b500@example.edu.vn,,,'));
-      const slip = await seedSlip(id, admin.id);
-      const other = await signedIn({ roleTags: ['examiner'] });
-      const candidate = await signedIn({ roleTags: ['candidate'] });
-
-      expect((await get(other.cookie, `/api/credential-slips/${slip.id}/pdf`)).statusCode).toBe(
-        404,
-      );
-      expect((await get(other.cookie, `/api/account-requests/${id}/slips`)).statusCode).toBe(404);
-      expect((await get(candidate.cookie, `/api/credential-slips/${slip.id}/pdf`)).statusCode).toBe(
-        403,
-      );
-      expect((await call(t.app, 'GET', `/api/credential-slips/${slip.id}/pdf`)).statusCode).toBe(
-        401,
-      );
-      expect(
-        (await get(admin.cookie, '/api/credential-slips/0198f0f0-0000-7000-8000-000000000000/pdf'))
-          .statusCode,
-      ).toBe(404);
-    });
-
-    it('quá 7 ngày thì không tải được nữa (410)', async () => {
-      const id = await pending(csvFile('Mới,B500,b500@example.edu.vn,,,'));
-      const slip = await seedSlip(id, admin.id);
-
-      await advance(days(7) - minutes(1));
-      expect((await get(admin.cookie, `/api/credential-slips/${slip.id}/pdf`)).statusCode).toBe(
-        200,
-      );
-      await advance(minutes(2));
-      const late = await get(examiner.cookie, `/api/credential-slips/${slip.id}/pdf`);
-      expect(late.statusCode).toBe(410);
-      expect(late.json()).toMatchObject({ code: 'SLIP_EXPIRED' });
-    });
-
-    it('Phiếu ghi "lỗi" thì tải báo INVALID_STATE', async () => {
-      const id = await pending(csvFile('Mới,B500,b500@example.edu.vn,,,'));
-      const slip = await seedSlip(id, admin.id, { status: 'failed' });
-      expect(
-        (await get(admin.cookie, `/api/credential-slips/${slip.id}/pdf`)).json(),
-      ).toMatchObject({ code: 'INVALID_STATE' });
-    });
-  });
-
   describe('an toàn khi worker chết giữa chừng (Q93)', () => {
     afterEach(() => vi.restoreAllMocks());
 
@@ -595,66 +438,6 @@ describe('duyệt Yêu cầu cấp tài khoản (PR 1e)', () => {
   });
 });
 
-describe('tải phiếu với bộ dựng PDF thật', () => {
-  let real: TestApp;
-  beforeAll(async () => {
-    real = await createTestApp({ realSlips: true });
-  });
-  afterAll(async () => {
-    await real.app.close();
-  });
-
-  it('PDF hợp lệ, đủ số trang (8 phiếu/trang); Excel không chứa mật khẩu', async () => {
-    await resetState();
-    const examiner = await seedUser({ roleTags: ['examiner'] });
-    await seedUser({ username: 'qt-that', isAdmin: true });
-    const examinerCookie = (await login(real.app, examiner.username as string, DEFAULT_PASSWORD))
-      .cookie as string;
-    const admin = await seedUser({ username: 'qt-that2', isAdmin: true });
-    const adminCookie = (await login(real.app, admin.username as string, DEFAULT_PASSWORD))
-      .cookie as string;
-    const sent = await upload(
-      real.app,
-      '/api/account-requests',
-      csvFile('Một,B1,b1@example.edu.vn,,,'),
-      {
-        cookie: examinerCookie,
-      },
-    );
-    await real.queue.drain();
-
-    // Phiếu dựng bằng bộ dựng thật cho 9 người (Phiếu cũ còn tải được tới 7d).
-    const renderer = real.app.get<SlipRenderer>(SLIP_RENDERER);
-    const entries = Array.from({ length: 9 }, (_, i) => ({
-      fullName: `Người Số ${i}`,
-      code: `B9${i}`,
-      classLabel: 'CNTT',
-      username: `b9${i}`,
-      temporaryPassword: 'MatKhauTam1',
-    }));
-    const files = await renderer.render({
-      entries,
-      listRows: entries.map((e) => ({ ...e, outcome: 'created' as const })),
-      loginUrl: 'http://localhost:5173/login',
-      expiresAt: new Date(real.clock.now().getTime() + days(7)),
-    });
-    const slip = await seedSlip(sent.json().id, admin.id, { app: real, files });
-
-    const pdf = await call(real.app, 'GET', `/api/credential-slips/${slip.id}/pdf`, {
-      cookie: examinerCookie,
-    });
-    expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
-    expect((pdf.rawPayload.toString('latin1').match(/\/Type \/Page(?!s)/g) ?? []).length).toBe(2);
-
-    const xlsx = await call(real.app, 'GET', `/api/credential-slips/${slip.id}/xlsx`, {
-      cookie: adminCookie,
-    });
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(xlsx.rawPayload as unknown as ArrayBuffer);
-    expect(workbook.worksheets[0]?.rowCount).toBe(10); // tiêu đề + 9 người
-  });
-});
-
 describe('dọn dẹp hằng ngày (Q96)', () => {
   const cleanup = () => t.app.get(JobRegistry).run('maintenance.cleanup', {});
 
@@ -673,60 +456,24 @@ describe('dọn dẹp hằng ngày (Q96)', () => {
   });
 
   it('một bước dọn dẹp lỗi không làm dừng các bước còn lại', async () => {
-    const user = await seedUser({});
-    await sql(
-      "INSERT INTO login_events (id, user_id, identifier_tried, success, at) VALUES (gen_random_uuid(), $1, 'x', true, $2)",
-      [user.id, new Date(t.clock.now().getTime() - days(400))],
-    );
     const examiner = await signedIn({ roleTags: ['examiner'] });
-    const admin = await signedIn({ isAdmin: true });
     const res = await upload(
       t.app,
       '/api/account-requests',
       csvFile('Một,B1,b1@example.edu.vn,,,'),
-      {
-        cookie: examiner.cookie,
-      },
+      { cookie: examiner.cookie },
     );
     await t.queue.drain();
-    await seedSlip(res.json().id, admin.id);
-    t.clock.advance(days(8));
+    // Yêu cầu kẹt ở "đang đọc file" quá 15 phút: bước này đứng SAU bước xóa lịch sử đăng nhập.
+    await sql("UPDATE account_requests SET status = 'parsing' WHERE id = $1", [res.json().id]);
+    t.clock.advance(minutes(30));
 
-    const media = t.app.get<MediaStore>(MEDIA_STORE);
-    vi.spyOn(media, 'delete').mockRejectedValue(new Error('ổ đĩa lỗi'));
-    await cleanup(); // bước xóa file phiếu lỗi nhưng không ném ra ngoài
+    const job = t.app.get(IdentityMaintenanceJob) as unknown as Record<string, () => Promise<void>>;
+    vi.spyOn(job, 'deleteOldLoginEvents').mockRejectedValue(new Error('bước đầu lỗi'));
+    await cleanup(); // bước đầu lỗi nhưng không ném ra ngoài
     vi.restoreAllMocks();
-    expect(await sql('SELECT 1 FROM login_events WHERE identifier_tried = $1', ['x'])).toHaveLength(
-      0,
-    );
-  });
-
-  it('phiếu hết hạn bị xóa file và đặt "hết hạn"', async () => {
-    const examiner = await signedIn({ roleTags: ['examiner'] });
-    const admin = await signedIn({ isAdmin: true });
-    const res = await upload(
-      t.app,
-      '/api/account-requests',
-      csvFile('Một,B1,b1@example.edu.vn,,,'),
-      {
-        cookie: examiner.cookie,
-      },
-    );
-    await t.queue.drain();
-    await seedSlip(res.json().id, admin.id);
-
-    const dir = path.join(process.env.MEDIA_DIR as string, 'slips');
-    const slipFiles = async () => (await readdir(dir)).filter((f) => f.endsWith('.enc'));
-    expect(await slipFiles()).toHaveLength(2);
-    await cleanup();
-    expect(await slipFiles()).toHaveLength(2); // chưa hết hạn
-
-    t.clock.advance(days(8));
-    await cleanup();
-    expect(await slipFiles()).toEqual([]);
-    expect(await sql<{ status: string }>('SELECT status::text FROM credential_slips')).toEqual([
-      { status: 'expired' },
-    ]);
+    const [request] = await sql<{ status: string }>('SELECT status::text FROM account_requests');
+    expect(request?.status).toBe('parse_failed');
   });
 
   it('yêu cầu kẹt ở "đang đọc file" quá 15 phút (worker chết) chuyển sang parse_failed và báo người gửi', async () => {

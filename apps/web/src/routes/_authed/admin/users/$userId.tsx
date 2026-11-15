@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { ArrowLeft, History, KeyRound, Lock, LockOpen, ScrollText, Trash2 } from 'lucide-react';
+import { ArrowLeft, History, Lock, LockOpen, ScrollText, Trash2 } from 'lucide-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -12,10 +12,8 @@ import {
   type Gender,
   lockUser,
   ROLE_TAGS,
-  reissueTemporaryPassword,
   removeUser,
   setRoleTag,
-  type TemporaryPassword,
   type UserDetail,
   type UserUpdate,
   unitsQuery,
@@ -38,7 +36,7 @@ import {
   TextField,
 } from '../../../../lib/ui';
 import { AccountSupportCard } from '../../../../lib/ui/account-support-card';
-import { StatusBadge, TemporaryPasswordDialog } from '../../../../lib/ui/admin';
+import { StatusBadge } from '../../../../lib/ui/admin';
 import { LiveSessionsNotice } from '../../../../lib/ui/live-sessions-notice';
 import { useToast } from '../../../../lib/ui/toast';
 import { TransferDialog } from '../../../../lib/ui/transfer-dialog';
@@ -420,16 +418,15 @@ function AccountCard({ user }: { user: UserDetail }) {
   );
 }
 
-type PendingAction = 'lock' | 'unlock' | 'password' | 'remove' | null;
+type PendingAction = 'lock' | 'unlock' | 'remove' | null;
 
 function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: () => void }) {
   const { t } = useTranslation();
-  // Đang trong Phiên thi đang diễn ra: Khóa và Xóa bị vô hiệu kèm lý do (Q264). Mở khóa và Cấp lại mật khẩu không bị chặn.
+  // Đang trong Phiên thi đang diễn ra: Khóa và Xóa bị vô hiệu kèm lý do (Q264). Mở khóa không bị chặn.
   const inLiveSession = user.liveSessions.length > 0;
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<PendingAction>(null);
   const [reason, setReason] = useState('');
-  const [password, setPassword] = useState<(TemporaryPassword & { title: string }) | null>(null);
   const close = () => {
     setPending(null);
     setReason('');
@@ -437,10 +434,7 @@ function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: (
   const mutation = useUserMutation(user.id, async (action: Exclude<PendingAction, null>) => {
     if (action === 'lock') return lockUser(user.id, reason.trim());
     if (action === 'unlock') return unlockUser(user.id, reason.trim());
-    if (action === 'remove') return removeUser(user.id);
-    const result = await reissueTemporaryPassword(user.id);
-    setPassword({ ...result, title: t('admin.users.passwordReissued') });
-    return result;
+    return removeUser(user.id);
   });
   // Người còn Chủ đề: api trả `HAS_CONTENT`, chuyển sang bước chọn người nhận (Q150, Q151).
   const confirm = (event: FormEvent) => {
@@ -475,11 +469,6 @@ function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: (
       body: t('admin.users.unlockBody'),
       cta: t('admin.users.unlock'),
     },
-    password: {
-      title: t('admin.users.reissueTitle', { name: user.fullName }),
-      body: t('admin.users.reissueBody'),
-      cta: t('admin.users.reissue'),
-    },
     remove: {
       title: t('admin.users.removeTitle', { name: user.fullName }),
       body: t('admin.users.removeBody'),
@@ -506,10 +495,6 @@ function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: (
             {t('admin.users.lock')}
           </Button>
         )}
-        <Button onClick={() => setPending('password')}>
-          <KeyRound aria-hidden className="size-5" />
-          {t('admin.users.reissue')}
-        </Button>
         <Button
           variant="danger-ghost"
           disabled={inLiveSession}
@@ -552,7 +537,6 @@ function ActionsCard({ user, onHasContent }: { user: UserDetail; onHasContent: (
           </form>
         )}
       </Dialog>
-      <TemporaryPasswordDialog value={password} onClose={() => setPassword(null)} />
     </SectionCard>
   );
 }

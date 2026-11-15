@@ -2,13 +2,13 @@
 
 Hệ thống khảo thí trực tuyến BLUni, ưu tiên làm bài trên điện thoại. Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi tại lớp hoặc phòng máy. Người dự thi đăng nhập, nhập Mã vào thi và làm bài ngay trên điện thoại hoặc máy tính.
 
-> **Trạng thái (8/11/2026):** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án), **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi), **lát cắt 3** (Bộ đề) **lát cắt 4** (Phiên thi: Danh sách dự thi, Mã vào thi, làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ) và **lát cắt 5** (chấm tự động và tự luận, Công bố kết quả, Kết quả của tôi, Phúc khảo, Chốt, Đính chính đáp án, Ủy quyền chấm, xuất Excel, đo tải 500 người). Lát cắt tiếp theo là 6 (triển khai production). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 5](#dùng-thử-lát-cắt-5); hiệu năng đã đo ở [docs/hieu-nang.md](docs/hieu-nang.md).
+> **Trạng thái (8/11/2026):** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án), **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi), **lát cắt 3** (Bộ đề) **lát cắt 4** (Phiên thi: Danh sách dự thi, Mã vào thi, làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ) và **lát cắt 5** (chấm tự động và tự luận, Công bố kết quả, Kết quả của tôi, Phúc khảo, Chốt, Đính chính đáp án, Ủy quyền chấm, xuất Excel, đo tải 500 người). Lát cắt tiếp theo là 6 (triển khai production). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 5](#dùng-thử-lát-cắt-5); hiệu năng đã đo ở [docs/hieu-nang.md](docs/hieu-nang.md).
 
 ## Tính năng giai đoạn 1
 
 **Quản trị viên**
 - Tạo Quản trị viên đầu tiên khi triển khai; chỉ định thêm Quản trị viên khác.
-- Tạo link Lời mời để một người trở thành Người ra đề; duyệt Yêu cầu cấp tài khoản và xuất Phiếu tài khoản có mật khẩu tạm.
+- Tạo link Lời mời để một người trở thành Người ra đề; duyệt Yêu cầu cấp tài khoản (mỗi người mới nhận một thư kích hoạt để tự đặt mật khẩu).
 - Gắn Nhãn vai trò (Người ra đề, Người dự thi); Khóa đăng nhập, Xóa người dùng, xem lịch sử đăng nhập và nhật ký thao tác.
 - Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Bộ đề nháp có câu của Chủ đề đó đi theo. Xóa Người ra đề chuyển luôn mọi Bộ đề và Phiên thi của họ cho người nhận.
 - Không Khóa đăng nhập hay Xóa được người đang trong Phiên thi đang diễn ra (trang người dùng báo rõ Phiên thi nào và vô hiệu hai nút).
@@ -66,7 +66,7 @@ Lý do của từng lựa chọn nằm trong các ADR ở [docs/adr](docs/adr).
 Cloudflare Tunnel ──► Podman pod `prod-exam`
                         ├─ web     nginx: SPA tĩnh, proxy /api và /ws, phục vụ ảnh
                         ├─ api     NestJS modular monolith (HTTP + WebSocket)
-                        ├─ worker  BullMQ: tự nộp bài quá hạn, xử lý ảnh, Excel, Phiếu tài khoản, chấm tự động và chấm lại sau Đính chính, Chốt kết quả
+                        ├─ worker  BullMQ: tự nộp bài quá hạn, xử lý ảnh, Excel, gửi thư, chấm tự động và chấm lại sau Đính chính, Chốt kết quả
                         ├─ postgres  nơi lưu trữ gốc
                         └─ redis     phiên đăng nhập, hàng đợi, trạng thái online, kênh tin đẩy
 ```
@@ -117,7 +117,7 @@ make -C infra dev-up
 ```
 
 ```bash
-cp apps/api/.env.example apps/api/.env && sed -i "s|^SLIP_ENCRYPTION_KEY=.*|SLIP_ENCRYPTION_KEY=$(openssl rand -base64 32)|" apps/api/.env
+cp apps/api/.env.example apps/api/.env
 ```
 
 ```bash
@@ -134,7 +134,7 @@ Sau đó mở **hai cửa sổ terminal** và để chúng chạy:
 | Terminal | Lệnh | Việc làm |
 |---|---|---|
 | 1 | `pnpm dev` | api (cổng 3000) và web (cổng 5173), tự nạp lại khi sửa mã |
-| 2 | `pnpm -C apps/api dev:worker` | worker: đọc file Excel, tạo tài khoản, dựng Phiếu tài khoản; tự khởi động lại khi terminal 1 build lại mã |
+| 2 | `pnpm -C apps/api dev:worker` | worker: đọc file Excel, tạo tài khoản, gửi thư kích hoạt; tự khởi động lại khi terminal 1 build lại mã |
 
 Chạy terminal 2 sau khi terminal 1 đã build xong (có thư mục `apps/api/dist`). **Không có worker** thì yêu cầu tải lên sẽ đứng ở "Đang đọc file".
 
@@ -178,15 +178,15 @@ Mục này dẫn anh đi qua toàn bộ chức năng đã làm, theo đúng lu�
 2. Chọn file [docs/samples/yeu-cau-cap-tai-khoan-mau.csv](docs/samples/yeu-cau-cap-tai-khoan-mau.csv) (hoặc điền file mẫu của anh), có thể ghi chú, bấm **Gửi yêu cầu**. File mẫu có 8 dòng: 5 người hợp lệ và 3 dòng cố ý sai (thiếu họ tên, email sai, trùng mã trong file) để xem hệ thống báo lỗi từng dòng.
 3. Trang chi tiết tự cập nhật từ "Đang đọc file" sang "Chờ duyệt". Bảng dòng cho biết từng người: **Người mới** (sẽ được tạo), **Khớp tài khoản có sẵn**, **Khớp nhưng khác họ tên**, **Không duyệt được** kèm lý do (thiếu họ tên, email sai, trùng trong file...).
 
-**4. Quản trị viên: duyệt và lấy Phiếu tài khoản** (cửa sổ chính)
+**4. Quản trị viên: duyệt Yêu cầu** (cửa sổ chính)
 1. Chuông thông báo trên thanh trên cùng có số chưa đọc (cập nhật mỗi 60 giây, hoặc tải lại trang). Bấm vào thông báo để mở yêu cầu.
 2. Xem bảng dòng, lọc theo loại. Bấm **Duyệt các dòng hợp lệ** (người mới và người khớp đúng), hoặc tick từng dòng rồi **Duyệt dòng đã chọn / Từ chối dòng đã chọn**. Dòng "khác họ tên" chỉ được duyệt khi anh tick riêng: kiểm tra đúng là người đó.
-3. Vài giây sau trạng thái đổi sau khi worker xong. Với file mẫu, 5 người hợp lệ được tạo tài khoản và 3 dòng lỗi không duyệt được nên yêu cầu thành "Duyệt một phần" (nếu mọi dòng đều thành công thì là "Đã duyệt"). Hiện thêm mục **Phiếu tài khoản**: **Tải PDF (in phát)** là phiếu A4, 8 phiếu mỗi trang, có tên đăng nhập, mật khẩu tạm và mã QR; **Tải Excel (tra cứu)** không có mật khẩu. Phiếu chỉ tải được trong **7 ngày** và mỗi lần tải được ghi vào Nhật ký thao tác.
-4. Người ra đề (cửa sổ ẩn danh) cũng thấy và tải được phiếu của yêu cầu mình gửi.
+3. Vài giây sau trạng thái đổi sau khi worker xong. Với file mẫu, 5 người hợp lệ được tạo tài khoản và 3 dòng lỗi không duyệt được nên yêu cầu thành "Duyệt một phần" (nếu mọi dòng đều thành công thì là "Đã duyệt"). Mỗi người mới ở trạng thái **Chờ kích hoạt** và được xếp một thư kích hoạt (không có mật khẩu tạm, không ai biết mật khẩu của họ). Trang Yêu cầu hiện bảng **Theo dõi kích hoạt**: ai đã gửi thư, thư lỗi, cần kiểm tra, đã kích hoạt; có nút Gửi lại, Sửa email, Liên kết hỗ trợ.
+4. Người ra đề (cửa sổ ẩn danh) cũng thấy bảng theo dõi kích hoạt của yêu cầu mình gửi.
 5. Thử **Từ chối yêu cầu** ở một yêu cầu khác: người gửi nhận thông báo.
 
-**5. Người dự thi: đăng nhập bằng mật khẩu tạm**
-1. Đăng xuất, đăng nhập bằng tên đăng nhập và mật khẩu trên phiếu. Hệ thống buộc đổi mật khẩu rồi vào trang Người dự thi.
+**5. Người dự thi: kích hoạt bằng thư**
+1. Ở máy phát triển chưa cấu hình SMTP nên thư kích hoạt được **in ra cửa sổ worker**: mở liên kết `/activate#…` trong đó, tự đặt mật khẩu, rồi đăng nhập bằng tên đăng nhập (mã định danh viết thường, hoặc email) để vào trang Người dự thi.
 2. Quay lại bước 3 và tải lên **cùng file** một lần nữa: lần này các dòng thành **Khớp tài khoản có sẵn** (chỉ thêm vai trò, không tạo tài khoản trùng). Sửa họ tên một dòng trong file để thấy **Khớp nhưng khác họ tên**.
 
 **6. Quản trị viên: quản lý Người dùng và nhật ký**
@@ -279,7 +279,7 @@ Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Ngư�
 |---|---|---|
 | web | `pnpm dev` (cổng 5173) | Vite, chuyển tiếp `/api` sang api |
 | api | `pnpm dev` (cổng 3000) | NestJS; kiểm tra sức khỏe ở `/api/health` |
-| worker | `pnpm -C apps/api dev:worker` | BullMQ: đọc file Excel, duyệt và tạo tài khoản, dựng Phiếu tài khoản, dọn dẹp hằng ngày lúc 3 giờ sáng. Production dùng `pnpm -C apps/api start:worker` (cùng image với api) |
+| worker | `pnpm -C apps/api dev:worker` | BullMQ: đọc file Excel, duyệt và tạo tài khoản, gửi thư, dọn dẹp hằng ngày lúc 3 giờ sáng. Production dùng `pnpm -C apps/api start:worker` (cùng image với api) |
 | PostgreSQL, Redis | `make -C infra dev-up` | Redis đặt `noeviction` vì BullMQ cần |
 
 **Biến môi trường của api và worker** (đặt trong `apps/api/.env`; xem `.env.example`)
@@ -287,9 +287,8 @@ Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Ngư�
 | Biến | Bắt buộc | Ý nghĩa |
 |---|---|---|
 | `DATABASE_URL`, `REDIS_URL` | có | Kết nối PostgreSQL và Redis |
-| `SLIP_ENCRYPTION_KEY` | có | Khóa AES-256-GCM mã hóa Phiếu tài khoản: 32 byte dạng base64, tạo bằng `openssl rand -base64 32`. Mỗi môi trường một khóa riêng; **giữ kín và sao lưu riêng khỏi dữ liệu**. Mất khóa thì không mở lại được các phiếu còn hạn (phiếu chỉ sống 7 ngày; khi đó dùng "Cấp lại mật khẩu tạm") |
-| `APP_ORIGINS` | production | Địa chỉ công khai của hệ thống, cách nhau bằng dấu phẩy; địa chỉ đầu tiên được in thành mã QR trên phiếu. Cũng là danh sách Origin được phép gửi request đổi dữ liệu (chống CSRF) |
-| `MEDIA_DIR` | không | Thư mục lưu file tải lên tạm và Phiếu tài khoản (mặc định `./media-data`). Production: một volume cho cả api lẫn worker |
+| `APP_ORIGINS` | production | Địa chỉ công khai của hệ thống, cách nhau bằng dấu phẩy; địa chỉ đầu tiên dùng làm gốc của liên kết trong thư. Cũng là danh sách Origin được phép gửi request đổi dữ liệu (chống CSRF) |
+| `MEDIA_DIR` | không | Thư mục lưu file tải lên tạm và Hình minh họa (mặc định `./media-data`). Production: một volume cho cả api lẫn worker |
 | `LOGIN_MAX_PER_IP` | không | Số lần thử đăng nhập tối đa mỗi IP trong 10 phút (mặc định 20). Nâng cao khi chạy `demo:room` hay đo tải |
 | `DB_POOL_MAX` | không | Số kết nối PostgreSQL tối đa của mỗi tiến trình (mặc định 10); tổng api và worker phải nhỏ hơn `max_connections` |
 | `TRUST_PROXY` | không | Ai được tin khi báo địa chỉ khách qua `X-Forwarded-For` (mặc định `loopback`, nginx cùng pod) |
@@ -300,7 +299,6 @@ Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Ngư�
 **Sự cố thường gặp**
 - *Worker báo lỗi rồi thoát (ví dụ `ENOENT ... dist/...`) hoặc nghi còn tiến trình worker cũ chạy ngầm*: gõ `pkill -f dist/worker/main.js` để tắt hết, đợi terminal 1 build xong rồi chạy lại `pnpm -C apps/api dev:worker`. Chỉ nên có đúng một worker.
 - *Yêu cầu đứng mãi ở "Đang đọc file" hoặc "Đang tạo tài khoản"*: worker chưa chạy hoặc không nối được Redis. Bật worker rồi tải lại trang; yêu cầu kẹt quá 15 phút ở "Đang đọc file" sẽ được job dọn dẹp chuyển thành "File lỗi".
-- *api hoặc worker không khởi động, báo `SLIP_ENCRYPTION_KEY`*: thiếu hoặc sai khóa; xem lệnh `sed` ở Bắt đầu nhanh.
 - *Đăng nhập sai nhiều lần bị chặn 15 phút*: đúng thiết kế (Q47). Quản trị viên mở bằng **Cấp lại mật khẩu tạm**; chính Quản trị viên bị chặn thì dùng `pnpm cli recover-admin`.
 - *Đổi cổng hoặc tên miền*: cập nhật `APP_ORIGINS`, nếu không các thao tác ghi sẽ bị từ chối với lỗi "Yêu cầu bị từ chối. Hãy tải lại trang".
 - *Màn Theo dõi ghi "Cập nhật mỗi 5 giây" thay vì "Cập nhật trực tiếp"*: kênh Socket.IO không nối được (proxy không chuyển `/ws`, Origin không có trong `APP_ORIGINS`, hoặc bị chặn). Hệ thống vẫn đúng, chỉ chậm hơn: Người dự thi nhận thông báo trong tối đa 15 giây.
@@ -341,7 +339,7 @@ Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, r
 | Lát cắt | Nội dung |
 |---|---|
 | 0 | **Xong.** Khung monorepo, Podman pod cho dev/CI, pipeline GitHub Actions |
-| 1 | **Xong.** Tạo Quản trị viên đầu tiên, đăng nhập, quản lý Người dùng, Lời mời, Yêu cầu cấp tài khoản, Phiếu tài khoản, giao diện sáng/tối |
+| 1 | **Xong.** Tạo Quản trị viên đầu tiên, đăng nhập, quản lý Người dùng, Lời mời, Yêu cầu cấp tài khoản, giao diện sáng/tối |
 | 2 | **Xong.** Chủ đề, Câu hỏi, Hình minh họa, soạn công thức, nhập Excel |
 | 3 | **Xong.** Bộ đề, Phần, Đặt điểm nhanh, Xem thử, Phát hành, Lưu trữ Câu hỏi và Bộ đề, Nhân bản, Chuyển giao kèm Bộ đề |
 | 4 | **Xong.** Phiên thi, Danh sách dự thi, Mã vào thi, làm bài trên điện thoại (chịu mất mạng), theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ, kênh đẩy Socket.IO, Xóa Người ra đề chuyển Phiên thi |

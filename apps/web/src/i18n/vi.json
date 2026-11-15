@@ -145,7 +145,6 @@
     "VALIDATION_required": "Hãy chọn một file.",
     "VALIDATION_unsupported_file": "File không đọc được. Hãy dùng đúng định dạng của file mẫu.",
     "VALIDATION_file_too_large": "File quá lớn. Tối đa 2 MB.",
-    "SLIP_EXPIRED": "Phiếu tài khoản đã hết hạn tải (quá 7 ngày). Hãy dùng \"Cấp lại mật khẩu tạm\" ở trang Người dùng.",
     "VALIDATION_item_not_approvable": "Có dòng không duyệt được (đã xử lý, bị chặn hoặc không thuộc yêu cầu). Hãy tải lại trang.",
     "VALIDATION_item_not_rejectable": "Có dòng không từ chối được (đã xử lý hoặc không thuộc yêu cầu). Hãy tải lại trang.",
     "VALIDATION_nothing_selected": "Chưa có dòng nào để duyệt.",
@@ -210,7 +209,6 @@
     "INVALID_STATE_DEVICE_BOUND_ELSEWHERE": "Bạn đã vào Phiên thi này trên một thiết bị khác. Hãy nhờ Người ra đề thu hồi thiết bị cũ nếu cần đổi máy.",
     "INVALID_STATE_DEVICE_REVOKED": "Thiết bị này đã bị thu hồi khỏi Phiên thi. Hãy nhờ Người ra đề hoặc dùng thiết bị đang được gắn.",
     "INVALID_STATE_ROSTER_FULL": "Danh sách dự thi tối đa 500 người. Hãy bớt người hoặc chia thành nhiều Phiên thi.",
-    "INVALID_STATE_ASK_ADMIN": "Chỉ cấp lại được cho tài khoản do chính bạn xin cấp và chủ tài khoản chưa đổi mật khẩu tạm. Trường hợp khác, hãy nhờ Quản trị viên.",
     "INVALID_STATE_EXTENSION_LIMIT": "Có người đã được cộng đủ giờ tối đa (600 phút). Bỏ họ ra khỏi nhóm rồi thử lại.",
     "INVALID_STATE_BATCH_REUSED": "Yêu cầu này trùng mã với một yêu cầu khác. Đóng hộp thoại và mở lại.",
     "INVALID_STATE_ALREADY_RELEASED": "Kết quả đã được Công bố nên không thay đổi được nữa. Điểm chỉ đổi qua Phúc khảo hoặc Đính chính đáp án.",
@@ -498,12 +496,6 @@
     "associate_professor": "Phó giáo sư",
     "professor": "Giáo sư"
   },
-  "temporaryPassword": {
-    "onlyOnce": "Mật khẩu chỉ hiển thị lần này. Hãy sao chép hoặc ghi lại trước khi đóng.",
-    "copy": "Sao chép mật khẩu",
-    "expires": "Hết hạn lúc {{time}}. Người dùng phải đổi mật khẩu ở lần đăng nhập đầu tiên.",
-    "saved": "Tôi đã lưu mật khẩu"
-  },
   "admin": {
     "nav": {
       "users": "Người dùng",
@@ -565,19 +557,15 @@
       "actions": "Thao tác",
       "lock": "Khóa đăng nhập",
       "unlock": "Mở khóa",
-      "reissue": "Cấp lại mật khẩu tạm",
       "remove": "Xóa người dùng",
       "lockTitle": "Khóa đăng nhập {{name}}?",
       "lockBody": "Mọi Phiên đăng nhập của người này bị thu hồi ngay và họ không đăng nhập được cho tới khi được mở khóa.",
       "unlockTitle": "Mở khóa {{name}}?",
       "unlockBody": "Người này đăng nhập lại được bằng mật khẩu hiện tại.",
-      "reissueTitle": "Cấp lại mật khẩu tạm cho {{name}}?",
-      "reissueBody": "Mật khẩu cũ mất hiệu lực, mọi Phiên đăng nhập bị thu hồi. Mật khẩu tạm mới có hạn 7 ngày và chỉ hiển thị một lần.",
       "removeTitle": "Xóa người dùng {{name}}?",
       "removeBody": "Người này bị đưa ra khỏi sử dụng vĩnh viễn, không khôi phục được. Lịch sử và kết quả liên quan vẫn được giữ.",
       "reason": "Lý do",
       "reasonOptional": "Lý do (không bắt buộc)",
-      "passwordReissued": "Mật khẩu tạm mới",
       "actionsByUser": "Thao tác người này đã làm",
       "filterActivation": "Kích hoạt",
       "activationAll": "Tất cả",
@@ -898,21 +886,6 @@
     "appeal.period_extended": "Phiên thi “{{title}}” đã kéo dài thời hạn Phúc khảo. Xem hạn mới ở Kết quả của bạn.",
     "result.corrected": "Điểm Câu {{no}} của Phiên thi “{{title}}” đã được điều chỉnh do đính chính đáp án. Xem Kết quả.",
     "mail.quota_high": "Số thư đã gửi trong 24 giờ vượt 70 % hạn mức ({{sent24h}}/{{limit}}). Xem Hàng đợi thư."
-  },
-  "credentialSlips": {
-    "heading": "Phiếu tài khoản",
-    "item": "{{count}} tài khoản · tạo lúc {{time}}",
-    "expires": "Tải được đến {{time}}",
-    "expired": "Đã hết hạn tải. Dùng \"Cấp lại mật khẩu tạm\" ở trang Người dùng nếu cần.",
-    "failed": "Không dựng được phiếu. Tài khoản đã được tạo: hãy dùng \"Cấp lại mật khẩu tạm\" ở trang Người dùng.",
-    "downloadPdf": "Tải PDF (in phát)",
-    "downloadXlsx": "Tải Excel (tra cứu)",
-    "status": {
-      "ready": "Sẵn sàng",
-      "failed": "Lỗi",
-      "expired": "Hết hạn"
-    },
-    "hint": "Phiếu chứa mật khẩu tạm: chỉ phát cho đúng người, không lưu hay chuyển tiếp."
   },
   "filter": {
     "open": "Lọc ({{count}})",
@@ -1566,11 +1539,6 @@
       "removedToast": "Đã bớt {{count}} người.",
       "selectAll": "Chọn tất cả trên trang này",
       "select": "Chọn {{name}}",
-      "reissue": "Cấp lại mật khẩu tạm",
-      "reissueTitle": "Mật khẩu tạm mới của {{name}}",
-      "reissueConfirmTitle": "Cấp lại mật khẩu tạm cho {{name}}?",
-      "reissueConfirmBody": "Dùng khi người này làm mất Phiếu tài khoản và chưa đăng nhập lần nào. Mật khẩu mới chỉ hiện một lần, hết hạn sau 7 ngày, mọi phiên đăng nhập hiện có của người này bị thu hồi và họ nhận thông báo. Thao tác được ghi vào nhật ký.",
-      "reissueConfirm": "Cấp mật khẩu mới",
       "rowActions": "Thao tác với {{name}}",
       "closedNote": "Phiên thi đã đóng nên không thay đổi Danh sách được nữa."
     },

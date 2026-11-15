@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
-import { hours, minutes } from './support/fake-clock';
+import { minutes } from './support/fake-clock';
 import { csvFile } from './support/files';
 import { call, login, upload } from './support/http';
 import { resetState } from './support/reset';

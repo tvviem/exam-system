@@ -158,14 +158,13 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   await chooseFromRowMenu(page, `Thao tác với Lê Văn Cường (${p})`, 'Bớt');
   await expect(rows).toHaveCount(2);
 
-  // Cấp lại mật khẩu tạm: tài khoản này không do Yêu cầu cấp tài khoản của mình tạo nên bị từ chối
-  await chooseFromRowMenu(page, `Thao tác với Nguyễn Văn An (${p})`, 'Cấp lại mật khẩu tạm');
-  await page.getByRole('button', { name: 'Cấp mật khẩu mới' }).click();
-  const refused = page.getByRole('alert').filter({
-    hasText: 'Chỉ cấp lại được cho tài khoản do chính bạn xin cấp',
-  });
-  await expect(refused).toBeVisible();
-  await refused.getByRole('button', { name: 'Đóng' }).click(); // toast lỗi ở lại tới khi đóng
+  // "Cấp lại mật khẩu tạm" đã bị bỏ (7d-3): menu của dòng chỉ còn Bớt (và hai việc hỗ trợ kích hoạt khi người đó chưa kích hoạt).
+  await expect(async () => {
+    await page.getByRole('button', { name: `Thao tác với Nguyễn Văn An (${p})` }).click();
+    await expect(page.getByRole('menuitem', { name: 'Bớt' })).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
+  await expect(page.getByRole('menuitem', { name: 'Cấp lại mật khẩu tạm' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   // Tổng quan và sửa
   await page.getByRole('tab', { name: 'Tổng quan' }).click();

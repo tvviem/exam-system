@@ -312,11 +312,6 @@ describe('không Khóa hay Xóa người đang trong Phiên thi đang diễn ra 
     const idle = (await adminApi('GET', `/admin/users/${live.userIds.dung}`)).json();
     expect(idle.liveSessions).toEqual([]);
   });
-
-  it('Cấp lại mật khẩu tạm không bị chặn', async () => {
-    const res = await adminApi('POST', `/admin/users/${live.userIds.an}/temporary-password`);
-    expect(res.statusCode, res.body).toBe(200);
-  });
 });
 
 describe('Đình chỉ chặn bắt đầu Lượt mới (Q272)', () => {

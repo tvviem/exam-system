@@ -6,8 +6,6 @@ import {
   CircleAlert,
   CircleCheck,
   CircleX,
-  FileDown,
-  FileSpreadsheet,
   Hourglass,
   UserRoundCheck,
   UserRoundPlus,
@@ -22,15 +20,13 @@ import {
   accountRequestItemsQuery,
   accountRequestQuery,
   approveAccountRequest,
-  credentialSlipsQuery,
   MATCH_STATUSES,
   type MatchStatus,
   rejectAccountRequest,
-  slipUrl,
 } from '../account-requests';
 import { errorMessage } from '../errors';
 import { formatDate, formatDateTime } from '../format';
-import { Badge, BusyNotice, Button, buttonClass, Dialog, ErrorMessage } from '.';
+import { Badge, BusyNotice, Button, Dialog, ErrorMessage } from '.';
 import { ActivationTracking } from './activation-tracking';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
 import { Chip, ChipGroup } from './chips';
@@ -205,8 +201,6 @@ export function AccountRequestView({
           {(request.data.status === 'approved' || request.data.status === 'partially_approved') && (
             <ActivationTracking requestId={id} />
           )}
-
-          <SlipsSection requestId={id} status={request.data.status} />
 
           {data && data.status !== 'parsing' && data.status !== 'parse_failed' && (
             <>
@@ -519,59 +513,5 @@ function ReviewBar({
       </div>
       <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
     </StickyActionBar>
-  );
-}
-
-/** Các Phiếu tài khoản của yêu cầu; hết 7 ngày thì không tải được nữa (Q94). */
-function SlipsSection({ requestId, status }: { requestId: string; status: AccountRequestStatus }) {
-  const { t } = useTranslation();
-  const slips = useQuery({
-    ...credentialSlipsQuery(requestId, status),
-    enabled: status !== 'parsing' && status !== 'parse_failed',
-  });
-  if (!slips.data || slips.data.length === 0) return null;
-  return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
-      <h2 className="text-lg font-semibold">{t('credentialSlips.heading')}</h2>
-      <p className="text-sm text-fg-muted">{t('credentialSlips.hint')}</p>
-      <ul className="flex flex-col gap-3">
-        {slips.data.map((slip) => (
-          <li key={slip.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
-            <p className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">
-                {t('credentialSlips.item', {
-                  count: slip.itemCount,
-                  time: formatDateTime(slip.createdAt),
-                })}
-              </span>
-              <Badge tone={slip.status === 'ready' ? 'success' : 'warning'}>
-                {t(`credentialSlips.status.${slip.status}`)}
-              </Badge>
-            </p>
-            {slip.status === 'ready' && (
-              <>
-                <p className="text-sm text-fg-muted tabular-nums">
-                  {t('credentialSlips.expires', { time: formatDateTime(slip.expiresAt) })}
-                </p>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <a href={slipUrl(slip.id, 'pdf')} download className={buttonClass('primary')}>
-                    <FileDown aria-hidden className="size-5" />
-                    {t('credentialSlips.downloadPdf')}
-                  </a>
-                  <a href={slipUrl(slip.id, 'xlsx')} download className={buttonClass('secondary')}>
-                    <FileSpreadsheet aria-hidden className="size-5" />
-                    {t('credentialSlips.downloadXlsx')}
-                  </a>
-                </div>
-              </>
-            )}
-            {slip.status === 'expired' && (
-              <p className="text-sm text-fg-muted">{t('credentialSlips.expired')}</p>
-            )}
-            {slip.status === 'failed' && <ErrorMessage>{t('credentialSlips.failed')}</ErrorMessage>}
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

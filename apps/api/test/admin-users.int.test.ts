@@ -412,38 +412,6 @@ describe('Nhãn vai trò, mật khẩu tạm, Quản trị viên mới', () => {
     expect(res.json()).toMatchObject({ code: 'INVALID_STATE' });
   });
 
-  it('cấp lại mật khẩu tạm: hiển thị một lần, thu hồi phiên, gỡ khóa tạm, buộc đổi mật khẩu (Q61)', async () => {
-    const user = await signedIn({ roleTags: ['candidate'] });
-    for (let i = 0; i < 5; i++) await login(t.app, user.username as string, 'sai-mat-khau-roi');
-
-    const res = await as('POST', `/api/admin/users/${user.id}/temporary-password`);
-    expect(res.statusCode).toBe(200);
-    const { temporaryPassword } = res.json();
-    expect(temporaryPassword).toMatch(/^[a-zA-Z2-9]{10}$/);
-
-    expect((await call(t.app, 'GET', '/api/auth/me', { cookie: user.cookie })).statusCode).toBe(
-      401,
-    );
-    expect((await login(t.app, user.username as string, DEFAULT_PASSWORD)).res.statusCode).toBe(
-      401,
-    );
-    const fresh = await login(t.app, user.username as string, temporaryPassword);
-    expect(fresh.res.statusCode).toBe(200);
-    const me = await call(t.app, 'GET', '/api/auth/me', { cookie: fresh.cookie });
-    expect(me.json()).toMatchObject({ mustChangePassword: true });
-
-    const logs = await auditLogs(user.id);
-    expect(logs.map((l: { action: string }) => l.action)).toEqual([
-      'user.temporary-password.reissue',
-    ]);
-    expect(JSON.stringify(logs)).not.toContain(temporaryPassword);
-  });
-
-  it('không tự cấp lại mật khẩu tạm cho chính mình', async () => {
-    const res = await as('POST', `/api/admin/users/${admin.id}/temporary-password`);
-    expect(res.json()).toMatchObject({ code: 'CANNOT_TARGET_SELF' });
-  });
-
   // Tạo Quản trị viên bằng email (Chờ kích hoạt, thư kích hoạt): xem `admin-create-activation.int.test.ts` (PR 7c-2a).
 
   it('tạo Quản trị viên trùng tên đăng nhập trả CONFLICT', async () => {
