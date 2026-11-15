@@ -29,7 +29,9 @@ Dành cho **Quản trị viên**: trang chi tiết người dùng có thẻ **"K
 
 Mọi thao tác ghi **nhật ký** (ai, cho ai, lý do; không có mã). Không ai nhìn thấy mật khẩu của người khác. Tài khoản **Bị Khóa** hoặc **đã Xóa** không hỗ trợ được. Đặt lại mật khẩu của **Người ra đề hoặc Quản trị viên** (qua email hay liên kết hỗ trợ) gửi **chuông** cho các Quản trị viên khác để phát hiện nếu có người chiếm hộp thư.
 
-**Chống lạm dụng:** "Quên mật khẩu" có **ngân sách thư ẩn danh** toàn hệ thống (30 thư mỗi giờ, 60 thư mỗi ngày) để kẻ dùng nhiều IP không đốt hết hạn mức Gmail dành cho thư khẩn; vượt ngân sách thì người dùng vẫn nhận câu trả lời giống nhau nhưng không có thư, khi đó dùng **liên kết hỗ trợ**. Chi tiết và các lỗ hổng còn chờ quyết: [plan/slice-7d-thiet-ke-kiem-thu.md](../plan/slice-7d-thiet-ke-kiem-thu.md) mục 12. Khuyến nghị bật **Bot Fight Mode** và một **luật giới hạn tần suất** cho `/api/auth/` trên Cloudflare.
+**Chống lạm dụng đăng nhập (15/11/2026):** giới hạn thử và khóa tạm theo **cặp (tên đăng nhập, IP)**: kẻ tấn công chỉ khóa được IP của chính họ, không khóa được sinh viên; trần 200 lần mỗi 10 phút theo tên chống đoán mật khẩu từ nhiều IP; tối đa 4 lần băm mật khẩu đồng thời, quá hàng đợi 400 thì báo "Máy chủ đang bận" (503), người dùng thử lại sau vài giây.
+
+**Chống lạm dụng thư:** "Quên mật khẩu" có **ngân sách thư ẩn danh** toàn hệ thống (30 thư mỗi giờ, 60 thư mỗi ngày) để kẻ dùng nhiều IP không đốt hết hạn mức Gmail dành cho thư khẩn; vượt ngân sách thì người dùng vẫn nhận câu trả lời giống nhau nhưng không có thư, khi đó dùng **liên kết hỗ trợ**. Chi tiết và các lỗ hổng còn chờ quyết: [plan/slice-7d-thiet-ke-kiem-thu.md](../plan/slice-7d-thiet-ke-kiem-thu.md) mục 12. Khuyến nghị bật **Bot Fight Mode** và một **luật giới hạn tần suất** cho `/api/auth/` trên Cloudflare.
 
 ## 2. Quy tắc mật khẩu và đăng nhập (đang áp dụng)
 

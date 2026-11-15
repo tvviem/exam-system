@@ -42,9 +42,9 @@ export class AuthService {
     // một lỗi, nên không dò được tài khoản nào tồn tại qua thời gian phản hồi hay mã lỗi.
     const passwordOk = await verifyPassword(user?.passwordHash ?? null, password);
     if (!user) return fail('INVALID_CREDENTIALS');
-    const blocked = await this.loginBlock.isBlocked(user.id);
+    const blocked = await this.loginBlock.isBlocked(user.id, meta.ip);
     if (!passwordOk) {
-      if (!blocked) await this.loginBlock.registerFailure(user.id);
+      if (!blocked) await this.loginBlock.registerFailure(user.id, meta.ip);
       return fail('INVALID_CREDENTIALS');
     }
     if (blocked) return fail('LOGIN_TEMPORARILY_BLOCKED');
@@ -53,7 +53,7 @@ export class AuthService {
       return fail('TEMPORARY_PASSWORD_EXPIRED');
     }
 
-    await this.loginBlock.clear(user.id);
+    await this.loginBlock.clearPair(user.id, meta.ip);
     return this.startSession(user, identifier, meta);
   }
 
