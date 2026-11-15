@@ -35,7 +35,8 @@
       "take": "Phiên thi",
       "account": "Tài khoản",
       "gradingDelegates": "Ủy quyền",
-      "backup": "Sao lưu"
+      "backup": "Sao lưu",
+      "mailQueue": "Hàng đợi thư"
     },
     "questionBank": "Ngân hàng câu hỏi",
     "exams": "Bộ đề",
@@ -511,7 +512,8 @@
       "auditLogs": "Nhật ký thao tác",
       "invitations": "Lời mời",
       "gradingDelegates": "Ủy quyền chấm",
-      "backup": "Sao lưu dữ liệu"
+      "backup": "Sao lưu dữ liệu",
+      "mailQueue": "Hàng đợi thư"
     },
     "users": {
       "heading": "Người dùng",
@@ -894,7 +896,8 @@
     "appeal.overdue": "Phiên thi “{{title}}” đã hết hạn Phúc khảo nhưng còn {{count}} Phúc khảo chờ xử lý.",
     "appeal.resolved": "Phúc khảo của bạn ở Phiên thi “{{title}}” đã được xử lý. Xem câu trả lời.",
     "appeal.period_extended": "Phiên thi “{{title}}” đã kéo dài thời hạn Phúc khảo. Xem hạn mới ở Kết quả của bạn.",
-    "result.corrected": "Điểm Câu {{no}} của Phiên thi “{{title}}” đã được điều chỉnh do đính chính đáp án. Xem Kết quả."
+    "result.corrected": "Điểm Câu {{no}} của Phiên thi “{{title}}” đã được điều chỉnh do đính chính đáp án. Xem Kết quả.",
+    "mail.quota_high": "Số thư đã gửi trong 24 giờ vượt 70 % hạn mức ({{sent24h}}/{{limit}}). Xem Hàng đợi thư."
   },
   "credentialSlips": {
     "heading": "Phiếu tài khoản",
@@ -2207,5 +2210,55 @@
     "copied": "Đã sao chép liên kết.",
     "copyFailed": "Không sao chép được, hãy bôi đen và sao chép thủ công.",
     "linkOnce": "Liên kết chỉ hiện một lần: đóng hộp thoại là mất. Đưa tận tay hoặc qua Zalo cho đúng người; tài khoản sau đó Hoạt động nhưng email vẫn chưa xác thực."
+  },
+  "tracking": {
+    "heading": "Theo dõi kích hoạt",
+    "quota": "Đã gửi {{sent}}/{{limit}} thư trong 24 giờ",
+    "quotaMine": "Còn {{ahead}} thư trước thư của bạn ({{count}} thư của bạn đang chờ)",
+    "quotaDone": "dự kiến xong khoảng {{time}}",
+    "filter": "Lọc theo trạng thái",
+    "all": "Tất cả",
+    "awaiting": "Chờ kích hoạt",
+    "state": {
+      "not_sent": "Chưa gửi thư",
+      "sent": "Đã gửi thư",
+      "mail_failed": "Thư lỗi",
+      "needs_check": "Cần kiểm tra",
+      "activated": "Đã kích hoạt",
+      "email_unverified": "Email chưa xác thực"
+    },
+    "resendAll": "Gửi lại cho tất cả",
+    "resendAllHint": "Chỉ gửi cho người chưa kích hoạt và chưa được gửi lại trong 24 giờ; tối đa một lần mỗi 6 giờ.",
+    "resendAllDone": "Đã xếp {{queued}} thư, bỏ qua {{skipped}} người chưa đủ điều kiện",
+    "empty": "Không có ai ở trạng thái này.",
+    "changeEmail": "Sửa email…",
+    "changeEmailOf": "Sửa email của {{name}}",
+    "link": "Liên kết hỗ trợ…",
+    "linkOf": "Liên kết hỗ trợ của {{name}}"
+  },
+  "mailQueue": {
+    "title": "Hàng đợi thư",
+    "nav": "Hàng đợi thư",
+    "quota": "Đã gửi {{sent}}/{{limit}} thư trong 24 giờ",
+    "intro": "Thư gửi qua Gmail bị giới hạn theo ngày; thư vượt hạn mức tự chờ đến khi còn chỗ.",
+    "counts": "Số thư theo trạng thái",
+    "status": {
+      "pending": "Đang chờ",
+      "sending": "Đang gửi",
+      "sent": "Đã gửi",
+      "failed": "Lỗi",
+      "rejected": "Bị từ chối",
+      "skipped": "Bỏ qua"
+    },
+    "unsent": "Thư chưa gửi được",
+    "emptyUnsent": "Không có thư nào đang chờ hay lỗi.",
+    "kind": "Loại thư",
+    "to": "Người nhận",
+    "lane": {
+      "urgent": "Khẩn",
+      "bulk": "Hàng loạt"
+    },
+    "attempts": "Số lần thử",
+    "error": "Lỗi gần nhất"
   }
 }

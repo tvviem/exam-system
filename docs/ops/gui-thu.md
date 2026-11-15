@@ -72,6 +72,8 @@ Lệnh `prod-mail-test` in rõ "Chưa cấu hình gửi thư", "Địa chỉ kh�
 | ✗ thư chờ cũ hơn 48 giờ | người dùng chưa kích hoạt được | xem log worker: sai App Password, Gmail chặn, hết hạn mức |
 | ⚠ N thư lỗi hoặc bị từ chối trong 7 ngày | địa chỉ sai, hộp thư đầy | sửa email người nhận rồi gửi lại |
 
+**Xem trên giao diện (PR 7d-2):** Quản trị viên mở màn **Hàng đợi thư** để xem số thư theo trạng thái, số thư 24 giờ so với trần và các thư chưa gửi được (không có mã). Vượt **70 % trần (280/400 thư trong 24 giờ)** thì có **chuông** cho mọi Quản trị viên, tối đa một chuông mỗi ngày. Người ra đề thấy **khung hạn mức** ở bảng "Theo dõi kích hoạt" ([tai-khoan-va-mat-khau.md](./tai-khoan-va-mat-khau.md) mục 1c).
+
 ## 7. Việc chủ dự án làm trước khi bật email ở production
 
 Chưa cần làm gì cho tới khi 7c và 7d lên. Khi tới lúc:

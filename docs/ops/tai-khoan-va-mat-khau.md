@@ -19,7 +19,7 @@ Tài liệu cho người vận hành (chủ dự án, Quản trị viên), để
 
 ## 1b. Khi thư không tới: Gửi lại, Sửa email, Liên kết hỗ trợ (từ PR 7d-1, 14/11/2026)
 
-Dành cho **Quản trị viên**: trang chi tiết người dùng có thẻ **"Kích hoạt và email"**. Người ra đề dùng cùng chức năng cho sinh viên của mình ở PR 7d-2.
+Dành cho **Quản trị viên**: trang chi tiết người dùng có thẻ **"Kích hoạt và email"**. **Người ra đề** (từ PR 7d-2) dùng cùng chức năng cho sinh viên Chờ kích hoạt của mình ở **bảng "Theo dõi kích hoạt"** (mục 1c).
 
 | Tình huống | Việc làm | Điều cần biết |
 |---|---|---|
@@ -32,6 +32,18 @@ Mọi thao tác ghi **nhật ký** (ai, cho ai, lý do; không có mã). Không 
 **Chống lạm dụng đăng nhập (15/11/2026):** giới hạn thử và khóa tạm theo **cặp (tên đăng nhập, IP)**: kẻ tấn công chỉ khóa được IP của chính họ, không khóa được sinh viên; trần 200 lần mỗi 10 phút theo tên chống đoán mật khẩu từ nhiều IP; tối đa 4 lần băm mật khẩu đồng thời, quá hàng đợi 400 thì báo "Máy chủ đang bận" (503), người dùng thử lại sau vài giây.
 
 **Chống lạm dụng thư:** "Quên mật khẩu" có **ngân sách thư ẩn danh** toàn hệ thống (30 thư mỗi giờ, 60 thư mỗi ngày) để kẻ dùng nhiều IP không đốt hết hạn mức Gmail dành cho thư khẩn; vượt ngân sách thì người dùng vẫn nhận câu trả lời giống nhau nhưng không có thư, khi đó dùng **liên kết hỗ trợ**. Chi tiết và các lỗ hổng còn chờ quyết: [plan/slice-7d-thiet-ke-kiem-thu.md](../plan/slice-7d-thiet-ke-kiem-thu.md) mục 12. Khuyến nghị bật **Bot Fight Mode** và một **luật giới hạn tần suất** cho `/api/auth/` trên Cloudflare.
+
+## 1c. Theo dõi kích hoạt trước ngày thi (từ PR 7d-2, 15/11/2026)
+
+Sau khi Yêu cầu cấp tài khoản được duyệt, trang chi tiết **Yêu cầu** (của Người ra đề đã gửi, và của Quản trị viên) có bảng **"Theo dõi kích hoạt"**:
+
+- **Khung hạn mức:** "Đã gửi X/400 thư trong 24 giờ"; nếu có thư của bạn đang chờ thì thêm "còn N thư trước thư của bạn, dự kiến xong khoảng HH:MM" (tính theo đúng lịch gửi thật, kể cả xoay vòng giữa hai Người ra đề).
+- **Sáu trạng thái:** Chưa gửi thư, Đã gửi thư, **Thư lỗi** (bị từ chối ngay, thường sai địa chỉ), **Cần kiểm tra** (đã gửi quá **48 giờ** mà chưa kích hoạt: có thể vào thư rác hoặc bị trả lại, hỏi sinh viên rồi **Sửa email**), Đã kích hoạt, Email chưa xác thực. Nút lọc **"Chờ kích hoạt"** gom bốn trạng thái đầu: bấm một lần là thấy ai còn phải nhắc.
+- **Gửi lại cho tất cả:** chỉ gửi cho người còn Chờ kích hoạt và chưa được gửi lại trong 24 giờ, báo "đã xếp N thư, bỏ qua M người". Người ra đề tối đa **một lần mỗi 6 giờ** (không ai đủ điều kiện thì không mất lượt); Quản trị viên không bị giới hạn 6 giờ.
+- **Từng dòng:** Sửa email, Liên kết hỗ trợ (như mục 1b).
+- Trong **Danh sách dự thi của Phiên thi**, sinh viên chưa kích hoạt có dấu trạng thái và hai việc Sửa email, Liên kết hỗ trợ trong menu của dòng.
+
+**Quản trị viên** có thêm màn **Hàng đợi thư** (thanh điều hướng): số thư theo trạng thái, 24 giờ so với trần 400, và các thư chưa gửi được (đang chờ, lỗi, bị từ chối) kèm lỗi gần nhất; **không hiện mã nào**. Khi số thư 24 giờ **vượt 70 % trần (280/400)** có **chuông** cho mọi Quản trị viên (tối đa một chuông mỗi ngày, tự gỡ khi hạ xuống): nên giãn việc nhập danh sách lớn sang ngày sau.
 
 ## 2. Quy tắc mật khẩu và đăng nhập (đang áp dụng)
 

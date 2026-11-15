@@ -31,6 +31,7 @@ import {
 import { errorMessage } from '../errors';
 import { formatDate, formatDateTime } from '../format';
 import { Badge, BusyNotice, Button, buttonClass, Dialog, ErrorMessage } from '.';
+import { ActivationTracking } from './activation-tracking';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
 import { Chip, ChipGroup } from './chips';
 import { DataList } from './data-list';
@@ -199,6 +200,10 @@ export function AccountRequestView({
             <p role="note" className="rounded-lg border border-border bg-surface p-3 text-sm">
               {t('accountRequests.activationNote')}
             </p>
+          )}
+
+          {(request.data.status === 'approved' || request.data.status === 'partially_approved') && (
+            <ActivationTracking requestId={id} />
           )}
 
           <SlipsSection requestId={id} status={request.data.status} />

@@ -13,6 +13,7 @@ import { AccountRequestsService } from './account-requests/account-requests.serv
 import { RequesterCredentialsService } from './account-requests/requester-credentials.service';
 import { AccountSupportController } from './account-support/account-support.controller';
 import { AccountSupportService } from './account-support/account-support.service';
+import { AccountTrackingService } from './account-support/account-tracking.service';
 import { SupportRateLimiter } from './account-support/support-rate-limiter';
 import { AdminAccountsService } from './admin-accounts.service';
 import { AdminDirectoryService } from './admin-directory.service';
@@ -71,6 +72,7 @@ import { UsersRepository } from './users.repository';
     AccountService,
     AccountEmailService,
     AccountSupportService,
+    AccountTrackingService,
     SupportRateLimiter,
     AuthSessionStore,
     TokenAuthenticator,

@@ -228,3 +228,20 @@ Hệ quả cần biết: kẻ chỉ có **một IP** không còn khóa được 
 ### 14.4 Chưa làm
 
 Chuông cho Quản trị viên khi một tài khoản chạm trần 200 lần (dấu hiệu bị tấn công); Cloudflare (mục 12.4) vẫn là việc của chủ dự án.
+
+## 15. Tiến độ 7d-2 (15/11/2026)
+
+**Quyết định A (chủ dự án duyệt 15/11/2026):** "Chờ kích hoạt" là **nhóm lọc** gồm Chưa gửi, Đã gửi, Thư lỗi, Cần kiểm tra; bảng chỉ có **sáu trạng thái riêng** (thêm Đã kích hoạt, Email chưa xác thực). Không có trạng thái riêng tên "Chờ kích hoạt".
+
+### 15.1 Đã làm (nhánh `feat/theo-doi-kich-hoat-7d2`)
+
+- Lát 7 (D-29 đến D-33): `GET /api/account-support/tracking?requestId&state|group=awaiting&page&pageSize`; Người ra đề chỉ xem Yêu cầu của mình (404), Quản trị viên xem mọi Yêu cầu, Người dự thi 403; số đếm theo trạng thái trên toàn Yêu cầu; 500 dòng dưới 300 ms. Chỉ thư **kích hoạt** quyết định trạng thái (D-29b).
+- Lát 8 (D-34 đến D-36): `POST /api/account-support/resend-all {requestId}` → `{queued, skipped}`; chỉ người còn Chờ kích hoạt và chưa Gửi lại trong 24 giờ; Người ra đề tối đa 1 lần mỗi 6 giờ (Redis, hoàn lượt khi không ai đủ điều kiện), Quản trị viên không bị giới hạn 6 giờ (vẫn bị 24 giờ mỗi sinh viên) và dùng làn khẩn; hai Người ra đề cùng bấm thì thư xoay vòng (D-36); nhật ký `account-support.resend-all`.
+- Test `apps/api/test/account-tracking.int.test.ts` (13 bài). Đột biến: 3 bài ở lát 7 (mốc 47 giờ, bỏ kiểm chủ Yêu cầu, tính thư mọi loại) và 6 ở lát 8 (bỏ 24 giờ mỗi sinh viên, Quản trị viên cũng bị 6 giờ, không hoàn lượt, sai làn, gửi cho người đã kích hoạt, bỏ kiểm quyền xem): hai đột biến sống sót lúc đầu (thư loại khác; Quản trị viên bị 6 giờ) đã bị bắt sau khi thêm D-29b và D-35d.
+
+- Theo Phiên thi (D-31b): `GET /api/account-support/tracking?sessionId=` (cùng khuôn với `requestId`; chọn đúng một trong hai); cổng `SUPPORT_ROSTER_SCOPE` thêm `rosterUserIds(sessionId, ownerId|null)`; Người ra đề chỉ Phiên thi của mình (404), Quản trị viên mọi Phiên thi. Đột biến bỏ giới hạn chủ Phiên thi bị bắt.
+- Lát 9 (D-37, D-37b, D-38, D-39), `MailQuotaService`: `GET /api/account-support/quota` (khung hạn mức: đã gửi 24 giờ, trần, số thư chờ, số thư đứng trước thư của mình và giờ dự kiến xong, **mô phỏng bằng chính `planBatch`** nên khớp lịch gửi thật, kể cả xoay vòng giữa hai Người ra đề); `GET /api/admin/mail-queue` (chỉ Quản trị viên: số theo trạng thái, 24 giờ so với trần, 50 thư chưa gửi được gần nhất, **không có mã**); chuông `mail.quota_high` cho mọi Quản trị viên khi vượt 70 % trần (280/400), kiểm sau mỗi lần chạy `mail.dispatch`, tự gỡ theo **loại** (không theo ngày) khi hạ xuống, mỗi ngày giờ Việt Nam tối đa một chuông (khóa Redis `mail:quota-bell:<ngày>`). Lỗi tìm thấy nhờ bài: gỡ chuông theo khóa ngày không gỡ được chuông của hôm qua, đã sửa bằng `clearUnreadOfType`. 7 đột biến (ngưỡng, không gỡ, `ahead`, nhiều chuông một ngày, đếm 24 giờ mọi thời gian, bỏ AdminOnly, liệt kê cả thư đã gửi) đều bị bắt.
+
+### 15.2 Còn lại
+
+Lát 10: giao diện và E2E (bảng theo dõi ở trang Yêu cầu và Danh sách dự thi, khung hạn mức, màn Hàng đợi thư, chuông, kiểm tra không cuộn ngang và không bị che ở 375 và 1280 px, sáng và tối).

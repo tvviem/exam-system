@@ -1498,5 +1498,35 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["candidate"]
+  },
+  {
+    "username": "e2e-td-qt-desktop",
+    "fullName": "Quản trị Theo dõi desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-td-gv-desktop",
+    "fullName": "Giảng viên Theo dõi desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-td-qt-mobile",
+    "fullName": "Quản trị Theo dõi mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false
+  },
+  {
+    "username": "e2e-td-gv-mobile",
+    "fullName": "Giảng viên Theo dõi mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]

@@ -16,6 +16,7 @@ Mỗi dòng ✓ là đạt, ⚠ là nên xem, ✗ là không đạt (lệnh tho�
 - [ ] **(máy)** Lần thử khôi phục gần nhất **ĐẠT** và không quá 35 ngày.
 - [ ] **(máy)** Có ít nhất **2 Quản trị viên** đang hoạt động.
 - [ ] Quản trị viên thứ hai **đăng nhập thử được** (không chỉ có tài khoản).
+- [ ] **Kích hoạt đủ trước ngày thi:** ở trang Yêu cầu, bảng **"Theo dõi kích hoạt"** không còn ai ở nhóm **Chờ kích hoạt** (hoặc đã xử lý từng người: Gửi lại, Sửa email, Liên kết hỗ trợ). Ưu tiên **Thư lỗi** và **Cần kiểm tra**; kiểm khung hạn mức để biết thư có kịp gửi không ([tai-khoan-va-mat-khau.md](./tai-khoan-va-mat-khau.md) mục 1c).
 - [ ] **(máy)** Mục "Thư" của `prod-preflight` không có ✗: nếu đã dùng kích hoạt hoặc quên mật khẩu bằng email thì phải đã cấu hình gửi thư, và không có thư chờ gửi quá 48 giờ ([gui-thu.md](./gui-thu.md) mục 6). Đã chạy `make -C infra prod-mail-test ADDRESS=<email của bạn>` và thư vào hộp thư đến.
 - [ ] Ba tờ giấy (A khóa gpg, B mật khẩu khóa, C mã khôi phục 2FA Bitwarden) **còn đủ**, cất ở các nơi khác nhau ([khoi-phuc.md](./khoi-phuc.md) mục 4.1.1).
 - [ ] Đã đọc email của healthchecks.io gần đây: không có thư LỖI hoặc IM LẶNG chưa xử lý.
