@@ -9,6 +9,7 @@ import { GRADING_SOURCE } from './common/grading-source';
 import { SESSION_GRADING_STATUS } from './common/grading-status';
 import { SESSION_ATTEMPTS } from './common/session-attempts';
 import { SESSION_ENTRY } from './common/session-entry';
+import { SUPPORT_ROSTER_SCOPE } from './common/support-roster-scope';
 import { USER_DEACTIVATION_HOOKS } from './common/user-deactivation';
 import { VIOLATION_PENALTIES } from './common/violation-penalties';
 import { AttemptModule } from './modules/attempt/attempt.module';
@@ -27,6 +28,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { GradingSessionsService } from './modules/session/grading-sessions.service';
 import { SessionModule } from './modules/session/session.module';
 import { SessionEntryService } from './modules/session/session-entry.service';
+import { SessionRosterScopeService } from './modules/session/session-roster-scope.service';
 
 /** Nối các cổng giữa `session`, `attempt` và `exam` (Q228): các module cài đặt và đòi cổng không import nhau. */
 @Global()
@@ -46,6 +48,7 @@ import { SessionEntryService } from './modules/session/session-entry.service';
     { provide: EXAMINER_DIRECTORY, useExisting: ExaminerDirectoryService },
     { provide: ADMIN_DIRECTORY, useExisting: AdminDirectoryService },
     { provide: VIOLATION_PENALTIES, useExisting: ViolationPenaltiesService },
+    { provide: SUPPORT_ROSTER_SCOPE, useExisting: SessionRosterScopeService },
   ],
   exports: [
     SESSION_ENTRY,
@@ -61,6 +64,7 @@ import { SessionEntryService } from './modules/session/session-entry.service';
     EXAMINER_DIRECTORY,
     ADMIN_DIRECTORY,
     VIOLATION_PENALTIES,
+    SUPPORT_ROSTER_SCOPE,
   ],
 })
 export class AttemptPortsWiringModule {}

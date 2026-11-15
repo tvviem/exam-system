@@ -37,6 +37,7 @@ import {
   SelectField,
   TextField,
 } from '../../../../lib/ui';
+import { AccountSupportCard } from '../../../../lib/ui/account-support-card';
 import { StatusBadge, TemporaryPasswordDialog } from '../../../../lib/ui/admin';
 import { LiveSessionsNotice } from '../../../../lib/ui/live-sessions-notice';
 import { useToast } from '../../../../lib/ui/toast';
@@ -96,6 +97,12 @@ function UserDetailPage() {
         <aside className="flex flex-col gap-5">
           <AccountCard user={user} />
           {editable && !isSelf && (
+            <AccountSupportCard
+              target={user}
+              invalidateKeys={[['admin', 'users'], userQuery(user.id).queryKey]}
+            />
+          )}
+          {editable && !isSelf && (
             <ActionsCard user={user} onHasContent={() => setChoosingRecipient(true)} />
           )}
         </aside>
@@ -145,7 +152,6 @@ function ProfileForm({ user, editable }: { user: UserDetail; editable: boolean }
   const initial = {
     fullName: user.fullName,
     username: user.username ?? '',
-    email: user.email ?? '',
     ...(user.isAdmin
       ? {}
       : {
@@ -186,13 +192,6 @@ function ProfileForm({ user, editable }: { user: UserDetail; editable: boolean }
             autoCapitalize="none"
             value={form.username}
             onChange={set('username')}
-          />
-          <TextField
-            id="email"
-            label={t('admin.users.email')}
-            type="email"
-            value={form.email}
-            onChange={set('email')}
           />
           {!user.isAdmin && (
             <>

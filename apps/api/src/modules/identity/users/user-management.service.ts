@@ -47,10 +47,15 @@ import { type UserRow, UsersRepository } from '../users.repository';
 export const USER_STATUSES = ['active', 'locked', 'removed'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 
+/** Bộ lọc kích hoạt (7d-1): chưa kích hoạt, email chưa xác thực, thư gần nhất bị từ chối hoặc lỗi. */
+export const ACTIVATION_FILTERS = ['pending', 'unverified', 'mail_failed'] as const;
+export type ActivationFilter = (typeof ACTIVATION_FILTERS)[number];
+
 export interface UserFilter {
   q?: string;
   status?: UserStatus;
   roleTag?: RoleTag;
+  activation?: ActivationFilter;
 }
 
 type ExaminerProfileRow = typeof examinerProfiles.$inferSelect;
@@ -60,7 +65,6 @@ type Executor = Pick<Database, 'select'>;
 export interface UserUpdate {
   fullName?: string;
   username?: string | null;
-  email?: string | null;
   code?: string | null;
   classLabel?: string | null;
   dateOfBirth?: string | null;
@@ -71,7 +75,7 @@ export interface UserUpdate {
 }
 
 // Q65: tài khoản Quản trị viên chỉ có thông tin đăng nhập và họ tên.
-const ADMIN_EDITABLE = new Set<keyof UserUpdate>(['fullName', 'username', 'email']);
+const ADMIN_EDITABLE = new Set<keyof UserUpdate>(['fullName', 'username']);
 
 const UNIQUE_FIELDS: Record<string, string> = {
   users_username_active_key: 'username',
@@ -148,6 +152,8 @@ export class UserManagementService {
         isAdmin: r.isAdmin,
         roleTags: tags.get(r.id) ?? [],
         status: statusOf(r),
+        pending: r.passwordHash === null,
+        emailVerified: r.emailVerifiedAt !== null,
         lastLoginAt: r.lastLoginAt,
         createdAt: r.createdAt,
       })),
@@ -188,6 +194,8 @@ export class UserManagementService {
       removedAt: user.removedAt,
       mustChangePassword: user.mustChangePassword,
       passwordExpiresAt: user.passwordExpiresAt,
+      pending: user.passwordHash === null,
+      emailVerified: user.emailVerifiedAt !== null,
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       examinerProfile: profile ?? null,
@@ -208,8 +216,9 @@ export class UserManagementService {
           if (notAllowed) throw validationFailed(notAllowed, 'not_allowed_for_admin');
         }
         const username = input.username === undefined ? user.username : input.username;
-        const email = input.email === undefined ? user.email : input.email;
-        if (!username && !email) throw validationFailed('username', 'username_or_email_required');
+        // Email không đổi ở đây: dùng "Sửa email" của hỗ trợ kích hoạt (có lý do, xác thực lại, nhật ký riêng).
+        if (!username && !user.email)
+          throw validationFailed('username', 'username_or_email_required');
         if (examinerProfile) {
           await this.assertCanHaveExaminerProfile(tx, id, examinerProfile.unitId);
         }
@@ -722,7 +731,7 @@ export class UserManagementService {
   }
 
   /** Mặc định ẩn người đã bị Xóa (Q66). Từ khóa so khớp không dấu, không phân biệt hoa thường (Q69). */
-  private listCondition({ q, status, roleTag }: UserFilter): SQL | undefined {
+  private listCondition({ q, status, roleTag, activation }: UserFilter): SQL | undefined {
     const conditions: (SQL | undefined)[] = [
       status === 'removed' ? isNotNull(users.removedAt) : isNull(users.removedAt),
     ];
@@ -735,6 +744,21 @@ export class UserManagementService {
             .from(userRoleTags)
             .where(and(eq(userRoleTags.userId, users.id), eq(userRoleTags.tag, roleTag))),
         ),
+      );
+    }
+    // Quy tắc trạng thái: chưa có mật khẩu là Chờ kích hoạt.
+    if (activation === 'pending') conditions.push(isNull(users.passwordHash));
+    if (activation === 'unverified') {
+      conditions.push(isNotNull(users.passwordHash), isNull(users.emailVerifiedAt));
+    }
+    if (activation === 'mail_failed') {
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM email_outbox o
+           WHERE o.user_id = ${users.id}
+             AND o.status IN ('rejected', 'failed')
+             AND o.created_at = (SELECT max(created_at) FROM email_outbox WHERE user_id = ${users.id})
+        )`,
       );
     }
     if (q) {

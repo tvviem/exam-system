@@ -11,6 +11,9 @@ import { AccountRequestParseJob } from './account-requests/account-request-parse
 import { AccountRequestsController } from './account-requests/account-requests.controller';
 import { AccountRequestsService } from './account-requests/account-requests.service';
 import { RequesterCredentialsService } from './account-requests/requester-credentials.service';
+import { AccountSupportController } from './account-support/account-support.controller';
+import { AccountSupportService } from './account-support/account-support.service';
+import { SupportRateLimiter } from './account-support/support-rate-limiter';
 import { AdminAccountsService } from './admin-accounts.service';
 import { AdminDirectoryService } from './admin-directory.service';
 import { AuditLogsController } from './audit-logs/audit-logs.controller';
@@ -61,11 +64,14 @@ import { UsersRepository } from './users.repository';
     PublicInvitationsController,
     AccountRequestsController,
     CredentialSlipsController,
+    AccountSupportController,
   ],
   providers: [
     AuthService,
     AccountService,
     AccountEmailService,
+    AccountSupportService,
+    SupportRateLimiter,
     AuthSessionStore,
     TokenAuthenticator,
     LoginRateLimiter,

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { CLOCK, type Clock } from '../../../common/clock';
 import { type Database, DB } from '../../../db/db.module';
 import { AuditService } from '../../audit/audit.service';
@@ -74,7 +74,7 @@ export class AuthLinks {
   async issue(
     userId: string,
     purpose: LinkPurpose,
-    options: { newEmail?: string } = {},
+    options: { newEmail?: string; createdBy?: string; reason?: string } = {},
   ): Promise<{ token: string; expiresAt: Date }> {
     const now = this.clock.now();
     const token = randomBytes(32).toString('base64url');
@@ -96,11 +96,32 @@ export class AuthLinks {
         purpose,
         tokenHash: hashToken(token),
         newEmail: options.newEmail ?? null,
+        createdBy: options.createdBy ?? null,
+        reason: options.reason ?? null,
         expiresAt,
         createdAt: now,
       });
     });
     return { token, expiresAt };
+  }
+
+  /** Vô hiệu mọi mã chưa dùng của người đó thuộc các loại này (ví dụ khi sửa email: mã gửi tới email cũ không được sống tiếp). */
+  async revokeActive(
+    userId: string,
+    purposes: LinkPurpose[],
+    executor: Pick<Database, 'update'> = this.db,
+  ): Promise<void> {
+    await executor
+      .update(authTokens)
+      .set({ replacedAt: this.clock.now() })
+      .where(
+        and(
+          eq(authTokens.userId, userId),
+          inArray(authTokens.purpose, purposes),
+          isNull(authTokens.usedAt),
+          isNull(authTokens.replacedAt),
+        ),
+      );
   }
 
   /** Xem mã còn dùng được không mà không tiêu mã (trang hiển thị trước khi người dùng gõ mật khẩu). */
@@ -142,9 +163,22 @@ export class AuthLinks {
           mustChangePassword: false,
           passwordExpiresAt: null,
           activatedAt: owner.activatedAt ?? now,
-          emailVerifiedAt: now,
+          // Liên kết hỗ trợ không chứng minh được hộp thư là của chính chủ (Q377): giữ nguyên trạng thái xác thực.
+          ...(link.purpose === 'support_link' ? {} : { emailVerifiedAt: now }),
         })
         .where(eq(users.id, link.userId));
+      // Đã đặt mật khẩu xong: mọi liên kết hỗ trợ còn lại của người này chết (không để sót liên kết đặt lại mật khẩu).
+      await tx
+        .update(authTokens)
+        .set({ replacedAt: now })
+        .where(
+          and(
+            eq(authTokens.userId, link.userId),
+            eq(authTokens.purpose, 'support_link'),
+            isNull(authTokens.usedAt),
+            isNull(authTokens.replacedAt),
+          ),
+        );
       // Chỉ ghi việc đã làm, IP và trình duyệt; tuyệt đối không ghi mật khẩu hay mã.
       await this.audit.record(
         {
@@ -153,7 +187,10 @@ export class AuthLinks {
           action: owner.hasPassword ? 'account.password-reset' : 'account.activated',
           entityType: 'user',
           entityId: link.userId,
-          after: { userAgent: client.userAgent },
+          after: {
+            userAgent: client.userAgent,
+            ...(link.purpose === 'support_link' ? { via: 'support_link' } : {}),
+          },
         },
         tx,
       );
@@ -231,6 +268,17 @@ export class AuthLinks {
   }
 
   /**
+   * Liên kết hỗ trợ (`support_link`) mở được ở cả trang kích hoạt lẫn trang đặt lại mật khẩu: cả hai đều là "đặt mật khẩu",
+   * và người dùng luôn được báo đúng trạng thái (đã dùng, hết hạn…) thay vì "liên kết lạ". Các loại khác phải đúng loại.
+   */
+  private acceptsPurpose(actual: LinkPurpose, requested: LinkPurpose): boolean {
+    if (actual === requested) return true;
+    return (
+      actual === 'support_link' && (requested === 'activation' || requested === 'password_reset')
+    );
+  }
+
+  /**
    * Thứ tự kiểm: mã lạ hoặc sai loại (không nêu chi tiết), đã dùng, bị thay, hết hạn, tài khoản bị chặn.
    * Còn hạn tới trước `expires_at`, hết hạn từ đúng lúc đó.
    */
@@ -254,7 +302,9 @@ export class AuthLinks {
       .from(authTokens)
       .innerJoin(users, eq(users.id, authTokens.userId))
       .where(eq(authTokens.tokenHash, hashToken(token)));
-    if (!row || row.link.purpose !== purpose) return { problem: { state: 'unknown' } };
+    if (!row || !this.acceptsPurpose(row.link.purpose, purpose)) {
+      return { problem: { state: 'unknown' } };
+    }
     const { link } = row;
     if (link.usedAt) return { problem: { state: 'used', usedAt: link.usedAt } };
     if (link.replacedAt) return { problem: { state: 'replaced' } };

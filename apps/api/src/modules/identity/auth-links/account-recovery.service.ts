@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull, or } from 'drizzle-orm';
+import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { CLOCK, type Clock } from '../../../common/clock';
 import { type Database, DB } from '../../../db/db.module';
 import { MailService } from '../../mail/mail.service';
-import { users } from '../identity.schema';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { userRoleTags, users } from '../identity.schema';
 import {
   AuthLinks,
   type ConsumeResult,
@@ -28,6 +29,7 @@ export class AccountRecoveryService {
     private readonly links: AuthLinks,
     private readonly mail: MailService,
     private readonly limiter: RecoveryRateLimiter,
+    private readonly notifications: NotificationsService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -56,6 +58,7 @@ export class AccountRecoveryService {
 
     if (!user.activatedAt && !user.passwordHash) {
       // Chờ kích hoạt: nhận lại thư kích hoạt, chịu giới hạn gửi lại.
+      if (!(await this.limiter.allowAnonymousMail())) return;
       await this.mail.enqueueWithCooldown(
         { kind: 'activation', toEmail: user.email, lane: 'bulk', userId: user.id },
         { cooldownMs: ACTIVATION_COOLDOWN_MS },
@@ -64,6 +67,7 @@ export class AccountRecoveryService {
     }
     // Email chưa xác thực thì không nhận thư đặt lại (chưa chứng minh được hộp thư là của chính chủ).
     if (!user.emailVerifiedAt) return;
+    if (!(await this.limiter.allowAnonymousMail())) return;
     await this.mail.enqueue({
       kind: 'password_reset',
       toEmail: user.email,
@@ -110,6 +114,7 @@ export class AccountRecoveryService {
     const result = await this.links.consume(token, purpose, newPassword, client);
     if (result.state === 'ok' && purpose === 'password_reset') {
       const owner = await this.links.ownerOf(token);
+      if (owner) await this.notifyAdminsIfPrivileged(owner.id);
       if (owner?.email) {
         const { browser, os } = describeClient(client.userAgent);
         await this.mail.enqueue({
@@ -126,5 +131,30 @@ export class AccountRecoveryService {
       }
     }
     return result;
+  }
+
+  /**
+   * Mật khẩu của Người ra đề hoặc Quản trị viên vừa được đặt lại (qua email hay Liên kết hỗ trợ): chuông cho các Quản trị viên KHÁC
+   * (Q377), để phát hiện nếu có người chiếm hộp thư. Người dự thi đặt lại thì không báo (quá nhiều, ít rủi ro).
+   */
+  private async notifyAdminsIfPrivileged(ownerId: string): Promise<void> {
+    const [owner] = await this.db
+      .select({
+        fullName: users.fullName,
+        isAdmin: users.isAdmin,
+        examiner: sql<boolean>`EXISTS (SELECT 1 FROM ${userRoleTags} WHERE ${userRoleTags.userId} = ${users.id} AND ${userRoleTags.tag} = 'examiner')`,
+      })
+      .from(users)
+      .where(eq(users.id, ownerId));
+    if (!owner || !(owner.isAdmin || owner.examiner)) return;
+    const admins = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.isAdmin, true), isNull(users.removedAt), eq(users.status, 'active')));
+    await this.notifications.notify({
+      userIds: admins.map((a) => a.id).filter((id) => id !== ownerId),
+      type: 'account.password_reset_by_email',
+      data: { userId: ownerId, name: owner.fullName },
+    });
   }
 }

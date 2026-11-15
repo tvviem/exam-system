@@ -205,6 +205,29 @@ export class MailService {
     return rows.length;
   }
 
+  /**
+   * Bỏ các thư đang chờ gửi cho người dùng này thuộc các loại này (ví dụ sửa email: thư kích hoạt đang chờ tới email cũ không
+   * được gửi nữa). Chạy trong giao dịch của người gọi nếu có. Thư đã gửi hay đang gửi không đụng tới.
+   */
+  async cancelPendingForUser(
+    userId: string,
+    kinds: MailKind[],
+    executor: Pick<Database, 'update'> = this.db,
+  ): Promise<number> {
+    const rows = await executor
+      .update(emailOutbox)
+      .set({ status: 'skipped', lastError: 'Đã hủy trước khi gửi' })
+      .where(
+        and(
+          eq(emailOutbox.userId, userId),
+          inArray(emailOutbox.kind, kinds),
+          eq(emailOutbox.status, 'pending'),
+        ),
+      )
+      .returning({ id: emailOutbox.id });
+    return rows.length;
+  }
+
   /** Số thư theo trạng thái (chỉ đọc), cho màn hình theo dõi và cho test. */
   async counts(): Promise<Record<MailRecord['status'], number>> {
     const rows = await this.db

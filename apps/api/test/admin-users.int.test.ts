@@ -179,13 +179,7 @@ describe('xem và sửa Người dùng', () => {
     expect(logs.items[0].before).not.toHaveProperty('code');
   });
 
-  it('trùng email với người khác thì trả CONFLICT kèm tên trường', async () => {
-    await seedUser({ email: 'an@example.edu.vn' });
-    const user = await seedUser({});
-    const res = await patch(user.id, { email: 'AN@example.edu.vn' });
-    expect(res.statusCode).toBe(409);
-    expect(res.json()).toEqual({ code: 'CONFLICT', field: 'email' });
-  });
+  // Email không sửa trực tiếp bằng PATCH nữa (PR 7d-1): xem "Sửa email" trong `account-support.int.test.ts` (D-15 đến D-18b).
 
   it('trùng với người đã bị Xóa thì vẫn được', async () => {
     await seedUser({ code: 'B2103456', removed: true });
@@ -200,7 +194,7 @@ describe('xem và sửa Người dùng', () => {
     expect(res.json()).toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 
-  it('tài khoản Quản trị viên chỉ sửa được họ tên, tên đăng nhập, email', async () => {
+  it('tài khoản Quản trị viên chỉ sửa được họ tên và tên đăng nhập', async () => {
     const other = await seedUser({ isAdmin: true });
     expect((await patch(other.id, { fullName: 'Quản Trị Hai' })).statusCode).toBe(200);
     const res = await patch(other.id, { code: 'NV001' });

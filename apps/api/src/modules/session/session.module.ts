@@ -11,6 +11,7 @@ import { SessionMonitorService } from './session-monitor.service';
 import { SessionOwnedContent } from './session-owned-content';
 import { SessionRosterController } from './session-roster.controller';
 import { SessionRosterService } from './session-roster.service';
+import { SessionRosterScopeService } from './session-roster-scope.service';
 import { SessionUsageService } from './session-usage.service';
 import { SessionsController } from './sessions.controller';
 import { SessionsService } from './sessions.service';
@@ -28,6 +29,7 @@ import { SessionsService } from './sessions.service';
     SessionEntryService,
     SessionOwnedContent,
     SessionLiveGuardService,
+    SessionRosterScopeService,
     GradingSessionsService,
   ],
   exports: [
@@ -36,6 +38,7 @@ import { SessionsService } from './sessions.service';
     SessionMonitorService,
     SessionOwnedContent,
     SessionLiveGuardService,
+    SessionRosterScopeService,
     GradingSessionsService,
   ],
 })

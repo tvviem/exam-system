@@ -36,6 +36,9 @@ export interface UserListItem {
   isAdmin: boolean;
   roleTags: RoleTag[];
   status: UserStatus;
+  /** Chờ kích hoạt: chưa có mật khẩu. */
+  pending: boolean;
+  emailVerified: boolean;
   lastLoginAt: string | null;
   createdAt: string;
 }
@@ -106,10 +109,14 @@ export interface TemporaryPassword {
   passwordExpiresAt: string;
 }
 
+export const ACTIVATION_FILTERS = ['pending', 'unverified', 'mail_failed'] as const;
+export type ActivationFilter = (typeof ACTIVATION_FILTERS)[number];
+
 export interface UserListParams {
   q?: string;
   status?: UserStatus;
   roleTag?: RoleTag;
+  activation?: ActivationFilter;
   page?: number;
 }
 
@@ -161,10 +168,7 @@ export const auditLogsQuery = (params: AuditLogParams) =>
   });
 
 export type UserUpdate = Partial<
-  Pick<
-    UserDetail,
-    'fullName' | 'username' | 'email' | 'code' | 'classLabel' | 'dateOfBirth' | 'gender'
-  >
+  Pick<UserDetail, 'fullName' | 'username' | 'code' | 'classLabel' | 'dateOfBirth' | 'gender'>
 > & {
   examinerProfile?: Partial<{
     academicDegree: AcademicDegree | null;
