@@ -250,6 +250,7 @@ function QuestionBankPage() {
           <FilterBar
             activeCount={activeFilters}
             wide
+            contained
             filters={filters}
             search={
               <SearchField

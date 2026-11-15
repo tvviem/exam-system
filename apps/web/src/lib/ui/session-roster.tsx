@@ -1,9 +1,10 @@
 import { parseCodeList } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { KeyRound, UserMinus } from 'lucide-react';
+import { KeyRound, Mail, MailPlus, UserMinus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { sessionAwaitingQuery, type TrackingRow } from '../account-support';
 import { errorMessage } from '../errors';
 import {
   addToRoster,
@@ -18,7 +19,17 @@ import {
   type SessionSummary,
   setExtraMinutes,
 } from '../sessions';
-import { Button, Card, Dialog, ErrorMessage, PrimaryButton, SearchField, SelectField } from '.';
+import {
+  Badge,
+  Button,
+  Card,
+  Dialog,
+  ErrorMessage,
+  PrimaryButton,
+  SearchField,
+  SelectField,
+} from '.';
+import { ChangeEmailDialog, SupportLinkDialog } from './account-support-card';
 import { EmptyState, ListSkeleton, Pagination, TemporaryPasswordDialog } from './admin';
 import { RowMenu } from './row-menu';
 import { StickyActionBar } from './sticky-action-bar';
@@ -261,11 +272,13 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
   const { t } = useTranslation();
   const toast = useToast();
   const refresh = useRosterRefresh(session.id);
+  const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<RosterSort>('name');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reissuing, setReissuing] = useState<RosterItem | null>(null);
+  const [support, setSupport] = useState<{ kind: 'email' | 'link'; row: TrackingRow } | null>(null);
   const [password, setPassword] = useState<{
     temporaryPassword: string;
     passwordExpiresAt: string;
@@ -278,6 +291,9 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
     rosterQuery(session.id, { q: q || undefined, page, sort: sort === 'name' ? undefined : sort }),
   );
   const items = roster.data?.items ?? [];
+  // Ai còn Chờ kích hoạt (7d-2, E-05): dấu trên dòng và hai việc hỗ trợ trong menu. Lỗi (ví dụ không đủ quyền) thì bỏ qua, danh sách vẫn dùng được.
+  const awaiting = useQuery(sessionAwaitingQuery(session.id));
+  const awaitingBy = new Map((awaiting.data?.items ?? []).map((row) => [row.userId, row]));
   const toggle = (id: string) =>
     setSelected((current) => {
       const next = new Set(current);
@@ -366,6 +382,13 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
                   <span className="block text-sm text-fg-muted">
                     {[user.code, user.classLabel].filter(Boolean).join(' · ')}
                   </span>
+                  {awaitingBy.has(user.userId) && (
+                    <span className="mt-1 inline-flex">
+                      <Badge tone="warning">
+                        {t(`tracking.state.${awaitingBy.get(user.userId)?.state}`)}
+                      </Badge>
+                    </span>
+                  )}
                 </span>
                 <ExtraMinutes
                   sessionId={session.id}
@@ -388,6 +411,28 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
                         icon: <KeyRound aria-hidden className="size-4" />,
                         onSelect: () => setReissuing(user),
                       },
+                      ...(awaitingBy.has(user.userId)
+                        ? [
+                            {
+                              label: t('tracking.changeEmail'),
+                              icon: <Mail aria-hidden className="size-4" />,
+                              onSelect: () =>
+                                setSupport({
+                                  kind: 'email' as const,
+                                  row: awaitingBy.get(user.userId) as TrackingRow,
+                                }),
+                            },
+                            {
+                              label: t('tracking.link'),
+                              icon: <MailPlus aria-hidden className="size-4" />,
+                              onSelect: () =>
+                                setSupport({
+                                  kind: 'link' as const,
+                                  row: awaitingBy.get(user.userId) as TrackingRow,
+                                }),
+                            },
+                          ]
+                        : []),
                     ]}
                   />
                 )}
@@ -413,6 +458,39 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
             {t('session.roster.removeSelected', { count: selected.size })}
           </Button>
         </StickyActionBar>
+      )}
+
+      {support?.kind === 'email' && (
+        <ChangeEmailDialog
+          target={{
+            id: support.row.userId,
+            fullName: support.row.fullName,
+            email: support.row.email,
+            pending: true,
+            emailVerified: false,
+            status: 'active',
+          }}
+          onClose={() => setSupport(null)}
+          onDone={async () => {
+            setSupport(null);
+            toast(t('accountSupport.emailChanged'));
+            await queryClient.invalidateQueries({ queryKey: ['account-support'] });
+          }}
+        />
+      )}
+      {support?.kind === 'link' && (
+        <SupportLinkDialog
+          target={{
+            id: support.row.userId,
+            fullName: support.row.fullName,
+            email: support.row.email,
+            pending: true,
+            emailVerified: false,
+            status: 'active',
+          }}
+          onClose={() => setSupport(null)}
+          onDone={() => queryClient.invalidateQueries({ queryKey: ['account-support'] })}
+        />
       )}
 
       <Dialog

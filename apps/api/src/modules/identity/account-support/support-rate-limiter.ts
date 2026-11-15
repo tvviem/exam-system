@@ -9,6 +9,8 @@ const DAY_MS = 24 * HOUR_MS;
 const RESEND_GAP_MS = DAY_MS;
 /** Mỗi người tạo Liên kết hỗ trợ tối đa 30 lần mỗi giờ: đủ cho cả lớp thi, đủ thấp để một tài khoản bị chiếm không phát hàng loạt. */
 const MAX_LINKS_PER_ACTOR_PER_HOUR = 30;
+/** "Gửi lại cho tất cả": mỗi Người ra đề tối đa 1 lần mỗi 6 giờ (Q375); Quản trị viên không bị giới hạn này. */
+const BULK_RESEND_GAP_MS = 6 * HOUR_MS;
 
 // Nguyên tử: nếu đã gửi lại trong khoảng cách thì trả mốc lần gửi trước, nếu không thì ghi mốc mới và trả 0.
 const RESEND_SCRIPT = `
@@ -46,6 +48,27 @@ export class SupportRateLimiter {
   /** Trả lại lượt Gửi lại khi thao tác không xếp được thư (để người dùng thử lại). */
   async refundResend(userId: string): Promise<void> {
     await this.redis.del(`support:resend:${userId}`);
+  }
+
+  async tryBulkResend(actorId: string): Promise<ResendPermit> {
+    const now = this.clock.now().getTime();
+    const last = Number(
+      await this.redis.eval(
+        RESEND_SCRIPT,
+        1,
+        `support:resend-all:${actorId}`,
+        String(now),
+        String(BULK_RESEND_GAP_MS),
+      ),
+    );
+    return last === 0
+      ? { allowed: true }
+      : { allowed: false, allowedAt: new Date(last + BULK_RESEND_GAP_MS) };
+  }
+
+  /** Không ai đủ điều kiện thì không tốn lượt 6 giờ. */
+  async refundBulkResend(actorId: string): Promise<void> {
+    await this.redis.del(`support:resend-all:${actorId}`);
   }
 
   async allowLink(actorId: string): Promise<boolean> {

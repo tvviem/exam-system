@@ -107,7 +107,7 @@ export function AccountSupportCard({
   );
 }
 
-function ChangeEmailDialog({
+export function ChangeEmailDialog({
   target,
   onClose,
   onDone,
@@ -166,7 +166,7 @@ function ChangeEmailDialog({
   );
 }
 
-function SupportLinkDialog({
+export function SupportLinkDialog({
   target,
   onClose,
   onDone,

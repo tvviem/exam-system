@@ -12,6 +12,7 @@ export function FilterBar({
   filters,
   activeCount,
   wide = false,
+  contained = false,
 }: {
   search: ReactNode;
   filters: ReactNode;
@@ -19,12 +20,19 @@ export function FilterBar({
   activeCount: number;
   /** Từ ba bộ lọc trở lên thì chừa rộng hơn. */
   wide?: boolean;
+  /** Nằm trong một cột của lưới (không tràn ra lề trang): bỏ lề âm để không đè lên cột bên cạnh. */
+  contained?: boolean;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <div className="sticky top-(--app-header-h) z-10 -mx-4 flex flex-col gap-3 bg-bg px-4 py-2 md:-mx-6 md:flex-row md:items-end md:px-6 lg:-mx-8 lg:px-8">
+      <div
+        data-testid="filter-bar"
+        className={`sticky top-(--app-header-h) z-10 flex flex-col gap-3 bg-bg py-2 md:flex-row md:items-end ${
+          contained ? '' : '-mx-4 px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8'
+        }`}
+      >
         <div className="flex-1">{search}</div>
         <div className={`hidden gap-3 md:flex ${wide ? 'md:w-[34rem]' : 'md:w-96'}`}>{filters}</div>
         <Button className="md:hidden" onClick={() => setOpen(true)}>

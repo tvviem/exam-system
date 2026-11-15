@@ -29,4 +29,17 @@ export class SessionRosterScopeService implements SupportRosterScope {
       .limit(1);
     return Boolean(row);
   }
+
+  async rosterUserIds(sessionId: string, ownerId: string | null): Promise<string[] | null> {
+    const [session] = await this.db
+      .select({ ownerId: sessions.ownerId })
+      .from(sessions)
+      .where(eq(sessions.id, sessionId));
+    if (!session || (ownerId !== null && session.ownerId !== ownerId)) return null;
+    const rows = await this.db
+      .select({ userId: sessionRoster.userId })
+      .from(sessionRoster)
+      .where(eq(sessionRoster.sessionId, sessionId));
+    return rows.map((r) => r.userId);
+  }
 }

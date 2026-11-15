@@ -2,6 +2,7 @@ import { Logger, Module } from '@nestjs/common';
 import { CLOCK, type Clock } from '../../common/clock';
 import { ENV } from '../../config/config.module';
 import type { Env } from '../../config/env';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { ConsoleTransport } from './console-transport';
 import { MAIL_LIMITS, mailLimitsFromEnv, selectMailTransport } from './mail.config';
 import {
@@ -15,6 +16,8 @@ import {
 } from './mail.ports';
 import { MailService } from './mail.service';
 import { MailDispatchJob } from './mail-dispatch.job';
+import { MailQueueController, MailQuotaController } from './mail-quota.controller';
+import { MailQuotaService } from './mail-quota.service';
 import { SmtpTransport } from './smtp-transport';
 
 function transportFor(env: Env, clock: Clock): MailTransport | null {
@@ -46,8 +49,11 @@ function transportFor(env: Env, clock: Clock): MailTransport | null {
 }
 
 @Module({
+  imports: [NotificationsModule],
+  controllers: [MailQuotaController, MailQueueController],
   providers: [
     MailService,
+    MailQuotaService,
     MailDispatchJob,
     { provide: MAIL_LIMITS, inject: [ENV], useFactory: (env: Env) => mailLimitsFromEnv(env) },
     {

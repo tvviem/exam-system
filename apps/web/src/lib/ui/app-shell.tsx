@@ -10,6 +10,7 @@ import {
   History,
   Library,
   type LucideIcon,
+  Mail,
   MailPlus,
   PanelLeftClose,
   PanelLeftOpen,
@@ -68,6 +69,12 @@ export function navFor(me: Me): NavItem[] {
         label: 'admin.nav.auditLogs',
         short: 'nav.short.auditLogs',
         icon: ScrollText,
+      },
+      {
+        to: '/admin/mail-queue',
+        label: 'admin.nav.mailQueue',
+        short: 'nav.short.mailQueue',
+        icon: Mail,
       },
       {
         to: '/admin/backup',

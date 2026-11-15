@@ -45,6 +45,10 @@ export function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
       await navigate({ to: '/admin/backup' });
       return;
     }
+    if (n.type === 'mail.quota_high') {
+      await navigate({ to: '/admin/mail-queue' });
+      return;
+    }
     if (n.type === 'topics.transferred') {
       await navigate({ to: '/examiner/questions' });
       return;

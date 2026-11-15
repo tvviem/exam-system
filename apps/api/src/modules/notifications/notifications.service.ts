@@ -128,6 +128,24 @@ export class NotificationsService {
       );
   }
 
+  /** Đánh dấu đã đọc mọi thông báo chưa đọc cùng loại (không phân biệt khóa), khi nguyên nhân đã hết. */
+  async clearUnreadOfType(
+    { userIds, type }: { userIds: string[]; type: string },
+    tx: Pick<Database, 'update'>,
+  ): Promise<void> {
+    if (userIds.length === 0) return;
+    await tx
+      .update(notifications)
+      .set({ readAt: this.clock.now() })
+      .where(
+        and(
+          inArray(notifications.userId, [...new Set(userIds)]),
+          eq(notifications.type, type),
+          isNull(notifications.readAt),
+        ),
+      );
+  }
+
   /** 50 thông báo mới nhất của một người, kèm tổng số chưa đọc. */
   async listFor(userId: string) {
     const [unread] = await this.db
