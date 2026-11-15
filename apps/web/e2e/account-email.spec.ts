@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, type TestInfo, test } from '@playwright/test';
 
 // PR 7c-2b, K13 (docs/plan/slice-7c2-thiet-ke-kiem-thu.md): mục Email ở trang Tài khoản và trang /verify-email#mã. Người dùng và mã
 // được chèn thẳng vào database E2E (như auth-links.spec.ts); phía API đã có bài ở apps/api/test/account-email.int.test.ts.
@@ -10,6 +10,16 @@ const { Client } = apiRequire('pg');
 const { hashPassword } = apiRequire('./dist/modules/identity/password/password-hasher.js');
 const databaseUrl = process.env.E2E_DATABASE_URL ?? 'postgres://exam:exam@127.0.0.1:5434/exam_e2e';
 const PASSWORD = 'mat-khau-on-dinh';
+
+/** Tên riêng cho từng lần thử: lần thử lại không đụng người dùng mà lần trước đã gieo (users_username_active_key). */
+const runTag = (info: TestInfo) =>
+  [
+    info.project.name,
+    info.retry > 0 && `r${info.retry}`,
+    info.repeatEachIndex > 0 && `x${info.repeatEachIndex}`,
+  ]
+    .filter(Boolean)
+    .join('-');
 
 interface Seed {
   /** Không đặt sẵn mã (bài tự đặt sau khi worker xử lý xong thư). */
@@ -96,7 +106,7 @@ async function signIn(page: import('@playwright/test').Page, username: string) {
 test('E-01: mục Email: hiện địa chỉ và trạng thái; "Gửi thư xác thực" báo đã gửi; bấm liên kết thì thành Đã xác thực', async ({
   page,
 }, testInfo) => {
-  const { username, email } = await seed(testInfo.project.name, 'xac-thuc', { noToken: true });
+  const { username, email } = await seed(runTag(testInfo), 'xac-thuc', { noToken: true });
   await signIn(page, username);
   await page.goto('/account');
 
@@ -126,7 +136,7 @@ test('E-01: mục Email: hiện địa chỉ và trạng thái; "Gửi thư xác
 test('E-02: Đổi email: sai mật khẩu hiện tại báo lỗi tại ô; đúng thì báo đã gửi thư và email CHƯA đổi', async ({
   page,
 }, testInfo) => {
-  const { username, email } = await seed(testInfo.project.name, 'doi', { verified: true });
+  const { username, email } = await seed(runTag(testInfo), 'doi', { verified: true });
   await signIn(page, username);
   await page.goto('/account');
   const section = page.getByRole('region', { name: 'Email' });
@@ -147,7 +157,7 @@ test('E-02: Đổi email: sai mật khẩu hiện tại báo lỗi tại ô; đ�
 test('E-03: trang /verify-email: mỗi trạng thái một trang, nêu lý do và việc làm tiếp', async ({
   page,
 }, testInfo) => {
-  const project = testInfo.project.name;
+  const project = runTag(testInfo);
   const cases: [string, Seed, string][] = [
     ['het-han', { expiresInMinutes: -5 }, 'Liên kết đã hết hạn'],
     ['da-dung', { usedMinutesAgo: 30 }, 'Liên kết đã được dùng'],
@@ -167,7 +177,7 @@ test('E-03: trang /verify-email: mỗi trạng thái một trang, nêu lý do v�
 test('E-03b: địa chỉ đã có người khác dùng trong lúc chờ thì báo rõ, không đổi', async ({
   page,
 }, testInfo) => {
-  const project = testInfo.project.name;
+  const project = runTag(testInfo);
   const other = await seed(project, 'nguoi-khac', { verified: true });
   const { token } = await seed(project, 'bi-lay', { newEmail: other.email });
   await page.goto(`/verify-email#${token}`);
@@ -181,7 +191,7 @@ test('E-05: trang Tài khoản (mục Email) và trang xác nhận không cuộn
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 700 });
-  const { username, token } = await seed(testInfo.project.name, 'hep');
+  const { username, token } = await seed(runTag(testInfo), 'hep');
   await page.goto(`/verify-email#${token}`);
   await expect(page.getByRole('main')).toBeVisible();
   expect(

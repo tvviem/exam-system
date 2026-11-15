@@ -13,6 +13,20 @@ async function knownTokenFor(email: string): Promise<string> {
   const db = new Client({ connectionString: databaseUrl });
   await db.connect();
   try {
+    // Phải chờ worker gửi xong thư của Lời mời: lúc gửi nó sinh mã MỚI đè lên, nên mã đã biết đặt trước đó sẽ chết và trang
+    // lời mời không hiện email (cuộc đua này làm bài đỏ trên máy CI chậm).
+    await expect
+      .poll(
+        async () =>
+          (
+            await db.query(
+              `SELECT count(*)::int AS n FROM email_outbox WHERE lower(to_email) = lower($1) AND status IN ('sent','skipped')`,
+              [email],
+            )
+          ).rows[0].n,
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThan(0);
     await db.query(
       `UPDATE invitations SET token_hash = $1, expires_at = now() + interval '7 days' WHERE email = $2`,
       [createHash('sha256').update(token).digest('hex'), email],
