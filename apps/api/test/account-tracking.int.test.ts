@@ -339,5 +339,50 @@ describe('bảng theo dõi kích hoạt (K17)', () => {
           .statusCode,
       ).toBe(400);
     });
+
+    // P3 (docs/plan/yeu-cau-nhieu-giang-vien-thiet-ke.md): dòng sinh viên do người khác tạo chỉ hiện trạng thái, không có nút.
+    async function sharedStudent() {
+      const other = await signedIn({ roleTags: ['examiner'], fullName: 'Giảng Viên Khác' });
+      // Giảng viên khác (A) xin cấp và được duyệt trước: tài khoản do A tạo.
+      await approvedRequest(['Sinh Viên Chung,CH01,ch01@example.edu.vn,,,'], other);
+      // `examiner` (B) gửi cùng sinh viên sau khi đã có tài khoản: "khớp có sẵn", chỉ gắn nhãn.
+      const id = await approvedRequest(['Sinh Viên Chung,CH01,ch01@example.edu.vn,,,']);
+      const [student] = await sql<{ id: string }>("SELECT id FROM users WHERE code = 'CH01'");
+      return { id, studentId: student?.id as string };
+    }
+
+    it('R-14: dòng sinh viên do người khác tạo hiện trạng thái nhưng không thao tác được; "Gửi lại cho tất cả" không gửi cho họ; Quản trị viên thao tác được', async () => {
+      const { id, studentId } = await sharedStudent();
+      t.mail.reset();
+
+      const board = (await tracking(examiner, id)).json();
+      expect(board.items).toHaveLength(1);
+      expect(board.items[0]).toMatchObject({ userId: studentId, state: 'sent', actionable: false });
+
+      const all = await as(examiner, 'POST', '/api/account-support/resend-all', { requestId: id });
+      expect(all.json()).toEqual({ queued: 0, skipped: 1 });
+      await t.queue.drain();
+      expect(t.mail.sent).toEqual([]);
+      expect(
+        (await as(examiner, 'POST', `/api/account-support/${studentId}/resend`)).statusCode,
+      ).toBe(404); // quyền từng người vẫn như cũ
+
+      const forAdmin = (await tracking(admin, id)).json();
+      expect(forAdmin.items[0]).toMatchObject({ actionable: true });
+    });
+
+    it('R-15: sinh viên đang trong Danh sách dự thi chưa kết thúc của mình thì thao tác được và được gửi lại hàng loạt', async () => {
+      const { id, studentId } = await sharedStudent();
+      await sessionWith([studentId]);
+      const board = (await tracking(examiner, id)).json();
+      expect(board.items[0]).toMatchObject({ actionable: true });
+      const all = await as(examiner, 'POST', '/api/account-support/resend-all', { requestId: id });
+      expect(all.json()).toEqual({ queued: 1, skipped: 0 });
+    });
+
+    it('R-16: sinh viên do chính mình tạo hoặc khôi phục thì thao tác được', async () => {
+      const id = await approvedRequest(['Của Tôi,CT01,ct01@example.edu.vn,,,']);
+      expect((await tracking(examiner, id)).json().items[0]).toMatchObject({ actionable: true });
+    });
   });
 });

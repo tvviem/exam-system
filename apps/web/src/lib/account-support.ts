@@ -41,6 +41,8 @@ export interface TrackingRow {
   code: string | null;
   email: string | null;
   state: TrackingState;
+  /** Được Gửi lại, Sửa email, Liên kết hỗ trợ (P3); `false` thì chỉ xem trạng thái. */
+  actionable: boolean;
 }
 
 export interface TrackingPage {

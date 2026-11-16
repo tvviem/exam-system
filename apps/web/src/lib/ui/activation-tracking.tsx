@@ -193,6 +193,7 @@ function TrackingItem({
 }) {
   const { t } = useTranslation();
   const needsHelp = AWAITING_STATES.includes(row.state);
+  const canAct = needsHelp && row.actionable;
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -202,7 +203,10 @@ function TrackingItem({
         </span>
       </div>
       <Badge tone={TONES[row.state]}>{t(`tracking.state.${row.state}`)}</Badge>
-      {needsHelp && (
+      {needsHelp && !row.actionable && (
+        <span className="text-sm text-fg-muted">{t('tracking.viewOnly')}</span>
+      )}
+      {canAct && (
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"

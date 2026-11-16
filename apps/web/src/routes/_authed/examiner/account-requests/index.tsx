@@ -84,7 +84,10 @@ function UploadCard() {
   };
   return (
     <Card>
-      <p className="mb-4 text-sm text-fg-muted">{t('accountRequests.intro')}</p>
+      <p className="mb-2 text-sm text-fg-muted">{t('accountRequests.intro')}</p>
+      <p role="note" className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm">
+        {t('accountRequests.sharedClassHint')}
+      </p>
       <form className="flex flex-col gap-4" onSubmit={submit}>
         <a href={TEMPLATE_URL} download className={buttonClass('secondary', 'w-fit')}>
           <Download aria-hidden className="size-5" />

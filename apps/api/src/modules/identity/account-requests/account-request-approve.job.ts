@@ -7,8 +7,15 @@ import { type JobPayloads, JobRegistry } from '../../../queue/job-queue';
 import { AuditService } from '../../audit/audit.service';
 import { MailService } from '../../mail/mail.service';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { accountRequestItems, accountRequests, userRoleTags, users } from '../identity.schema';
+import {
+  accountRequestItems,
+  accountRequests,
+  authTokens,
+  userRoleTags,
+  users,
+} from '../identity.schema';
 import { settleRequest } from './account-request-settle';
+import { normalizePersonName } from './person-name';
 
 type Payload = JobPayloads['account-request.approve'];
 type Item = typeof accountRequestItems.$inferSelect;
@@ -16,7 +23,9 @@ type Item = typeof accountRequestItems.$inferSelect;
 /** Kết quả xử lý một dòng. */
 type ItemResult =
   | { outcome: 'created'; userId: string }
-  | { outcome: 'tag_added' }
+  | { outcome: 'restored'; userId: string }
+  /** `userId`: chỉ có khi dòng được gộp vào tài khoản vừa được Yêu cầu khác tạo (P2). */
+  | { outcome: 'tag_added'; userId?: string }
   | { outcome: 'skipped'; note: string };
 
 // Ràng buộc UNIQUE của bảng users → trường bị trùng.
@@ -71,7 +80,13 @@ export class AccountRequestApproveJob implements OnModuleInit {
     let interrupted = false;
     for (const item of pending) {
       try {
-        if (item.userId) await this.addCandidateTag(item, reviewerId);
+        if (item.matchStatus === 'restore') {
+          await this.restoreCandidate(
+            item,
+            { id: reviewerId, ip: reviewerIp },
+            request.requestedBy,
+          );
+        } else if (item.userId) await this.addCandidateTag(item, reviewerId);
         else await this.createCandidate(item, reviewerId, request.requestedBy);
       } catch (error) {
         // Lỗi bất ngờ: dừng ở đây. Các dòng chưa xử lý vẫn `pending`, Quản trị viên duyệt lại được.
@@ -89,6 +104,7 @@ export class AccountRequestApproveJob implements OnModuleInit {
         .select({
           created: sql<number>`count(*) FILTER (WHERE ${accountRequestItems.outcome} = 'created')::int`,
           tagAdded: sql<number>`count(*) FILTER (WHERE ${accountRequestItems.outcome} = 'tag_added')::int`,
+          restored: sql<number>`count(*) FILTER (WHERE ${accountRequestItems.outcome} = 'restored')::int`,
           skipped: sql<number>`count(*) FILTER (WHERE ${accountRequestItems.outcome} = 'skipped')::int`,
         })
         .from(accountRequestItems)
@@ -109,6 +125,7 @@ export class AccountRequestApproveJob implements OnModuleInit {
             approved: itemIds.length,
             created: tally?.created ?? 0,
             tagAdded: tally?.tagAdded ?? 0,
+            restored: tally?.restored ?? 0,
             skipped: tally?.skipped ?? 0,
             rejected: rejectedCount,
           },
@@ -177,6 +194,16 @@ export class AccountRequestApproveJob implements OnModuleInit {
         // Trong lúc chờ duyệt, người khác có thể đã chiếm tên đăng nhập, mã hoặc email.
         const taken = await this.takenField(tx, item, username);
         if (taken) {
+          // Tài khoản vừa được Yêu cầu khác tạo (cùng mã hoặc email, họ tên khớp): coi là "khớp có sẵn" (P2).
+          const same = await this.sameCandidate(tx, item);
+          if (same) {
+            await tx
+              .insert(userRoleTags)
+              .values({ userId: same, tag: 'candidate', grantedBy: reviewerId, grantedAt: now })
+              .onConflictDoNothing();
+            await this.markItem(tx, item, { outcome: 'tag_added', userId: same });
+            return;
+          }
           await this.markItem(tx, item, { outcome: 'skipped', note: taken });
           return;
         }
@@ -217,6 +244,121 @@ export class AccountRequestApproveJob implements OnModuleInit {
     }
   }
 
+  /**
+   * Dòng "khôi phục" (C-gọn): đưa chính tài khoản Người dự thi đã Xóa trở lại, về Chờ kích hoạt, email lấy từ file, một thư
+   * kích hoạt mới. Họ tên, mã, lượt làm bài và điểm cũ giữ nguyên (cùng `id`). Một giao dịch.
+   */
+  private async restoreCandidate(
+    item: Item,
+    reviewer: { id: string; ip: string | null },
+    requesterId: string,
+  ): Promise<void> {
+    const now = this.clock.now();
+    try {
+      await this.db.transaction(async (tx) => {
+        const [user] = await tx
+          .select({
+            id: users.id,
+            isAdmin: users.isAdmin,
+            removedAt: users.removedAt,
+            code: users.code,
+          })
+          .from(users)
+          .where(eq(users.id, item.userId as string))
+          .for('update');
+        const tags = user
+          ? await tx
+              .select({ tag: userRoleTags.tag })
+              .from(userRoleTags)
+              .where(eq(userRoleTags.userId, user.id))
+          : [];
+        // Từ lúc đọc file tới lúc duyệt người đó có thể đã được khôi phục, thành Quản trị viên hay thêm vai trò khác.
+        if (!user || !user.removedAt || user.isAdmin || tags.some((t) => t.tag !== 'candidate')) {
+          await this.markItem(tx, item, { outcome: 'skipped', note: 'restore_state_changed' });
+          return;
+        }
+        await tx
+          .update(users)
+          .set({
+            removedAt: null,
+            removedBy: null,
+            status: 'active',
+            lockedAt: null,
+            lockedBy: null,
+            lockedReason: null,
+            passwordHash: null,
+            mustChangePassword: true,
+            passwordExpiresAt: null,
+            activatedAt: null,
+            emailVerifiedAt: null,
+            email: item.email,
+            code: user.code ?? item.code,
+          })
+          .where(eq(users.id, user.id));
+        await tx
+          .insert(userRoleTags)
+          .values({ userId: user.id, tag: 'candidate', grantedBy: reviewer.id, grantedAt: now })
+          .onConflictDoNothing();
+        // Liên kết cũ của tài khoản (kích hoạt, hỗ trợ...) không được sống lại cùng tài khoản.
+        await tx
+          .update(authTokens)
+          .set({ replacedAt: now })
+          .where(
+            and(
+              eq(authTokens.userId, user.id),
+              isNull(authTokens.usedAt),
+              isNull(authTokens.replacedAt),
+            ),
+          );
+        await this.mail.enqueueIn(tx, [
+          {
+            kind: 'activation',
+            toEmail: item.email as string,
+            lane: 'bulk',
+            userId: user.id,
+            requestedBy: requesterId,
+          },
+        ]);
+        await this.audit.record(
+          {
+            actor: reviewer,
+            action: 'user.restore',
+            entityType: 'user',
+            entityId: user.id,
+            before: { removedAt: user.removedAt },
+            after: { removedAt: null, requestId: item.requestId, email: item.email },
+          },
+          tx,
+        );
+        await this.markItem(tx, item, { outcome: 'restored', userId: user.id });
+      });
+    } catch (error) {
+      const note = TAKEN_BY_CONSTRAINT[uniqueViolationOf(error) ?? ''];
+      if (!note) throw error;
+      await this.db.transaction((tx) => this.markItem(tx, item, { outcome: 'skipped', note }));
+    }
+  }
+
+  /**
+   * Tài khoản đang dùng mà dòng này thực chất là cùng một người (P2): duy nhất một người khớp theo mã hoặc email, không phải
+   * Quản trị viên, họ tên khớp (bỏ dấu, không phân biệt hoa thường). Trả `null` nếu không chắc: dòng sẽ bị bỏ qua như cũ.
+   */
+  private async sameCandidate(tx: Transaction, item: Item): Promise<string | null> {
+    const conditions = [];
+    if (item.email) conditions.push(eq(users.email, item.email));
+    if (item.code) conditions.push(sql`lower(${users.code}) = ${item.code.toLowerCase()}`);
+    if (conditions.length === 0) return null;
+    const found = await tx
+      .select({ id: users.id, fullName: users.fullName, isAdmin: users.isAdmin })
+      .from(users)
+      .where(and(isNull(users.removedAt), sql`(${sql.join(conditions, sql` OR `)})`));
+    const [only] = found;
+    if (found.length !== 1 || !only || only.isAdmin) return null;
+    return normalizePersonName(only.fullName) === normalizePersonName(item.fullName ?? '')
+      ? only.id
+      : null;
+  }
+
   private async takenField(tx: Transaction, item: Item, username: string): Promise<string | null> {
     const conditions = [eq(users.username, username)];
     if (item.email) conditions.push(eq(users.email, item.email));
@@ -237,7 +379,7 @@ export class AccountRequestApproveJob implements OnModuleInit {
       .update(accountRequestItems)
       .set({
         outcome: result.outcome,
-        userId: result.outcome === 'created' ? result.userId : item.userId,
+        userId: 'userId' in result && result.userId ? result.userId : item.userId,
         outcomeNote: result.outcome === 'skipped' ? result.note : null,
       })
       .where(and(eq(accountRequestItems.id, item.id), eq(accountRequestItems.outcome, 'pending')));

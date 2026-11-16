@@ -14,7 +14,7 @@ import { JOB_QUEUE, type JobQueue } from '../../../queue/job-queue';
 import { AuditService } from '../../audit/audit.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { accountRequestItems, accountRequests, users } from '../identity.schema';
+import { accountRequestItems, accountRequests, userRoleTags, users } from '../identity.schema';
 import { settleRequest } from './account-request-settle';
 
 export type AccountRequestStatus = (typeof accountRequests.$inferSelect)['status'];
@@ -33,7 +33,52 @@ const trimmedNote = (note: string | null | undefined) => note?.trim().slice(0, N
 const scopeOf = (user: AuthenticatedUser) => (user.isAdmin ? undefined : user.id);
 
 /** Lý do chặn nói rõ tài khoản khớp là loại nào (Quản trị viên, đã Xóa...) chỉ dành cho Quản trị viên. */
-const ADMIN_ONLY_NOTES = new Set(['matches_admin', 'matches_removed_user', 'code_email_conflict']);
+const ADMIN_ONLY_NOTES = new Set([
+  'matches_admin',
+  'removed_user_privileged',
+  'code_email_conflict',
+]);
+
+/** Bảng đối chiếu cho Quản trị viên: tài khoản có sẵn mà một dòng khớp (docs/plan/yeu-cau-nhieu-giang-vien-thiet-ke.md mục 4). */
+interface MatchedAccount {
+  id: string;
+  fullName: string;
+  code: string | null;
+  email: string | null;
+  classLabel: string | null;
+  status: 'active' | 'locked' | 'removed';
+  isAdmin: boolean;
+  removedAt: Date | null;
+  removedByName: string | null;
+  roleTags: string[];
+}
+
+const sameText = (a: string | null, b: string | null) =>
+  Boolean(a && b && a.trim().toLowerCase() === b.trim().toLowerCase());
+
+/** Khớp theo mã, email hay cả hai (mã trước, email sau, như luật đối chiếu). */
+function matchedBy(item: { code: string | null; email: string | null }, account: MatchedAccount) {
+  const byCode = sameText(item.code, account.code);
+  const byEmail = sameText(item.email, account.email);
+  if (byCode && byEmail) return 'code_email' as const;
+  if (byCode) return 'code' as const;
+  if (byEmail) return 'email' as const;
+  return null;
+}
+
+function describeMatch(
+  account: MatchedAccount | undefined,
+  item: { code: string | null; email: string | null },
+) {
+  return account ? { ...account, matchedBy: matchedBy(item, account) } : null;
+}
+
+/** Ghi chú Người ra đề thấy: trung tính, không lộ lý do hay tài khoản bị khớp. */
+function examinerNote(note: string | null): string | null {
+  if (!note) return note;
+  if (note === 'will_restore') return 'restore_awaiting_admin';
+  return ADMIN_ONLY_NOTES.has(note) ? 'account_conflict' : note;
+}
 
 export interface ApprovalSelection {
   /** Duyệt mọi dòng chờ duyệt có `match_status` là `new` hoặc `exact`. */
@@ -174,7 +219,7 @@ export class AccountRequestsService {
       .from(accountRequestItems)
       .where(eq(accountRequestItems.requestId, id))
       .groupBy(accountRequestItems.matchStatus);
-    const counts = { new: 0, exact: 0, name_mismatch: 0, blocked: 0 };
+    const counts = { new: 0, exact: 0, name_mismatch: 0, restore: 0, blocked: 0 };
     for (const { matchStatus, total } of grouped) counts[matchStatus] = total;
 
     // Số dòng "duyệt cả lô" sẽ duyệt: còn chờ và là người mới hoặc khớp đúng tài khoản có sẵn.
@@ -223,29 +268,63 @@ export class AccountRequestsService {
             matchStatus: accountRequestItems.matchStatus,
             outcome: accountRequestItems.outcome,
             outcomeNote: accountRequestItems.outcomeNote,
-            matchedUserId: users.id,
-            matchedUserName: users.fullName,
+            matchedUserId: accountRequestItems.userId,
           })
           .from(accountRequestItems)
-          .leftJoin(users, eq(users.id, accountRequestItems.userId))
           .where(where)
           .orderBy(accountRequestItems.rowNumber)
           .limit(limit)
           .offset(offset),
     );
     // Người ra đề không thấy tên tài khoản bị khớp hay lý do chặn cụ thể: tránh dùng tính năng này để dò danh bạ.
+    // Quản trị viên thấy bảng đối chiếu chi tiết để quyết định (docs/plan/yeu-cau-nhieu-giang-vien-thiet-ke.md mục 4).
+    const details = user.isAdmin
+      ? await this.matchedAccounts(
+          result.items.flatMap((i) => (i.matchedUserId ? [i.matchedUserId] : [])),
+        )
+      : new Map<string, MatchedAccount>();
     return {
       ...result,
-      items: result.items.map(({ matchedUserId, matchedUserName, ...item }) => ({
+      items: result.items.map(({ matchedUserId, ...item }) => ({
         ...item,
-        outcomeNote:
-          !user.isAdmin && item.outcomeNote && ADMIN_ONLY_NOTES.has(item.outcomeNote)
-            ? 'account_conflict'
-            : item.outcomeNote,
-        matchedUser:
-          user.isAdmin && matchedUserId ? { id: matchedUserId, fullName: matchedUserName } : null,
+        outcomeNote: user.isAdmin ? item.outcomeNote : examinerNote(item.outcomeNote),
+        matchedUser: matchedUserId ? describeMatch(details.get(matchedUserId), item) : null,
       })),
     };
+  }
+
+  /** Thông tin các tài khoản mà dòng của Yêu cầu khớp: họ tên, mã, email, lớp, trạng thái, người Xóa, nhãn vai trò. */
+  private async matchedAccounts(ids: string[]): Promise<Map<string, MatchedAccount>> {
+    const found = new Map<string, MatchedAccount>();
+    if (ids.length === 0) return found;
+    const remover = alias(users, 'remover');
+    const rows = await this.db
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        code: users.code,
+        email: users.email,
+        classLabel: users.classLabel,
+        status: users.status,
+        isAdmin: users.isAdmin,
+        removedAt: users.removedAt,
+        removedByName: remover.fullName,
+      })
+      .from(users)
+      .leftJoin(remover, eq(remover.id, users.removedBy))
+      .where(inArray(users.id, [...new Set(ids)]));
+    const tags = await this.db
+      .select({ userId: userRoleTags.userId, tag: userRoleTags.tag })
+      .from(userRoleTags)
+      .where(inArray(userRoleTags.userId, [...new Set(ids)]));
+    for (const row of rows) {
+      found.set(row.id, {
+        ...row,
+        status: row.removedAt ? 'removed' : row.status,
+        roleTags: tags.filter((t) => t.userId === row.id).map((t) => t.tag),
+      });
+    }
+    return found;
   }
 
   /**

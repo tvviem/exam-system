@@ -7,6 +7,7 @@ import {
   CircleCheck,
   CircleX,
   Hourglass,
+  RotateCcw,
   UserRoundCheck,
   UserRoundPlus,
 } from 'lucide-react';
@@ -68,6 +69,7 @@ const matchTone = {
   new: 'primary',
   exact: 'success',
   name_mismatch: 'warning',
+  restore: 'warning',
   blocked: 'danger',
 } as const;
 
@@ -80,6 +82,8 @@ export function MatchBadge({ status }: { status: MatchStatus }) {
       <UserRoundCheck aria-hidden className="size-3" />
     ) : status === 'blocked' ? (
       <Ban aria-hidden className="size-3" />
+    ) : status === 'restore' ? (
+      <RotateCcw aria-hidden className="size-3" />
     ) : (
       <CircleAlert aria-hidden className="size-3.5" />
     );
@@ -207,6 +211,23 @@ export function AccountRequestView({
               {reviewable && (
                 <p className="text-sm text-fg-muted">{t('accountRequests.selectHint')}</p>
               )}
+              {reviewable && data.counts.restore > 0 && (
+                <p
+                  role="note"
+                  className="rounded-lg border border-border bg-warning-soft p-3 text-sm"
+                >
+                  {t('accountRequests.restoreHint', { count: data.counts.restore })}
+                </p>
+              )}
+              {!admin &&
+                data.status !== 'rejected' &&
+                data.counts.new === 0 &&
+                data.counts.restore === 0 &&
+                data.counts.exact + data.counts.name_mismatch > 0 && (
+                  <p role="note" className="rounded-lg border border-border bg-surface p-3 text-sm">
+                    {t('accountRequests.allExistingHint')}
+                  </p>
+                )}
               <ChipGroup label={t('accountRequests.filterRows')}>
                 <Chip
                   active={!matchStatus}
@@ -284,25 +305,96 @@ const identityOf = (item: AccountRequestItem) =>
 
 function MatchedUser({ item, admin }: { item: AccountRequestItem; admin: boolean }) {
   const { t } = useTranslation();
-  if (!item.matchedUser) return null;
+  const account = item.matchedUser;
+  if (!account) return null;
+  // Người ra đề không nhận chi tiết tài khoản bị khớp (máy chủ cũng không gửi): chỉ Quản trị viên đối chiếu được.
+  if (!admin) return null;
+  const compared = [
+    ['fullName', item.fullName, account.fullName],
+    ['code', item.code, account.code],
+    ['email', item.email, account.email],
+    ['classLabel', item.classLabel, account.classLabel],
+  ] as const;
+  const same = (a: string | null, b: string | null) =>
+    (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+  const removed = account.status === 'removed';
+  // Dòng cần Quản trị viên quyết định thì mở sẵn bảng đối chiếu.
+  const openByDefault =
+    item.outcome === 'pending' && ['restore', 'name_mismatch'].includes(item.matchStatus);
   return (
-    <p className="text-sm text-fg-muted">
-      {item.outcome === 'created'
-        ? t('accountRequests.createdAccount')
-        : t('accountRequests.matchedAccount')}
-      :{' '}
-      {admin ? (
+    <details open={openByDefault || item.matchStatus === 'blocked'} className="mt-2 text-sm">
+      <summary className="inline-flex min-h-8 cursor-pointer items-center gap-2 font-medium text-primary">
+        {item.outcome === 'created'
+          ? t('accountRequests.createdAccount')
+          : t('accountRequests.compare.heading')}
+        : {account.fullName}
+      </summary>
+      <div className="mt-2 flex flex-col gap-2 rounded-lg border border-border bg-bg p-3">
+        <p>
+          <span className="text-fg-muted">{t('accountRequests.compare.status')}: </span>
+          <Badge tone={removed ? 'danger' : account.status === 'locked' ? 'warning' : 'success'}>
+            {t(`accountRequests.compare.state.${account.status}`)}
+          </Badge>
+          {removed && account.removedAt && (
+            <span className="ml-2">
+              {account.removedByName
+                ? t('accountRequests.compare.removedAt', {
+                    time: formatDateTime(account.removedAt),
+                    name: account.removedByName,
+                  })
+                : t('accountRequests.compare.removedAtUnknown', {
+                    time: formatDateTime(account.removedAt),
+                  })}
+            </span>
+          )}
+        </p>
+        {account.matchedBy && (
+          <p>
+            <span className="text-fg-muted">{t('accountRequests.compare.matchedBy')}: </span>
+            {t(`accountRequests.compare.by.${account.matchedBy}`)}
+          </p>
+        )}
+        <p>
+          <span className="text-fg-muted">{t('accountRequests.compare.roles')}: </span>
+          {[
+            ...(account.isAdmin ? [t('accountRequests.compare.admin')] : []),
+            ...account.roleTags.map((tag) => t(`roleTag.${tag}`)),
+          ].join(', ') || t('accountRequests.compare.noRoles')}
+        </p>
+        <div className="flex flex-col gap-2">
+          {compared.map(([field, fromFile, existing]) => {
+            const equal = same(fromFile, existing);
+            return (
+              <div key={field} className="flex flex-col gap-0.5 border-t border-border pt-2">
+                <span className="font-medium">{t(`accountRequests.compare.field.${field}`)}</span>
+                <span className="break-all">
+                  <span className="text-fg-muted">{t('accountRequests.compare.file')}: </span>
+                  {fromFile || t('accountRequests.compare.empty')}
+                </span>
+                <span className="break-all">
+                  <span className="text-fg-muted">{t('accountRequests.compare.account')}: </span>
+                  {existing || t('accountRequests.compare.empty')}
+                </span>
+                <span>
+                  <Badge tone={equal ? 'success' : 'warning'}>
+                    {t(
+                      equal ? 'accountRequests.compare.same' : 'accountRequests.compare.different',
+                    )}
+                  </Badge>
+                </span>
+              </div>
+            );
+          })}
+        </div>
         <Link
           to="/admin/users/$userId"
-          params={{ userId: item.matchedUser.id }}
-          className="text-primary hover:underline"
+          params={{ userId: account.id }}
+          className="w-fit text-primary hover:underline"
         >
-          {item.matchedUser.fullName}
+          {t('accountRequests.compare.open')}
         </Link>
-      ) : (
-        item.matchedUser.fullName
-      )}
-    </p>
+      </div>
+    </details>
   );
 }
 
@@ -366,7 +458,7 @@ function ItemList({ items, admin, selection }: ItemListProps) {
         {
           key: 'name',
           header: t('accountRequests.columns.fullName'),
-          className: 'font-medium',
+          className: 'min-w-40 font-medium',
           cell: (item) => (
             <>
               {item.fullName ?? '—'}

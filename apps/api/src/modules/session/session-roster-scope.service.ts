@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { CLOCK, type Clock } from '../../common/clock';
 import type { SupportRosterScope } from '../../common/support-roster-scope';
 import { type Database, DB } from '../../db/db.module';
@@ -28,6 +28,23 @@ export class SessionRosterScopeService implements SupportRosterScope {
       )
       .limit(1);
     return Boolean(row);
+  }
+
+  async inOpenRosterAmong(examinerId: string, userIds: string[]): Promise<Set<string>> {
+    if (userIds.length === 0) return new Set();
+    const rows = await this.db
+      .selectDistinct({ userId: sessionRoster.userId })
+      .from(sessionRoster)
+      .innerJoin(sessions, eq(sessions.id, sessionRoster.sessionId))
+      .where(
+        and(
+          inArray(sessionRoster.userId, userIds),
+          eq(sessions.ownerId, examinerId),
+          isNull(sessions.cancelledAt),
+          gt(sessions.closesAt, this.clock.now()),
+        ),
+      );
+    return new Set(rows.map((r) => r.userId));
   }
 
   async rosterUserIds(sessionId: string, ownerId: string | null): Promise<string[] | null> {
