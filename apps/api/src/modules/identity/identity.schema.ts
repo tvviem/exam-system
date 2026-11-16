@@ -178,12 +178,14 @@ export const matchStatusEnum = pgEnum('account_request_match_status', [
   'new',
   'exact',
   'name_mismatch',
+  'restore',
   'blocked',
 ]);
 export const itemOutcomeEnum = pgEnum('account_request_item_outcome', [
   'pending',
   'created',
   'tag_added',
+  'restored',
   'skipped',
   'rejected',
 ]);

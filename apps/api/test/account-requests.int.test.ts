@@ -100,16 +100,16 @@ describe('tải lên và phân tích', () => {
       originalFilename: 'danh-sach.csv',
       rowCount: 1,
       requesterName: 'Lê Giảng Viên',
-      counts: { new: 1, exact: 0, name_mismatch: 0, blocked: 0 },
+      counts: { new: 1, exact: 0, name_mismatch: 0, restore: 0, blocked: 0 },
       pendingValid: 1,
     });
   });
 
-  it('khớp tài khoản có sẵn: đủ bốn giá trị match_status và lý do chặn (Q90)', async () => {
+  it('khớp tài khoản có sẵn: đủ năm giá trị match_status và lý do chặn (Q90, thêm khôi phục từ 16/11/2026)', async () => {
     const an = await seedUser({ fullName: 'Nguyễn Văn An', code: 'B100' });
     const binh = await seedUser({ fullName: 'Trần Thị Bình', email: 'binh@example.edu.vn' });
     await seedUser({ isAdmin: true, email: 'qt@example.edu.vn' });
-    await seedUser({ removed: true, code: 'B300', fullName: 'Đã Xóa' });
+    const removedB300 = await seedUser({ removed: true, code: 'B300', fullName: 'Đã Xóa' });
     await seedUser({ code: 'B400', fullName: 'Người Mã' });
     await seedUser({ email: 'b400@example.edu.vn', fullName: 'Người Email' });
     const khoa = await seedUser({ status: 'locked', code: 'B600', fullName: 'Bị Khóa' });
@@ -120,7 +120,7 @@ describe('tải lên và phân tích', () => {
         'nguyen van an,b100,b100@example.edu.vn,,,', // exact (mã, khác hoa thường và dấu)
         'Lê Văn Khác,,BINH@example.edu.vn,,,', // name_mismatch (email)
         'Quản Trị,,qt@example.edu.vn,,,', // blocked: Quản trị viên
-        'Đã Xóa,B300,b300@example.edu.vn,,,', // blocked: đã bị Xóa
+        'Đã Xóa,B300,b300@example.edu.vn,,,', // restore: khớp tài khoản đã Xóa chỉ có nhãn Người dự thi (chưa có nhãn nào thì cũng là khôi phục được)
         'Ai Đó,B400,b400@example.edu.vn,,,', // blocked: mã và email là hai người khác nhau
         'Bị Khóa,B600,b600@example.edu.vn,,,', // exact dù đang bị Khóa
         'Phạm Mới,B500,b500@example.edu.vn,,,', // new
@@ -142,7 +142,7 @@ describe('tải lên và phân tích', () => {
       [2, 'exact', 'pending', null, an.id],
       [3, 'name_mismatch', 'pending', null, binh.id],
       [4, 'blocked', 'rejected', 'matches_admin', null],
-      [5, 'blocked', 'rejected', 'matches_removed_user', null],
+      [5, 'restore', 'pending', 'will_restore', removedB300.id],
       [6, 'blocked', 'rejected', 'code_email_conflict', null],
       [7, 'exact', 'pending', null, khoa.id],
       [8, 'new', 'pending', null, null],
@@ -150,7 +150,7 @@ describe('tải lên và phân tích', () => {
       [10, 'blocked', 'rejected', 'duplicate_in_file', null],
     ]);
     const detail = (await get(examiner.cookie, `/api/account-requests/${id}`)).json();
-    expect(detail.counts).toEqual({ new: 1, exact: 2, name_mismatch: 1, blocked: 5 });
+    expect(detail.counts).toEqual({ new: 1, exact: 2, name_mismatch: 1, restore: 1, blocked: 4 });
   });
 
   it('mã thuộc người đã bị Xóa mà email thuộc người đang dùng thì chặn, không khớp nhầm người đang dùng', async () => {

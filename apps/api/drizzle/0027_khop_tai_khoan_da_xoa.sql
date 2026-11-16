@@ -1,0 +1,2 @@
+ALTER TYPE "public"."account_request_item_outcome" ADD VALUE 'restored' BEFORE 'skipped';--> statement-breakpoint
+ALTER TYPE "public"."account_request_match_status" ADD VALUE 'restore' BEFORE 'blocked';

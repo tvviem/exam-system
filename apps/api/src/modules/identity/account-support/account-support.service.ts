@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Actor } from '../../../common/actor';
 import { ApiError, validationFailed } from '../../../common/api-error';
 import { mapUniqueToConflict } from '../../../common/pg-error';
@@ -225,7 +225,7 @@ export class AccountSupportService {
       .where(
         and(
           eq(accountRequestItems.userId, targetId),
-          eq(accountRequestItems.outcome, 'created'),
+          inArray(accountRequestItems.outcome, ['created', 'restored']),
           eq(accountRequests.requestedBy, examinerId),
         ),
       )

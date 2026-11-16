@@ -48,6 +48,8 @@ export interface TrackingRow {
   code: string | null;
   email: string | null;
   state: TrackingState;
+  /** Người xem được phép Gửi lại, Sửa email, Liên kết hỗ trợ cho dòng này (chỉ xem trạng thái nếu `false`). */
+  actionable: boolean;
 }
 
 export interface TrackingPage {
@@ -88,7 +90,8 @@ export class AccountTrackingService {
     options: TrackingOptions,
   ): Promise<TrackingPage> {
     await this.assertCanView(user, requestId);
-    return this.page(await this.rows(this.requestMembers(requestId)), options);
+    const rows = await this.rows(this.requestMembers(requestId));
+    return this.page(rows, await this.actionableAmong(user, rows), options);
   }
 
   /** Bảng theo dõi của Danh sách dự thi một Phiên thi: Người ra đề chỉ Phiên thi của mình (404 nếu không), Quản trị viên mọi Phiên thi. */
@@ -107,10 +110,33 @@ export class AccountTrackingService {
             ids.map((id) => sql`${id}::uuid`),
             sql`, `,
           )}])`;
-    return this.page(await this.rows(members), options);
+    const rows = await this.rows(members);
+    return this.page(rows, await this.actionableAmong(user, rows), options);
   }
 
-  private page(all: RawRow[], options: TrackingOptions): TrackingPage {
+  /**
+   * Những dòng mình được thao tác (quyền từng người, như `canSupport`): Quản trị viên mọi dòng; Người ra đề chỉ tài khoản do Yêu cầu của
+   * mình tạo hoặc khôi phục, hoặc đang trong Danh sách dự thi chưa kết thúc của mình. Dòng còn lại chỉ hiện trạng thái (P3).
+   */
+  private async actionableAmong(user: AuthenticatedUser, rows: RawRow[]): Promise<Set<string>> {
+    const ids = rows.map((r) => r.user_id);
+    if (user.isAdmin) return new Set(ids);
+    if (ids.length === 0) return new Set();
+    const made = await this.db.execute<{ user_id: string }>(sql`
+      SELECT DISTINCT i.user_id FROM account_request_items i
+        JOIN account_requests r ON r.id = i.request_id
+       WHERE r.requested_by = ${user.id} AND i.outcome IN ('created', 'restored')
+         AND i.user_id IN (${sql.join(
+           ids.map((id) => sql`${id}::uuid`),
+           sql`, `,
+         )})`);
+    const actionable = new Set(made.rows.map((r) => r.user_id));
+    const rest = ids.filter((id) => !actionable.has(id));
+    for (const id of await this.roster.inOpenRosterAmong(user.id, rest)) actionable.add(id);
+    return actionable;
+  }
+
+  private page(all: RawRow[], actionable: Set<string>, options: TrackingOptions): TrackingPage {
     const counts = Object.fromEntries(TRACKING_STATES.map((s) => [s, 0])) as Record<
       TrackingState,
       number
@@ -127,6 +153,7 @@ export class AccountTrackingService {
         code: r.code,
         email: r.email,
         state: r.state,
+        actionable: actionable.has(r.user_id),
       })),
       total: filtered.length,
       page: options.page,
@@ -152,9 +179,11 @@ export class AccountTrackingService {
       }
     }
     const all = await this.rows(this.requestMembers(requestId));
+    const actionable = await this.actionableAmong(user, all);
     const queued: { userId: string; email: string }[] = [];
     for (const row of all) {
-      if (!AWAITING_STATES.includes(row.state) || !row.email) continue;
+      if (!actionable.has(row.user_id) || !AWAITING_STATES.includes(row.state) || !row.email)
+        continue;
       if ((await this.limiter.tryResend(row.user_id)).allowed) {
         queued.push({ userId: row.user_id, email: row.email });
       }

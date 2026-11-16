@@ -287,6 +287,7 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
   // Ai còn Chờ kích hoạt (7d-2, E-05): dấu trên dòng và hai việc hỗ trợ trong menu. Lỗi (ví dụ không đủ quyền) thì bỏ qua, danh sách vẫn dùng được.
   const awaiting = useQuery(sessionAwaitingQuery(session.id));
   const awaitingBy = new Map((awaiting.data?.items ?? []).map((row) => [row.userId, row]));
+  const canSupport = (userId: string) => awaitingBy.get(userId)?.actionable === true;
   const toggle = (id: string) =>
     setSelected((current) => {
       const next = new Set(current);
@@ -388,7 +389,7 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
                         danger: true,
                         onSelect: () => remove.mutate([user.userId]),
                       },
-                      ...(awaitingBy.has(user.userId)
+                      ...(canSupport(user.userId)
                         ? [
                             {
                               label: t('tracking.changeEmail'),

@@ -21,10 +21,31 @@ export const ACCOUNT_REQUEST_STATUSES: AccountRequestStatus[] = [
   'rejected',
 ];
 
-export type MatchStatus = 'new' | 'exact' | 'name_mismatch' | 'blocked';
-export const MATCH_STATUSES: MatchStatus[] = ['new', 'exact', 'name_mismatch', 'blocked'];
+export type MatchStatus = 'new' | 'exact' | 'name_mismatch' | 'restore' | 'blocked';
+export const MATCH_STATUSES: MatchStatus[] = [
+  'new',
+  'exact',
+  'name_mismatch',
+  'restore',
+  'blocked',
+];
 
-export type ItemOutcome = 'pending' | 'created' | 'tag_added' | 'skipped' | 'rejected';
+export type ItemOutcome = 'pending' | 'created' | 'tag_added' | 'restored' | 'skipped' | 'rejected';
+
+/** Tài khoản có sẵn mà một dòng khớp, để Quản trị viên đối chiếu (docs/plan/yeu-cau-nhieu-giang-vien-thiet-ke.md mục 4). */
+export interface MatchedAccount {
+  id: string;
+  fullName: string;
+  code: string | null;
+  email: string | null;
+  classLabel: string | null;
+  status: 'active' | 'locked' | 'removed';
+  isAdmin: boolean;
+  removedAt: string | null;
+  removedByName: string | null;
+  roleTags: string[];
+  matchedBy: 'code' | 'email' | 'code_email' | null;
+}
 
 export interface AccountRequestListItem {
   id: string;
@@ -67,7 +88,8 @@ export interface AccountRequestItem {
   matchStatus: MatchStatus;
   outcome: ItemOutcome;
   outcomeNote: string | null;
-  matchedUser: { id: string; fullName: string } | null;
+  /** Chỉ Quản trị viên nhận (bảng đối chiếu); Người ra đề luôn `null`. */
+  matchedUser: MatchedAccount | null;
 }
 
 export interface AccountRequestParams {

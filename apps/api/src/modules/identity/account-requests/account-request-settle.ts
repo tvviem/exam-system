@@ -20,7 +20,7 @@ export async function settleRequest(
     .where(eq(accountRequestItems.requestId, requestId))
     .groupBy(accountRequestItems.outcome);
   const total = (outcome: string) => rows.find((r) => r.outcome === outcome)?.total ?? 0;
-  const succeeded = total('created') + total('tag_added');
+  const succeeded = total('created') + total('tag_added') + total('restored');
   const failed = total('rejected') + total('skipped');
 
   let status: Status;

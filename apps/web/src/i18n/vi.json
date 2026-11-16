@@ -768,20 +768,23 @@
     "new": "Người mới",
     "exact": "Khớp tài khoản có sẵn",
     "name_mismatch": "Khớp nhưng khác họ tên",
-    "blocked": "Không duyệt được"
+    "blocked": "Không duyệt được",
+    "restore": "Khôi phục tài khoản đã Xóa"
   },
   "matchStatusHint": {
     "new": "Chưa có tài khoản; sẽ được tạo khi duyệt.",
     "exact": "Đã có tài khoản; chỉ thêm vai trò Người dự thi khi duyệt.",
     "name_mismatch": "Mã hoặc email trùng tài khoản có sẵn nhưng họ tên khác. Quản trị viên quyết định.",
-    "blocked": "Dòng này không thể duyệt."
+    "blocked": "Dòng này không thể duyệt.",
+    "restore": "Có tài khoản cũ đã Xóa trùng mã hoặc email. Quản trị viên xem đối chiếu rồi tick riêng để khôi phục."
   },
   "itemOutcome": {
     "pending": "Chờ duyệt",
     "created": "Đã tạo tài khoản",
     "tag_added": "Đã thêm vai trò",
     "skipped": "Đã bỏ qua",
-    "rejected": "Bị từ chối"
+    "rejected": "Bị từ chối",
+    "restored": "Đã khôi phục tài khoản"
   },
   "accountRequestFileError": {
     "unsupported_file": "File không đọc được (không phải .xlsx hoặc .csv UTF-8 hợp lệ).",
@@ -802,7 +805,14 @@
     "matches_removed_user": "Trùng tài khoản đã bị Xóa.",
     "code_email_conflict": "Mã và email thuộc hai tài khoản khác nhau.",
     "request_rejected": "Yêu cầu đã bị từ chối.",
-    "account_conflict": "Mã hoặc email trùng một tài khoản không thể dùng nên dòng này không cấp được."
+    "account_conflict": "Mã hoặc email trùng một tài khoản không thể dùng nên dòng này không cấp được.",
+    "will_restore": "Khớp một tài khoản đã Xóa. Khi duyệt sẽ khôi phục chính tài khoản đó (giữ nguyên lịch sử và điểm cũ), đưa về Chờ kích hoạt và gửi thư kích hoạt tới email trong file.",
+    "restore_awaiting_admin": "Đang chờ Quản trị viên xác nhận.",
+    "removed_user_privileged": "Trùng một tài khoản đã Xóa từng là Quản trị viên hoặc có vai trò khác: không tự khôi phục được, hãy nhờ Quản trị viên xử lý riêng.",
+    "restore_state_changed": "Không khôi phục được vì tài khoản đã thay đổi từ lúc đọc file.",
+    "email_taken": "Email đã được người khác dùng.",
+    "code_taken": "Mã định danh đã được người khác dùng.",
+    "username_taken": "Tên đăng nhập đã được người khác dùng."
   },
   "accountRequests": {
     "heading": "Yêu cầu cấp tài khoản",
@@ -850,7 +860,42 @@
     "selectRow": "Chọn dòng {{n}}",
     "selectHint": "Dòng \"khớp nhưng khác họ tên\" chỉ được duyệt khi bạn chọn riêng: hãy kiểm tra đúng là người đó.",
     "approvingHint": "Đang tạo tài khoản. Trang tự cập nhật.",
-    "createdAccount": "Tài khoản đã tạo"
+    "createdAccount": "Tài khoản đã tạo",
+    "restoreHint": "Có {{count}} dòng khôi phục tài khoản đã Xóa. Các dòng này KHÔNG nằm trong \"Duyệt các dòng hợp lệ\": xem bảng đối chiếu ở từng dòng rồi tick riêng nếu đúng là người đó.",
+    "sharedClassHint": "Lớp có nhiều giảng viên cùng dạy: chỉ gửi Yêu cầu cho sinh viên CHƯA có tài khoản. Sinh viên đã có tài khoản (do giảng viên khác tạo) thì thêm thẳng vào Danh sách dự thi của Phiên thi bằng mã định danh, không cần gửi Yêu cầu.",
+    "allExistingHint": "Mọi dòng trong file này đều đã có tài khoản. Lần sau không cần gửi Yêu cầu cho họ: hãy thêm thẳng vào Danh sách dự thi của Phiên thi bằng mã định danh.",
+    "compare": {
+      "heading": "Đối chiếu với tài khoản có sẵn",
+      "matchedBy": "Khớp theo",
+      "by": {
+        "code": "mã định danh",
+        "email": "email",
+        "code_email": "cả mã và email"
+      },
+      "status": "Trạng thái tài khoản",
+      "state": {
+        "active": "Đang dùng",
+        "locked": "Đang bị Khóa đăng nhập",
+        "removed": "Đã Xóa"
+      },
+      "removedAt": "Đã Xóa lúc {{time}}, bởi {{name}}",
+      "removedAtUnknown": "Đã Xóa lúc {{time}}",
+      "roles": "Vai trò",
+      "noRoles": "chưa có nhãn vai trò",
+      "admin": "Quản trị viên",
+      "file": "Trong file",
+      "account": "Tài khoản có sẵn",
+      "same": "Giống",
+      "different": "Khác",
+      "empty": "(trống)",
+      "field": {
+        "fullName": "Họ tên",
+        "code": "Mã định danh",
+        "email": "Email",
+        "classLabel": "Lớp"
+      },
+      "open": "Mở tài khoản"
+    }
   },
   "notification": {
     "account_request.submitted": "{{requesterName}} gửi yêu cầu cấp tài khoản ({{rowCount}} dòng).",
@@ -2202,7 +2247,8 @@
     "changeEmail": "Sửa email…",
     "changeEmailOf": "Sửa email của {{name}}",
     "link": "Liên kết hỗ trợ…",
-    "linkOf": "Liên kết hỗ trợ của {{name}}"
+    "linkOf": "Liên kết hỗ trợ của {{name}}",
+    "viewOnly": "Chỉ xem trạng thái (tài khoản do người khác tạo)"
   },
   "mailQueue": {
     "title": "Hàng đợi thư",

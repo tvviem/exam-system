@@ -45,6 +45,16 @@ Sau khi Yêu cầu cấp tài khoản được duyệt, trang chi tiết **Yêu 
 
 **Quản trị viên** có thêm màn **Hàng đợi thư** (thanh điều hướng): số thư theo trạng thái, 24 giờ so với trần 400, và các thư chưa gửi được (đang chờ, lỗi, bị từ chối) kèm lỗi gần nhất; **không hiện mã nào**. Khi số thư 24 giờ **vượt 70 % trần (280/400)** có **chuông** cho mọi Quản trị viên (tối đa một chuông mỗi ngày, tự gỡ khi hạ xuống): nên giãn việc nhập danh sách lớn sang ngày sau.
 
+## 1d. Nhiều giảng viên dạy chung một lớp, và sinh viên đã bị Xóa (từ 16/11/2026)
+
+**Lớp có nhiều giảng viên:** mỗi sinh viên chỉ có **một** tài khoản. Giảng viên đến sau **không cần gửi Yêu cầu** cho sinh viên đã có tài khoản: thêm thẳng vào Danh sách dự thi của Phiên thi bằng mã định danh. Nếu vẫn gửi file có sinh viên đã có tài khoản, dòng đó là "Khớp tài khoản có sẵn": khi duyệt chỉ đảm bảo nhãn Người dự thi, **không tạo tài khoản mới và không gửi thư**.
+
+**Hai giảng viên gửi cùng lúc** (cả hai thấy "Người mới" vì chưa ai được duyệt): duyệt Yêu cầu nào trước thì tạo tài khoản; Yêu cầu sau được **gộp vào tài khoản đó** nếu họ tên khớp (kết quả "Đã thêm vai trò"), còn họ tên khác hẳn thì bị bỏ qua kèm lý do để Quản trị viên xử lý riêng.
+
+**Quyền theo dòng ở bảng "Theo dõi kích hoạt":** Người ra đề chỉ **thao tác** (Gửi lại, Sửa email, Liên kết hỗ trợ, và nằm trong "Gửi lại cho tất cả") với sinh viên do **Yêu cầu của chính mình tạo hoặc khôi phục**, hoặc đang trong Danh sách dự thi chưa kết thúc của mình. Sinh viên do giảng viên khác tạo vẫn hiện **trạng thái** nhưng không có nút. Quản trị viên thao tác được mọi dòng.
+
+**Dòng khớp tài khoản đã Xóa:** nếu tài khoản đã Xóa chỉ có nhãn Người dự thi, dòng là **"Khôi phục tài khoản đã Xóa"**. Quản trị viên thấy bảng đối chiếu (file so với tài khoản có sẵn, ô khác nhau được ghi chữ "Khác", đã Xóa lúc nào và bởi ai, vai trò) và phải **tick riêng** (không nằm trong "Duyệt các dòng hợp lệ"). Duyệt thì **khôi phục chính tài khoản đó**: giữ họ tên, mã, lịch sử thi và điểm; về **Chờ kích hoạt**; mật khẩu cũ bị xóa; email lấy từ file; gửi một thư kích hoạt mới; mọi liên kết cũ chết. Tài khoản đã Xóa **từng là Quản trị viên hoặc có vai trò khác** thì **không tự khôi phục**: dòng bị chặn, nhờ Quản trị viên xử lý riêng. Người ra đề chỉ thấy "Đang chờ Quản trị viên xác nhận", không thấy chi tiết tài khoản bị khớp.
+
 ## 2. Quy tắc mật khẩu và đăng nhập (đang áp dụng)
 
 **Mật khẩu của người dùng** (khi đặt hoặc đổi):

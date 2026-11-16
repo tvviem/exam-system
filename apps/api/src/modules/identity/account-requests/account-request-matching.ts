@@ -1,17 +1,20 @@
 import { inArray, or, sql } from 'drizzle-orm';
 import type { Database } from '../../../db/db.module';
-import { users } from '../identity.schema';
+import { userRoleTags, users } from '../identity.schema';
 import type { ParsedRow } from './account-request-file';
 import { normalizePersonName } from './person-name';
 
-export type MatchStatus = 'new' | 'exact' | 'name_mismatch' | 'blocked';
+export type MatchStatus = 'new' | 'exact' | 'name_mismatch' | 'restore' | 'blocked';
 
 /** Lý do một dòng bị chặn (ngoài các lỗi định dạng của `account-request-file`). */
-export type BlockReason = 'matches_admin' | 'matches_removed_user' | 'code_email_conflict';
+export type BlockReason = 'matches_admin' | 'removed_user_privileged' | 'code_email_conflict';
 
 export interface RowMatch {
   matchStatus: MatchStatus;
-  /** Tài khoản có sẵn mà dòng này khớp (chỉ khi `exact` hoặc `name_mismatch`). */
+  /**
+   * Tài khoản có sẵn mà dòng này khớp (`exact`, `name_mismatch`, `restore`, và `blocked` khi khớp một tài khoản đã Xóa có
+   * quyền: để Quản trị viên thấy khớp với ai).
+   */
   userId: string | null;
   /** Mã lỗi của dòng hoặc lý do chặn, khi `matchStatus = blocked`. */
   note: string | null;
@@ -22,6 +25,8 @@ interface KnownUser {
   fullName: string;
   isAdmin: boolean;
   removed: boolean;
+  /** Nhãn vai trò hiện có. */
+  tags: string[];
 }
 
 /**
@@ -55,12 +60,24 @@ export async function matchRows(
           emails.length > 0 ? inArray(users.email, emails) : undefined,
         ),
       );
+    // Chỉ cần nhãn của tài khoản đã Xóa (để biết có khôi phục được không).
+    const removedIds = found.filter((u) => u.removedAt !== null).map((u) => u.id);
+    const tagRows =
+      removedIds.length > 0
+        ? await db
+            .select({ userId: userRoleTags.userId, tag: userRoleTags.tag })
+            .from(userRoleTags)
+            .where(inArray(userRoleTags.userId, removedIds))
+        : [];
+    const tagsOf = new Map<string, string[]>();
+    for (const row of tagRows) tagsOf.set(row.userId, [...(tagsOf.get(row.userId) ?? []), row.tag]);
     for (const user of found) {
       const known = {
         id: user.id,
         fullName: user.fullName,
         isAdmin: user.isAdmin,
         removed: user.removedAt !== null,
+        tags: tagsOf.get(user.id) ?? [],
       };
       if (user.code) push(byCode, user.code.toLowerCase(), known);
       if (user.email) push(byEmail, user.email.toLowerCase(), known);
@@ -83,7 +100,14 @@ export async function matchRows(
       return blocked('code_email_conflict');
     const matched = codeOwner ?? emailOwner;
     if (!matched) return { matchStatus: 'new', userId: null, note: null };
-    if (matched.removed) return blocked('matches_removed_user');
+    if (matched.removed) {
+      // Chỉ khôi phục người chỉ có nhãn Người dự thi; người từng là Quản trị viên hoặc có vai trò khác vẫn bị chặn để file
+      // Excel không trả lại quyền đã bị gỡ.
+      const candidateOnly = !matched.isAdmin && matched.tags.every((tag) => tag === 'candidate');
+      return candidateOnly
+        ? { matchStatus: 'restore', userId: matched.id, note: 'will_restore' }
+        : { matchStatus: 'blocked', userId: matched.id, note: 'removed_user_privileged' };
+    }
     const sameName =
       normalizePersonName(matched.fullName) === normalizePersonName(row.fullName ?? '');
     return { matchStatus: sameName ? 'exact' : 'name_mismatch', userId: matched.id, note: null };
