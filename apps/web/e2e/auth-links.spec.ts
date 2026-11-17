@@ -24,7 +24,8 @@ interface Seed {
 
 /** Dựng người dùng và một mã đã biết; trả về tên đăng nhập và mã. */
 async function seed(project: string, label: string, options: Seed = {}) {
-  const username = `e2e-lk-${label}-${project}`.toLowerCase();
+  // Hậu tố ngẫu nhiên: chạy lại (retry, --repeat-each) không đụng người dùng còn sót từ lần trước.
+  const username = `e2e-lk-${label}-${project}-${randomBytes(3).toString('hex')}`.toLowerCase();
   const token = randomBytes(32).toString('base64url');
   const pending = options.pending ?? true;
   const db = new Client({ connectionString: databaseUrl });
@@ -182,6 +183,8 @@ test('E-05: trang Quên mật khẩu trả cùng một câu cho tài khoản có
     await page.goto('/login');
     await page.getByRole('link', { name: 'Quên mật khẩu?' }).click();
     await expect(page).toHaveURL(/\/forgot-password/);
+    // URL đổi trước khi trang mới hiện: lúc đó ô cùng nhãn vẫn là của trang Đăng nhập, chữ gõ vào sẽ mất khi trang mới dựng.
+    await expect(page.getByRole('heading', { name: 'Quên mật khẩu' })).toBeVisible();
     await page.getByLabel('Tên đăng nhập hoặc email').fill(identifier);
     await page.getByRole('button', { name: 'Gửi hướng dẫn' }).click();
     const notice = page.getByRole('status');
