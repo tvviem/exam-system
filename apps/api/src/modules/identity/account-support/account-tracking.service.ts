@@ -32,6 +32,12 @@ export const AWAITING_STATES: readonly TrackingState[] = [
   'needs_check',
 ];
 
+/**
+ * "Gửi lại cho tất cả" bỏ qua người vừa nhận (hoặc vừa được xếp) thư kích hoạt trong khoảng này: thư mới làm liên kết trong thư cũ
+ * hết hiệu lực và tốn gấp đôi hạn mức Gmail (luật B, 17/11/2026). Thư bị từ chối hoặc lỗi thì không tính là đã gửi.
+ */
+const RECENT_MAIL_HOURS = 24;
+
 /** Quá mốc này kể từ lần gửi thành công mà chưa kích hoạt: "Cần kiểm tra" (thư có thể đã vào rác hoặc bị trả lại). */
 const NEEDS_CHECK_AFTER_HOURS = 48;
 
@@ -67,6 +73,9 @@ type RawRow = {
   code: string | null;
   email: string | null;
   state: TrackingState;
+  /** Thư kích hoạt gần nhất của người này (null nếu chưa có thư nào). */
+  mail_status: string | null;
+  mail_created_at: Date | null;
 };
 
 /**
@@ -170,7 +179,7 @@ export class AccountTrackingService {
     user: AuthenticatedUser,
     actor: Actor,
     requestId: string,
-  ): Promise<{ queued: number; skipped: number }> {
+  ): Promise<{ queued: number; skipped: number; recent: number }> {
     await this.assertCanView(user, requestId);
     if (!user.isAdmin) {
       const permit = await this.limiter.tryBulkResend(actor.id);
@@ -181,9 +190,20 @@ export class AccountTrackingService {
     const all = await this.rows(this.requestMembers(requestId));
     const actionable = await this.actionableAmong(user, all);
     const queued: { userId: string; email: string }[] = [];
+    const recentCutoff = this.clock.now().getTime() - RECENT_MAIL_HOURS * 3_600_000;
+    let recent = 0;
     for (const row of all) {
       if (!actionable.has(row.user_id) || !AWAITING_STATES.includes(row.state) || !row.email)
         continue;
+      // Vừa có thư kích hoạt (đang chờ, đang gửi hoặc đã gửi) trong 24 giờ qua: bỏ qua, không tốn lượt Gửi lại của người đó.
+      if (
+        row.mail_created_at &&
+        ['pending', 'sending', 'sent'].includes(row.mail_status ?? '') &&
+        new Date(row.mail_created_at).getTime() > recentCutoff
+      ) {
+        recent++;
+        continue;
+      }
       if ((await this.limiter.tryResend(row.user_id)).allowed) {
         queued.push({ userId: row.user_id, email: row.email });
       }
@@ -205,7 +225,7 @@ export class AccountTrackingService {
     }
     // Không ai đủ điều kiện thì không tốn lượt 6 giờ.
     if (queued.length === 0 && !user.isAdmin) await this.limiter.refundBulkResend(actor.id);
-    const result = { queued: queued.length, skipped: all.length - queued.length };
+    const result = { queued: queued.length, skipped: all.length - queued.length, recent };
     await this.audit.record({
       actor,
       action: 'account-support.resend-all',
@@ -242,10 +262,11 @@ export class AccountTrackingService {
           WHEN m.status = 'sent' AND m.sent_at < ${cutoff.toISOString()}::timestamptz THEN 'needs_check'
           WHEN m.status = 'sent' THEN 'sent'
           ELSE 'not_sent'
-        END AS state
+        END AS state,
+        m.status AS mail_status, m.created_at AS mail_created_at
         FROM users u
         LEFT JOIN LATERAL (
-          SELECT o.status, o.sent_at FROM email_outbox o
+          SELECT o.status, o.sent_at, o.created_at FROM email_outbox o
            WHERE o.user_id = u.id AND o.kind = 'activation'
            ORDER BY o.created_at DESC LIMIT 1
         ) m ON TRUE

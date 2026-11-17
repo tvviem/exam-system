@@ -2241,14 +2241,15 @@
       "email_unverified": "Email chưa xác thực"
     },
     "resendAll": "Gửi lại cho tất cả",
-    "resendAllHint": "Chỉ gửi cho người chưa kích hoạt và chưa được gửi lại trong 24 giờ; tối đa một lần mỗi 6 giờ.",
-    "resendAllDone": "Đã xếp {{queued}} thư, bỏ qua {{skipped}} người chưa đủ điều kiện",
+    "resendAllHint": "Chỉ gửi cho người chưa kích hoạt và chưa được gửi thư kích hoạt trong 24 giờ qua; tối đa một lần mỗi 6 giờ. Thư mới làm liên kết trong thư cũ hết hiệu lực.",
+    "resendAllDone": "Đã xếp {{queued}} thư, bỏ qua {{skipped}} người.",
     "empty": "Không có ai ở trạng thái này.",
     "changeEmail": "Sửa email…",
     "changeEmailOf": "Sửa email của {{name}}",
     "link": "Liên kết hỗ trợ…",
     "linkOf": "Liên kết hỗ trợ của {{name}}",
-    "viewOnly": "Chỉ xem trạng thái (tài khoản do người khác tạo)"
+    "viewOnly": "Chỉ xem trạng thái (tài khoản do người khác tạo)",
+    "resendAllRecent": "Trong đó {{count}} người vừa được gửi thư kích hoạt trong 24 giờ qua nên không gửi thêm."
   },
   "mailQueue": {
     "title": "Hàng đợi thư",
