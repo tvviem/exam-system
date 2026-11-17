@@ -852,7 +852,8 @@
       "identity": "Mã · Email",
       "classLabel": "Lớp",
       "match": "Kết quả kiểm tra",
-      "select": "Chọn"
+      "select": "Chọn",
+      "actions": "Thao tác"
     },
     "approveValid": "Duyệt các dòng hợp lệ ({{count}})",
     "approveSelected": "Duyệt dòng đã chọn ({{count}})",
@@ -895,6 +896,45 @@
         "classLabel": "Lớp"
       },
       "open": "Mở tài khoản"
+    },
+    "groups": {
+      "legend": "Nhóm việc",
+      "ready": "Sẵn sàng duyệt",
+      "readyHint": "Người mới và khớp tài khoản có sẵn · tổng {{total}}",
+      "confirm": "Cần xác nhận",
+      "confirmHint": "Khôi phục tài khoản đã Xóa, khác họ tên · tổng {{total}}",
+      "blocked": "Không duyệt được",
+      "blockedHint": "Lỗi hoặc bị chặn"
+    },
+    "approveReady": "Duyệt {{count}} dòng sẵn sàng",
+    "pendingConfirm": "Chờ duyệt: còn {{count}} dòng cần xác nhận",
+    "showAll": "Xem tất cả {{count}} dòng",
+    "rowActions": "Thao tác với dòng {{n}}",
+    "moreActions": "Thao tác khác với yêu cầu",
+    "rejectRowAction": "Từ chối dòng",
+    "review": {
+      "title": "Đối chiếu dòng {{n}}: {{name}}",
+      "open": "Xem đối chiếu",
+      "openDecide": "Xem và xác nhận",
+      "openAria": "Xem đối chiếu dòng {{n}}",
+      "openDecideAria": "Xem và xác nhận dòng {{n}}",
+      "differs": "So với tài khoản có sẵn, khác: {{fields}}",
+      "same": "So với tài khoản có sẵn: giống hoàn toàn",
+      "ifRestore": "Nếu khôi phục:",
+      "ifSame": "Nếu đúng là người này:",
+      "consequence": {
+        "keepHistory": "giữ nguyên lịch sử và điểm cũ (cùng tài khoản)",
+        "pending": "về Chờ kích hoạt, mật khẩu cũ bị xóa",
+        "sendMail": "gửi thư kích hoạt tới {{email}}",
+        "tagOnly": "chỉ thêm vai trò Người dự thi cho tài khoản có sẵn, không đổi thông tin của họ",
+        "noMail": "không tạo tài khoản mới và không gửi thư"
+      },
+      "restore": "Khôi phục tài khoản",
+      "sameUser": "Đúng là người này",
+      "rejectRow": "Từ chối dòng",
+      "later": "Để sau",
+      "busy": "Đang xử lý quyết định trước đó, vui lòng đợi vài giây.",
+      "decided": "Đã ghi nhận quyết định cho dòng {{n}}."
     }
   },
   "notification": {
@@ -2274,5 +2314,11 @@
     },
     "attempts": "Số lần thử",
     "error": "Lỗi gần nhất"
+  },
+  "accountRequestFieldNames": {
+    "fullName": "họ tên",
+    "code": "mã",
+    "email": "email",
+    "classLabel": "lớp"
   }
 }

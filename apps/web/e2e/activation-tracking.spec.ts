@@ -40,7 +40,7 @@ test('Người ra đề theo dõi kích hoạt của Yêu cầu đã duyệt: kh
   await signIn(admin, `e2e-td-qt-${project}`);
   await admin.goto('/admin/account-requests');
   await admin.getByRole('link', { name: new RegExp(fileName) }).click();
-  await admin.getByRole('button', { name: /^Duyệt các dòng hợp lệ \(3\)$/ }).click();
+  await admin.getByRole('button', { name: /^Duyệt 3 dòng sẵn sàng$/ }).click();
   await expect(admin.getByText('Đã duyệt', { exact: true }).first()).toBeVisible({
     timeout: 20_000,
   });

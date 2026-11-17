@@ -72,6 +72,12 @@ export interface AccountRequestDetail {
   reviewNote: string | null;
   reviewedByName: string | null;
   counts: Record<MatchStatus, number>;
+  /** Số dòng theo nhóm việc: tổng và còn chờ (nhóm không duyệt được chỉ có tổng). */
+  groups: {
+    ready: { total: number; pending: number };
+    confirm: { total: number; pending: number };
+    blocked: { total: number };
+  };
   /** Số dòng sẽ được duyệt bởi "duyệt các dòng hợp lệ". */
   pendingValid: number;
 }
@@ -116,8 +122,12 @@ export const accountRequestQuery = (id: string) =>
       ['parsing', 'approving'].includes(query.state.data?.status ?? '') ? 2000 : false,
   });
 
+/** Nhóm việc của một Yêu cầu (docs/plan/yeu-cau-giao-dien-duyet-thiet-ke.md): sẵn sàng duyệt, cần xác nhận, không duyệt được. */
+export const ITEM_GROUPS = ['ready', 'confirm', 'blocked'] as const;
+export type ItemGroup = (typeof ITEM_GROUPS)[number];
+
 export interface AccountRequestItemParams {
-  matchStatus?: MatchStatus;
+  group?: ItemGroup;
   page?: number;
 }
 

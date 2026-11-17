@@ -45,7 +45,7 @@ test('Người ra đề tải file mẫu và gửi yêu cầu; Quản trị viê
   await expect(page.getByRole('heading', { name: `lop-${project}.csv` })).toBeVisible();
   await expect(page.getByText('Chờ duyệt').first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('3 dòng').first()).toBeVisible();
-  await page.getByRole('button', { name: /Không duyệt được \(1\)/ }).click();
+  await page.getByRole('button', { name: /Không duyệt được/ }).click();
   // Danh sách có hai bố cục (thẻ và bảng), mỗi cỡ màn hình chỉ hiện một.
   await expect(page.getByText('Thiếu họ tên.').filter({ visible: true })).toBeVisible();
 
@@ -63,7 +63,8 @@ test('Người ra đề tải file mẫu và gửi yêu cầu; Quản trị viê
   await expect(admin.getByRole('heading', { name: `lop-${project}.csv` })).toBeVisible();
   await expect(admin.getByText('Nguyễn Văn An').filter({ visible: true })).toBeVisible();
 
-  await admin.getByRole('button', { name: 'Từ chối yêu cầu' }).click();
+  await admin.getByRole('button', { name: 'Thao tác khác với yêu cầu' }).click();
+  await admin.getByRole('menuitem', { name: 'Từ chối yêu cầu' }).click();
   await admin.getByLabel('Lý do').fill('File sai lớp');
   await admin.getByRole('dialog').getByRole('button', { name: 'Từ chối', exact: true }).click();
   await expect(admin.getByText('Đã từ chối').first()).toBeVisible();
@@ -102,7 +103,7 @@ test('Thiếu email thì dòng bị loại ngay; Quản trị viên duyệt dòn
   });
   await page.getByRole('button', { name: 'Gửi yêu cầu' }).click();
   await expect(page.getByText('Chờ duyệt').first()).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: /Không duyệt được \(1\)/ }).click();
+  await page.getByRole('button', { name: /Không duyệt được/ }).click();
   await expect(
     page.getByText(/Thiếu Email: mỗi người cần một email/).filter({ visible: true }),
   ).toBeVisible();
@@ -113,7 +114,7 @@ test('Thiếu email thì dòng bị loại ngay; Quản trị viên duyệt dòn
   await expect(admin.getByRole('heading', { name: 'Người dùng' })).toBeVisible();
   await admin.goto('/admin/account-requests');
   await admin.getByRole('link', { name: new RegExp(fileName) }).click();
-  await admin.getByRole('button', { name: /^Duyệt các dòng hợp lệ \(2\)$/ }).click();
+  await admin.getByRole('button', { name: /^Duyệt 2 dòng sẵn sàng$/ }).click();
   // Còn một dòng thiếu email không duyệt được nên trạng thái là "Duyệt một phần".
   await expect(admin.getByText('Duyệt một phần', { exact: true }).first()).toBeVisible({
     timeout: 20_000,

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import type { TFunction } from 'i18next';
 import {
   ArrowLeft,
   Ban,
@@ -17,21 +18,25 @@ import {
   type AccountRequestItem,
   type AccountRequestItemParams,
   type AccountRequestStatus,
-  type ApprovalSelection,
   accountRequestItemsQuery,
   accountRequestQuery,
   approveAccountRequest,
-  MATCH_STATUSES,
   type MatchStatus,
   rejectAccountRequest,
 } from '../account-requests';
 import { errorMessage } from '../errors';
 import { formatDate, formatDateTime } from '../format';
 import { Badge, BusyNotice, Button, Dialog, ErrorMessage } from '.';
+import {
+  differingFields,
+  GroupCards,
+  MatchDialog,
+  needsConfirmation,
+} from './account-request-review';
 import { ActivationTracking } from './activation-tracking';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
-import { Chip, ChipGroup } from './chips';
 import { DataList } from './data-list';
+import { RowMenu } from './row-menu';
 import { StickyActionBar } from './sticky-action-bar';
 import { useToast } from './toast';
 
@@ -110,25 +115,44 @@ export function AccountRequestView({
   const { t } = useTranslation();
   const request = useQuery(accountRequestQuery(id));
   const [rejecting, setRejecting] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const data = request.data;
   const reviewable = admin && data?.status === 'pending';
-  const selection = reviewable
-    ? {
-        selected,
-        toggle: (itemId: string) =>
-          setSelected((current) => {
-            const next = new Set(current);
-            if (!next.delete(itemId)) next.add(itemId);
-            return next;
-          }),
-      }
-    : undefined;
-  const { matchStatus } = filter;
+  const { group } = filter;
   const items = useQuery({
     ...accountRequestItemsQuery(id, filter, data?.status),
     enabled: !!data && data.status !== 'parsing' && data.status !== 'parse_failed',
   });
+
+  // Hàng chờ "cần xác nhận" (nhóm nhỏ): để hộp thoại tự chuyển sang dòng kế tiếp sau mỗi quyết định.
+  const confirmQueue = useQuery({
+    ...accountRequestItemsQuery(id, { group: 'confirm' }, data?.status),
+    enabled: admin && !!data && data.status !== 'parsing' && data.status !== 'parse_failed',
+  });
+  const decide = useMutation({
+    mutationFn: (input: { itemId: string; approve: boolean }) =>
+      approveAccountRequest(
+        id,
+        input.approve ? { approveItemIds: [input.itemId] } : { rejectItemIds: [input.itemId] },
+      ),
+    onSuccess: async (_result, input) => {
+      const rowNumber = confirmQueue.data?.items.find((i) => i.id === input.itemId)?.rowNumber;
+      toast(t('accountRequests.review.decided', { n: rowNumber ?? '' }));
+      // Dòng cần xác nhận kế tiếp (còn chờ, khác dòng vừa quyết): hộp thoại chuyển sang đó, hoặc đóng nếu hết.
+      const next = (confirmQueue.data?.items ?? []).find(
+        (i) => i.id !== input.itemId && needsConfirmation(i),
+      );
+      setReviewingId(next?.id ?? null);
+      await queryClient.invalidateQueries({ queryKey: ['account-requests'] });
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+  const reviewing =
+    [...(items.data?.items ?? []), ...(confirmQueue.data?.items ?? [])].find(
+      (i) => i.id === reviewingId,
+    ) ?? null;
 
   const backTo = admin ? '/admin/account-requests' : '/examiner/account-requests';
   return (
@@ -151,6 +175,13 @@ export function AccountRequestView({
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold break-all">{request.data.originalFilename}</h1>
               <RequestStatusBadge status={request.data.status} />
+              {request.data.status === 'pending' && request.data.groups.confirm.pending > 0 && (
+                <span className="text-sm font-medium">
+                  {t('accountRequests.pendingConfirm', {
+                    count: request.data.groups.confirm.pending,
+                  })}
+                </span>
+              )}
             </div>
             <p className="text-sm text-fg-muted">
               {t('accountRequests.sentBy', { name: request.data.requesterName })} ·{' '}
@@ -208,17 +239,6 @@ export function AccountRequestView({
 
           {data && data.status !== 'parsing' && data.status !== 'parse_failed' && (
             <>
-              {reviewable && (
-                <p className="text-sm text-fg-muted">{t('accountRequests.selectHint')}</p>
-              )}
-              {reviewable && data.counts.restore > 0 && (
-                <p
-                  role="note"
-                  className="rounded-lg border border-border bg-warning-soft p-3 text-sm"
-                >
-                  {t('accountRequests.restoreHint', { count: data.counts.restore })}
-                </p>
-              )}
               {!admin &&
                 data.status !== 'rejected' &&
                 data.counts.new === 0 &&
@@ -228,25 +248,16 @@ export function AccountRequestView({
                     {t('accountRequests.allExistingHint')}
                   </p>
                 )}
-              <ChipGroup label={t('accountRequests.filterRows')}>
-                <Chip
-                  active={!matchStatus}
-                  count={data.rowCount ?? 0}
-                  onClick={() => onFilterChange({})}
-                >
-                  {t('accountRequests.allRows')}
-                </Chip>
-                {MATCH_STATUSES.map((status) => (
-                  <Chip
-                    key={status}
-                    active={matchStatus === status}
-                    count={data.counts[status]}
-                    onClick={() => onFilterChange({ matchStatus: status })}
-                  >
-                    {t(`matchStatus.${status}`)}
-                  </Chip>
-                ))}
-              </ChipGroup>
+              <GroupCards
+                groups={data.groups}
+                active={group}
+                onChange={(next) => onFilterChange({ group: next })}
+              />
+              {group && (
+                <Button className="w-fit" variant="ghost" onClick={() => onFilterChange({})}>
+                  {t('accountRequests.showAll', { count: data.rowCount ?? 0 })}
+                </Button>
+              )}
 
               {items.isPending ? (
                 <ListSkeleton />
@@ -256,14 +267,18 @@ export function AccountRequestView({
                 <EmptyState>{t('accountRequests.itemsEmpty')}</EmptyState>
               ) : (
                 <>
-                  <ItemList items={items.data.items} admin={admin} selection={selection} />
+                  <ItemList
+                    items={items.data.items}
+                    admin={admin}
+                    canDecide={reviewable}
+                    onReview={(item) => setReviewingId(item.id)}
+                    onRejectRow={(item) => decide.mutate({ itemId: item.id, approve: false })}
+                  />
                   <Pagination
                     page={items.data.page}
                     pageSize={items.data.pageSize}
                     total={items.data.total}
-                    onPage={(next) =>
-                      onFilterChange({ matchStatus, page: next > 1 ? next : undefined })
-                    }
+                    onPage={(next) => onFilterChange({ group, page: next > 1 ? next : undefined })}
                   />
                 </>
               )}
@@ -273,162 +288,70 @@ export function AccountRequestView({
       )}
       {/* Cuối nội dung: thanh dính đáy chỉ "ghim" khi vị trí tự nhiên của nó nằm dưới màn hình */}
       {reviewable && data && (
-        <ReviewBar
-          id={id}
-          pendingValid={data.pendingValid}
-          selected={selected}
-          onDone={() => setSelected(new Set())}
-          onReject={() => setRejecting(true)}
-        />
+        <ReviewBar id={id} ready={data.pendingValid} onReject={() => setRejecting(true)} />
       )}
       {rejecting && <RejectDialog id={id} onClose={() => setRejecting(false)} />}
+      {admin && data && reviewing && (
+        <MatchDialog
+          item={reviewing}
+          requestStatus={data.status}
+          deciding={decide.isPending}
+          error={decide.isError ? errorMessage(t, decide.error) : null}
+          onClose={() => setReviewingId(null)}
+          onApprove={() => decide.mutate({ itemId: reviewing.id, approve: true })}
+          onReject={() => decide.mutate({ itemId: reviewing.id, approve: false })}
+        />
+      )}
     </section>
   );
 }
 
 /**
- * Ghi chú dưới huy hiệu kiểm tra: lý do bị chặn hoặc bỏ qua; dòng còn chờ thì nhắc việc sẽ xảy ra khi duyệt.
- * Dòng đã xử lý chỉ hiện kết quả, không còn câu hướng dẫn của trạng thái chờ.
+ * Một dòng phụ ngắn dưới huy hiệu (chi tiết đầy đủ nằm trong hộp thoại đối chiếu): với dòng cần xác nhận của Quản trị viên là các trường
+ * khác nhau; còn lại là lý do bị chặn hoặc bỏ qua, hoặc việc sẽ xảy ra khi duyệt (dòng còn chờ).
  */
-function ItemNote({ item }: { item: AccountRequestItem }) {
+function ItemNote({ item, admin }: { item: AccountRequestItem; admin: boolean }) {
   const { t } = useTranslation();
-  const text = item.outcomeNote
-    ? t(`accountRequestRowError.${item.outcomeNote}`, { defaultValue: item.outcomeNote })
-    : item.outcome === 'pending'
-      ? t(`matchStatusHint.${item.matchStatus}`)
-      : null;
+  let text: string | null = null;
+  if (admin && item.matchedUser && item.matchStatus === 'restore' && item.outcome === 'pending') {
+    text = differsText(item, t);
+  } else if (
+    admin &&
+    item.matchedUser &&
+    item.matchStatus === 'name_mismatch' &&
+    item.outcome === 'pending'
+  ) {
+    text = differsText(item, t);
+  } else if (item.outcomeNote && !(admin && item.outcomeNote === 'will_restore')) {
+    text = t(`accountRequestRowError.${item.outcomeNote}`, { defaultValue: item.outcomeNote });
+  } else if (item.outcome === 'pending' && !(admin && item.matchStatus === 'restore')) {
+    text = t(`matchStatusHint.${item.matchStatus}`);
+  }
   return text ? <p className="mt-1 text-sm">{text}</p> : null;
+}
+
+function differsText(item: AccountRequestItem, t: TFunction) {
+  const fields = differingFields(item);
+  return fields.length === 0
+    ? t('accountRequests.review.same')
+    : t('accountRequests.review.differs', {
+        fields: fields.map((f) => t(`accountRequestFieldNames.${f}`)).join(', '),
+      });
 }
 
 const identityOf = (item: AccountRequestItem) =>
   [item.code, item.email].filter(Boolean).join(' · ');
 
-function MatchedUser({ item, admin }: { item: AccountRequestItem; admin: boolean }) {
-  const { t } = useTranslation();
-  const account = item.matchedUser;
-  if (!account) return null;
-  // Người ra đề không nhận chi tiết tài khoản bị khớp (máy chủ cũng không gửi): chỉ Quản trị viên đối chiếu được.
-  if (!admin) return null;
-  const compared = [
-    ['fullName', item.fullName, account.fullName],
-    ['code', item.code, account.code],
-    ['email', item.email, account.email],
-    ['classLabel', item.classLabel, account.classLabel],
-  ] as const;
-  const same = (a: string | null, b: string | null) =>
-    (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
-  const removed = account.status === 'removed';
-  // Dòng cần Quản trị viên quyết định thì mở sẵn bảng đối chiếu.
-  const openByDefault =
-    item.outcome === 'pending' && ['restore', 'name_mismatch'].includes(item.matchStatus);
-  return (
-    <details open={openByDefault || item.matchStatus === 'blocked'} className="mt-2 text-sm">
-      <summary className="inline-flex min-h-8 cursor-pointer items-center gap-2 font-medium text-primary">
-        {item.outcome === 'created'
-          ? t('accountRequests.createdAccount')
-          : t('accountRequests.compare.heading')}
-        : {account.fullName}
-      </summary>
-      <div className="mt-2 flex flex-col gap-2 rounded-lg border border-border bg-bg p-3">
-        <p>
-          <span className="text-fg-muted">{t('accountRequests.compare.status')}: </span>
-          <Badge tone={removed ? 'danger' : account.status === 'locked' ? 'warning' : 'success'}>
-            {t(`accountRequests.compare.state.${account.status}`)}
-          </Badge>
-          {removed && account.removedAt && (
-            <span className="ml-2">
-              {account.removedByName
-                ? t('accountRequests.compare.removedAt', {
-                    time: formatDateTime(account.removedAt),
-                    name: account.removedByName,
-                  })
-                : t('accountRequests.compare.removedAtUnknown', {
-                    time: formatDateTime(account.removedAt),
-                  })}
-            </span>
-          )}
-        </p>
-        {account.matchedBy && (
-          <p>
-            <span className="text-fg-muted">{t('accountRequests.compare.matchedBy')}: </span>
-            {t(`accountRequests.compare.by.${account.matchedBy}`)}
-          </p>
-        )}
-        <p>
-          <span className="text-fg-muted">{t('accountRequests.compare.roles')}: </span>
-          {[
-            ...(account.isAdmin ? [t('accountRequests.compare.admin')] : []),
-            ...account.roleTags.map((tag) => t(`roleTag.${tag}`)),
-          ].join(', ') || t('accountRequests.compare.noRoles')}
-        </p>
-        <div className="flex flex-col gap-2">
-          {compared.map(([field, fromFile, existing]) => {
-            const equal = same(fromFile, existing);
-            return (
-              <div key={field} className="flex flex-col gap-0.5 border-t border-border pt-2">
-                <span className="font-medium">{t(`accountRequests.compare.field.${field}`)}</span>
-                <span className="break-all">
-                  <span className="text-fg-muted">{t('accountRequests.compare.file')}: </span>
-                  {fromFile || t('accountRequests.compare.empty')}
-                </span>
-                <span className="break-all">
-                  <span className="text-fg-muted">{t('accountRequests.compare.account')}: </span>
-                  {existing || t('accountRequests.compare.empty')}
-                </span>
-                <span>
-                  <Badge tone={equal ? 'success' : 'warning'}>
-                    {t(
-                      equal ? 'accountRequests.compare.same' : 'accountRequests.compare.different',
-                    )}
-                  </Badge>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <Link
-          to="/admin/users/$userId"
-          params={{ userId: account.id }}
-          className="w-fit text-primary hover:underline"
-        >
-          {t('accountRequests.compare.open')}
-        </Link>
-      </div>
-    </details>
-  );
-}
-
 interface ItemListProps {
   items: AccountRequestItem[];
   admin: boolean;
-  /** Có khi Quản trị viên đang duyệt: cho chọn từng dòng. */
-  selection?: { selected: Set<string>; toggle: (id: string) => void };
+  /** Quản trị viên đang duyệt (Yêu cầu còn chờ duyệt): cho từ chối từng dòng và quyết định dòng cần xác nhận. */
+  canDecide: boolean;
+  onReview: (item: AccountRequestItem) => void;
+  onRejectRow: (item: AccountRequestItem) => void;
 }
 
-/** Ô chọn dòng; chỉ dòng còn chờ và không bị chặn mới chọn được. */
-function RowCheckbox({
-  item,
-  selection,
-}: {
-  item: AccountRequestItem;
-  selection: ItemListProps['selection'];
-}) {
-  const { t } = useTranslation();
-  if (!selection || item.outcome !== 'pending' || item.matchStatus === 'blocked') return null;
-  return (
-    <label className="-m-2 inline-flex size-12 cursor-pointer items-center justify-center">
-      <input
-        type="checkbox"
-        className="size-5 accent-primary"
-        aria-label={t('accountRequests.selectRow', { n: item.rowNumber })}
-        checked={selection.selected.has(item.id)}
-        onChange={() => selection.toggle(item.id)}
-      />
-    </label>
-  );
-}
-
-function ItemList({ items, admin, selection }: ItemListProps) {
+function ItemList({ items, admin, canDecide, onReview, onRejectRow }: ItemListProps) {
   const { t } = useTranslation();
   const matchCell = (item: AccountRequestItem) => (
     <>
@@ -436,18 +359,44 @@ function ItemList({ items, admin, selection }: ItemListProps) {
         <MatchBadge status={item.matchStatus} />
         {item.outcome !== 'pending' && <Badge>{t(`itemOutcome.${item.outcome}`)}</Badge>}
       </div>
-      <ItemNote item={item} />
-      <MatchedUser item={item} admin={admin} />
+      <ItemNote item={item} admin={admin} />
+      {admin && item.matchedUser && (
+        <Button
+          className="mt-2"
+          aria-label={t(
+            needsConfirmation(item) && canDecide
+              ? 'accountRequests.review.openDecideAria'
+              : 'accountRequests.review.openAria',
+            { n: item.rowNumber },
+          )}
+          onClick={() => onReview(item)}
+        >
+          {t(
+            needsConfirmation(item) && canDecide
+              ? 'accountRequests.review.openDecide'
+              : 'accountRequests.review.open',
+          )}
+        </Button>
+      )}
     </>
   );
+  const rowMenu = (item: AccountRequestItem) =>
+    canDecide && item.outcome === 'pending' && item.matchStatus !== 'blocked' ? (
+      <RowMenu
+        label={t('accountRequests.rowActions', { n: item.rowNumber })}
+        items={[
+          {
+            label: t('accountRequests.rejectRowAction'),
+            danger: true,
+            onSelect: () => onRejectRow(item),
+          },
+        ]}
+      />
+    ) : null;
   return (
     <DataList
       items={items}
       rowKey={(item) => item.id}
-      selectionHeader={<span className="sr-only">{t('accountRequests.columns.select')}</span>}
-      selectionCell={
-        selection ? (item) => <RowCheckbox item={item} selection={selection} /> : undefined
-      }
       columns={[
         {
           key: 'row',
@@ -484,6 +433,11 @@ function ItemList({ items, admin, selection }: ItemListProps) {
           cell: (item) => item.classLabel,
         },
         { key: 'match', header: t('accountRequests.columns.match'), cell: matchCell },
+        {
+          key: 'actions',
+          header: <span className="sr-only">{t('accountRequests.columns.actions')}</span>,
+          cell: (item) => rowMenu(item),
+        },
       ]}
       card={(item) => (
         <div className="rounded-xl border border-border bg-surface p-4">
@@ -491,7 +445,7 @@ function ItemList({ items, admin, selection }: ItemListProps) {
             <p className="text-sm text-fg-muted">
               {t('accountRequests.row', { n: item.rowNumber })}
             </p>
-            <RowCheckbox item={item} selection={selection} />
+            {rowMenu(item)}
           </div>
           <p className="font-medium">{item.fullName ?? '—'}</p>
           <p className="text-sm text-fg-muted">
@@ -545,63 +499,38 @@ function RejectDialog({ id, onClose }: { id: string; onClose: () => void }) {
 }
 
 /** Thanh duyệt: duyệt cả lô hợp lệ, hoặc duyệt / từ chối các dòng đã chọn (Q91). */
-function ReviewBar({
-  id,
-  pendingValid,
-  selected,
-  onDone,
-  onReject,
-}: {
-  id: string;
-  pendingValid: number;
-  selected: Set<string>;
-  onDone: () => void;
-  onReject: () => void;
-}) {
+/**
+ * Thanh dưới của Quản trị viên: MỘT nút chính duy nhất "Duyệt N dòng sẵn sàng" (chỉ nhóm sẵn sàng; dòng cần xác nhận quyết định trong hộp
+ * thoại đối chiếu). "Từ chối yêu cầu" nằm trong menu phụ, tách khỏi nút chính.
+ */
+function ReviewBar({ id, ready, onReject }: { id: string; ready: number; onReject: () => void }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const toast = useToast();
   const mutation = useMutation({
-    mutationFn: (selection: ApprovalSelection) => approveAccountRequest(id, selection),
+    mutationFn: () => approveAccountRequest(id, { allValid: true }),
     onSuccess: async () => {
       toast(t('toast.approvalStarted'));
-      onDone();
       await queryClient.invalidateQueries({ queryKey: ['account-requests'] });
       await queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
-  const chosen = [...selected];
   return (
     <StickyActionBar>
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="flex items-center gap-2">
         <Button
           variant="primary"
-          loading={mutation.isPending && mutation.variables?.allValid === true}
-          disabled={pendingValid === 0 || mutation.isPending}
-          onClick={() => mutation.mutate({ allValid: true })}
+          className="flex-1 sm:flex-none"
+          loading={mutation.isPending}
+          disabled={ready === 0 || mutation.isPending}
+          onClick={() => mutation.mutate()}
         >
-          {t('accountRequests.approveValid', { count: pendingValid })}
+          {t('accountRequests.approveReady', { count: ready })}
         </Button>
-        {chosen.length > 0 && (
-          <>
-            <Button
-              disabled={mutation.isPending}
-              onClick={() => mutation.mutate({ approveItemIds: chosen })}
-            >
-              {t('accountRequests.approveSelected', { count: chosen.length })}
-            </Button>
-            <Button
-              variant="danger-ghost"
-              disabled={mutation.isPending}
-              onClick={() => mutation.mutate({ rejectItemIds: chosen })}
-            >
-              {t('accountRequests.rejectSelected', { count: chosen.length })}
-            </Button>
-          </>
-        )}
-        <Button variant="danger-ghost" className="sm:ml-auto" onClick={onReject}>
-          {t('accountRequests.reject')}
-        </Button>
+        <RowMenu
+          label={t('accountRequests.moreActions')}
+          items={[{ label: t('accountRequests.reject'), danger: true, onSelect: onReject }]}
+        />
       </div>
       <ErrorMessage>{mutation.isError && errorMessage(t, mutation.error)}</ErrorMessage>
     </StickyActionBar>

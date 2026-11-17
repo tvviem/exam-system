@@ -23,6 +23,7 @@ import { buildAccountRequestTemplate } from './account-request-template';
 import {
   AccountRequestsService,
   canViewAccountRequests,
+  ITEM_GROUPS,
   NOTE_MAX,
 } from './account-requests.service';
 
@@ -32,6 +33,7 @@ const listSchema = pageSchema.extend({
 const itemsSchema = pageSchema.extend({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   matchStatus: z.enum(matchStatusEnum.enumValues).optional(),
+  group: z.enum(ITEM_GROUPS).optional(),
 });
 const approveSchema = z
   .object({

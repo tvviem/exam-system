@@ -70,42 +70,92 @@ test('Khớp tài khoản đã Xóa: Người ra đề chỉ thấy chờ xác n
   ).toBeVisible();
   await expect(page.getByText(/Đã Xóa lúc/)).toHaveCount(0);
 
-  // Quản trị viên: chip, ghi chú nhắc, bảng đối chiếu chi tiết.
+  // Quản trị viên: ba thẻ nhóm việc, một nút chính, danh sách gọn (không bảng chi tiết nhúng, không ô tick).
   const admin = await browser.newPage();
   await signIn(admin, `e2e-kp-qt-${project}`);
   await admin.goto('/admin/account-requests');
   await admin.getByRole('link', { name: new RegExp(fileName) }).click();
-  await expect(
-    admin.getByRole('button', { name: /Khôi phục tài khoản đã Xóa \(1\)/ }),
-  ).toBeVisible();
-  await expect(admin.getByRole('note').filter({ hasText: 'KHÔNG nằm trong' })).toBeVisible();
-  const compare = admin.getByText('Đối chiếu với tài khoản có sẵn').filter({ visible: true });
-  await expect(compare).toBeVisible();
-  const panel = admin
-    .locator('details')
-    .filter({ visible: true })
-    .filter({ hasText: 'Đã Xóa lúc' });
-  await expect(panel).toContainText('bởi Quản trị Khôi phục');
-  await expect(panel).toContainText('Khớp theo: mã định danh');
-  await expect(panel).toContainText(`kp.cu.${project}@example.edu.vn`); // email cũ của tài khoản
-  await expect(panel).toContainText(`kp.moi2.${project}@example.edu.vn`); // email trong file
-  await expect(panel.getByText('Khác').first()).toBeVisible(); // email và lớp khác nhau
+  await expect(admin.getByRole('button', { name: /Sẵn sàng duyệt/ })).toContainText('1');
+  await expect(admin.getByRole('button', { name: /Cần xác nhận/ })).toContainText('1');
+  await expect(admin.getByText('Chờ duyệt: còn 1 dòng cần xác nhận')).toBeVisible();
+  await expect(admin.getByRole('checkbox')).toHaveCount(0);
+  await expect(admin.getByText('Khớp theo')).toHaveCount(0); // chi tiết nằm trong hộp thoại, không ở danh sách
+  await expect(admin.getByText(/khác: email, lớp/).filter({ visible: true })).toBeVisible(); // một dòng phụ ngắn cho biết khác ở đâu
   expect(
     await admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBe(true);
 
-  // "Duyệt các dòng hợp lệ" chỉ có 1 dòng (người mới); dòng khôi phục phải tick riêng.
-  await admin.getByRole('button', { name: /^Duyệt các dòng hợp lệ \(1\)$/ }).click();
+  // Một nút chính duy nhất: duyệt các dòng sẵn sàng (không gồm dòng cần xác nhận).
+  await admin.getByRole('button', { name: /^Duyệt 1 dòng sẵn sàng$/ }).click();
   await expect(admin.getByText('Đã tạo tài khoản').filter({ visible: true }).first()).toBeVisible({
     timeout: 20_000,
   });
-  await admin.getByRole('checkbox', { name: 'Chọn dòng 3' }).check();
-  await admin.getByRole('button', { name: /^Duyệt dòng đã chọn \(1\)$/ }).click();
+
+  // Dòng cần xác nhận: mở hộp thoại đối chiếu, thấy đủ chi tiết và hậu quả, rồi khôi phục.
+  await admin
+    .getByRole('button', { name: 'Xem và xác nhận dòng 3' })
+    .filter({ visible: true })
+    .click();
+  const dialog = admin.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: /Đối chiếu dòng 3/ })).toBeVisible();
+  await expect(dialog).toContainText('bởi Quản trị Khôi phục');
+  await expect(dialog).toContainText('Khớp theo: mã định danh');
+  await expect(dialog).toContainText(`kp.cu.${project}@example.edu.vn`); // email cũ của tài khoản
+  await expect(dialog).toContainText(`kp.moi2.${project}@example.edu.vn`); // email trong file
+  await expect(dialog.getByText('Khác').first()).toBeVisible();
+  await expect(dialog).toContainText('giữ nguyên lịch sử và điểm cũ');
+  await expect(dialog).toContainText(`gửi thư kích hoạt tới kp.moi2.${project}@example.edu.vn`);
+  await dialog.getByRole('button', { name: 'Khôi phục tài khoản' }).click();
   await expect(
     admin.getByText('Đã khôi phục tài khoản').filter({ visible: true }).first(),
-  ).toBeVisible({ timeout: 20_000 });
+  ).toBeVisible({
+    timeout: 20_000,
+  });
   await expect(admin.getByText('Đã duyệt', { exact: true }).first()).toBeVisible({
     timeout: 20_000,
   });
+  await admin.close();
+});
+
+test('Từ chối dòng khôi phục trong hộp thoại: tài khoản vẫn đã Xóa, "Để sau" đóng hộp thoại mà không quyết', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const fileName = `tu-choi-${project}.csv`;
+  const student = await seedRemovedStudent(`tc-${project}`, `e2e-kp-qt-${project}`);
+  const csv = [
+    'Họ tên,Mã định danh,Email,Lớp,Ngày sinh,Giới tính',
+    `Sinh Viên Khôi Phục,${student.code},tc.moi.${project}@example.edu.vn,K22,,`,
+  ].join('\n');
+  await signIn(page, `e2e-kp-gv-${project}`);
+  await page.goto('/examiner/account-requests');
+  await page.getByLabel('File danh sách').setInputFiles({
+    name: fileName,
+    mimeType: 'text/csv',
+    buffer: Buffer.from(csv, 'utf8'),
+  });
+  await page.getByRole('button', { name: 'Gửi yêu cầu' }).click();
+  await expect(page.getByText('Chờ duyệt').first()).toBeVisible({ timeout: 15_000 });
+
+  const admin = await browser.newPage();
+  await signIn(admin, `e2e-kp-qt-${project}`);
+  await admin.goto('/admin/account-requests');
+  await admin.getByRole('link', { name: new RegExp(fileName) }).click();
+  const open = admin
+    .getByRole('button', { name: 'Xem và xác nhận dòng 2' })
+    .filter({ visible: true });
+  await open.click();
+  await admin.getByRole('dialog').getByRole('button', { name: 'Để sau' }).click();
+  await expect(admin.getByRole('dialog')).toHaveCount(0);
+  await expect(admin.getByText('Chờ duyệt: còn 1 dòng cần xác nhận')).toBeVisible();
+
+  await open.click();
+  await admin.getByRole('dialog').getByRole('button', { name: 'Từ chối dòng' }).click();
+  await expect(admin.getByText('Bị từ chối').filter({ visible: true }).first()).toBeVisible({
+    timeout: 20_000,
+  });
+  // Không còn dòng nào cần xác nhận hay sẵn sàng.
+  await expect(admin.getByRole('button', { name: /Cần xác nhận/ })).toContainText('0');
   await admin.close();
 });
