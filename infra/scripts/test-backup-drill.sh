@@ -168,6 +168,26 @@ step "6. Sao lưu đêm trọn vẹn, báo healthchecks"
 check "nightly đạt" backup nightly
 check "healthchecks nhận /start rồi thành công" bash -c "grep -q 'POST /nightly/start' '$WORK/hc.log' && grep -q 'POST /nightly ' '$WORK/hc.log'"
 
+step "6b. Việc nặng CHỜ khóa khi việc nhẹ đang giữ (bản đêm 02:00 từng bị bỏ qua hai đêm liền vì trùng việc push mỗi phút)"
+# Giữ khóa sao lưu `secs` giây ở nền, như việc push/release đang chạy đúng lúc bản đêm bắt đầu.
+hold_lock() { # số giây
+  ( exec 9>"$STATE/backup.lock" && flock 9 && sleep "$1" ) &
+  HOLD_PID=$!
+  sleep 1
+}
+N_NIGHT=$(ls "$BACKUP"/daily/*-nightly.dump | wc -l)
+hold_lock 5
+check "push trong lúc khóa bị giữ: bỏ qua êm (thoát 0, không in gì)" bash -c "test -z \"\$(bash '$SCRIPT' push 2>&1)\""
+check "nightly khi khóa đang bị giữ ngắn: chờ rồi đạt" backup nightly
+wait "$HOLD_PID" 2>/dev/null
+check "...và có thêm một bản đêm" test "$(ls "$BACKUP"/daily/*-nightly.dump | wc -l)" = $((N_NIGHT + 1))
+check_fail "...và sổ kết quả không ghi 'bỏ qua' cho lần chạy đó" bash -c "tail -n 3 '$STATE/backup-runs.jsonl' | jq -e 'select(.kind==\"nightly\" and .status==\"skip\")'"
+hold_lock 8
+check "nightly khi khóa bị giữ quá thời hạn chờ: không treo, thoát êm" env EXAM_LOCK_WAIT_SECONDS=2 bash "$SCRIPT" nightly
+wait "$HOLD_PID" 2>/dev/null
+check "...và sổ kết quả ghi 'bỏ qua' (không im lặng)" bash -c "tail -n 1 '$STATE/backup-runs.jsonl' | jq -e 'select(.kind==\"nightly\" and .status==\"skip\")'"
+check "...và không có thêm bản đêm" test "$(ls "$BACKUP"/daily/*-nightly.dump | wc -l)" = $((N_NIGHT + 1))
+
 step "7. Công bố mới thì dump ngay"
 backup release-check >/dev/null 2>&1
 N0="$(ls "$BACKUP"/daily/*-publish.dump | wc -l)"

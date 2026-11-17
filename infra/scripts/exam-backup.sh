@@ -213,15 +213,21 @@ hc_ping() {
 # QUAN TRỌNG: khóa flock nằm ở fd 9 và mọi tiến trình con thừa hưởng nó. Container chạy lâu (podman run -d / podman start,
 # conmon của chúng sống mãi) mà thừa hưởng fd 9 thì GIỮ KHÓA VĨNH VIỄN, mọi việc sao lưu sau đó bị "bỏ qua êm".
 # Vì vậy mọi lệnh khởi động container trong file này đều đóng fd 9 (9>&-).
-# Một việc nặng tại một thời điểm (Q353): không lấy được khóa thì bỏ qua êm, việc đang chạy sẽ lo.
+# Một việc nặng tại một thời điểm (Q353).
+# - quiet (push, release: chạy mỗi 1 đến 5 phút): không lấy được khóa thì bỏ qua êm, lần chạy kế tiếp sẽ lo.
+# - các việc còn lại (bản đêm, bản nền, dump, thử khôi phục...): CHỜ khóa tối đa EXAM_LOCK_WAIT_SECONDS (mặc định 600 giây).
+#   Lý do: bản đêm hẹn 02:00 bị systemd gom vào đúng giây việc push mỗi phút đang giữ khóa, bỏ qua thì không có lần thử
+#   lại nên hai đêm liền không có bản đêm. Việc nhẹ giữ khóa chỉ vài giây nên chờ là đủ. Chờ quá hạn thì bỏ qua và GHI sổ.
 take_lock() { # tên việc, [quiet: không ghi gì khi bỏ qua (việc chạy mỗi phút)]
   mkdir -p "$STATE_DIR"
   exec 9>"$LOCK_FILE"
-  if ! flock -n 9; then
-    if [ "${2:-}" != quiet ]; then
-      say "Bỏ qua $1: đang có việc sao lưu khác chạy."
-      run_log "$1" skip "đang có việc sao lưu khác chạy"
-    fi
+  if flock -n 9; then return 0; fi
+  [ "${2:-}" != quiet ] || exit 0
+  local wait_s="${EXAM_LOCK_WAIT_SECONDS:-600}"
+  say "Đợi $1: đang có việc sao lưu khác chạy (chờ tối đa ${wait_s} giây)."
+  if ! flock -w "$wait_s" 9; then
+    say "Bỏ qua $1: việc sao lưu khác vẫn chạy sau ${wait_s} giây."
+    run_log "$1" skip "đang có việc sao lưu khác chạy quá ${wait_s} giây"
     exit 0
   fi
 }
