@@ -69,7 +69,7 @@ export const trackingQuery = (requestId: string, filter: TrackingFilter) =>
 
 /** "Gửi lại cho tất cả": Người ra đề tối đa một lần mỗi 6 giờ. */
 export const resendAll = (requestId: string) =>
-  apiFetch<{ queued: number; skipped: number }>('/account-support/resend-all', {
+  apiFetch<{ queued: number; skipped: number; recent: number }>('/account-support/resend-all', {
     method: 'POST',
     body: { requestId },
   });

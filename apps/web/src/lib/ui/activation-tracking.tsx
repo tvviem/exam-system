@@ -74,7 +74,11 @@ export function ActivationTracking({ requestId }: { requestId: string }) {
   const all = useMutation({
     mutationFn: () => resendAll(requestId),
     onSuccess: async (result) => {
-      toast(t('tracking.resendAllDone', result));
+      toast(
+        result.recent > 0
+          ? `${t('tracking.resendAllDone', result)} ${t('tracking.resendAllRecent', { count: result.recent })}`
+          : t('tracking.resendAllDone', result),
+      );
       await refresh();
     },
   });

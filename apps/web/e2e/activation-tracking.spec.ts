@@ -1,7 +1,26 @@
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
 import { seedOpenSession } from './take-support';
 
+const apiRequire = createRequire(path.resolve(process.cwd(), '../api/package.json'));
+const { Client } = apiRequire('pg');
+const databaseUrl = process.env.E2E_DATABASE_URL ?? 'postgres://exam:exam@127.0.0.1:5434/exam_e2e';
 const PASSWORD = 'mat-khau-on-dinh';
+
+/** Đẩy các thư của những email này lùi 25 giờ: không còn là thư "vừa gửi" (luật B, 17/11/2026). */
+async function ageMailsOf(suffix: string) {
+  const db = new Client({ connectionString: databaseUrl });
+  await db.connect();
+  try {
+    await db.query(
+      "UPDATE email_outbox SET created_at = created_at - interval '25 hours', sent_at = sent_at - interval '25 hours' WHERE to_email LIKE $1",
+      [`%${suffix}`],
+    );
+  } finally {
+    await db.end();
+  }
+}
 
 async function signIn(page: Page, username: string) {
   await page.goto('/login');
@@ -56,7 +75,12 @@ test('Người ra đề theo dõi kích hoạt của Yêu cầu đã duyệt: kh
   // Bộ lọc nhóm "Chờ kích hoạt" đếm cả ba người.
   await expect(board.getByRole('button', { name: /^Chờ kích hoạt \(3\)$/ })).toBeVisible();
 
-  // Gửi lại cho tất cả: lần đầu được, lần hai trong 6 giờ bị từ chối.
+  // Gửi lại cho tất cả ngay sau khi duyệt: cả ba vừa nhận thư tạo tài khoản nên KHÔNG gửi thêm (thư mới làm liên kết cũ hết hiệu lực).
+  await board.getByRole('button', { name: 'Gửi lại cho tất cả' }).click();
+  await expect(page.getByText(/Đã xếp 0 thư, bỏ qua 3 người/)).toBeVisible();
+  await expect(page.getByText(/3 người vừa được gửi thư kích hoạt trong 24 giờ qua/)).toBeVisible();
+  // Sau 24 giờ thì gửi lại được; lần hai trong 6 giờ bị từ chối.
+  await ageMailsOf(`.td.${project}@example.edu.vn`);
   await board.getByRole('button', { name: 'Gửi lại cho tất cả' }).click();
   await expect(page.getByText(/Đã xếp 3 thư/)).toBeVisible();
   await board.getByRole('button', { name: 'Gửi lại cho tất cả' }).click();

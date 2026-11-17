@@ -30,6 +30,12 @@ async function signedIn(input: SeedUser) {
 const as = (who: { cookie: string }, method: 'POST' | 'GET', url: string, body?: unknown) =>
   call(t.app, method, url, { cookie: who.cookie, body });
 
+/** Đẩy mọi thư đã xếp lùi 25 giờ: không còn là thư "vừa gửi" (luật B, 17/11/2026: bỏ qua người vừa nhận thư trong 24 giờ). */
+const ageMails = () =>
+  sql(
+    "UPDATE email_outbox SET created_at = created_at - interval '25 hours', sent_at = sent_at - interval '25 hours'",
+  );
+
 describe('bảng theo dõi kích hoạt (K17)', () => {
   let admin: Awaited<ReturnType<typeof signedIn>>;
   let examiner: Awaited<ReturnType<typeof signedIn>>;
@@ -198,6 +204,7 @@ describe('bảng theo dõi kích hoạt (K17)', () => {
       await sql(
         "UPDATE users SET password_hash = 'x', activated_at = now(), email_verified_at = now() WHERE code = 'H1'",
       );
+      await ageMails(); // thư tạo tài khoản đã cũ; riêng H2 được Gửi lại ngay bên dưới nên là thư "vừa gửi"
       const [h2] = await sql<{ id: string }>("SELECT id FROM users WHERE code = 'H2'");
       expect((await as(admin, 'POST', `/api/account-support/${h2?.id}/resend`)).statusCode).toBe(
         200,
@@ -207,7 +214,7 @@ describe('bảng theo dõi kích hoạt (K17)', () => {
 
       const res = await resendAll(examiner, id);
       expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual({ queued: 2, skipped: 2 });
+      expect(res.json()).toEqual({ queued: 2, skipped: 2, recent: 1 });
       await t.queue.drain();
       expect(t.mail.sent.map((m) => m.to).sort()).toEqual([
         'h3@example.edu.vn',
@@ -221,6 +228,7 @@ describe('bảng theo dõi kích hoạt (K17)', () => {
 
     it('D-35: lần hai trong 6 giờ bị từ chối kèm giờ được thử lại; Quản trị viên không bị giới hạn 6 giờ', async () => {
       const id = await approvedRequest(['K,J1,j1@example.edu.vn,,,']);
+      await ageMails();
       expect((await resendAll(examiner, id)).statusCode).toBe(200);
       const again = await resendAll(examiner, id);
       expect(again.statusCode).toBe(429);
@@ -229,7 +237,7 @@ describe('bảng theo dõi kích hoạt (K17)', () => {
       // Quản trị viên bỏ qua giới hạn 6 giờ (vẫn tôn trọng 24 giờ mỗi sinh viên).
       const byAdmin = await resendAll(admin, id);
       expect(byAdmin.statusCode).toBe(200);
-      expect(byAdmin.json()).toEqual({ queued: 0, skipped: 1 });
+      expect(byAdmin.json()).toEqual({ queued: 0, skipped: 1, recent: 1 });
     });
 
     it('D-35d: Quản trị viên gọi liên tiếp hai lần đều được (không bị giới hạn 6 giờ)', async () => {
@@ -243,11 +251,58 @@ describe('bảng theo dõi kích hoạt (K17)', () => {
       await sql(
         "UPDATE users SET password_hash = 'x', activated_at = now(), email_verified_at = now()",
       );
-      expect((await resendAll(examiner, id)).json()).toEqual({ queued: 0, skipped: 1 });
+      expect((await resendAll(examiner, id)).json()).toEqual({
+        queued: 0,
+        skipped: 1,
+        recent: 0,
+      });
       await sql(
         "UPDATE users SET password_hash = NULL, activated_at = NULL, email_verified_at = NULL WHERE code = 'N1'",
       );
       expect((await resendAll(examiner, id)).statusCode).toBe(200);
+    });
+
+    // Luật B (17/11/2026): "Gửi lại cho tất cả" bỏ qua người vừa nhận thư kích hoạt trong 24 giờ (kể cả thư tạo hoặc khôi phục),
+    // vì thư mới làm liên kết trong thư cũ hết hiệu lực và tốn gấp đôi hạn mức Gmail.
+    it('R-17: ngay sau khi duyệt, "Gửi lại cho tất cả" không gửi thêm cho người vừa nhận thư tạo tài khoản', async () => {
+      const id = await approvedRequest(['A,V1,v1@example.edu.vn,,,', 'B,V2,v2@example.edu.vn,,,']);
+      t.mail.reset();
+      const res = await resendAll(examiner, id);
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ queued: 0, skipped: 2, recent: 2 });
+      await t.queue.drain();
+      expect(t.mail.sent).toEqual([]);
+      // Không ai được gửi nên không mất lượt 6 giờ của Người ra đề.
+      await ageMails();
+      expect((await resendAll(examiner, id)).json()).toEqual({ queued: 2, skipped: 0, recent: 0 });
+    });
+
+    it('R-18: chỉ người đã nhận thư quá 24 giờ mới được gửi lại; người vừa nhận thì bỏ qua', async () => {
+      const id = await approvedRequest([
+        'Cũ,V3,v3@example.edu.vn,,,',
+        'Mới,V4,v4@example.edu.vn,,,',
+      ]);
+      await sql(
+        "UPDATE email_outbox SET created_at = created_at - interval '25 hours', sent_at = sent_at - interval '25 hours' WHERE to_email = 'v3@example.edu.vn'",
+      );
+      t.mail.reset();
+      const res = await resendAll(examiner, id);
+      expect(res.json()).toEqual({ queued: 1, skipped: 1, recent: 1 });
+      await t.queue.drain();
+      expect(t.mail.sent.map((m) => m.to)).toEqual(['v3@example.edu.vn']);
+    });
+
+    it('R-19: thư vừa gửi mà bị từ chối hoặc lỗi thì KHÔNG tính là "vừa gửi": vẫn gửi lại được', async () => {
+      const id = await approvedRequest(['Lỗi,V5,v5@example.edu.vn,,,']);
+      await sql("UPDATE email_outbox SET status = 'rejected', sent_at = NULL");
+      t.mail.reset();
+      expect((await resendAll(examiner, id)).json()).toEqual({ queued: 1, skipped: 0, recent: 0 });
+    });
+
+    it('R-20: thư vừa xếp mà chưa gửi đi (đang chờ) cũng tính là "vừa gửi"', async () => {
+      const id = await approvedRequest(['Chờ,V6,v6@example.edu.vn,,,']);
+      await sql("UPDATE email_outbox SET status = 'pending', sent_at = NULL");
+      expect((await resendAll(examiner, id)).json()).toEqual({ queued: 0, skipped: 1, recent: 1 });
     });
 
     it('D-35c: Người ra đề khác hoặc Người dự thi không gửi lại hộ được', async () => {
@@ -360,7 +415,7 @@ describe('bảng theo dõi kích hoạt (K17)', () => {
       expect(board.items[0]).toMatchObject({ userId: studentId, state: 'sent', actionable: false });
 
       const all = await as(examiner, 'POST', '/api/account-support/resend-all', { requestId: id });
-      expect(all.json()).toEqual({ queued: 0, skipped: 1 });
+      expect(all.json()).toEqual({ queued: 0, skipped: 1, recent: 0 });
       await t.queue.drain();
       expect(t.mail.sent).toEqual([]);
       expect(
@@ -374,10 +429,11 @@ describe('bảng theo dõi kích hoạt (K17)', () => {
     it('R-15: sinh viên đang trong Danh sách dự thi chưa kết thúc của mình thì thao tác được và được gửi lại hàng loạt', async () => {
       const { id, studentId } = await sharedStudent();
       await sessionWith([studentId]);
+      await ageMails();
       const board = (await tracking(examiner, id)).json();
       expect(board.items[0]).toMatchObject({ actionable: true });
       const all = await as(examiner, 'POST', '/api/account-support/resend-all', { requestId: id });
-      expect(all.json()).toEqual({ queued: 1, skipped: 0 });
+      expect(all.json()).toEqual({ queued: 1, skipped: 0, recent: 0 });
     });
 
     it('R-16: sinh viên do chính mình tạo hoặc khôi phục thì thao tác được', async () => {

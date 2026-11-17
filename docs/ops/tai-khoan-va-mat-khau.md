@@ -39,7 +39,7 @@ Sau khi Yêu cầu cấp tài khoản được duyệt, trang chi tiết **Yêu 
 
 - **Khung hạn mức:** "Đã gửi X/400 thư trong 24 giờ"; nếu có thư của bạn đang chờ thì thêm "còn N thư trước thư của bạn, dự kiến xong khoảng HH:MM" (tính theo đúng lịch gửi thật, kể cả xoay vòng giữa hai Người ra đề).
 - **Sáu trạng thái:** Chưa gửi thư, Đã gửi thư, **Thư lỗi** (bị từ chối ngay, thường sai địa chỉ), **Cần kiểm tra** (đã gửi quá **48 giờ** mà chưa kích hoạt: có thể vào thư rác hoặc bị trả lại, hỏi sinh viên rồi **Sửa email**), Đã kích hoạt, Email chưa xác thực. Nút lọc **"Chờ kích hoạt"** gom bốn trạng thái đầu: bấm một lần là thấy ai còn phải nhắc.
-- **Gửi lại cho tất cả:** chỉ gửi cho người còn Chờ kích hoạt và chưa được gửi lại trong 24 giờ, báo "đã xếp N thư, bỏ qua M người". Người ra đề tối đa **một lần mỗi 6 giờ** (không ai đủ điều kiện thì không mất lượt); Quản trị viên không bị giới hạn 6 giờ.
+- **Gửi lại cho tất cả:** chỉ gửi cho người còn Chờ kích hoạt, chưa được Gửi lại trong 24 giờ và **chưa nhận thư kích hoạt nào trong 24 giờ qua** (kể cả thư tạo hoặc khôi phục tài khoản, đang chờ gửi hoặc đã gửi; thư bị từ chối hoặc lỗi thì không tính). Lý do: thư mới làm liên kết trong thư cũ hết hiệu lực và tốn gấp đôi hạn mức Gmail. Báo "đã xếp N thư, bỏ qua M người" kèm số người bị bỏ qua vì vừa nhận thư. Người ra đề tối đa **một lần mỗi 6 giờ** (không ai đủ điều kiện thì không mất lượt); Quản trị viên không bị giới hạn 6 giờ.
 - **Từng dòng:** Sửa email, Liên kết hỗ trợ (như mục 1b).
 - Trong **Danh sách dự thi của Phiên thi**, sinh viên chưa kích hoạt có dấu trạng thái và hai việc Sửa email, Liên kết hỗ trợ trong menu của dòng.
 

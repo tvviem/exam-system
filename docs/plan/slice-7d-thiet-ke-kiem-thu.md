@@ -280,3 +280,7 @@ Làm theo TDD: bài viết trước và thấy đỏ đúng lý do (D-40 đỏ v
 ### 16.4 Việc của chủ dự án khi deploy
 
 Migration `0026` **xóa bảng** (một chiều); production không có Phiếu nào (kiểm 14/11/2026). `SLIP_ENCRYPTION_KEY` còn trong `~/exam-prod-secrets/api.env` thì vô hại, có thể xóa dòng đó sau khi deploy.
+
+## 17. Bổ sung luật "Gửi lại cho tất cả" (17/11/2026)
+
+Phát hiện khi thử trên production: Lý Nhật Nam nhận hai thư kích hoạt cách nhau 21 giây, vì "Gửi lại cho tất cả" được bấm ngay sau khi duyệt khôi phục (thư tạo hoặc khôi phục không tính vào giới hạn Gửi lại 24 giờ, theo điều chỉnh v của mục 13.3). Hệ quả: thư sau làm liên kết thư trước hết hiệu lực. **Luật B (chủ dự án duyệt):** "Gửi lại cho tất cả" bỏ qua người có thư kích hoạt (đang chờ, đang gửi hoặc đã gửi) tạo trong 24 giờ qua, không tốn lượt Gửi lại của họ; thư bị từ chối hoặc lỗi không tính. Kết quả API thêm `recent` (số người bị bỏ qua vì vừa nhận thư). Bài R-17 đến R-20 và các bài D-34, D-35, R-14, R-15 điều chỉnh (đẩy thư lùi 25 giờ trước khi thử); 3 đột biến (bỏ luật, tính cả thư bị từ chối, vẫn tốn lượt Gửi lại) đều bị bắt. Gửi lại từng người, Sửa email và Liên kết hỗ trợ không đổi.
