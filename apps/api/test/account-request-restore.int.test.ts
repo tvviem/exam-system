@@ -314,6 +314,85 @@ describe('khớp tài khoản đã Xóa: khôi phục (C-gọn)', () => {
   });
 });
 
+describe('nhóm việc của Yêu cầu: sẵn sàng duyệt, cần xác nhận, không duyệt được', () => {
+  async function mixedRequest() {
+    const admin = await signedIn({ isAdmin: true, fullName: 'Quản Trị Viên' });
+    const examiner = await signedIn({ roleTags: ['examiner'], fullName: 'Lê Giảng Viên' });
+    await seedUser({
+      fullName: 'Có Sẵn',
+      code: 'EX1',
+      email: 'ex1@example.edu.vn',
+      roleTags: ['candidate'],
+    });
+    await seedUser({
+      fullName: 'Tên Khác',
+      code: 'MM1',
+      email: 'mm1@example.edu.vn',
+      roleTags: ['candidate'],
+    });
+    const gone = await seedUser({
+      fullName: 'Đã Xóa',
+      code: 'RS1',
+      email: 'rs1@example.edu.vn',
+      roleTags: ['candidate'],
+      removed: true,
+    });
+    await removedBy(gone.id, admin.id);
+    const id = await submitted(
+      examiner,
+      csvFile(
+        'Phạm Mới,NEW1,new1@example.edu.vn,,,', // new   -> sẵn sàng
+        'Có Sẵn,EX1,ex1@example.edu.vn,,,', // exact -> sẵn sàng
+        'Họ Tên Lạ Hoắc,MM1,mm1@example.edu.vn,,,', // name_mismatch -> cần xác nhận
+        'Đã Xóa,RS1,rs1@example.edu.vn,,,', // restore -> cần xác nhận
+        ',BAD1,bad1@example.edu.vn,,,', // thiếu họ tên -> không duyệt được
+      ),
+    );
+    return { admin, examiner, id };
+  }
+
+  it('R-21: chi tiết Yêu cầu có số dòng theo nhóm việc (tổng và đang chờ)', async () => {
+    const { admin, examiner, id } = await mixedRequest();
+    for (const who of [admin, examiner]) {
+      const detail = (await get(who, `/api/account-requests/${id}`)).json();
+      expect(detail.groups).toEqual({
+        ready: { total: 2, pending: 2 },
+        confirm: { total: 2, pending: 2 },
+        blocked: { total: 1 },
+      });
+    }
+  });
+
+  it('R-22: lọc dòng theo nhóm: sẵn sàng (Người mới, Khớp có sẵn), cần xác nhận (Khôi phục, Khác họ tên), không duyệt được', async () => {
+    const { admin, id } = await mixedRequest();
+    const names = async (group: string) =>
+      (
+        (await get(admin, `/api/account-requests/${id}/items?group=${group}`)).json().items as Row[]
+      ).map((i) => i.matchStatus);
+    expect(await names('ready')).toEqual(['new', 'exact']);
+    expect(await names('confirm')).toEqual(['name_mismatch', 'restore']);
+    expect(await names('blocked')).toEqual(['blocked']);
+    expect((await get(admin, `/api/account-requests/${id}/items?group=bậy`)).statusCode).toBe(400);
+  });
+
+  it('R-23: duyệt nhóm sẵn sàng xong thì nhóm này hết chờ, nhóm cần xác nhận vẫn chờ; quyết từng dòng xong thì hết chờ', async () => {
+    const { admin, id } = await mixedRequest();
+    await approveAll(admin, id);
+    let groups = (await get(admin, `/api/account-requests/${id}`)).json().groups;
+    expect(groups).toEqual({
+      ready: { total: 2, pending: 0 },
+      confirm: { total: 2, pending: 2 },
+      blocked: { total: 1 },
+    });
+    const confirm = (
+      (await get(admin, `/api/account-requests/${id}/items?group=confirm`)).json().items as Row[]
+    ).map((i) => i.id);
+    await approveAll(admin, id, { approveItemIds: [confirm[1]], rejectItemIds: [confirm[0]] });
+    groups = (await get(admin, `/api/account-requests/${id}`)).json().groups;
+    expect(groups.confirm).toEqual({ total: 2, pending: 0 });
+  });
+});
+
 describe('hai Yêu cầu cùng một sinh viên mới (P2)', () => {
   it('R-12: duyệt lần lượt, dòng của Yêu cầu thứ hai thành "khớp có sẵn" (gắn nhãn), không "bỏ qua", không thư thứ hai', async () => {
     const admin = await signedIn({ isAdmin: true });

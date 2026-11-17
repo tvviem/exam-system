@@ -1,15 +1,15 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   type AccountRequestItemParams,
-  MATCH_STATUSES,
-  type MatchStatus,
+  ITEM_GROUPS,
+  type ItemGroup,
 } from '../../../../lib/account-requests';
 import { AccountRequestView } from '../../../../lib/ui/account-request';
 
 export const Route = createFileRoute('/_authed/admin/account-requests/$requestId')({
   validateSearch: (search: Record<string, unknown>): AccountRequestItemParams => ({
-    matchStatus: MATCH_STATUSES.includes(search.matchStatus as MatchStatus)
-      ? (search.matchStatus as MatchStatus)
+    group: ITEM_GROUPS.includes(search.group as ItemGroup)
+      ? (search.group as ItemGroup)
       : undefined,
     page: Number(search.page) > 1 ? Number(search.page) : undefined,
   }),

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, inArray, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 import type { Actor } from '../../../common/actor';
@@ -19,6 +19,20 @@ import { settleRequest } from './account-request-settle';
 
 export type AccountRequestStatus = (typeof accountRequests.$inferSelect)['status'];
 export type MatchStatusValue = (typeof accountRequestItems.$inferSelect)['matchStatus'];
+
+/**
+ * Nhóm việc của một Yêu cầu (docs/plan/yeu-cau-giao-dien-duyet-thiet-ke.md): `ready` là sẵn sàng duyệt hàng loạt, `confirm` là cần Quản trị
+ * viên xác nhận từng dòng, `blocked` là không duyệt được.
+ */
+export const ITEM_GROUPS = ['ready', 'confirm', 'blocked'] as const;
+export type ItemGroup = (typeof ITEM_GROUPS)[number];
+const GROUP_STATUSES: Record<ItemGroup, MatchStatusValue[]> = {
+  ready: ['new', 'exact'],
+  confirm: ['name_mismatch', 'restore'],
+  blocked: ['blocked'],
+};
+const groupOf = (status: MatchStatusValue): ItemGroup =>
+  ITEM_GROUPS.find((g) => GROUP_STATUSES[g].includes(status)) as ItemGroup;
 
 export const NOTE_MAX = 1000;
 const FILENAME_MAX = 255;
@@ -233,13 +247,38 @@ export class AccountRequestsService {
           inArray(accountRequestItems.matchStatus, ['new', 'exact']),
         ),
       );
-    return { ...request, counts, pendingValid: valid?.total ?? 0 };
+    // Số dòng theo nhóm việc: tổng và còn chờ (dòng đã quyết vẫn nằm trong nhóm của nó).
+    const byOutcome = await this.db
+      .select({
+        matchStatus: accountRequestItems.matchStatus,
+        pending: sql<number>`count(*) FILTER (WHERE ${accountRequestItems.outcome} = 'pending')::int`,
+        total: count(),
+      })
+      .from(accountRequestItems)
+      .where(eq(accountRequestItems.requestId, id))
+      .groupBy(accountRequestItems.matchStatus);
+    const groups = {
+      ready: { total: 0, pending: 0 },
+      confirm: { total: 0, pending: 0 },
+      blocked: { total: 0 },
+    };
+    for (const row of byOutcome) {
+      const group = groupOf(row.matchStatus);
+      groups[group].total += row.total;
+      if (group !== 'blocked') (groups[group] as { pending: number }).pending += row.pending;
+    }
+    return { ...request, counts, pendingValid: valid?.total ?? 0, groups };
   }
 
   async items(
     user: AuthenticatedUser,
     id: string,
-    { page, pageSize, matchStatus }: Page & { matchStatus?: MatchStatusValue },
+    {
+      page,
+      pageSize,
+      matchStatus,
+      group,
+    }: Page & { matchStatus?: MatchStatusValue; group?: ItemGroup },
   ) {
     const [visible] = await this.db
       .select({ id: accountRequests.id })
@@ -250,6 +289,7 @@ export class AccountRequestsService {
     const where = and(
       eq(accountRequestItems.requestId, id),
       matchStatus ? eq(accountRequestItems.matchStatus, matchStatus) : undefined,
+      group ? inArray(accountRequestItems.matchStatus, GROUP_STATUSES[group]) : undefined,
     );
     const result = await paginate(
       { page, pageSize },

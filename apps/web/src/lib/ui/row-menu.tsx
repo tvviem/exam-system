@@ -1,5 +1,6 @@
 import { Ellipsis } from 'lucide-react';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface RowMenuItem {
   label: string;
@@ -19,6 +20,9 @@ const MENU_WIDTH = 224;
  */
 export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] }) {
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  // Nơi dựng menu: <dialog> cha nếu có (lớp trên cùng của trình duyệt), không thì <body>. Dựng tại chỗ sẽ bị kẹt trong lớp xếp chồng của
+  // thanh dính (z-10) và nằm dưới thanh tab (z-30) trên điện thoại.
+  const [host, setHost] = useState<Element | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -37,6 +41,7 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
     const below = box.bottom + 4;
     const top = below + height > window.innerHeight ? Math.max(8, box.top - height - 4) : below;
     const left = Math.min(Math.max(8, box.right - MENU_WIDTH), window.innerWidth - MENU_WIDTH - 8);
+    setHost(button.current?.closest('dialog') ?? document.body);
     setPosition({ top, left });
   };
 
@@ -88,39 +93,44 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
       >
         <Ellipsis aria-hidden className="size-5" />
       </button>
-      {open && (
-        <div
-          ref={menu}
-          id={menuId}
-          role="menu"
-          aria-label={label}
-          onKeyDown={onKeyDown}
-          style={{ top: position.top, left: position.left, width: MENU_WIDTH }}
-          className="fixed z-50 flex flex-col gap-0.5 rounded-xl border border-border bg-surface-raised p-1 shadow-lg"
-        >
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              onClick={() => {
-                close(false);
-                item.onSelect();
-              }}
-              className={`flex min-h-12 w-full cursor-pointer flex-col justify-center rounded-lg px-3 text-left text-sm font-medium pointer-fine:min-h-10 disabled:cursor-not-allowed disabled:opacity-60 ${
-                item.danger ? 'text-danger hover:bg-danger-soft' : 'hover:bg-primary-soft'
-              }`}
-            >
-              <span className="inline-flex items-center gap-2">
-                {item.icon}
-                {item.label}
-              </span>
-              {item.hint && <span className="text-xs font-normal text-fg-muted">{item.hint}</span>}
-            </button>
-          ))}
-        </div>
-      )}
+      {open &&
+        host &&
+        createPortal(
+          <div
+            ref={menu}
+            id={menuId}
+            role="menu"
+            aria-label={label}
+            onKeyDown={onKeyDown}
+            style={{ top: position.top, left: position.left, width: MENU_WIDTH }}
+            className="fixed z-50 flex flex-col gap-0.5 rounded-xl border border-border bg-surface-raised p-1 shadow-lg"
+          >
+            {items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                disabled={item.disabled}
+                onClick={() => {
+                  close(false);
+                  item.onSelect();
+                }}
+                className={`flex min-h-12 w-full cursor-pointer flex-col justify-center rounded-lg px-3 text-left text-sm font-medium pointer-fine:min-h-10 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  item.danger ? 'text-danger hover:bg-danger-soft' : 'hover:bg-primary-soft'
+                }`}
+              >
+                <span className="inline-flex items-center gap-2">
+                  {item.icon}
+                  {item.label}
+                </span>
+                {item.hint && (
+                  <span className="text-xs font-normal text-fg-muted">{item.hint}</span>
+                )}
+              </button>
+            ))}
+          </div>,
+          host,
+        )}
     </>
   );
 }
