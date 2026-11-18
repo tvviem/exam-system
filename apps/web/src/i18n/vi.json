@@ -909,6 +909,11 @@
     "approveReady": "Duyệt {{count}} dòng sẵn sàng",
     "pendingConfirm": "Chờ duyệt: còn {{count}} dòng cần xác nhận",
     "showAll": "Xem tất cả {{count}} dòng",
+    "existing": {
+      "title": "Có {{count}} dòng khớp tài khoản có sẵn",
+      "body": "Họ đã có tài khoản nên không được tạo mới và không nhận thư kích hoạt mới; chỉ được thêm vai trò Người dự thi, thông tin không đổi. Dòng khác họ tên hoặc khôi phục tài khoản đã Xóa chờ Quản trị viên xác nhận. Hãy kiểm lại mã và email trong file.",
+      "filter": "Chỉ xem {{count}} dòng này"
+    },
     "rowActions": "Thao tác với dòng {{n}}",
     "moreActions": "Thao tác khác với yêu cầu",
     "rejectRowAction": "Từ chối dòng",

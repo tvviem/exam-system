@@ -65,7 +65,8 @@ function transportFor(env: Env, clock: Clock): MailTransport | null {
       provide: MAIL_BRAND,
       inject: [ENV],
       useFactory: (env: Env) => ({
-        systemName: env.EMAIL_FROM_NAME,
+        systemName: env.EMAIL_SYSTEM_NAME,
+        shortName: env.EMAIL_FROM_NAME,
         supportContact: env.EMAIL_SUPPORT_CONTACT,
       }),
     },

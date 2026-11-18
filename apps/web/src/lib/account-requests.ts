@@ -126,8 +126,30 @@ export const accountRequestQuery = (id: string) =>
 export const ITEM_GROUPS = ['ready', 'confirm', 'blocked'] as const;
 export type ItemGroup = (typeof ITEM_GROUPS)[number];
 
+/**
+ * Dòng khớp người ĐÃ CÓ tài khoản (kể cả đã Xóa): họ không được tạo mới nên không nhận thư kích hoạt như người mới
+ * (riêng Khôi phục thì có thư sau khi Quản trị viên xác nhận). Người ra đề cần thấy riêng nhóm này để kiểm lại mã và email.
+ */
+const EXISTING_MATCHES: readonly MatchStatus[] = ['exact', 'name_mismatch', 'restore'];
+/**
+ * Tông màu huy hiệu theo trạng thái khớp: Người mới là màu chính (xanh ngọc); cả ba loại khớp người đã có tài khoản dùng CHUNG tông
+ * cảnh báo (hổ phách) để nổi bật hẳn so với người mới, phân biệt nhau bằng chữ của huy hiệu; dòng bị chặn màu nguy hiểm.
+ */
+export const MATCH_TONE = {
+  new: 'primary',
+  exact: 'warning',
+  name_mismatch: 'warning',
+  restore: 'warning',
+  blocked: 'danger',
+} as const satisfies Record<MatchStatus, 'primary' | 'warning' | 'danger'>;
+export const isExistingMatch = (status: MatchStatus) => EXISTING_MATCHES.includes(status);
+export const existingMatchCount = (counts: Record<MatchStatus, number>) =>
+  EXISTING_MATCHES.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
+
 export interface AccountRequestItemParams {
   group?: ItemGroup;
+  /** Chỉ các dòng khớp người đã có tài khoản (xem `isExistingMatch`). */
+  existing?: true;
   page?: number;
 }
 
@@ -141,7 +163,7 @@ export const accountRequestItemsQuery = (
     queryKey: ['account-requests', 'items', id, params, refreshKey],
     queryFn: () =>
       apiFetch<PageResult<AccountRequestItem>>(
-        `/account-requests/${id}/items${queryString({ ...params })}`,
+        `/account-requests/${id}/items${queryString({ ...params, existing: params.existing ? 'true' : undefined })}`,
       ),
     placeholderData: keepPreviousData,
   });

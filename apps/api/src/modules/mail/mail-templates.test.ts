@@ -8,7 +8,8 @@ import { type MailBrand, type MailContent, renderMail } from './mail-templates';
 // (mailparser), kiểm các điều kiện giảm vào Spam của Q382 (docs/plan/slice-7-phuong-an-b-email.md mục 5 và 13).
 
 const BRAND: MailBrand = {
-  systemName: 'Hệ thống kiểm tra đánh giá',
+  systemName: 'BLUni Exam - Hệ thống thi trực tuyến trường Đại học Bạc Liêu',
+  shortName: 'BLUni Exam',
   supportContact: 'Cần trợ giúp, hãy liên hệ Người ra đề hoặc quản trị viên của bạn.',
 };
 const SENDER: SenderIdentity = {
@@ -28,6 +29,7 @@ const ALL_KINDS: MailKind[] = [...LINK_KINDS, ...NOTICE_KINDS];
 const content = (extra: Partial<MailContent> = {}): MailContent => ({
   fullName: 'Nguyễn Văn An',
   username: 'sv2026001',
+  code: 'SV2026001',
   link: `https://${LINK_HOST}/lien-ket#ma-thu-nghiem-0123456789abcdefghijklmnopq`,
   expiresAt: EXPIRES,
   requesterName: 'Trần Thị Bình',
@@ -68,8 +70,9 @@ describe.each(ALL_KINDS)('thư loại %s: đầu mục và cấu trúc MIME', (k
     expect(raw).toMatch(/Content-Type: text\/plain; charset=utf-8/i);
     expect(raw).toMatch(/Content-Type: text\/html; charset=utf-8/i);
 
-    // Tiêu đề tiếng Việt giải mã đúng, có tên hệ thống, không viết hoa toàn bộ, không dấu chấm than.
-    expect(parsed.subject).toContain('Hệ thống kiểm tra đánh giá');
+    // Tiêu đề tiếng Việt giải mã đúng, có tên NGẮN của hệ thống (tên đầy đủ nằm ở thân thư), không viết hoa toàn bộ, không dấu chấm than.
+    expect(parsed.subject).toContain(BRAND.shortName);
+    expect(parsed.subject).not.toContain('Hệ thống thi trực tuyến');
     expect(parsed.subject).not.toBe(parsed.subject?.toUpperCase());
     expect(parsed.subject).not.toContain('!');
     expect(parsed.text).toContain('Nguyễn Văn An');
@@ -133,6 +136,85 @@ describe('thư loại activation', () => {
     expect(message.text).toContain('sv2026001');
     expect(message.text).toMatch(/Spam/);
   });
+
+  it('T-13: tên hệ thống đầy đủ, họ tên, tên đăng nhập và giờ hết hạn được làm nổi bật; tiêu đề giữ ngắn', async () => {
+    const { message, parsed } = await build('activation');
+    // Tên hệ thống đầy đủ ở thân thư (cả hai bản), tiêu đề chỉ có tên ngắn.
+    expect(message.text).toContain(BRAND.systemName);
+    expect(message.html).toContain(BRAND.systemName);
+    expect(parsed.subject).toBe('Kích hoạt tài khoản BLUni Exam');
+    // HTML: họ tên, tên đăng nhập và giờ hết hạn nằm trong thẻ đậm riêng (không chỉ dựa vào màu).
+    for (const bold of ['Nguyễn Văn An', 'sv2026001', '14:35 ngày 18/11/2026']) {
+      const inStrong = new RegExp(`<strong[^>]*>\\s*[^<]*${bold}[^<]*</strong>`);
+      expect(message.html, bold).toMatch(inStrong);
+    }
+    // Bản thuần: mỗi thông tin một dòng có nhãn.
+    expect(message.text).toMatch(/^Họ tên: Nguyễn Văn An$/m);
+    expect(message.text).toMatch(/^Tên đăng nhập \(mã định danh\): sv2026001$/m);
+    // Vẫn đúng MỘT liên kết, chữ hiển thị trùng đích (T-07), nhưng trình bày nổi bật (khối viền đậm), không phải chữ thường.
+    const anchor = message.html.match(/<a\s[^>]*style="([^"]*)"[^>]*>/);
+    expect(anchor?.[1]).toMatch(/border:\s*2px/);
+    expect(anchor?.[1]).toMatch(/font-weight:\s*700/);
+  });
+
+  it('T-13b: nhãn "(mã định danh)" chỉ khi tên đăng nhập THẬT SỰ là mã của người đó (tên đăng nhập có thể là email hoặc khác mã)', () => {
+    const label = (extra: Partial<MailContent>) =>
+      renderMail('activation', content(extra), BRAND).text.match(/^Tên đăng nhập[^:\n]*:/m)?.[0];
+    expect(label({ username: 'sv2026001', code: 'SV2026001' })).toBe(
+      'Tên đăng nhập (mã định danh):',
+    );
+    // Người không có mã: tên đăng nhập là email.
+    expect(label({ username: 'an@example.com', code: null })).toBe('Tên đăng nhập:');
+    expect(label({ username: 'an@example.com', code: undefined })).toBe('Tên đăng nhập:');
+    // Tài khoản khôi phục giữ tên đăng nhập cũ khác mã hiện tại.
+    expect(label({ username: 'tên-cũ', code: 'SV2026001' })).toBe('Tên đăng nhập:');
+  });
+
+  it('T-14: họ tên, tên đăng nhập và tên hệ thống độc hại bị thoát ký tự ở thẻ thông tin và đầu thư', () => {
+    const hostile = '<img src=x onerror=alert(1)> "&\'';
+    const message = renderMail('activation', content({ fullName: hostile, username: hostile }), {
+      ...BRAND,
+      systemName: hostile,
+      shortName: 'BLUni\r\nBcc: x@example.com',
+    });
+    expect(message.html).not.toMatch(/<img|<script/i);
+    expect(message.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(message.text).toContain(hostile); // bản thuần giữ nguyên chữ
+    expect(message.subject).not.toMatch(/[\r\n]/);
+  });
+});
+
+describe.each(ALL_KINDS)('thư loại %s: tên hệ thống đầy đủ', (kind) => {
+  it('T-15a: thân thư ghi tên hệ thống đầy đủ ở cả hai bản; tiêu đề chỉ tên ngắn', async () => {
+    const { message, parsed } = await build(kind);
+    expect(message.text).toContain(BRAND.systemName);
+    expect(message.html).toContain(BRAND.systemName);
+    expect(parsed.subject).not.toContain('Hệ thống thi trực tuyến');
+  });
+});
+
+describe('thẻ thông tin tài khoản chỉ có ở thư kích hoạt và lời mời', () => {
+  it('T-15b: thư lời mời có thẻ họ tên và tên đăng nhập, nhãn chỉ "Tên đăng nhập" (Người ra đề không có mã định danh)', async () => {
+    const { message } = await build('invitation');
+    expect(message.text).toMatch(/^Họ tên: Nguyễn Văn An$/m);
+    expect(message.text).toMatch(/^Tên đăng nhập: sv2026001$/m);
+    expect(message.text).not.toContain('mã định danh');
+    expect(message.html).toMatch(/<strong[^>]*>\s*[^<]*sv2026001[^<]*<\/strong>/);
+  });
+
+  it.each([
+    'password_reset',
+    'email_change',
+    'password_changed',
+    'email_changed_notice',
+  ] as MailKind[])(
+    'T-15c: thư %s không có thẻ thông tin (không lặp tên đăng nhập)',
+    async (kind) => {
+      const { message } = await build(kind);
+      expect(message.text).not.toMatch(/^Họ tên:/m);
+      expect(message.text).not.toContain('sv2026001');
+    },
+  );
 });
 
 describe.each(NOTICE_KINDS)('thư thông báo loại %s', (kind) => {
@@ -192,7 +274,11 @@ describe('an toàn nội dung', () => {
     const message = renderMail(
       'activation',
       content({ fullName: 'An\r\nBcc: ke-xau@example.com' }),
-      { ...BRAND, systemName: 'Hệ thống\r\nBcc: x@example.com' },
+      {
+        ...BRAND,
+        systemName: 'Hệ thống\r\nBcc: x@example.com',
+        shortName: 'Ngắn\r\nBcc: y@example.com',
+      },
     );
     expect(message.subject).not.toMatch(/[\r\n]/);
   });

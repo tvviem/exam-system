@@ -31,6 +31,8 @@ const GROUP_STATUSES: Record<ItemGroup, MatchStatusValue[]> = {
   confirm: ['name_mismatch', 'restore'],
   blocked: ['blocked'],
 };
+/** Dòng khớp người đã có tài khoản (kể cả đã Xóa): người mới và dòng bị chặn thì không. */
+const EXISTING_STATUSES: MatchStatusValue[] = ['exact', 'name_mismatch', 'restore'];
 const groupOf = (status: MatchStatusValue): ItemGroup =>
   ITEM_GROUPS.find((g) => GROUP_STATUSES[g].includes(status)) as ItemGroup;
 
@@ -278,7 +280,8 @@ export class AccountRequestsService {
       pageSize,
       matchStatus,
       group,
-    }: Page & { matchStatus?: MatchStatusValue; group?: ItemGroup },
+      existing,
+    }: Page & { matchStatus?: MatchStatusValue; group?: ItemGroup; existing?: 'true' },
   ) {
     const [visible] = await this.db
       .select({ id: accountRequests.id })
@@ -290,6 +293,7 @@ export class AccountRequestsService {
       eq(accountRequestItems.requestId, id),
       matchStatus ? eq(accountRequestItems.matchStatus, matchStatus) : undefined,
       group ? inArray(accountRequestItems.matchStatus, GROUP_STATUSES[group]) : undefined,
+      existing ? inArray(accountRequestItems.matchStatus, EXISTING_STATUSES) : undefined,
     );
     const result = await paginate(
       { page, pageSize },

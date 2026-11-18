@@ -51,6 +51,11 @@ const baseEnvSchema = z.object({
   EMAIL_FROM: z.email().optional(),
   EMAIL_REPLY_TO: z.email().optional(),
   EMAIL_FROM_NAME: z.string().min(1).default('BLUni Exam'),
+  // Tên hệ thống đầy đủ ghi ở thân thư; tiêu đề thư và tên người gửi dùng tên ngắn EMAIL_FROM_NAME.
+  EMAIL_SYSTEM_NAME: z
+    .string()
+    .min(1)
+    .default('BLUni Exam - Hệ thống thi trực tuyến trường Đại học Bạc Liêu'),
   EMAIL_SUPPORT_CONTACT: z
     .string()
     .min(1)

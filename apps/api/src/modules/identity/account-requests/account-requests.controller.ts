@@ -34,6 +34,8 @@ const itemsSchema = pageSchema.extend({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   matchStatus: z.enum(matchStatusEnum.enumValues).optional(),
   group: z.enum(ITEM_GROUPS).optional(),
+  /** Chỉ các dòng khớp người đã có tài khoản (Khớp có sẵn, Khác họ tên, Khôi phục): để Người ra đề thấy riêng nhóm cần chú ý. */
+  existing: z.enum(['true']).optional(),
 });
 const approveSchema = z
   .object({
