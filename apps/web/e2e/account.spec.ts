@@ -38,6 +38,12 @@ test('Người ra đề xem và sửa thông tin, đổi mật khẩu rồi đă
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
   await expect(page.getByText('Đã lưu thông tin')).toBeVisible();
 
+  // họ tên ở đầu trang đổi ngay sau khi Lưu, không cần tải lại hay chuyển trang
+  // (nút này ẩn tên ở màn hình hẹp nên kiểm nội dung chữ, không kiểm hiển thị)
+  await expect(page.getByRole('button', { name: 'Tài khoản', exact: true })).toContainText(
+    'Giảng viên Đã Đổi Tên',
+  );
+
   await page.reload();
   await expect(page.getByLabel('Họ và tên')).toHaveValue('Giảng viên Đã Đổi Tên');
   await expect(page.getByLabel('Học vị')).toHaveValue('doctor');
