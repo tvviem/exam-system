@@ -1,0 +1,6 @@
+#!/bin/sh
+# pre-commit: chạy Biome trên các tệp ĐÃ đưa vào commit; có lỗi hoặc cảnh báo thì từ chối commit (khớp `pnpm lint` của CI).
+# Tự bật khi chạy `pnpm install` (script `prepare` đặt core.hooksPath). Kiểm thử: sh .githooks/pre-commit.test.sh
+BIOME="$(git rev-parse --show-toplevel)/node_modules/.bin/biome"
+[ -x "$BIOME" ] || { echo "pre-commit: chưa có Biome, hãy chạy pnpm install." >&2; exit 1; }
+exec "$BIOME" check --staged --error-on-warnings --no-errors-on-unmatched
