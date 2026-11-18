@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from '@tanstack/react-router';
 import {
   CircleUserRound,
@@ -31,7 +31,11 @@ export const Route = createFileRoute('/_authed')({
 
 function AuthedLayout() {
   const { t } = useTranslation();
-  const { me } = Route.useRouteContext();
+  const { me: routeMe } = Route.useRouteContext();
+  // Context của router chỉ cập nhật khi điều hướng; lưu hồ sơ chỉ làm mới meQuery. Đọc từ bộ nhớ đệm để tên ở đầu trang
+  // đổi ngay; context là giá trị khởi đầu và dự phòng (phiên hết hạn thì beforeLoad lo việc chuyển về trang đăng nhập).
+  const { data: cachedMe } = useQuery({ ...meQuery, initialData: routeMe });
+  const me = cachedMe ?? routeMe;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
