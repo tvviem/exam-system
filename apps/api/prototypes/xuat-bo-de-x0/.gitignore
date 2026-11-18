@@ -1,0 +1,2 @@
+# Bản thử: không đưa vào kho các tệp sinh ra mà `node run.ts` tái tạo được
+out/ket-qua.json
