@@ -8,7 +8,8 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm --filter \"./packages/**\" build && pnpm --parallel --filter \"./apps/**\" dev",
-    "lint": "biome check .",
+    "lint": "biome check --error-on-warnings .",
+    "prepare": "git config core.hooksPath .githooks || true",
     "format": "biome check --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",

@@ -144,7 +144,8 @@ Mở http://localhost:5173 và đăng nhập bằng tài khoản vừa tạo; l�
 
 | Lệnh | Việc làm |
 |---|---|
-| `pnpm lint` / `pnpm format` | Kiểm tra / tự sửa lint và format (Biome) |
+| `pnpm lint` / `pnpm format` | Kiểm tra / tự sửa lint và format (Biome); cảnh báo cũng làm `pnpm lint` thất bại (`--error-on-warnings`) |
+| (tự bật khi `pnpm install`) | Hook `pre-commit` (`.githooks/`): Biome kiểm các tệp đã đưa vào commit, có lỗi hoặc cảnh báo thì từ chối; bỏ qua tạm bằng `git commit --no-verify`; kiểm thử: `sh .githooks/pre-commit.test.sh` |
 | `pnpm typecheck` | Kiểm tra kiểu toàn monorepo |
 | `pnpm test` | Unit test |
 | `pnpm test:integration` | Integration test trên database `exam_test` và Redis DB 15 của pod `dev-exam`; không đụng dữ liệu dev |
