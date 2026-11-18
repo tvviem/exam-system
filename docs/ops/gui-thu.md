@@ -24,7 +24,7 @@ Không đặt nhóm `SMTP_*` thì hệ thống ở chế độ **không gửi**:
 | `SMTP_PORT` | không | 587 | 587 dùng STARTTLS; 465 dùng TLS ngay |
 | `EMAIL_REPLY_TO` | không | `EMAIL_FROM` | hộp thư thật để người nhận trả lời |
 | `EMAIL_FROM_NAME` | không | BLUni Exam | tên hiển thị của người gửi và tên ngắn ở tiêu đề thư |
-| `EMAIL_SYSTEM_NAME` | không | BLUni Exam - Hệ thống thi trực tuyến trường Đại học Bạc Liêu | tên hệ thống đầy đủ ghi ở đầu và thân mọi thư; production không cần đặt (đã có mặc định) |
+| `EMAIL_SYSTEM_NAME` | không | BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu | tên hệ thống đầy đủ ghi ở đầu và thân mọi thư; production không cần đặt (đã có mặc định) |
 | `EMAIL_SUPPORT_CONTACT` | không | "Cần trợ giúp, hãy liên hệ Người ra đề hoặc quản trị viên của bạn." | dòng liên hệ hỗ trợ cuối mỗi thư |
 | `SMTP_TIMEOUT_SECONDS` | không | 15 | chờ máy chủ thư tối đa chừng này |
 | `EMAIL_LIMIT_TOTAL` | không | 400 | tổng số thư mỗi 24 giờ trượt |

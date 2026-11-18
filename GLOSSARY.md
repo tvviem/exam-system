@@ -1,6 +1,12 @@
-# Hệ thống khảo thí trực tuyến BLUni
+# BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu
 
 Hệ thống cho phép Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi để Người dự thi làm bài trên điện thoại hoặc máy tính. Tên tiếng Anh trong ngoặc là tên dùng trong mã nguồn.
+
+## Tên hệ thống
+
+**Tên hệ thống** (`System name`):
+Tên đầy đủ là "BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu", dùng ở tiêu đề tài liệu, đầu và thân mọi thư gửi người dùng. Tên ngắn là "BLUni Exam", dùng ở tiêu đề trang, ứng dụng cài trên điện thoại, tên người gửi thư và tiêu đề thư. "BLUni" là nhãn hiệu của Trường Đại học Bạc Liêu. Mọi tài liệu và giao diện lấy tên từ mục này.
+_Avoid_: Hệ thống khảo thí, Hệ thống kiểm tra đánh giá, "tại trường Đại học Bạc Liêu"
 
 ## Người dùng
 

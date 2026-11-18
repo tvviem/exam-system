@@ -6,7 +6,7 @@ Nguồn: góp ý của chủ dự án sau khi thử bản #104–#108 trên prod
 ## 1. Yêu cầu
 
 1. Khi một Yêu cầu cấp tài khoản vừa có người **đã có tài khoản** vừa có người **mới**, Người ra đề phải thấy ngay những dòng khớp tài khoản có sẵn: nổi bật bằng màu sắc để thu hút sự chú ý.
-2. Thư kích hoạt: làm nổi bật **Họ tên** và **mã định danh (tên đăng nhập)**; ghi **tên hệ thống đầy đủ**: "BLUni Exam - Hệ thống thi trực tuyến trường Đại học Bạc Liêu".
+2. Thư kích hoạt: làm nổi bật **Họ tên** và **mã định danh (tên đăng nhập)**; ghi **tên hệ thống đầy đủ**: "BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu".
 
 ## 2. Hiện trạng (đã đọc mã)
 
@@ -42,18 +42,18 @@ Màu hổ phách, biểu tượng cảnh báo, nút lọc dùng bộ lọc nhóm
 
 ## 4. Phần B: thư kích hoạt
 
-**B1. Tên hệ thống đầy đủ.** Thêm biến cấu hình mới `EMAIL_SYSTEM_NAME`, mặc định **"BLUni Exam - Hệ thống thi trực tuyến trường Đại học Bạc Liêu"**. `EMAIL_FROM_NAME` giữ nguyên (tên người gửi, ngắn). Production không cần đổi `api.env` vì có mặc định; muốn đổi thì đặt biến.
+**B1. Tên hệ thống đầy đủ.** Thêm biến cấu hình mới `EMAIL_SYSTEM_NAME`, mặc định **"BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu"**. `EMAIL_FROM_NAME` giữ nguyên (tên người gửi, ngắn). Production không cần đổi `api.env` vì có mặc định; muốn đổi thì đặt biến.
 
 **B2. Bố cục thư (HTML, kiểu thẻ thông tin):**
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │ BLUni Exam                                                │   ← đầu thư, chữ đậm lớn
-│ Hệ thống thi trực tuyến trường Đại học Bạc Liêu           │
+│ Hệ thống thi trực tuyến Trường Đại học Bạc Liêu           │
 ├──────────────────────────────────────────────────────────┤
 │ Chào Lý Nhật Nam,                                         │
 │ Một tài khoản đã được tạo cho bạn trên BLUni Exam - Hệ    │
-│ thống thi trực tuyến trường Đại học Bạc Liêu.             │
+│ thống thi trực tuyến Trường Đại học Bạc Liêu.             │
 │ ┌ Thông tin tài khoản ───────────────────────────────┐   │
 │ │ Họ tên:        **Lý Nhật Nam**                      │   │
 │ │ Tên đăng nhập: **b2103456**   (mã định danh)        │   │

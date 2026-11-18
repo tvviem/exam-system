@@ -1,6 +1,6 @@
 # exam-system
 
-Hệ thống khảo thí trực tuyến BLUni, ưu tiên làm bài trên điện thoại. Viết tài liệu, nội dung giao diện và trao đổi với chủ dự án bằng tiếng Việt; tên trong mã nguồn bằng tiếng Anh.
+BLUni Exam, hệ thống thi trực tuyến của Trường Đại học Bạc Liêu, ưu tiên làm bài trên điện thoại. Viết tài liệu, nội dung giao diện và trao đổi với chủ dự án bằng tiếng Việt; tên trong mã nguồn bằng tiếng Anh.
 
 ## Ngôn ngữ nghiệp vụ
 
