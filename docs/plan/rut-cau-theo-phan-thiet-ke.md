@@ -4,6 +4,8 @@ Trạng thái: **proposed** (chờ chủ dự án duyệt, chưa có mã). Ngày
 
 **Mốc nền:** nâng cấp sau **phiên bản 0.1** (chủ dự án đánh dấu bản đã deploy và kiểm tra ngày 18/11/2026: nhánh `main` tại commit `3a1f971`, lần deploy run 44247392726). Tính năng này **tạm gác** theo chủ dự án; 11 câu Q385–Q395 chưa được trả lời, chưa có mã. Khi quay lại: hỏi lại trước hết Q388 (điểm) và Q389 (nhiều Lượt), phần còn lại theo đề xuất.
 
+**Phiên bản dự kiến: `0.2.0` (MINOR)**, chủ dự án đồng ý ngày 18/11/2026. Lý do: chỉ thêm một bảng (`session_section_draws`), không đổi cột nào của bảng đã có dữ liệu; không có dòng rút nghĩa là 100 % nên Phiên thi và Lượt cũ không đổi hành vi; bốn bất biến của hệ thống giữ nguyên; không có thành phần hạ tầng mới và không thay ADR nào. Quy tắc đánh số: [docs/ops/phat-hanh.md](../ops/phat-hanh.md). Xét lại (có thể thành MAJOR) nếu Q388 chọn phương án "mỗi người một điểm tối đa riêng", hoặc nếu lúc làm R3 phải thêm cột vào bảng đã có dữ liệu (ví dụ lưu điểm tối đa theo từng Lượt). Tag `v0.2.0` đặt sau R4 và R5, khi Người ra đề dùng được thật và đã kiểm trên prod, không đặt cho từng PR; từ lúc có Phiên thi rút dưới 100 % kèm Lượt làm bài, lùi về bản cũ sẽ chấm sai nên ghi rõ trong Release.
+
 ## 1. Yêu cầu của chủ dự án
 
 Một Bộ đề có thể có nhiều câu (ví dụ 100 câu, 4 Phần), nhưng mỗi Người dự thi chỉ làm một phần của nó:
