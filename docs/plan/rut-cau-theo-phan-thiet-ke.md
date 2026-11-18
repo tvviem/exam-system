@@ -1,8 +1,8 @@
 # Rút câu theo Phần cho từng Lượt làm bài (thiết kế đề xuất)
 
-Trạng thái: **proposed** (chờ chủ dự án duyệt, chưa có mã). Ngày đề xuất: 18/11/2026. Câu hỏi quyết định đánh số tiếp từ Q385.
+Trạng thái: **accepted** (chủ dự án đã chốt cả 11 câu Q385–Q395 ngày 18/11/2026: **Q388 (a), Q389 (a)**, các câu còn lại theo đề xuất; chưa có mã). Ngày đề xuất: 18/11/2026. Câu hỏi quyết định đánh số từ Q385.
 
-**Mốc nền:** nâng cấp sau **phiên bản 0.1** (chủ dự án đánh dấu bản đã deploy và kiểm tra ngày 18/11/2026: nhánh `main` tại commit `3a1f971`, lần deploy run 44247392726). Tính năng này **tạm gác** theo chủ dự án; 11 câu Q385–Q395 chưa được trả lời, chưa có mã. Khi quay lại: hỏi lại trước hết Q388 (điểm) và Q389 (nhiều Lượt), phần còn lại theo đề xuất.
+**Mốc nền:** nâng cấp sau **phiên bản 0.1** (chủ dự án đánh dấu bản đã deploy và kiểm tra ngày 18/11/2026: nhánh `main` tại commit `3a1f971`, lần deploy run 44247392726). Thiết kế đã được duyệt; **chưa có mã** và **thứ tự làm do chủ dự án quyết** (cạnh tranh với [Xuất Bộ đề](xuat-bo-de-thiet-ke.md)). Bắt đầu làm thì nạp skill `tdd`, chốt các điểm kiểm thử (seam) với chủ dự án rồi mới viết bài kiểm thử đầu tiên.
 
 **Phiên bản dự kiến: `0.2.0` (MINOR)**, chủ dự án đồng ý ngày 18/11/2026. Lý do: chỉ thêm một bảng (`session_section_draws`), không đổi cột nào của bảng đã có dữ liệu; không có dòng rút nghĩa là 100 % nên Phiên thi và Lượt cũ không đổi hành vi; bốn bất biến của hệ thống giữ nguyên; không có thành phần hạ tầng mới và không thay ADR nào. Quy tắc đánh số: [docs/ops/phat-hanh.md](../ops/phat-hanh.md). Xét lại (có thể thành MAJOR) nếu Q388 chọn phương án "mỗi người một điểm tối đa riêng", hoặc nếu lúc làm R3 phải thêm cột vào bảng đã có dữ liệu (ví dụ lưu điểm tối đa theo từng Lượt). Tag `v0.2.0` đặt sau R4 và R5, khi Người ra đề dùng được thật và đã kiểm trên prod, không đặt cho từng PR; từ lúc có Phiên thi rút dưới 100 % kèm Lượt làm bài, lùi về bản cũ sẽ chấm sai nên ghi rõ trong Release.
 
@@ -67,8 +67,8 @@ session_section_draws (                    -- Tỷ lệ rút của một Phiên 
 ### 4.3 Thuật toán (hàm thuần ở `@exam/shared`, kiểm thử bằng thuộc tính)
 
 - `drawCountOf(percent, n)`: làm tròn nửa lên của `percent × n / 100`, tối thiểu 1 nếu `percent > 0`, tối đa `n`.
-- `layoutOf(seed, input, flags, draw?)`: với mỗi Phần chọn `k` câu bằng luồng ngẫu nhiên **riêng cho việc rút** (suy từ `seed` và mã Phần), rồi mới xáo thứ tự nếu công tắc bật. Nhờ luồng riêng, bật hay tắt xáo trộn **không làm đổi tập câu được rút** của cùng một `seed`.
-- Rút không lặp, đều (mỗi câu của Phần có cùng xác suất `k / n`), xác định theo `seed`.
+- `layoutOf(seed, input, flags, draw?)`: với mỗi Phần chọn `k` câu bằng luồng ngẫu nhiên **riêng cho việc rút**, rồi mới xáo thứ tự nếu công tắc bật. **Hạt giống rút (`drawSeed`) không phải `seed` của Lượt** mà băm từ **mã Phiên thi và mã người dự thi** (và mã Phần), nên **cố định cho người đó qua mọi Lượt** (Q389 (a): giữ nguyên bộ câu), không cần bảng lưu riêng; còn thứ tự xáo vẫn theo `seed` của từng Lượt, đúng hành vi hiện nay. Nhờ luồng riêng, bật hay tắt xáo trộn **không làm đổi tập câu được rút**.
+- Rút không lặp, đều (mỗi câu của Phần có cùng xác suất `k / n`), xác định theo `drawSeed`: cùng người trong cùng Phiên thi luôn ra cùng một tập câu.
 - Không có `draw` hoặc tỷ lệ 100 %: kết quả **giống hệt** hiện nay (Phiên thi cũ và Lượt cũ không đổi).
 
 ### 4.4 Quy tắc điểm (Q388)
@@ -117,29 +117,29 @@ Màu và cảnh báo theo skill UX/UI (không chỉ dùng màu, có chữ và bi
 
 | PR | Nội dung | Điểm kiểm thử (seam) |
 |---|---|---|
-| R1 | `drawCountOf` và `layoutOf` có rút (hàm thuần) | Tính chất: đúng số câu mỗi Phần, không lặp, tập con của Phần, xác định theo `seed`, đều (kiểm thống kê với hạt giống cố định), đổi cờ xáo không đổi tập rút, không `draw` thì kết quả y hệt hiện nay |
-| R2 | Bảng `session_section_draws`, API Phiên thi (kiểm điểm đồng nhất, khóa), bắt đầu Lượt rút thật, `saveResponses` kiểm layout | API tích hợp: hai người khác bộ câu; vào lại vẫn đúng bộ; câu ngoài layout bị từ chối; sau Lượt đầu không sửa được |
+| R1 | `drawCountOf` và `layoutOf` có rút (hàm thuần) | Tính chất: đúng số câu mỗi Phần, không lặp, tập con của Phần, xác định theo `drawSeed` (cùng `drawSeed` thì cùng tập câu dù `seed` của Lượt khác nhau; khác người thì khác tập), đều (kiểm thống kê với hạt giống cố định), đổi cờ xáo không đổi tập rút, không `draw` thì kết quả y hệt hiện nay |
+| R2 | Bảng `session_section_draws`, API Phiên thi (kiểm điểm đồng nhất, khóa), bắt đầu Lượt rút thật, `saveResponses` kiểm layout | API tích hợp: hai người khác bộ câu; vào lại vẫn đúng bộ; **Lượt 2 của cùng một người có cùng tập câu với Lượt 1** (chỉ đổi thứ tự); câu ngoài layout bị từ chối; sau Lượt đầu không sửa được |
 | R3 | Chấm điểm và kết quả theo tập câu của Lượt (autograde, điểm tối đa, hạn mức Phúc khảo, theo dõi, xuất Excel, Đính chính) | Tích hợp: không sinh điểm cho câu không được rút; điểm tối đa đúng; Đính chính chỉ tác động Lượt có câu |
 | R4 | Giao diện (form Phiên thi, màn làm bài, kết quả, Xem thử) | E2E desktop và mobile, ảnh chụp thật, bộ quét `ui-layout` |
 | R5 | E2E toàn luồng, đo tải (500 người), tài liệu, hướng dẫn Người ra đề, GLOSSARY, data-model, architecture 5.1 | Đo thời gian bắt đầu Lượt (ngân sách phản hồi) |
 
 Mỗi PR có kiểm đột biến. Tính năng này **không đổi hành vi** của Phiên thi cũ (không có dòng rút nghĩa là 100 %).
 
-## 6. Câu cần chủ dự án quyết (vòng 1)
+## 6. Quyết định của chủ dự án (Q385–Q395, chốt 18/11/2026)
 
-Mỗi câu có đề xuất; trả lời "đồng ý" là chấp nhận đề xuất.
+**Đã chốt cả 11 câu:** Q388 chọn **(a)** (các câu cùng Phần phải cùng điểm), Q389 chọn **(a)** (giữ nguyên bộ câu của người đó cho mọi Lượt), các câu còn lại **đồng ý** theo đề xuất. Nội dung từng câu giữ nguyên bên dưới để biết lý do.
 
-1. **Q385, thuật ngữ:** dùng **Rút câu** và **Tỷ lệ rút**, và gọi chung là **Bộ đề** (không "Bộ câu hỏi")? *(đề xuất: đồng ý)*
-2. **Q386, nơi thiết lập:** tỷ lệ rút đặt ở **Phiên thi**, không ở Bộ đề (vì Bộ đề đã Phát hành bất biến và nhiều Phiên thi dùng chung)? *(đề xuất: đồng ý)*
-3. **Q387, cách nhập và làm tròn:** nhập theo **%** (như anh nói), giao diện hiện số câu kết quả; làm tròn nửa lên, tối thiểu 1 câu nếu tỷ lệ lớn hơn 0 (ví dụ 33 câu × 40 % = 13,2 thành 13)? *(đề xuất: đồng ý)*
-4. **Q388, điểm:** khi Phần có rút, **các câu trong Phần phải cùng điểm** để mọi người cùng điểm tối đa? *(Phương án khác: cho điểm khác nhau, mỗi người có điểm tối đa riêng và quy đổi theo từng người; không đề xuất vì khó so sánh công bằng.)* *(đề xuất: đồng ý)*
-5. **Q389, nhiều Lượt:** khi Phiên thi cho làm lại (tối đa 5 Lượt), **giữ nguyên bộ câu của người đó** cho mọi Lượt, không rút lại? *(Phương án khác: mỗi Lượt rút lại độc lập. Đề xuất giữ nguyên vì "lấy Lượt cao nhất" không nên phụ thuộc vận may bộ câu.)* *(đề xuất: giữ nguyên)*
-6. **Q390, minh bạch:** hiển thị trước khi làm bài rằng "bài gồm 40 câu rút ngẫu nhiên, mỗi người có thể khác nhau"? *(đề xuất: đồng ý)*
-7. **Q391, Xem thử:** Xem thử của Người ra đề mặc định **rút như Người dự thi** (mỗi lần một bộ mới), kèm lựa chọn xem đủ mọi câu? *(đề xuất: đồng ý)*
-8. **Q392, khóa:** tỷ lệ rút **khóa sau khi có Lượt đầu** (giống xáo trộn)? *(đề xuất: đồng ý)*
-9. **Q393, Đính chính và Phúc khảo:** chỉ tác động người có câu đó; hạn mức Phúc khảo tính theo số câu của **Lượt** (40 câu thì 4)? *(đề xuất: đồng ý)*
-10. **Q394, phạm vi lát này:** chỉ rút đều ngẫu nhiên **theo Phần**; chưa làm rút theo Chủ đề, Loại hay độ khó, và chưa có "câu bắt buộc luôn có" (ghi backlog)? *(đề xuất: đồng ý)*
-11. **Q395, xuất Excel:** sheet "Chi tiết" giữ cột theo câu của Bộ đề, ô để trống cho câu không được rút? *(đề xuất: đồng ý)*
+1. **Q385, thuật ngữ:** dùng **Rút câu** và **Tỷ lệ rút**, và gọi chung là **Bộ đề** (không "Bộ câu hỏi")? *(đã đồng ý)*
+2. **Q386, nơi thiết lập:** tỷ lệ rút đặt ở **Phiên thi**, không ở Bộ đề (vì Bộ đề đã Phát hành bất biến và nhiều Phiên thi dùng chung)? *(đã đồng ý)*
+3. **Q387, cách nhập và làm tròn:** nhập theo **%** (như anh nói), giao diện hiện số câu kết quả; làm tròn nửa lên, tối thiểu 1 câu nếu tỷ lệ lớn hơn 0 (ví dụ 33 câu × 40 % = 13,2 thành 13)? *(đã đồng ý)*
+4. **Q388, điểm:** khi Phần có rút, **các câu trong Phần phải cùng điểm** để mọi người cùng điểm tối đa? *(Phương án khác: cho điểm khác nhau, mỗi người có điểm tối đa riêng và quy đổi theo từng người; không đề xuất vì khó so sánh công bằng.)* *(đã đồng ý)*
+5. **Q389, nhiều Lượt:** khi Phiên thi cho làm lại (tối đa 5 Lượt), **giữ nguyên bộ câu của người đó** cho mọi Lượt, không rút lại? *(Phương án khác: mỗi Lượt rút lại độc lập. Đề xuất giữ nguyên vì "lấy Lượt cao nhất" không nên phụ thuộc vận may bộ câu.)* *(đã chốt: giữ nguyên)*
+6. **Q390, minh bạch:** hiển thị trước khi làm bài rằng "bài gồm 40 câu rút ngẫu nhiên, mỗi người có thể khác nhau"? *(đã đồng ý)*
+7. **Q391, Xem thử:** Xem thử của Người ra đề mặc định **rút như Người dự thi** (mỗi lần một bộ mới), kèm lựa chọn xem đủ mọi câu? *(đã đồng ý)*
+8. **Q392, khóa:** tỷ lệ rút **khóa sau khi có Lượt đầu** (giống xáo trộn)? *(đã đồng ý)*
+9. **Q393, Đính chính và Phúc khảo:** chỉ tác động người có câu đó; hạn mức Phúc khảo tính theo số câu của **Lượt** (40 câu thì 4)? *(đã đồng ý)*
+10. **Q394, phạm vi lát này:** chỉ rút đều ngẫu nhiên **theo Phần**; chưa làm rút theo Chủ đề, Loại hay độ khó, và chưa có "câu bắt buộc luôn có" (ghi backlog)? *(đã đồng ý)*
+11. **Q395, xuất Excel:** sheet "Chi tiết" giữ cột theo câu của Bộ đề, ô để trống cho câu không được rút? *(đã đồng ý)*
 
 ## 7. Ngoài phạm vi
 
