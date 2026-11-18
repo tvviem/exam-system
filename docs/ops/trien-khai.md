@@ -214,14 +214,86 @@ make -C infra prod-recover-admin ADMIN=quantri
 
 Lệnh mở Khóa đăng nhập, gỡ khóa tạm, in **một lần** mật khẩu tạm (hạn 7 ngày, buộc đổi khi đăng nhập), thu hồi mọi phiên đăng nhập và ghi nhật ký (`cli.recover-admin`). Có Quản trị viên thứ hai thì chính người đó dùng "Cấp lại mật khẩu tạm" trong giao diện cũng được.
 
-## 6. Xóa dữ liệu thật (làm tay, không có lệnh make)
+## 6. Xóa toàn bộ dữ liệu thật và dựng lại từ đầu (làm tay, không có lệnh make)
 
-Chỉ làm khi chắc chắn không cần dữ liệu nữa. **Không hoàn tác.** Trước đó phải có bản sao lưu đã khôi phục thử thành công (chưa có trước PR 6c).
+Chỉ làm khi chắc chắn không cần dữ liệu nữa (ví dụ xóa dữ liệu thử sau khi triển khai bản đầu để tạo lại Quản trị viên). **Không hoàn tác.** Không có lệnh make nào xóa volume (chính sách của dự án).
+
+**Chỉ `prod-down` rồi xóa volume là không đủ khi sao lưu đã bật.** Diễn tập trên pod `drill-exam` (18/11/2026) cho thấy hai lỗi:
+
+| Làm thiếu | Hậu quả |
+|---|---|
+| Quên xóa cờ `~/.local/state/exam-prod/archiving` và thư mục sao lưu cũ | PostgreSQL mới chạy lưu liên tục ngay từ đầu, WAL mới trùng tên WAL cũ nhưng khác nội dung. `pg-archive-wal.sh` từ chối ghi đè nên `archive_command` lỗi liên tục, `pg_wal` đầy dần và có thể làm đầy đĩa |
+| Dọn thư mục WSL nhưng quên sổ đẩy, ổ D: và R2 | **Lỗi âm thầm.** `rclone copy --ignore-existing` bỏ qua WAL trùng tên nên WAL mới không lên R2 và ổ D:, `push` không in gì. Hệ thống tưởng đã sao lưu nhưng CSDL mới không có bản nào ngoài máy |
+
+Cách tránh: dọn dấu vết sao lưu cũ và cho R2 một tiền tố mới `v2/`. Bản sao lưu cũ **đổi tên chứ không xóa** để còn lối lui; xóa hẳn sau (mục "Dọn dữ liệu sao lưu cũ" bên dưới).
+
+**Giữ nguyên:** `~/exam-prod-secrets/api.env` và `postgres.env` (khóa, cấu hình SMTP; `prod-bootstrap` không sinh lại khi file đã có), khóa gpg, timer systemd. **Mất:** mọi tài khoản, phiên đăng nhập (Redis không có volume nên người dùng phải đăng nhập lại), đề thi, kết quả.
+
+**Trước khi bắt đầu:** không được có Phiên thi, và phải tạo trước **5 quy tắc vòng đời mới trên R2** (Cloudflare, Object lifecycle rules) cho tiền tố mới, cùng số ngày với 5 quy tắc cũ ([khoi-phuc.md mục 4.2](./khoi-phuc.md)): `v2/daily/` 7 ngày, `v2/weekly/` 28 ngày, `v2/monthly/` 180 ngày, `v2/wal/` 7 ngày, `v2/base/` 15 ngày. Quy tắc cũ (`daily/`, `wal/`...) **không** áp dụng cho `v2/`; thiếu quy tắc mới thì `v2/` phình mãi và vượt giới hạn 10 GB.
 
 ```bash
+# 1. Không có Phiên thi (lệnh thoát khác 0 nếu có)
+make -C infra prod-active-sessions
+
+# 2. Bản dump cuối cùng; chép ra chỗ riêng nếu muốn giữ
+make -C infra prod-backup-dump
+
+# 3. Tắt timer sao lưu để chúng không chạy giữa chừng
+make -C infra prod-backup-disable
+
+# 4. Xóa pod và volume
 make -C infra prod-down
 podman volume rm exam_pgdata exam_media
+
+# 5. Dọn dấu vết sao lưu của CSDL cũ (đổi tên, không xóa; hậu tố là ngày làm)
+mv ~/exam-prod-backups ~/exam-prod-backups-cu-20261118
+mv /mnt/d/exam-prod-backups /mnt/d/exam-prod-backups-cu-20261118
+mv ~/.local/state/exam-prod/push-ledger ~/.local/state/exam-prod/push-ledger-cu
+rm ~/.local/state/exam-prod/archiving
+# ...và thêm một dòng vào ~/exam-prod-secrets/backup.env để R2 dùng tiền tố mới
+# (các lệnh sao lưu, timer và fetch-r2 đều đọc file này nên tự theo):
+#   EXAM_R2_REMOTE=exam_r2:exam-backup/v2
+
+# 6. Dựng lại và tạo Quản trị viên mới (hỏi họ tên và mật khẩu từ 10 ký tự;
+#    tên đăng nhập mặc định quantri, đổi bằng EXAM_ADMIN_USERNAME=<tên>)
+make -C infra prod-bootstrap TAG=<mã commit đang chạy>
+
+# 7. Kiểm R2 ghi và đọc được ở tiền tố mới (check ghi selftest/ok.txt dưới v2/)
+make -C infra prod-backup-check   # dòng "lưu liên tục WAL chưa bật" ở bước này là bình thường
+
+# 8. Bật lại sao lưu theo thứ tự
+make -C infra prod-enable-archiving
+make -C infra prod-backup-dump
+make -C infra prod-backup-basebackup ARGS=--force
+make -C infra prod-backup-push
+make -C infra prod-backup-status      # phải thấy: Sức khỏe archive ổn, Dãy WAL liền nhau, Chờ đẩy 0 / 0
+make -C infra prod-backup-enable
+
+# 9. Kiểm trước khi dùng thật (sẽ cảnh báo thiếu Quản trị viên thứ hai cho đến khi tạo thêm)
+make -C infra prod-preflight
 ```
+
+**Lưu ý:** `prod-backup-check` in từng dòng ✓ ✗ và đòi lưu liên tục đã bật, nên chạy trước `prod-enable-archiving` thì dòng đó đỏ; chỉ cần dòng "R2 ghi và đọc được" đạt, rồi `prod-backup-enable` ở bước 8 tự chạy lại `check` đầy đủ. Cách ghi `exam_r2:<bucket>/v2` (đường dẫn con trong bucket) đã được diễn tập trên R2 **giả** (thư mục), **chưa** thử trên R2 thật: bước 7 là lần thử đầu. Các lệnh `rclone lsf exam_r2:$R2_BUCKET/wal` trong [khoi-phuc.md](./khoi-phuc.md) từ nay đổi thành `exam_r2:$R2_BUCKET/v2/wal`. Nếu có bản chép `backup.env` ở Bitwarden hoặc `~/dr-input/backup.env` (diễn tập khôi phục), cập nhật cả dòng `EXAM_R2_REMOTE` ở đó.
+
+### Dọn dữ liệu sao lưu cũ
+
+Chỉ xóa khi chuỗi sao lưu mới đã chạy ít nhất một bản đêm và `prod-backup-restore-test` đạt (lúc đó dữ liệu cũ không còn là chỗ lui duy nhất).
+
+| Nơi | Xóa gì | Tự hết hạn? |
+|---|---|---|
+| R2, `wal/`, `base/`, `daily/`, `weekly/`, `monthly/` (tiền tố cũ, không có `v2/`) | toàn bộ | có (7, 15, 7, 28, 180 ngày theo quy tắc cũ); xóa tay được cho gọn |
+| R2, `khoa/` (bản mã hóa của `api.env` và `postgres.env`) | toàn bộ, **sau khi** `v2/khoa/` đã có bản mới và giải mã thử được một bản | **không bao giờ**: phải xóa tay |
+| Ổ D: | `/mnt/d/exam-prod-backups-cu-20261118` | không |
+| WSL | `~/exam-prod-backups-cu-20261118` (gồm các bản `truoc-deploy-*.dump`) và `~/.local/state/exam-prod/push-ledger-cu` | không |
+
+Liệt kê R2 trước khi xóa (nạp `backup.env` và biến `RCLONE_CONFIG_EXAM_R2_*` như ở [khoi-phuc.md mục 4.8](./khoi-phuc.md)), kiểm kỹ rồi mới `rclone purge` từng thư mục cũ. **Không** xóa `v2/`:
+
+```bash
+rclone lsf -R --files-only exam_r2:$R2_BUCKET | grep -v '^v2/'
+rclone purge exam_r2:$R2_BUCKET/wal    # lặp lại cho base, daily, weekly, monthly, khoa
+```
+
+Khóa API R2 hiện **có** quyền xóa ([khoi-phuc.md mục 4.9.3](./khoi-phuc.md)).
 
 ## 7. Thử trên pod tạm (`drill-exam`)
 
