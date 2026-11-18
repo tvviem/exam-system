@@ -43,7 +43,12 @@ describe('WorkGate', () => {
   it('G-02: hàng đợi đầy thì từ chối NGAY bằng GateFullError, không làm hỏng các việc đang chạy hay đang chờ', async () => {
     const gate = new WorkGate({ concurrency: 1, maxQueue: 2 });
     const hold = deferred();
-    const accepted = [0, 1, 2].map((i) => gate.run(async () => (await hold.promise, i)));
+    const accepted = [0, 1, 2].map((i) =>
+      gate.run(async () => {
+        await hold.promise;
+        return i;
+      }),
+    );
     await tick();
     await expect(gate.run(async () => 99)).rejects.toBeInstanceOf(GateFullError);
     hold.resolve();

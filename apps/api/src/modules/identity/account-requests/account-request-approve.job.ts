@@ -273,7 +273,7 @@ export class AccountRequestApproveJob implements OnModuleInit {
               .where(eq(userRoleTags.userId, user.id))
           : [];
         // Từ lúc đọc file tới lúc duyệt người đó có thể đã được khôi phục, thành Quản trị viên hay thêm vai trò khác.
-        if (!user || !user.removedAt || user.isAdmin || tags.some((t) => t.tag !== 'candidate')) {
+        if (!user?.removedAt || user.isAdmin || tags.some((t) => t.tag !== 'candidate')) {
           await this.markItem(tx, item, { outcome: 'skipped', note: 'restore_state_changed' });
           return;
         }
