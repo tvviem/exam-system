@@ -23,6 +23,20 @@ Dùng đúng thuật ngữ trong [GLOSSARY.md](GLOSSARY.md) (ví dụ Người r
 
 Chủ dự án duyệt thiết kế trước khi viết code: đề xuất thay đổi kiến trúc hoặc mô hình dữ liệu dưới dạng tài liệu hoặc ADR ở trạng thái `proposed`, chờ đồng ý rồi mới triển khai.
 
+## Skill
+
+Nạp skill ngay khi bắt đầu việc, trước khi thiết kế hoặc viết mã:
+
+- Tính năng, sửa lỗi: `tdd`
+- Lỗi khó, CI đỏ, chậm: `diagnosing-bugs`
+- Cấu trúc mô-đun: `codebase-design`
+- Thuật ngữ, từ điển, ADR: `domain-modeling`
+- Làm rõ yêu cầu: `grilling`
+- Thử logic hoặc giao diện trước khi chốt: `prototype`
+- Giao diện, màu sắc, nội dung thư: `ui-ux-pro-max` (tra cứu trước khi chốt thiết kế)
+- Nội dung PR: `pr`
+- Rà soát: hai trục Standards và Spec, chạy ngay trong phiên chính
+
 ## Hiệu năng
 
 Phản hồi tức thời là yêu cầu hàng đầu của chủ dự án: chờ quá 2–3 giây là đã chậm, mục tiêu là cỡ mili giây. Khi viết hoặc chạy test, xem cả thời gian (không chỉ đúng/sai); thao tác hay yêu cầu nào quá khoảng 300 ms là đáng xem lại, quá 1 giây là lỗi. Ngân sách và số đo hiện có ở [docs/architecture.md](docs/architecture.md), mục "Ngân sách phản hồi".
