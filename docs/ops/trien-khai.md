@@ -218,12 +218,13 @@ Lệnh mở Khóa đăng nhập, gỡ khóa tạm, in **một lần** mật kh�
 
 Chỉ làm khi chắc chắn không cần dữ liệu nữa (ví dụ xóa dữ liệu thử sau khi triển khai bản đầu để tạo lại Quản trị viên). **Không hoàn tác.** Không có lệnh make nào xóa volume (chính sách của dự án).
 
-**Chỉ `prod-down` rồi xóa volume là không đủ khi sao lưu đã bật.** Diễn tập trên pod `drill-exam` (18/11/2026) cho thấy hai lỗi:
+**Chỉ `prod-down` rồi xóa volume là không đủ khi sao lưu đã bật.** Diễn tập trên pod `drill-exam` và lần reset prod thật (18/11/2026) cho thấy ba lỗi:
 
 | Làm thiếu | Hậu quả |
 |---|---|
 | Quên xóa cờ `~/.local/state/exam-prod/archiving` và thư mục sao lưu cũ | PostgreSQL mới chạy lưu liên tục ngay từ đầu, WAL mới trùng tên WAL cũ nhưng khác nội dung. `pg-archive-wal.sh` từ chối ghi đè nên `archive_command` lỗi liên tục, `pg_wal` đầy dần và có thể làm đầy đĩa |
 | Dọn thư mục WSL nhưng quên sổ đẩy, ổ D: và R2 | **Lỗi âm thầm.** `rclone copy --ignore-existing` bỏ qua WAL trùng tên nên WAL mới không lên R2 và ổ D:, `push` không in gì. Hệ thống tưởng đã sao lưu nhưng CSDL mới không có bản nào ngoài máy |
+| Quên dọn sổ mã băm khóa bí mật `~/.local/state/exam-prod/secrets-hashes.txt` | **Lỗi âm thầm, lộ ra ở lần reset prod thật (bài diễn tập không bắt được).** `api.env` và `postgres.env` được giữ nguyên nên mã băm không đổi, `sync_secrets` không lưu lại, và `khoa/` của chuỗi mới (ổ D:, `v2/khoa/` trên R2) **rỗng**. Mọi bản mã hóa khóa bí mật chỉ còn ở chuỗi cũ; khôi phục sang máy khác bằng `fetch-r2` dừng ở bước 1/5 với lỗi "R2 không có đủ api.env và postgres.env". Hai thư mục `weekly/` và `monthly/` vắng ở ổ D: ngay sau reset thì **bình thường** (chỉ có bản đêm Chủ nhật và mùng 1) |
 
 Cách tránh: dọn dấu vết sao lưu cũ và cho R2 một tiền tố mới `v2/`. Bản sao lưu cũ **đổi tên chứ không xóa** để còn lối lui; xóa hẳn sau (mục "Dọn dữ liệu sao lưu cũ" bên dưới).
 
@@ -249,6 +250,7 @@ podman volume rm exam_pgdata exam_media
 mv ~/exam-prod-backups ~/exam-prod-backups-cu-20261118
 mv /mnt/d/exam-prod-backups /mnt/d/exam-prod-backups-cu-20261118
 mv ~/.local/state/exam-prod/push-ledger ~/.local/state/exam-prod/push-ledger-cu
+mv ~/.local/state/exam-prod/secrets-hashes.txt ~/.local/state/exam-prod/secrets-hashes-cu.txt
 rm ~/.local/state/exam-prod/archiving
 # ...và thêm một dòng vào ~/exam-prod-secrets/backup.env để R2 dùng tiền tố mới
 # (các lệnh sao lưu, timer và fetch-r2 đều đọc file này nên tự theo):
@@ -267,6 +269,7 @@ make -C infra prod-backup-dump
 make -C infra prod-backup-basebackup ARGS=--force
 make -C infra prod-backup-push
 make -C infra prod-backup-status      # phải thấy: Sức khỏe archive ổn, Dãy WAL liền nhau, Chờ đẩy 0 / 0
+ls ~/exam-prod-backups/khoa /mnt/d/exam-prod-backups/khoa   # mỗi nơi PHẢI có api.env-….gpg và postgres.env-….gpg
 make -C infra prod-backup-enable
 
 # 9. Kiểm trước khi dùng thật (sẽ cảnh báo thiếu Quản trị viên thứ hai cho đến khi tạo thêm)
@@ -282,9 +285,9 @@ Chỉ xóa khi chuỗi sao lưu mới đã chạy ít nhất một bản đêm v
 | Nơi | Xóa gì | Tự hết hạn? |
 |---|---|---|
 | R2, `wal/`, `base/`, `daily/`, `weekly/`, `monthly/` (tiền tố cũ, không có `v2/`) | toàn bộ | có (7, 15, 7, 28, 180 ngày theo quy tắc cũ); xóa tay được cho gọn |
-| R2, `khoa/` (bản mã hóa của `api.env` và `postgres.env`) | toàn bộ, **sau khi** `v2/khoa/` đã có bản mới và giải mã thử được một bản | **không bao giờ**: phải xóa tay |
+| R2, `khoa/` (bản mã hóa của `api.env` và `postgres.env`) | toàn bộ, **sau khi** `v2/khoa/` có đủ cả `api.env-….gpg` và `postgres.env-….gpg` (xem bằng `rclone lsf exam_r2:$R2_BUCKET/v2/khoa`) và đã giải mã thử được một bản | **không bao giờ**: phải xóa tay |
 | Ổ D: | `/mnt/d/exam-prod-backups-cu-20261118` | không |
-| WSL | `~/exam-prod-backups-cu-20261118` (gồm các bản `truoc-deploy-*.dump`) và `~/.local/state/exam-prod/push-ledger-cu` | không |
+| WSL | `~/exam-prod-backups-cu-20261118` (gồm các bản `truoc-deploy-*.dump`) và `~/.local/state/exam-prod/push-ledger-cu`, `secrets-hashes-cu.txt` | không |
 
 Liệt kê R2 trước khi xóa (nạp `backup.env` và biến `RCLONE_CONFIG_EXAM_R2_*` như ở [khoi-phuc.md mục 4.8](./khoi-phuc.md)), kiểm kỹ rồi mới `rclone purge` từng thư mục cũ. **Không** xóa `v2/`:
 
