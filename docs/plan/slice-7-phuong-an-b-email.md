@@ -183,7 +183,7 @@ email_outbox (mới) id, kind enum('activation','password_reset','password_chang
 - **Production chuyển dữ liệu cũ [Q376c, Q380]:** chỉ 2 Quản trị viên hiện có, tự xác thực qua biểu ngữ; không có cơ chế chuyển hàng loạt.
 - **Việc chủ dự án cần làm (nhắc trước khi lên production):**
   1. Tạo **tài khoản Gmail riêng** cho `exam-system` (không dùng chung với `plo-tracker-bluni`), bật xác minh hai bước, tạo App Password, đưa vào Bitwarden và `api.env`.
-  2. Đặt **tên hiển thị của hệ thống** và **dòng liên hệ hỗ trợ** trong cài đặt (mặc định tạm: "Hệ thống kiểm tra đánh giá trực tuyến"; Q382).
+  2. Đặt **tên hiển thị của hệ thống** và **dòng liên hệ hỗ trợ** trong cài đặt (mặc định tạm: "Hệ thống kiểm tra đánh giá trực tuyến"; Q382; đã được Q396 thay thế: tên đầy đủ là "BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu", xem [ten-he-thong.md](ten-he-thong.md).
   3. **Làm nóng tài khoản gửi** (warm-up): gửi vài thư thật ít một vài ngày trước đợt kích hoạt lớn; không nhập lớp vài trăm người ngay ngày đầu.
   4. Kiểm **cổng 587** gửi ra được từ máy chạy production.
   5. **Chạy thử:** lệnh gửi thư thử tới hộp thư của bạn, xem thư gốc ("Show original") để thấy SPF, DKIM, DMARC đều PASS và thư không vào Spam.

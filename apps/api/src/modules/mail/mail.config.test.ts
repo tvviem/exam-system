@@ -61,14 +61,14 @@ describe('cấu hình SMTP trong loadEnv', () => {
   it('T-16: tên hệ thống đầy đủ trong thân thư có mặc định riêng, đổi được, và không ảnh hưởng tên người gửi', () => {
     const env = loadEnv(base);
     expect(env.EMAIL_SYSTEM_NAME).toBe(
-      'BLUni Exam - Hệ thống thi trực tuyến trường Đại học Bạc Liêu',
+      'BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu',
     );
     expect(env.EMAIL_FROM_NAME).toBe('BLUni Exam');
     const custom = loadEnv({ ...base, EMAIL_SYSTEM_NAME: 'Khảo thí Khoa CNTT - Trường A' });
     expect(custom.EMAIL_SYSTEM_NAME).toBe('Khảo thí Khoa CNTT - Trường A');
     expect(custom.EMAIL_FROM_NAME).toBe('BLUni Exam');
     expect(loadEnv({ ...base, EMAIL_FROM_NAME: 'Tên khác' }).EMAIL_SYSTEM_NAME).toBe(
-      'BLUni Exam - Hệ thống thi trực tuyến trường Đại học Bạc Liêu',
+      'BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu',
     );
   });
 });

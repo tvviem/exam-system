@@ -11,7 +11,7 @@ const USER = 'gui@example.org';
 const PASSWORD = 'mat-khau-ung-dung';
 const MAIL = {
   to: 'nhan@example.com',
-  subject: 'Kích hoạt tài khoản Hệ thống kiểm tra đánh giá',
+  subject: 'Kích hoạt tài khoản BLUni Exam',
   text: 'Chào An, hãy mở liên kết https://exam.example.edu.vn/x',
   html: '<p>Chào An, hãy mở liên kết <a href="https://exam.example.edu.vn/x">https://exam.example.edu.vn/x</a></p>',
 };
@@ -93,7 +93,7 @@ const transportFor = (port: number, extra: { timeoutMs?: number } = {}) =>
       password: PASSWORD,
       timeoutMs: extra.timeoutMs ?? 5000,
       sender: {
-        fromName: 'Hệ thống kiểm tra đánh giá',
+        fromName: 'BLUni Exam',
         fromEmail: USER,
         replyTo: 'hotro@example.org',
       },

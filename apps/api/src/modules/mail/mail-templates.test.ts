@@ -8,12 +8,12 @@ import { type MailBrand, type MailContent, renderMail } from './mail-templates';
 // (mailparser), kiểm các điều kiện giảm vào Spam của Q382 (docs/plan/slice-7-phuong-an-b-email.md mục 5 và 13).
 
 const BRAND: MailBrand = {
-  systemName: 'BLUni Exam - Hệ thống thi trực tuyến trường Đại học Bạc Liêu',
+  systemName: 'BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu',
   shortName: 'BLUni Exam',
   supportContact: 'Cần trợ giúp, hãy liên hệ Người ra đề hoặc quản trị viên của bạn.',
 };
 const SENDER: SenderIdentity = {
-  fromName: 'Hệ thống kiểm tra đánh giá',
+  fromName: 'BLUni Exam',
   fromEmail: 'khaothi@example.edu.vn',
   replyTo: 'hotro@example.edu.vn',
 };
@@ -57,7 +57,7 @@ describe.each(ALL_KINDS)('thư loại %s: đầu mục và cấu trúc MIME', (k
   it('T-01..T-06: đủ đầu mục chuẩn, multipart/alternative gồm văn bản thuần và HTML, UTF-8, tiêu đề đúng chuẩn', async () => {
     const { raw, parsed } = await build(kind);
     expect(parsed.from?.value[0]).toMatchObject({
-      name: 'Hệ thống kiểm tra đánh giá',
+      name: 'BLUni Exam',
       address: 'khaothi@example.edu.vn',
     });
     expect(parsed.replyTo?.value[0]?.address).toBe('hotro@example.edu.vn');

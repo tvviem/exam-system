@@ -240,7 +240,7 @@ Toàn bộ bộ kiểm thử tích hợp của dự án (có cả 7b): **941 đ�
 | viii | **`prod-preflight` mục Thư: thiếu SMTP chỉ ⚠ khi chưa thư nào bị bỏ qua; ✗ khi đã có thư bị bỏ qua** (khác E-02 gốc luôn ✗) | để production hiện tại (chưa dùng email) không bị báo KHÔNG ĐẠT vô cớ; tới 7d có thể đổi thành ✗ cố định |
 | ix | M-05 đến M-08 và M-09 đến M-11 chạy với **hạn mức thu nhỏ 10 lần** (trần 40, hàng loạt 30) | ở 400 thư mỗi bài mất 3 đến 7 giây (quá ngưỡng 1 giây); các con số thật 400/300 do `planBatch` (bảng kịch bản viết thẳng số) và C-06 (mặc định cấu hình) bảo đảm |
 | x | Thêm bài ngoài kế hoạch: M-12b (lỗi lạ), M-19b (khóa chọn thư), M-20b (Redis hỏng), M-21, M-21b, P-16 (thư khẩn đi trước), mục chống chèn đầu mục thư và thoát HTML (T-12), STARTTLS thiếu và quota Gmail (V-02, V-03) | do kiểm thử đột biến và rà thiết kế phát hiện thiếu |
-| xi | **Tên hiển thị mặc định** là "Hệ thống kiểm tra đánh giá trực tuyến" (Q382) | khớp tài liệu thiết kế |
+| xi | **Tên hiển thị mặc định** là "Hệ thống kiểm tra đánh giá trực tuyến" (Q382; đã được Q396 thay thế: tên đầy đủ là "BLUni Exam - Hệ thống thi trực tuyến Trường Đại học Bạc Liêu", xem [ten-he-thong.md](ten-he-thong.md) | khớp tài liệu thiết kế |
 
 ### 10.3 Kiểm thử đột biến (mục 7.2)
 
