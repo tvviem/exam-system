@@ -23,6 +23,10 @@ Dùng đúng thuật ngữ trong [GLOSSARY.md](GLOSSARY.md) (ví dụ Người r
 
 Chủ dự án duyệt thiết kế trước khi viết code: đề xuất thay đổi kiến trúc hoặc mô hình dữ liệu dưới dạng tài liệu hoặc ADR ở trạng thái `proposed`, chờ đồng ý rồi mới triển khai.
 
+## Phát hành
+
+Gắn tag và tạo Release (hành động công khai) khi chủ dự án đồng ý, trên commit đã chạy thật ở prod và đã kiểm tra. Đọc [docs/ops/phat-hanh.md](docs/ops/phat-hanh.md) trước khi gắn tag hoặc viết ghi chú Release.
+
 ## Skill
 
 Nạp skill ngay khi bắt đầu việc, trước khi thiết kế hoặc viết mã:
