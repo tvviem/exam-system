@@ -14,15 +14,17 @@ Nhãn "bản" ở đây không thay cách deploy. Deploy vẫn dùng **mã commi
 4. **Mỗi tag có một Release trên GitHub**, viết cho người đọc là chủ dự án và Quản trị viên, không phải lập trình viên (mục 4).
 5. **Ghi chú phát hành là tài liệu công khai** (repo công khai): không bí mật, không dữ liệu người thật, không địa chỉ hay đường dẫn nội bộ của máy, và không mô tả chi tiết một lỗ hổng bảo mật chưa được vá xong (mục 5).
 
-## 2. Đánh số: `vMAJOR.MINOR.PATCH` (SemVer, giai đoạn 0.x)
+## 2. Đánh số: `vMAJOR.MINOR.PATCH` (SemVer)
 
 | Tăng | Khi nào | Ví dụ |
 |---|---|---|
-| **MINOR** (`0.2.0`) | thêm tính năng, đổi hành vi người dùng thấy, có migration cơ sở dữ liệu, có việc phải làm tay khi nâng cấp | "Rút câu theo Phần" |
+| **MAJOR** (`1.0.0`) | **thay đổi lớn về kiến trúc hệ thống hoặc mô hình cơ sở dữ liệu** (chủ dự án quyết, 18/11/2026). Bản `0.x` đầu tiên có thay đổi như vậy lên `1.0.0`; từ đó mỗi thay đổi lớn như vậy nâng MAJOR kế tiếp | |
+| **MINOR** (`0.2.0`) | thêm tính năng, đổi hành vi người dùng thấy, có migration cơ sở dữ liệu nhỏ, có việc phải làm tay khi nâng cấp | |
 | **PATCH** (`0.1.1`) | sửa lỗi, không thêm tính năng, không migration, không việc làm tay | họ tên đầu trang đổi ngay sau khi lưu |
-| **MAJOR** (`1.0.0`) | **do chủ dự án quyết.** Đề xuất: sau Phiên thi thật đầu tiên chạy tốt và sao lưu đã khôi phục thử thành công | |
 
-Còn nghi ngờ MINOR hay PATCH thì chọn MINOR: có migration hoặc việc làm tay là MINOR, bất kể thay đổi nhỏ đến đâu.
+**Nhận biết "thay đổi lớn":** thay đổi đó đi qua quy trình duyệt thiết kế của [AGENTS.md](../../AGENTS.md), tức có tài liệu hoặc ADR ở [docs/adr/](../adr) (viết ADR mới thay thế ADR cũ) hoặc sửa mô hình dữ liệu trong [docs/data-model.md](../data-model.md) theo cách đổi cấu trúc bảng đã có dữ liệu. Chủ dự án là người xác nhận khi chưa rõ.
+
+Còn nghi ngờ giữa các mức thì chọn mức cao hơn: có migration hoặc việc làm tay là ít nhất MINOR, bất kể thay đổi nhỏ đến đâu.
 
 ## 3. Thứ tự làm (sau mỗi lần deploy một thay đổi có hành vi mới)
 
@@ -87,4 +89,4 @@ gh release create v0.1.1 --verify-tag --title "BLUni Exam 0.1.1" --notes-file gh
 ## 7. Việc còn bỏ ngỏ (chờ chủ dự án)
 
 - Có tạo Release cho `v0.1.0` (hiện mới có tag, chưa có Release) không. Nếu có, dùng đúng mẫu ở mục 4, ghi "không có bản trước".
-- Khi nào lên `1.0.0` (đề xuất ở mục 2).
+- Thay đổi nào cụ thể đã đủ "lớn" để lên `1.0.0` khi nó được triển khai (ví dụ tính năng "Rút câu theo Phần" đụng mô hình dữ liệu): xét lúc có ADR hoặc tài liệu thiết kế tương ứng, theo cách nhận biết ở mục 2.
