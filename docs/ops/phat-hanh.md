@@ -26,6 +26,36 @@ Nhãn "bản" ở đây không thay cách deploy. Deploy vẫn dùng **mã commi
 
 Còn nghi ngờ giữa các mức thì chọn mức cao hơn: có migration hoặc việc làm tay là ít nhất MINOR, bất kể thay đổi nhỏ đến đâu.
 
+### Cách đọc ba số
+
+Mỗi lần phát hành chỉ tăng **một** số; các số đứng sau nó quay về 0. Số không bị giới hạn ở 9 (`0.1.9` rồi `0.1.10`).
+
+```text
+   0  .  1  .  0
+   │     │     └─ PATCH: sửa lỗi
+   │     └─────── MINOR: có tính năng mới
+   └───────────── MAJOR: thay đổi lớn về kiến trúc hoặc mô hình cơ sở dữ liệu
+```
+
+| Sự kiện (ví dụ) | Tag | Số nào tăng |
+|---|---|---|
+| Bản đầu tiên đã chạy thật | `v0.1.0` | |
+| Sửa họ tên đầu trang đổi ngay sau khi lưu hồ sơ | `v0.1.1` | PATCH |
+| Sửa thêm một lỗi nhỏ nữa (giả định) | `v0.1.2` | PATCH |
+| Thêm một tính năng mới (giả định) | `v0.2.0` (không phải `v0.1.3`) | MINOR; PATCH về 0 |
+| Sửa lỗi của tính năng đó (giả định) | `v0.2.1` | PATCH |
+| Thay đổi lớn về kiến trúc hoặc mô hình dữ liệu (giả định) | `v1.0.0` | MAJOR; MINOR và PATCH về 0 |
+
+Nhìn hai tag là biết mức rủi ro khi chuyển từ bản này sang bản kia:
+
+| Chuyển | Ý nghĩa với người nâng cấp |
+|---|---|
+| `0.1.0` → `0.1.3` | chỉ sửa lỗi, rủi ro thấp |
+| `0.1.3` → `0.2.0` | có tính năng mới, đọc ghi chú phát hành trước |
+| `0.2.0` → `1.0.0` | thay đổi lớn, cần chuẩn bị: sao lưu, đọc kỹ ghi chú, biết điểm lùi |
+
+Chuẩn SemVer chung coi mọi bản `0.x.y` là "chưa ổn định"; dự án này vẫn áp dụng các quy tắc trên cho cả `0.x`.
+
 ## 3. Thứ tự làm (sau mỗi lần deploy một thay đổi có hành vi mới)
 
 ```text
