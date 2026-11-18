@@ -161,6 +161,44 @@ describe('khớp tài khoản đã Xóa: khôi phục (C-gọn)', () => {
     expect((await get(admin, `/api/account-requests/${id}`)).json().status).toBe('approved');
   });
 
+  it.each([
+    [
+      'được khôi phục bởi người khác',
+      'UPDATE users SET removed_at = NULL, removed_by = NULL WHERE id = $1',
+      false,
+    ],
+    ['trở thành Quản trị viên', 'UPDATE users SET is_admin = true WHERE id = $1', true],
+    [
+      'được thêm vai trò Người ra đề',
+      "INSERT INTO user_role_tags (user_id, tag) VALUES ($1, 'examiner')",
+      true,
+    ],
+  ])(
+    'R-25: từ lúc đọc file tới lúc duyệt tài khoản %s thì dòng khôi phục bị bỏ qua (restore_state_changed), không đổi tài khoản, không gửi thư',
+    async (_what, change, stillRemoved) => {
+      const old = await removedStudent();
+      const id = await submitted(examiner, csvFile('Nguyễn Văn An,SV01,an@example.edu.vn,,,'));
+      const item = await firstOf(admin, id);
+      expect(item).toMatchObject({ matchStatus: 'restore', outcome: 'pending' });
+
+      await sql(change, [old.id]); // trạng thái đổi sau khi file được đọc, trước khi duyệt
+      t.mail.reset();
+      await approveAll(admin, id, { approveItemIds: [item.id] });
+
+      expect((await itemsOf(admin, id))[0]).toMatchObject({
+        outcome: 'skipped',
+        outcomeNote: 'restore_state_changed',
+      });
+      // Không khôi phục nhầm: người vẫn bị Xóa thì vẫn bị Xóa; người đã được khôi phục bởi người khác thì giữ nguyên.
+      const [row] = await sql<{ removed: boolean }>(
+        'SELECT removed_at IS NOT NULL AS removed FROM users WHERE id = $1',
+        [old.id],
+      );
+      expect(row?.removed).toBe(stillRemoved);
+      expect(t.mail.sent).toEqual([]);
+    },
+  );
+
   it('R-06: duyệt khôi phục giữ nguyên tài khoản (cùng id, tên, mã), về Chờ kích hoạt, email lấy từ file, một thư kích hoạt, có nhật ký', async () => {
     const old = await removedStudent();
     await sql("UPDATE users SET status = 'locked', locked_reason = 'x' WHERE id = $1", [old.id]);
