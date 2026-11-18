@@ -43,11 +43,15 @@ export class AuthLinksMessageBuilder implements MessageBuilder, OnModuleInit {
     if (request.kind === 'invitation') return this.buildInvitation(request.context);
     if (!request.userId) throw new Error(`Thư ${request.kind} cần người dùng`);
     const [user] = await this.db
-      .select({ fullName: users.fullName, username: users.username })
+      .select({ fullName: users.fullName, username: users.username, code: users.code })
       .from(users)
       .where(eq(users.id, request.userId));
     if (!user) throw new Error('Không tìm thấy người dùng của thư');
-    const content: MailContent = { fullName: user.fullName, username: user.username ?? undefined };
+    const content: MailContent = {
+      fullName: user.fullName,
+      username: user.username ?? undefined,
+      code: user.code,
+    };
 
     if (request.kind === 'password_changed') {
       content.changedAt = new Date(request.context?.changedAt ?? Date.now());

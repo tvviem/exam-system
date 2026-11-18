@@ -50,6 +50,9 @@ const PAIRS: [string, string, number][] = [
   ['danger', 'danger-soft', TEXT],
   ['warning', 'surface', TEXT],
   ['warning', 'warning-soft', TEXT],
+  // Dòng và dải "khớp tài khoản có sẵn": chữ thường trên nền cảnh báo nhạt (nền dòng pha loãng nên đây là trường hợp xấu nhất).
+  ['fg', 'warning-soft', TEXT],
+  ['warning', 'bg', TEXT],
   ['success', 'surface', TEXT],
   ['success', 'success-soft', TEXT],
   ['on-success', 'success', TEXT],

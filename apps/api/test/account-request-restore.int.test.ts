@@ -375,6 +375,21 @@ describe('nhóm việc của Yêu cầu: sẵn sàng duyệt, cần xác nhận,
     expect((await get(admin, `/api/account-requests/${id}/items?group=bậy`)).statusCode).toBe(400);
   });
 
+  it('R-24: lọc "đã có tài khoản" gom Khớp có sẵn, Khác họ tên và Khôi phục (không có Người mới, không có Không duyệt được), cho cả Người ra đề lẫn Quản trị viên', async () => {
+    const { admin, examiner, id } = await mixedRequest();
+    for (const who of [admin, examiner]) {
+      const rows = (await get(who, `/api/account-requests/${id}/items?existing=true`)).json()
+        .items as Row[];
+      expect(rows.map((i) => i.matchStatus)).toEqual(['exact', 'name_mismatch', 'restore']);
+    }
+    // Có thể kết hợp với bộ lọc khác; giá trị lạ bị từ chối.
+    const all = (await get(admin, `/api/account-requests/${id}/items`)).json().items as Row[];
+    expect(all.map((i) => i.matchStatus)).toContain('new');
+    expect((await get(admin, `/api/account-requests/${id}/items?existing=bậy`)).statusCode).toBe(
+      400,
+    );
+  });
+
   it('R-23: duyệt nhóm sẵn sàng xong thì nhóm này hết chờ, nhóm cần xác nhận vẫn chờ; quyết từng dòng xong thì hết chờ', async () => {
     const { admin, id } = await mixedRequest();
     await approveAll(admin, id);

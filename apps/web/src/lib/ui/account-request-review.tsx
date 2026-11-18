@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { RotateCcw, UserRoundCheck } from 'lucide-react';
+import { RotateCcw, TriangleAlert, UserRoundCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type {
   AccountRequestDetail,
@@ -253,5 +253,39 @@ export function MatchDialog({
         )}
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * Dải tóm tắt phía trên danh sách khi Yêu cầu có người đã có tài khoản: nêu số dòng, hậu quả (không có thư kích hoạt mới) và việc cần
+ * làm (kiểm lại mã, email). Ghi chú tĩnh nên dùng role="note"; màu hổ phách đi cùng biểu tượng và chữ, không đứng một mình.
+ */
+export function ExistingMatchBanner({
+  count,
+  filtered,
+  onFilter,
+}: {
+  count: number;
+  /** Danh sách đang lọc theo nhóm này: không cần nút lọc nữa (đã có nút "Xem tất cả"). */
+  filtered: boolean;
+  onFilter: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div
+      role="note"
+      className="flex gap-3 rounded-xl border border-warning bg-warning-soft p-3 text-fg"
+    >
+      <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />
+      <div className="flex min-w-0 flex-col gap-2">
+        <p className="font-semibold">{t('accountRequests.existing.title', { count })}</p>
+        <p className="text-sm">{t('accountRequests.existing.body')}</p>
+        {!filtered && (
+          <Button className="w-fit" onClick={onFilter}>
+            {t('accountRequests.existing.filter', { count })}
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }

@@ -11,6 +11,7 @@ export const Route = createFileRoute('/_authed/examiner/account-requests/$reques
     group: ITEM_GROUPS.includes(search.group as ItemGroup)
       ? (search.group as ItemGroup)
       : undefined,
+    existing: search.existing === true || search.existing === 'true' ? true : undefined,
     page: Number(search.page) > 1 ? Number(search.page) : undefined,
   }),
   component: ExaminerAccountRequestPage,

@@ -4,6 +4,9 @@ import type { Key, ReactNode } from 'react';
 // và cột đầu (tên) đứng yên khi cuộn.
 // Cột có `from: 'lg'` chỉ hiện từ 1024 px; ở 768–1023 px thông tin đó phải được gộp thành dòng phụ dưới tên (do nơi gọi dựng).
 
+/** Nền dòng nổi bật: màu cảnh báo nhạt pha với nền thẻ (đục), chữ giữ nguyên màu thường. */
+export const HIGHLIGHT_BG = 'bg-[color-mix(in_oklab,var(--c-warning-soft)_55%,var(--c-surface))]';
+
 export interface Column<T> {
   key: string;
   header: ReactNode;
@@ -20,6 +23,7 @@ export function DataList<T>({
   card,
   selectionHeader,
   selectionCell,
+  highlight,
 }: {
   items: T[];
   rowKey: (item: T) => Key;
@@ -29,6 +33,11 @@ export function DataList<T>({
   /** Cột chọn dòng (ô tiêu đề cần nhãn ẩn cho trình đọc màn hình). */
   selectionHeader?: ReactNode;
   selectionCell?: (item: T) => ReactNode;
+  /**
+   * Dòng cần chú ý (nền hổ phách nhạt, vạch đậm ở mép trái). Chỉ là phần phụ của biểu tượng và chữ trong dòng: màu một mình không
+   * truyền tin. Nền đục (pha với nền thẻ) vì ô đầu của bảng đứng yên khi cuộn ngang.
+   */
+  highlight?: (item: T) => boolean;
 }) {
   const cellClass = (c: Column<T>) =>
     `px-4 py-3 pointer-fine:py-2.5 ${c.from === 'lg' ? 'hidden lg:table-cell' : ''} ${c.className ?? ''}`;
@@ -36,7 +45,9 @@ export function DataList<T>({
     <>
       <ul className="flex flex-col gap-3 md:hidden">
         {items.map((item) => (
-          <li key={rowKey(item)}>{card(item)}</li>
+          <li key={rowKey(item)} data-highlight={highlight?.(item) ? 'true' : undefined}>
+            {card(item)}
+          </li>
         ))}
       </ul>
       <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface md:block">
@@ -55,13 +66,14 @@ export function DataList<T>({
             {items.map((item) => (
               <tr
                 key={rowKey(item)}
-                className="group border-b border-border align-top last:border-0 hover:bg-bg"
+                data-highlight={highlight?.(item) ? 'true' : undefined}
+                className={`group border-b border-border align-top last:border-0 ${highlight?.(item) ? HIGHLIGHT_BG : 'hover:bg-bg'}`}
               >
                 {selectionCell && <td className="px-2 py-1">{selectionCell(item)}</td>}
                 {columns.map((c, index) => (
                   <td
                     key={c.key}
-                    className={`${cellClass(c)} ${index === 0 && !selectionCell ? 'sticky left-0 bg-surface group-hover:bg-bg' : ''}`}
+                    className={`${cellClass(c)} ${index === 0 && !selectionCell ? `sticky left-0 ${highlight?.(item) ? HIGHLIGHT_BG : 'bg-surface group-hover:bg-bg'}` : ''} ${index === 0 && highlight?.(item) ? 'shadow-[inset_4px_0_0_var(--c-warning)]' : ''}`}
                   >
                     {c.cell(item)}
                   </td>

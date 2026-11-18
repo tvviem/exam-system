@@ -21,6 +21,9 @@ import {
   accountRequestItemsQuery,
   accountRequestQuery,
   approveAccountRequest,
+  existingMatchCount,
+  isExistingMatch,
+  MATCH_TONE,
   type MatchStatus,
   rejectAccountRequest,
 } from '../account-requests';
@@ -29,13 +32,14 @@ import { formatDate, formatDateTime } from '../format';
 import { Badge, BusyNotice, Button, Dialog, ErrorMessage } from '.';
 import {
   differingFields,
+  ExistingMatchBanner,
   GroupCards,
   MatchDialog,
   needsConfirmation,
 } from './account-request-review';
 import { ActivationTracking } from './activation-tracking';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
-import { DataList } from './data-list';
+import { DataList, HIGHLIGHT_BG } from './data-list';
 import { RowMenu } from './row-menu';
 import { StickyActionBar } from './sticky-action-bar';
 import { useToast } from './toast';
@@ -70,14 +74,6 @@ export function RequestStatusBadge({ status }: { status: AccountRequestStatus })
   );
 }
 
-const matchTone = {
-  new: 'primary',
-  exact: 'success',
-  name_mismatch: 'warning',
-  restore: 'warning',
-  blocked: 'danger',
-} as const;
-
 export function MatchBadge({ status }: { status: MatchStatus }) {
   const { t } = useTranslation();
   const icon =
@@ -93,7 +89,7 @@ export function MatchBadge({ status }: { status: MatchStatus }) {
       <CircleAlert aria-hidden className="size-3.5" />
     );
   return (
-    <Badge tone={matchTone[status]} icon={icon}>
+    <Badge tone={MATCH_TONE[status]} icon={icon}>
       {t(`matchStatus.${status}`)}
     </Badge>
   );
@@ -248,12 +244,19 @@ export function AccountRequestView({
                     {t('accountRequests.allExistingHint')}
                   </p>
                 )}
+              {data.status !== 'rejected' && existingMatchCount(data.counts) > 0 && (
+                <ExistingMatchBanner
+                  count={existingMatchCount(data.counts)}
+                  filtered={!!filter.existing}
+                  onFilter={() => onFilterChange({ existing: true })}
+                />
+              )}
               <GroupCards
                 groups={data.groups}
                 active={group}
                 onChange={(next) => onFilterChange({ group: next })}
               />
-              {group && (
+              {(group || filter.existing) && (
                 <Button className="w-fit" variant="ghost" onClick={() => onFilterChange({})}>
                   {t('accountRequests.showAll', { count: data.rowCount ?? 0 })}
                 </Button>
@@ -278,7 +281,9 @@ export function AccountRequestView({
                     page={items.data.page}
                     pageSize={items.data.pageSize}
                     total={items.data.total}
-                    onPage={(next) => onFilterChange({ group, page: next > 1 ? next : undefined })}
+                    onPage={(next) =>
+                      onFilterChange({ ...filter, page: next > 1 ? next : undefined })
+                    }
                   />
                 </>
               )}
@@ -397,6 +402,7 @@ function ItemList({ items, admin, canDecide, onReview, onRejectRow }: ItemListPr
     <DataList
       items={items}
       rowKey={(item) => item.id}
+      highlight={(item) => isExistingMatch(item.matchStatus)}
       columns={[
         {
           key: 'row',
@@ -440,7 +446,9 @@ function ItemList({ items, admin, canDecide, onReview, onRejectRow }: ItemListPr
         },
       ]}
       card={(item) => (
-        <div className="rounded-xl border border-border bg-surface p-4">
+        <div
+          className={`rounded-xl border p-4 ${isExistingMatch(item.matchStatus) ? `${HIGHLIGHT_BG} border-warning border-l-4` : 'border-border bg-surface'}`}
+        >
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-fg-muted">
               {t('accountRequests.row', { n: item.rowNumber })}
