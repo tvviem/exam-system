@@ -2,7 +2,7 @@
 
 BLUni Exam, hệ thống thi trực tuyến của Trường Đại học Bạc Liêu, ưu tiên làm bài trên điện thoại. Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi tại lớp hoặc phòng máy. Người dự thi đăng nhập, nhập Mã vào thi và làm bài ngay trên điện thoại hoặc máy tính.
 
-> **Trạng thái (8/11/2026):** đã xong đặc tả nghiệp vụ và kiến trúc, lát cắt 0 (khung dự án), **lát cắt 1** (Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản) và **lát cắt 2** (Ngân hàng câu hỏi), **lát cắt 3** (Bộ đề) **lát cắt 4** (Phiên thi: Danh sách dự thi, Mã vào thi, làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ) và **lát cắt 5** (chấm tự động và tự luận, Công bố kết quả, Kết quả của tôi, Phúc khảo, Chốt, Đính chính đáp án, Ủy quyền chấm, xuất Excel, đo tải 500 người). Lát cắt tiếp theo là 6 (triển khai production). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 5](#dùng-thử-lát-cắt-5); hiệu năng đã đo ở [docs/hieu-nang.md](docs/hieu-nang.md).
+> **Trạng thái (19/11/2026):** **phiên bản 0.1.1 đang chạy thật** (tag `v0.1.0` ngày 18/11, `v0.1.1` ngày 19/11) trên Podman pod `prod-exam` tại `https://exam.plotrackerbluni.site`. Đã xong các lát cắt 0 đến 7: khung dự án; Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản; Ngân hàng câu hỏi; Bộ đề; Phiên thi (làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp); chấm, Công bố kết quả, Phúc khảo, Đính chính; triển khai production kèm sao lưu và khôi phục; **tài khoản bằng email** (thư kích hoạt, quên mật khẩu, đổi và xác thực email, Lời mời tự gửi thư). Hai việc đã duyệt thiết kế sau bản 0.1: [Xuất Bộ đề ra Word](docs/plan/xuat-bo-de-thiet-ke.md) và [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md) (dự kiến 0.2.0). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 5](#dùng-thử-lát-cắt-5); hiệu năng đã đo ở [docs/hieu-nang.md](docs/hieu-nang.md).
 
 ## Tính năng giai đoạn 1
 
@@ -12,6 +12,11 @@ BLUni Exam, hệ thống thi trực tuyến của Trường Đại học Bạc L
 - Gắn Nhãn vai trò (Người ra đề, Người dự thi); Khóa đăng nhập, Xóa người dùng, xem lịch sử đăng nhập và nhật ký thao tác.
 - Chuyển giao Chủ đề khi Người ra đề nghỉ việc; Bộ đề nháp có câu của Chủ đề đó đi theo. Xóa Người ra đề chuyển luôn mọi Bộ đề và Phiên thi của họ cho người nhận.
 - Không Khóa đăng nhập hay Xóa được người đang trong Phiên thi đang diễn ra (trang người dùng báo rõ Phiên thi nào và vô hiệu hai nút).
+
+**Tài khoản và thư** (lát cắt 7)
+- Đăng nhập bằng email hoặc tên đăng nhập; Người dự thi nhận **thư kích hoạt** để tự đặt mật khẩu; **quên mật khẩu** thì xin liên kết đặt lại dùng một lần qua thư; đổi email phải **xác thực** bằng thư.
+- **Lời mời** tự gửi thư, có Gửi lại và Thu hồi. Thư đi qua hàng đợi bền (mất mạng hay SMTP lỗi thì thử lại, không mất thư); Quản trị viên và Người ra đề của Người dự thi thấy ai chưa kích hoạt trước ngày thi, gửi lại thư hoặc sửa email.
+- Yêu cầu cấp tài khoản chịu được nhiều giảng viên dạy chung một lớp và khớp được với tài khoản đã Xóa; dòng khớp tài khoản có sẵn được làm nổi bật khi duyệt.
 
 **Người ra đề**
 - Quản lý Chủ đề và Câu hỏi thuộc sở hữu riêng.
@@ -71,7 +76,7 @@ Cloudflare Tunnel ──► Podman pod `prod-exam`
                         └─ redis     phiên đăng nhập, hàng đợi, trạng thái online, kênh tin đẩy
 ```
 
-Backend chia module theo nghiệp vụ: `identity`, `audit`, `notifications`, `question-bank`, `exam`, `session`, `attempt`, `realtime`, `grading` (chấm, Công bố, Phúc khảo, Đính chính). Module không đọc bảng của nhau mà nói chuyện qua các cổng trong `apps/api/src/common` (test kiến trúc `architecture.test.ts` giữ ranh giới này). Kênh đẩy Socket.IO (`/ws`) chỉ là phần tăng tốc: tin đẩy không mang dữ liệu, mất kênh thì heartbeat 15 giây và hỏi lại vẫn giữ mọi thứ đúng. Chi tiết luồng nghiệp vụ, bảo mật và ước tính tải nằm trong [docs/architecture.md](docs/architecture.md).
+Backend chia module theo nghiệp vụ: `identity`, `audit`, `notifications`, `mail` (gửi thư qua hàng đợi bền, [ADR-0009](docs/adr/0009-email-chinh-chu-va-thu-qua-hang-doi-ben.md)), `backup` (sao lưu, khôi phục và cảnh báo cho Quản trị viên), `paper` (dựng tệp Word của Bộ đề theo mẫu của Trường; mới có lõi thuần, chưa có API và giao diện), `question-bank`, `exam`, `session`, `attempt`, `realtime`, `grading` (chấm, Công bố, Phúc khảo, Đính chính). Module không đọc bảng của nhau mà nói chuyện qua các cổng trong `apps/api/src/common` (test kiến trúc `architecture.test.ts` giữ ranh giới này). Kênh đẩy Socket.IO (`/ws`) chỉ là phần tăng tốc: tin đẩy không mang dữ liệu, mất kênh thì heartbeat 15 giây và hỏi lại vẫn giữ mọi thứ đúng. Chi tiết luồng nghiệp vụ, bảo mật và ước tính tải nằm trong [docs/architecture.md](docs/architecture.md).
 
 ## Cấu trúc monorepo
 
@@ -79,7 +84,7 @@ Backend chia module theo nghiệp vụ: `identity`, `audit`, `notifications`, `q
 exam-system/
   apps/
     api/          NestJS (HTTP + WebSocket); worker BullMQ ở src/worker, cùng mã và cùng image
-      drizzle/    migration SQL (0000–0015)
+      drizzle/    migration SQL (0000–0027)
       scripts/    load-exam (đo tải), demo-room (phòng thi thử), demo-data (file Excel mẫu)
     web/          React PWA: /admin, /examiner, /take; e2e/ là Playwright
   packages/
@@ -170,7 +175,7 @@ Mục này dẫn anh đi qua toàn bộ chức năng đã làm, theo đúng lu�
 
 **2. Quản trị viên: mời một Người ra đề bằng link**
 1. Mục **Lời mời** → **Mời Người ra đề**: họ tên, email (ví dụ `giang.vien@example.edu.vn`), chọn Đơn vị.
-2. Hệ thống **không gửi email** (giai đoạn 1): hộp thoại hiện link đúng một lần, bấm **Sao chép link** rồi **Tôi đã sao chép link**. Danh sách có **Thu hồi** và **Tạo lại link** (link cũ mất hiệu lực ngay).
+2. Hệ thống **tự gửi thư mời** tới email đó (ở máy phát triển chưa cấu hình SMTP thì thư được **in ra cửa sổ worker**; xem [docs/ops/gui-thu.md](docs/ops/gui-thu.md) cho production). Liên kết trong thư dùng được một lần, hạn 7 ngày kể từ lúc gửi. Danh sách có **Gửi lại thư mời** (liên kết cũ mất hiệu lực ngay) và **Thu hồi**.
 3. Dán link vào **cửa sổ ẩn danh**. Người được mời thấy tên, email, Đơn vị; đặt mật khẩu, chọn học vị/học hàm (không bắt buộc), bấm **Tạo tài khoản và vào hệ thống**. Họ vào thẳng trang Người ra đề. Mở lại link đó lần nữa sẽ báo "không còn dùng được".
 4. Thử thêm: mời một email đã có tài khoản, link sẽ yêu cầu đăng nhập đúng tài khoản đó rồi chỉ thêm vai trò Người ra đề.
 
@@ -295,6 +300,7 @@ Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Ngư�
 | `TRUST_PROXY` | không | Ai được tin khi báo địa chỉ khách qua `X-Forwarded-For` (mặc định `loopback`, nginx cùng pod) |
 | `ILLUSTRATION_QUOTA_BYTES`, `MEDIA_ACCEL_PREFIX` | không | Hạn mức dung lượng Hình minh họa mỗi Người ra đề (mặc định 500 MB); tiền tố để api nhờ nginx trả ảnh (`X-Accel-Redirect`, ví dụ `/_media`) |
 | `REALTIME_THROTTLE_MS`, `REALTIME_MAX_SOCKETS_PER_USER` | không | Khoảng cách tối thiểu giữa hai tin `monitor.changed` (mặc định 2000 ms) và số kết nối Socket.IO tối đa mỗi người (mặc định 20) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `EMAIL_FROM` (cùng nhóm) | production | Cấu hình gửi thư (kích hoạt, quên mật khẩu, Lời mời...). Để trống cả nhóm ở dev thì thư được in ra cửa sổ worker. Các biến tùy chọn `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO`, `EMAIL_SUPPORT_CONTACT`, `EMAIL_LIMIT_TOTAL`, `EMAIL_LIMIT_BULK`, `EMAIL_MIN_GAP_SECONDS`, `EMAIL_WARMUP_BULK` và cách đặt giá trị: [docs/ops/gui-thu.md](docs/ops/gui-thu.md) |
 | `LOG_LEVEL`, `PORT` | không | Mức log và cổng của api |
 
 **Sự cố thường gặp**
@@ -313,11 +319,13 @@ Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Ngư�
 - **Nhánh và PR:** tạo nhánh từ `main`, mở pull request theo mẫu Summary / Evidence / Merge Danger. CI có 4 check phải xanh (Lint·typecheck·unit; Integration·e2e·migration drift; Image web; Image api) trước khi merge squash; chỉ merge khi chủ dự án ra lệnh. Quy trình mỗi lát cắt: thiết kế được duyệt, test đỏ rồi xanh theo từng đường cắt, review hai trục (Standards, Spec).
 - **Commit:** thông điệp ngắn bằng tiếng Việt nêu việc đã làm (tiêu đề PR kèm số, ví dụ "4e: … (#51)").
 - **Prototype:** đặt trên nhánh `prototype/*`, không merge vào `main`. Ví dụ: `prototype/exam-taking-ui`.
+- **Phát hành:** tag và Release chỉ gắn trên commit đã chạy thật ở production và đã kiểm tra, khi chủ dự án đồng ý ([docs/ops/phat-hanh.md](docs/ops/phat-hanh.md)).
+- **Kiểm tra cục bộ:** `pnpm lint` coi cảnh báo của Biome là lỗi; hook pre-commit (`.githooks`, bật qua `pnpm install`) chạy Biome trên các tệp sắp commit.
 - **Agent:** Claude Code, Codex và Copilot cùng đọc [AGENTS.md](AGENTS.md); [CLAUDE.md](CLAUDE.md) nạp file này.
 
 ## Triển khai
 
-Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, ra Internet qua Cloudflare Tunnel ([ADR-0006](docs/adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)). **Hiện đã có:** CI (lint, typecheck, unit, audit phụ thuộc, integration, E2E trên pod `ci-exam`, kiểm migration không lệch schema) và build image api, web lên GHCR khi push `main`. **Lát cắt 6 ([kế hoạch](docs/plan/slice-6.md)):** pod `prod-exam` **đã chạy thật** trên laptop WSL tại `https://exam.plotrackerbluni.site`; lệnh `make -C infra prod-bootstrap`, `prod-up`, `prod-scale`, `prod-status`… dựng và vận hành pod (hướng dẫn: [docs/ops/trien-khai.md](docs/ops/trien-khai.md)); workflow GitHub "Deploy (bấm tay)" (xác nhận trước khi chạy, sao lưu trước deploy, kiểm sau deploy, tự lùi khi lỗi). **Sao lưu và khôi phục đã bật thật** (9/11/2026): dump hằng đêm, lưu liên tục WAL, đẩy sang ổ D: và Cloudflare R2 (mã hóa gpg), thử khôi phục hằng tháng, báo ngoài máy bằng healthchecks.io, màn hình "Sao lưu dữ liệu" và chuông cho Quản trị viên (hướng dẫn và nhật ký bật thật: [docs/ops/khoi-phuc.md](docs/ops/khoi-phuc.md)). **Trước mỗi Phiên thi thật:** `make -C infra prod-preflight` và [checklist](docs/ops/checklist-phien-thi.md). Chi tiết ở [docs/architecture.md](docs/architecture.md) mục 8, 9 và 11.
+Giai đoạn 1 chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, ra Internet qua Cloudflare Tunnel ([ADR-0006](docs/adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)). **Hiện đã có:** CI (lint, typecheck, unit, audit phụ thuộc, integration, E2E trên pod `ci-exam`, kiểm migration không lệch schema) và build image api, web lên GHCR khi push `main`. **Lát cắt 6 ([kế hoạch](docs/plan/slice-6.md)):** pod `prod-exam` **đã chạy thật** trên laptop WSL tại `https://exam.plotrackerbluni.site`; lệnh `make -C infra prod-bootstrap`, `prod-up`, `prod-scale`, `prod-status`… dựng và vận hành pod (hướng dẫn: [docs/ops/trien-khai.md](docs/ops/trien-khai.md)); workflow GitHub "Deploy (bấm tay)" (xác nhận trước khi chạy, sao lưu trước deploy, kiểm sau deploy, tự lùi khi lỗi). **Sao lưu và khôi phục đã bật thật** (9/11/2026): dump hằng đêm, lưu liên tục WAL, đẩy sang ổ D: và Cloudflare R2 (mã hóa gpg), thử khôi phục hằng tháng, báo ngoài máy bằng healthchecks.io, màn hình "Sao lưu dữ liệu" và chuông cho Quản trị viên (hướng dẫn và nhật ký bật thật: [docs/ops/khoi-phuc.md](docs/ops/khoi-phuc.md)). **Trước mỗi Phiên thi thật:** `make -C infra prod-preflight` và [checklist](docs/ops/checklist-phien-thi.md). Chi tiết ở [docs/architecture.md](docs/architecture.md) mục 8, 9 và 11. **Phát hành:** bản chạy thật được đánh dấu bằng tag chú thích `vMAJOR.MINOR.PATCH` trên đúng commit đang chạy (hiện `v0.1.1`), ghi chú Release theo [docs/ops/phat-hanh.md](docs/ops/phat-hanh.md); không deploy hay gắn tag trong giờ thi.
 
 ## Tài liệu
 
@@ -326,10 +334,12 @@ Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, r
 | [GLOSSARY.md](GLOSSARY.md) | Thuật ngữ nghiệp vụ và tên dùng trong mã nguồn |
 | [docs/architecture.md](docs/architecture.md) | Kiến trúc, luồng nghiệp vụ, bảo mật, trải nghiệm điện thoại, triển khai, phạm vi |
 | [docs/data-model.md](docs/data-model.md) | Thiết kế bảng PostgreSQL, ràng buộc, công thức tính Kết quả |
-| [docs/plan/](docs/plan) | Kế hoạch, quyết định, ghi chú triển khai và hướng dẫn thử từng lát cắt: slice-0 đến slice-5 (slice-1: Q43–Q99, slice-3: Q159–Q191, slice-4: Q192–Q272, slice-5: Q285–Q322) |
+| [docs/plan/](docs/plan) | Kế hoạch, quyết định, ghi chú triển khai và hướng dẫn thử từng lát cắt: slice-0 đến slice-7 (slice-1: Q43–Q99, slice-3: Q159–Q191, slice-4: Q192–Q272, slice-5: Q285–Q322, slice-7: email Q372–Q384), cùng các thiết kế sau bản 0.1: [Xuất Bộ đề](docs/plan/xuat-bo-de-thiet-ke.md) (Q401–Q416), [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md) (Q385–Q395), [tên hệ thống](docs/plan/ten-he-thong.md) (Q396–Q400) |
 | [docs/hieu-nang.md](docs/hieu-nang.md) | Hiệu năng và sức tải đã đo, cách đọc số đo, khuyến nghị cỡ phòng thi |
 | [docs/huong-dan/](docs/huong-dan) | Hướng dẫn sử dụng theo vai (chấm điểm, Công bố, Phúc khảo, Đính chính) |
-| [docs/ops/demo-wsl.md](docs/ops/demo-wsl.md) | Triển khai demo trên laptop WSL (bản nháp) |
+| [docs/ops/trien-khai.md](docs/ops/trien-khai.md), [khoi-phuc.md](docs/ops/khoi-phuc.md), [checklist-phien-thi.md](docs/ops/checklist-phien-thi.md) | Dựng và vận hành pod production; sao lưu và khôi phục; việc phải làm trước mỗi Phiên thi thật |
+| [docs/ops/phat-hanh.md](docs/ops/phat-hanh.md), [gui-thu.md](docs/ops/gui-thu.md), [tai-khoan-va-mat-khau.md](docs/ops/tai-khoan-va-mat-khau.md) | Tôn chỉ đánh số phiên bản, gắn tag và viết ghi chú Release; cấu hình gửi thư; xử lý tài khoản và mật khẩu |
+| [docs/ops/demo-wsl.md](docs/ops/demo-wsl.md), [chuyen-len-vps.md](docs/ops/chuyen-len-vps.md) | Triển khai demo trên laptop WSL (bản nháp); hướng chuyển sang VPS khi cần |
 | [docs/ui-design.md](docs/ui-design.md), [docs/ui-review.md](docs/ui-review.md) | Thiết kế giao diện và kết quả rà soát giao diện |
 | [demo-data/README.md](demo-data/README.md) | File Excel dữ liệu demo và kịch bản dùng |
 | [docs/adr](docs/adr) | Các quyết định kiến trúc đã duyệt |
@@ -345,9 +355,11 @@ Giai đoạn 1 sẽ chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, r
 | 3 | **Xong.** Bộ đề, Phần, Đặt điểm nhanh, Xem thử, Phát hành, Lưu trữ Câu hỏi và Bộ đề, Nhân bản, Chuyển giao kèm Bộ đề |
 | 4 | **Xong.** Phiên thi, Danh sách dự thi, Mã vào thi, làm bài trên điện thoại (chịu mất mạng), theo dõi phòng thi trực tiếp, Cộng giờ, Buộc nộp, Đình chỉ, kênh đẩy Socket.IO, Xóa Người ra đề chuyển Phiên thi |
 | 5 | **Xong.** Chấm tự động và tự luận, Công bố kết quả, Kết quả của tôi, Phúc khảo, Chốt, Đính chính đáp án, Ủy quyền chấm, xuất Excel, đo tải sau giờ thi |
-| 6 | Triển khai production lên pod `prod-exam` |
+| 6 | **Xong.** Triển khai production lên pod `prod-exam`, workflow "Deploy (bấm tay)", sao lưu và khôi phục, báo ngoài máy |
+| 7 | **Xong.** Tài khoản bằng email: thư kích hoạt, quên mật khẩu, đổi và xác thực email, Lời mời tự gửi thư, theo dõi kích hoạt |
+| Sau 0.1 | **Đã duyệt thiết kế, đang làm theo PR nhỏ:** [Xuất Bộ đề ra Word](docs/plan/xuat-bo-de-thiet-ke.md). **Đã duyệt thiết kế, chưa có mã:** [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md) (dự kiến 0.2.0) |
 
-Để giai đoạn sau: rút ngẫu nhiên câu hỏi, thống kê câu hỏi, nhập câu hỏi từ Word, tải ảnh vào Câu tự luận, giao diện tiếng Anh, gửi email, xác thực hai lớp cho Quản trị viên, chuyển sang VPS.
+Để giai đoạn sau: nhập câu hỏi từ Word, tải ảnh vào Câu tự luận, giao diện tiếng Anh, xác thực hai lớp cho Quản trị viên, chuyển sang VPS (xem [docs/ops/chuyen-len-vps.md](docs/ops/chuyen-len-vps.md)).
 
 ## Bản quyền
 
