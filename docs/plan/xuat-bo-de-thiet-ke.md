@@ -194,7 +194,7 @@ Khi có Rút câu, mỗi Người dự thi nhận một bộ câu khác nhau. B�
 | PR | Nội dung | Điểm kiểm thử |
 |---|---|---|
 | X0 | **Bản thử** công thức LaTeX → OMML và nhúng hình trong .docx, trên dữ liệu thật; chốt hướng 5.1 và 5.2 | Mở bằng Word và LibreOffice, chụp ảnh |
-| X1 | Lõi thuần `buildPaperDocument`: **Mẫu Trường** (đầu trang, chân trang, khung thông tin, lưới trả lời, cách xếp Phương án theo độ rộng 4/2/1, "HẾT"), hai bộ cài sẵn Mẫu Trường và Gọn, **bảng đăng ký Loại câu hỏi** (chọn một trước; mọi Loại khác có bộ trình bày hoặc cảnh báo), khối Quốc hiệu tùy chọn | Đọc lại .docx: đầu và chân trang, khung, lưới 17 cột, cách xếp 4/2/1 theo độ rộng, lề và cỡ chữ khớp mục 3.2; bài cưỡng chế mọi Loại có bộ trình bày |
+| X1 (**xong**, mã trong `apps/api/src/modules/paper`) | Lõi thuần `buildPaperDocument`: **Mẫu Trường** (đầu trang, chân trang, khung thông tin, lưới trả lời, cách xếp Phương án theo độ rộng 4/2/1, "HẾT"), hai bộ cài sẵn Mẫu Trường và Gọn, **bảng đăng ký Loại câu hỏi** (chọn một trước; mọi Loại khác có bộ trình bày hoặc cảnh báo), khối Quốc hiệu tùy chọn | Đọc lại .docx: đầu và chân trang, khung, lưới 17 cột, cách xếp 4/2/1 theo độ rộng, lề và cỡ chữ khớp mục 3.2; bài cưỡng chế mọi Loại có bộ trình bày |
 | X2 | Công thức và hình minh họa | Số công thức, số hình khớp bản chụp; hình đúng biến thể |
 | X3 | API (`PaperService`, cổng, quyền, nhật ký), chỉ Đã phát hành hoặc Lưu trữ | Tích hợp: quyền, Người dự thi bị từ chối, nhật ký, tên tệp |
 | X4 | Giao diện: hộp thoại "Xuất Bộ đề" ở Phiên thi và Bộ đề, điền sẵn, ô Học phần | E2E desktop và mobile, ảnh chụp, bộ quét `ui-layout` |
@@ -203,6 +203,8 @@ Khi có Rút câu, mỗi Người dự thi nhận một bộ câu khác nhau. B�
 | X7 | (Sau) Xuất đề **đúng như một Lượt đã nhận** (thứ tự câu và Phương án thực tế) kèm bảng hoán vị theo mẫu của Trường; cần định nghĩa mã đề và mã câu hỏi (Q416) | Khớp `layout` của Lượt; đáp án hoán vị đúng |
 
 Mỗi PR có kiểm đột biến. Bản xuất **không đổi** dữ liệu hay hành vi nào đang chạy.
+
+**Kết quả X1 (19/11/2026):** khoảng đệm cột khi xếp Phương án là 13 mm (đo từ đề mẫu: hợp lệ trong 10,9 đến 15,9 mm; tái hiện đúng 9 câu một hàng, 7 câu hai cột, 34 câu mỗi dòng). Bảng đo chữ `font-metrics.ts` sinh từ Liberation Serif bằng PyMuPDF (tương thích số đo Times New Roman). Công thức và hình trong X1 chỉ là chỗ giữ màu đỏ kèm cảnh báo; làm thật ở X2 (dùng `mathml2omml`, giấy phép LGPL-3.0 đã được chủ dự án chấp nhận 19/11/2026, kèm lớp sửa lỗi của bản thử X0 ở nhánh `prototype/xuat-bo-de-cong-thuc`).
 
 ## 10. Thuật ngữ cần thống nhất (domain-modeling)
 

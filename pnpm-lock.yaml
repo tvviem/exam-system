@@ -220,6 +220,9 @@ importers:
       ioredis:
         specifier: ^6.0.0
         version: 6.0.0(supports-color@8.1.1)
+      jszip:
+        specifier: 3.10.2
+        version: 3.10.2
       katex:
         specifier: 0.19.1
         version: 0.19.1
@@ -296,6 +299,9 @@ importers:
       '@types/smtp-server':
         specifier: ^3.5.13
         version: 3.5.13
+      '@xmldom/xmldom':
+        specifier: ^0.9.12
+        version: 0.9.12
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
@@ -2567,6 +2573,10 @@ packages:
   '@xhmikosr/os-filter-obj@4.1.0':
     resolution: {integrity: sha512-y5ArHvQ7BVule/+L9yE2nYMhceiJhgsqo58lOfnisQ7bg+Kjfmkgr7JBuVFiTkl+ErdShpp829QstZQyLugl8g==}
     engines: {node: '>=20'}
+
+  '@xmldom/xmldom@0.9.12':
+    resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
+    engines: {node: '>=14.6'}
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -7339,6 +7349,8 @@ snapshots:
   '@xhmikosr/os-filter-obj@4.1.0':
     dependencies:
       system-architecture: 1.0.0
+
+  '@xmldom/xmldom@0.9.12': {}
 
   '@xtuc/ieee754@1.2.0':
     optional: true
