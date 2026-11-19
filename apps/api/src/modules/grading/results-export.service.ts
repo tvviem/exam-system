@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
+import { fileSlug } from '../../common/file-slug';
 import { type ResultRow, ResultsService } from './results.service';
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -82,7 +83,7 @@ export class ResultsExportService {
       ]);
     }
     const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
-    return { file: buffer, filename: `ket-qua-${slug(session.title)}.xlsx` };
+    return { file: buffer, filename: `ket-qua-${fileSlug(session.title, 'phien-thi')}.xlsx` };
   }
 }
 
@@ -103,14 +104,3 @@ function summaryRow(person: ResultRow, maxScore: number) {
     notes.join('; '),
   ];
 }
-
-const slug = (text: string) =>
-  text
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 60) || 'phien-thi';

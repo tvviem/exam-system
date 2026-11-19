@@ -196,7 +196,7 @@ Khi có Rút câu, mỗi Người dự thi nhận một bộ câu khác nhau. B�
 | X0 | **Bản thử** công thức LaTeX → OMML và nhúng hình trong .docx, trên dữ liệu thật; chốt hướng 5.1 và 5.2 | Mở bằng Word và LibreOffice, chụp ảnh |
 | X1 (**xong**, mã trong `apps/api/src/modules/paper`) | Lõi thuần `buildPaperDocument`: **Mẫu Trường** (đầu trang, chân trang, khung thông tin, lưới trả lời, cách xếp Phương án theo độ rộng 4/2/1, "HẾT"), hai bộ cài sẵn Mẫu Trường và Gọn, **bảng đăng ký Loại câu hỏi** (chọn một trước; mọi Loại khác có bộ trình bày hoặc cảnh báo), khối Quốc hiệu tùy chọn | Đọc lại .docx: đầu và chân trang, khung, lưới 17 cột, cách xếp 4/2/1 theo độ rộng, lề và cỡ chữ khớp mục 3.2; bài cưỡng chế mọi Loại có bộ trình bày |
 | X2 (**xong**) | Công thức và hình minh họa | Số công thức, số hình khớp bản chụp; hình đúng biến thể |
-| X3 | API (`PaperService`, cổng, quyền, nhật ký), chỉ Đã phát hành hoặc Lưu trữ | Tích hợp: quyền, Người dự thi bị từ chối, nhật ký, tên tệp |
+| X3 (**xong**) | API (`PaperService`, cổng, quyền, nhật ký), chỉ Đã phát hành hoặc Lưu trữ | Tích hợp: quyền, Người dự thi bị từ chối, nhật ký, tên tệp |
 | X4 | Giao diện: hộp thoại "Xuất Bộ đề" ở Phiên thi và Bộ đề, điền sẵn, ô Học phần | E2E desktop và mobile, ảnh chụp, bộ quét `ui-layout` |
 | X5 | Tệp Đáp án và thang điểm (đáp án hiệu lực), xác nhận cảnh báo | Có Đính chính thì đáp án là bản đã sửa |
 | X6 | (Tùy chọn) PDF bằng `pdfkit` và phông nhúng | Số trang, phông, công thức |
@@ -215,6 +215,19 @@ Mỗi PR có kiểm đột biến. Bản xuất **không đổi** dữ liệu ha
 - **Phát sinh khi làm:** biến thể ảnh của hệ thống là WebP mà Word 2019 không đọc WebP trong `.docx`, nên lõi **đổi WebP thành PNG** (PNG và JPEG giữ nguyên byte). Ngoặc `\left..\right` thành đối tượng `m:d` của Word (thanh đứng `∣` của KaTeX chuẩn hóa thành `|`); công thức riêng dòng đứng một đoạn `m:oMathPara`. Lõi nhận hình qua `PaperSpec.images` (không tự đọc ổ đĩa); việc đọc hình từ kho là của X3.
 - **Hiệu năng:** Bộ đề 100 câu, 10 hình WebP 960 px, 30 công thức dựng khoảng 0,3 giây (ngân sách 1 giây).
 - **Giới hạn đã biết:** Mệnh đề của chùm đúng/sai và các đoạn thêm trong Mệnh đề chưa dựng hình hoặc công thức riêng dòng (chỉ đoạn đầu của Mệnh đề); sẽ làm khi có nhu cầu.
+
+**Quyết định X3 (chủ dự án đồng ý ngày 20/11/2026) và kết quả:**
+
+- **Điểm vào:** `POST /api/paper/exam` với body `{ sessionId | examId (đúng một), course, title?, examCode?, unit?, preset?, blocks? }`; trả thẳng tệp `.docx` (mã 200, `Content-Disposition` là `de-thi-<tên-bộ-đề>.docx`, `Cache-Control: no-store`). Chỉ Người ra đề (`RequireTag('examiner')`).
+- **Q421, cảnh báo:** header `X-Paper-Warnings` là JSON mã hóa URL, tối đa 20 mục kèm "và N cảnh báo khác".
+- **Q422, cổng:** thêm `SESSION_INFO` (session cài đặt) và `ILLUSTRATION_FILES` (question-bank cài đặt), nối ở `PaperPortsWiringModule`. Thay vì mở rộng `profiles` của `EXAMINER_DIRECTORY`, thêm phương thức riêng `unitNameOf(userId)` (nhỏ hơn, không đụng các nơi dùng `profiles` và `search`). Ô `unit` trong body ghi đè khi Người ra đề chưa được gán Đơn vị.
+- **Q423, quyền:** chỉ chủ Bộ đề hoặc chủ Phiên thi. Người khác và Bộ đề không có là 404; Người dự thi, Quản trị viên là 403; chưa đăng nhập là 401; Bộ đề nháp là 409 `EXAM_NOT_PUBLISHED`. Dùng `EXAM_CATALOG.statusOwnedBy` vì `EXAM_CONTENT.ownerOf` chỉ biết Bộ đề đã Phát hành.
+- **Q424, ô nhập:** `course` bắt buộc (tối đa 150 ký tự); `title` mặc định "THI KẾT THÚC HỌC PHẦN"; `examCode` mặc định "đề chuẩn"; xuất từ Bộ đề thì ngày và thời gian để trống.
+- **Không lộ đáp án:** `toPaperSpec` chỉ cho phần hiển thị của payload (danh sách cho phép, bắt buộc đủ mọi Loại); bài tích hợp quét mọi phần của gói `.docx` không thấy Đáp án đúng, hướng dẫn chấm, thang điểm, mã Phương án.
+- **Hình:** chọn biến thể nhỏ nhất từ 960 px trở lên trong danh sách `variants` của bản chụp (ảnh nhỏ không có biến thể lớn thì lấy biến thể lớn nhất có); chỉ đọc hình nằm trong bản chụp của Bộ đề.
+- **Nhật ký:** `audit_logs` ghi `paper.export` (ai, Bộ đề, Phiên thi, loại tệp, số cảnh báo), không ghi nội dung; xuất thất bại không ghi.
+- **Hiệu năng:** Bộ đề 100 câu, 30 câu có công thức, toàn bộ yêu cầu HTTP khoảng 0,05 giây (ngân sách 1 giây), nên chưa cần job nền.
+- **Chưa làm:** hướng dẫn chung của Bộ đề (`exams.instructions`) chưa in ở tệp; Lớp điền sẵn (Q415) chưa có; sẽ bàn khi làm giao diện (X4).
 
 ## 10. Thuật ngữ cần thống nhất (domain-modeling)
 
