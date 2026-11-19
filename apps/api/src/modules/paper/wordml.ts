@@ -1,6 +1,10 @@
 /** Mảnh WordprocessingML dựng tay. Chỉ dùng bên trong module `paper`. */
 
 export const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+export const M = 'http://schemas.openxmlformats.org/officeDocument/2006/math';
+export const WP = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
+export const A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+export const PIC = 'http://schemas.openxmlformats.org/drawingml/2006/picture';
 export const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 
 export const mmToTwips = (mm: number) => Math.round((mm * 1440) / 25.4);

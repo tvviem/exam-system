@@ -2,10 +2,15 @@ import { DOMParser, type Document, type Element } from '@xmldom/xmldom';
 import JSZip from 'jszip';
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+export const M_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/math';
 
 export interface DocxPart {
   /** Mọi phần tử cùng tên (không kể tiền tố), theo thứ tự trong tệp. */
   all(localName: string): Element[];
+  /** Mọi phần tử OMML (`m:`) cùng tên, theo thứ tự trong tệp. */
+  allMath(localName: string): Element[];
+  /** Giá trị thuộc tính `m:<name>` của một phần tử OMML. */
+  mathAttr(element: Element, name: string): string | null;
   /** Giá trị thuộc tính `w:<name>` của một phần tử. */
   attr(element: Element, name: string): string | null;
   /** Chữ liền mạch của cả phần (nối các `w:t`). */
@@ -32,6 +37,8 @@ function wrap(xml: string): DocxPart {
     xml,
     all,
     attr: (element, name) => element.getAttributeNS(W_NS, name),
+    allMath: (name) => Array.from(doc.getElementsByTagNameNS(M_NS, name)),
+    mathAttr: (element, name) => element.getAttributeNS(M_NS, name),
     text: () =>
       all('t')
         .map((t) => t.textContent ?? '')
@@ -67,5 +74,10 @@ export async function readDocx(bytes: Uint8Array) {
       throw new Error(`Thiếu phần ${name} trong .docx (có: ${Object.keys(zip.files).join(', ')})`);
     return wrap(await file.async('string'));
   };
-  return { files: Object.keys(zip.files), part };
+  const binary = async (name: string): Promise<Uint8Array> => {
+    const file = zip.file(name);
+    if (!file) throw new Error(`Thiếu phần ${name} trong .docx`);
+    return file.async('uint8array');
+  };
+  return { files: Object.keys(zip.files), part, binary };
 }

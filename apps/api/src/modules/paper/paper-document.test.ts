@@ -460,15 +460,11 @@ describe('buildPaperDocument: Mẫu Trường', () => {
     expect(warnings).toEqual([]);
   });
 
-  it('công thức và hình chưa xuất được (làm ở PR X2): giữ chỗ nhìn thấy trong tệp và có cảnh báo theo câu, mỗi loại một lần', async () => {
-    const math = (latex: string) => ({ type: 'math', attrs: { latex, display: false } });
+  it('hình không có dữ liệu để xuất: giữ chỗ nhìn thấy trong tệp và có cảnh báo theo câu', async () => {
     const stem = {
       type: 'doc',
       content: [
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Tính ' }, math('\\frac{1}{2}'), math('x^2')],
-        },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Quan sát ' }] },
         {
           type: 'image',
           attrs: { illustrationId: '00000000-0000-4000-8000-000000000001', alt: 'Đồ thị hàm số' },
@@ -489,12 +485,8 @@ describe('buildPaperDocument: Mẫu Trường', () => {
     });
     const paragraphs = (await (await readDocx(bytes)).part('word/document.xml')).paragraphs();
 
-    expect(paragraphs).toContain('Câu 2: Tính [công thức: \\frac{1}{2}][công thức: x^2]');
     expect(paragraphs).toContain('[Hình minh họa: Đồ thị hàm số]');
-    expect(warnings).toEqual([
-      'Câu 2: công thức chưa hỗ trợ xuất, đã in mã LaTeX',
-      'Câu 2: hình minh họa chưa hỗ trợ xuất',
-    ]);
+    expect(warnings).toEqual(['Câu 2: hình minh họa không có dữ liệu để xuất, đã in chỗ giữ']);
   });
 
   it('Phần có tiêu đề (kiểu "Tiêu đề Phần") và hướng dẫn (kiểu "Ghi chú") đứng trước các câu của Phần; số câu liên tục qua các Phần; Phần không tiêu đề không in gì thêm', async () => {
