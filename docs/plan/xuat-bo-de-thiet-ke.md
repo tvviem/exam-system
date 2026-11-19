@@ -209,7 +209,7 @@ Mỗi PR có kiểm đột biến. Bản xuất **không đổi** dữ liệu ha
 **Quyết định X2 (chủ dự án đồng ý ngày 20/11/2026) và kết quả:**
 
 - **Q417, công thức không chuyển được:** chữ đỏ mã LaTeX tại chỗ kèm một cảnh báo theo câu (không vẽ thành ảnh, vì KaTeX không xuất SVG). Bộ 45 công thức mẫu: 44 chuyển được và hợp lệ, `\overset` rơi về chữ đỏ.
-- **Q418, kích thước hình:** hình đứng riêng một đoạn, canh giữa, tối đa 120 mm rộng và 90 mm cao, giữ tỉ lệ, không phóng to hình nhỏ.
+- **Q418, kích thước hình:** hình đứng riêng một đoạn, canh giữa, giữ tỉ lệ, không phóng to hình nhỏ. Trần ban đầu 120 mm rộng và 90 mm cao; chủ dự án xem bản Word ngày 20/11 thấy hình **to**, nên thu nhỏ còn **100 mm rộng và 60 mm cao**.
 - **Q419, Phương án có hình hoặc công thức riêng dòng:** cả câu xếp mỗi Phương án một dòng, nội dung dựng ngay dưới nhãn.
 - **Q420, giấy phép LGPL-3.0 của `mathml2omml`:** dùng nguyên gói, không sửa mã; ghi ở [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
 - **Phát sinh khi làm:** biến thể ảnh của hệ thống là WebP mà Word 2019 không đọc WebP trong `.docx`, nên lõi **đổi WebP thành PNG** (PNG và JPEG giữ nguyên byte). Ngoặc `\left..\right` thành đối tượng `m:d` của Word (thanh đứng `∣` của KaTeX chuẩn hóa thành `|`); công thức riêng dòng đứng một đoạn `m:oMathPara`. Lõi nhận hình qua `PaperSpec.images` (không tự đọc ổ đĩa); việc đọc hình từ kho là của X3.

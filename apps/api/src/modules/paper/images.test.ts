@@ -89,7 +89,7 @@ describe('hình minh họa trong .docx', () => {
     expect(warnings).toEqual([]);
   });
 
-  it('kích thước theo tỉ lệ: hình nhỏ giữ cỡ gốc (96 dpi), hình rộng bị chặn 120 mm, hình cao bị chặn 90 mm', async () => {
+  it('kích thước theo tỉ lệ: hình nhỏ giữ cỡ gốc (96 dpi), hình rộng bị chặn 100 mm, hình cao bị chặn 60 mm', async () => {
     const { document } = await build(
       { [ID_A]: await png(100, 50), [ID_B]: await png(2000, 1000) },
       imageStem({ id: ID_A, alt: 'nhỏ' }, { id: ID_B, alt: 'rộng' }),
@@ -97,14 +97,14 @@ describe('hình minh họa trong .docx', () => {
     // 1 px = 9525 EMU (96 dpi); 1 mm = 36000 EMU
     expect(extents(document.xml)).toEqual([
       [100 * 9525, 50 * 9525],
-      [120 * 36000, 60 * 36000],
+      [100 * 36000, 50 * 36000],
     ]);
 
     const tall = await build(
       { [ID_A]: await png(1000, 2000) },
       imageStem({ id: ID_A, alt: 'cao' }),
     );
-    expect(extents(tall.document.xml)).toEqual([[45 * 36000, 90 * 36000]]);
+    expect(extents(tall.document.xml)).toEqual([[30 * 36000, 60 * 36000]]);
   });
 
   it('biến thể WebP của hệ thống đổi thành PNG (Word 2019 không đọc WebP); JPEG giữ nguyên byte; loại nội dung khai báo đủ', async () => {

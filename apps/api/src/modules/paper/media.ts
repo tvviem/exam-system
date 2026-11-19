@@ -21,9 +21,9 @@ export interface ImageSource {
 
 const EMU_PER_PX = 9525; // 96 dpi
 const EMU_PER_MM = 36000;
-/** Trần kích thước hình (Q418): rộng 120 mm, cao 90 mm, giữ tỉ lệ, không phóng to hình nhỏ. */
-const MAX_WIDTH_EMU = 120 * EMU_PER_MM;
-const MAX_HEIGHT_EMU = 90 * EMU_PER_MM;
+/** Trần kích thước hình (Q418, điều chỉnh 20/11 sau khi xem bản Word: 120x90 mm quá to): rộng 100 mm, cao 60 mm, giữ tỉ lệ, không phóng to hình nhỏ. */
+const MAX_WIDTH_EMU = 100 * EMU_PER_MM;
+const MAX_HEIGHT_EMU = 60 * EMU_PER_MM;
 
 const isPng = (b: Uint8Array) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
 const isJpeg = (b: Uint8Array) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
