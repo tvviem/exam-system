@@ -4,7 +4,7 @@ import { and, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import type { ExaminerDirectory, ExaminerProfile } from '../../common/examiner-directory';
 import { escapeLike } from '../../common/sql-like';
 import { type Database, DB } from '../../db/db.module';
-import { users } from './identity.schema';
+import { examinerProfiles, units, users } from './identity.schema';
 
 const hasExaminerTag = sql`exists (select 1 from user_role_tags where user_role_tags.user_id = users.id and user_role_tags.tag = 'examiner')`;
 
@@ -20,6 +20,15 @@ export class ExaminerDirectoryService implements ExaminerDirectory {
       .from(users)
       .where(inArray(users.id, ids));
     return new Map(rows.map((row) => [row.id, row]));
+  }
+
+  async unitNameOf(userId: string) {
+    const [row] = await this.db
+      .select({ name: units.name })
+      .from(examinerProfiles)
+      .innerJoin(units, eq(units.id, examinerProfiles.unitId))
+      .where(eq(examinerProfiles.userId, userId));
+    return row?.name ?? null;
   }
 
   async isActiveExaminer(userId: string) {

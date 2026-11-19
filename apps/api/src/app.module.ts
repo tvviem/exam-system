@@ -12,11 +12,13 @@ import { BackupModule } from './modules/backup/backup.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { MailModule } from './modules/mail/mail.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PaperModule } from './modules/paper/paper.module';
 import { QuestionBankModule } from './modules/question-bank/question-bank.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { RealtimeNotifierModule } from './modules/realtime/realtime-notifier.module';
 import { SessionModule } from './modules/session/session.module';
 import { OwnedContentWiringModule } from './owned-content-wiring.module';
+import { PaperPortsWiringModule } from './paper-ports-wiring.module';
 import { QueueModule } from './queue/job-queue';
 import { RealtimeWiringModule } from './realtime-wiring.module';
 import { RedisModule } from './redis/redis.module';
@@ -45,6 +47,8 @@ import { SessionUsageWiringModule } from './session-usage-wiring.module';
     SessionUsageWiringModule,
     SessionPortsWiringModule,
     AttemptPortsWiringModule,
+    PaperModule,
+    PaperPortsWiringModule,
     RealtimeWiringModule,
     RealtimeModule,
     HealthModule,

@@ -13,6 +13,8 @@ export interface ExaminerProfile {
 export interface ExaminerDirectory {
   /** Hồ sơ của các `ids` (kể cả người đã Xóa, để vẫn hiện tên trong lịch sử); id lạ vắng trong kết quả. */
   profiles(ids: string[]): Promise<Map<string, ExaminerProfile>>;
+  /** Tên Đơn vị đã gán cho Người ra đề (in ở chân trang bản xuất đề); `null` nếu chưa gán. */
+  unitNameOf(userId: string): Promise<string | null>;
   /** Người này còn là Người ra đề đang hoạt động (có Nhãn, chưa Khóa, chưa Xóa). */
   isActiveExaminer(userId: string): Promise<boolean>;
   /** Gợi ý Người ra đề đang hoạt động theo tên hoặc Mã định danh, trừ các `excludeIds`. */

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
+import { IllustrationFilesService } from './illustrations/illustration-files.service';
 import { IllustrationProcessJob } from './illustrations/illustration-process.job';
 import {
   CandidateMediaController,
@@ -35,6 +36,7 @@ import { QuestionBankOwnedContent } from './transfer/question-bank-owned-content
     TopicsService,
     QuestionsService,
     IllustrationsService,
+    IllustrationFilesService,
     IllustrationProcessJob,
     QuestionImportsService,
     QuestionImportParseJob,
@@ -42,6 +44,6 @@ import { QuestionBankOwnedContent } from './transfer/question-bank-owned-content
     QuestionImportCleanupJob,
     QuestionBankOwnedContent,
   ],
-  exports: [QuestionBankOwnedContent],
+  exports: [QuestionBankOwnedContent, IllustrationFilesService],
 })
 export class QuestionBankModule {}
