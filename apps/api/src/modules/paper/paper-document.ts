@@ -2,12 +2,13 @@ import JSZip from 'jszip';
 import { answerGrid } from './answer-grid';
 import { type PaperBlocks, type PaperPreset, resolveBlocks } from './blocks';
 import { coverTable, endMarker, nationalHeader, type PaperHeading } from './cover';
+import { MediaRegistry, type PaperImage } from './media';
 import { type PaperItem, renderItem } from './question-renderers';
 import { paragraphRuns } from './rich-text';
 import { STYLE, stylesXml } from './styles';
-import { esc, mmToTwips, paragraph, R, run, W, xml } from './wordml';
+import { A, esc, M, mmToTwips, PIC, paragraph, R, run, W, WP, xml } from './wordml';
 
-export type { PaperBlocks, PaperHeading, PaperItem, PaperPreset };
+export type { PaperBlocks, PaperHeading, PaperImage, PaperItem, PaperPreset };
 
 /** Dữ liệu thuần để dựng một bản xuất đề; không chứa gì của cơ sở dữ liệu hay của Nest. */
 export interface PaperSpec {
@@ -22,6 +23,8 @@ export interface PaperSpec {
   preset?: PaperPreset;
   /** Bật tắt riêng từng khối, đè lên bộ cài sẵn. */
   blocks?: Partial<PaperBlocks>;
+  /** Hình minh họa theo mã (`illustrationId`) mà nội dung câu tham chiếu; bên gọi đọc từ kho ảnh. */
+  images?: Map<string, PaperImage>;
   sections: PaperSection[];
 }
 
@@ -57,30 +60,35 @@ const footerXml = (unit: string, examCode: string) =>
       `<w:r><w:t xml:space="preserve"> - Mã đề thi ${esc(examCode)}</w:t></w:r></w:p></w:ftr>`,
   );
 
-const sectionHeading = (section: PaperSection, warnings: string[]): string => {
+const sectionHeading = (
+  section: PaperSection,
+  warnings: string[],
+  media: MediaRegistry,
+): string => {
   const title = section.title ? paragraph(run(section.title), '', STYLE.section) : '';
   const instructions = section.instructions
-    ? paragraphRuns(section.instructions, (message) =>
-        warnings.push(`Hướng dẫn của Phần: ${message}`),
-      )
+    ? paragraphRuns(section.instructions, {
+        warn: (message) => warnings.push(`Hướng dẫn của Phần: ${message}`),
+        image: (id, alt) => media.drawing(id, alt),
+      })
         .map((runs) => paragraph(runs, '', STYLE.note))
         .join('')
     : '';
   return title + instructions;
 };
 
-const body = (spec: PaperSpec, warnings: string[]) => {
+const body = (spec: PaperSpec, warnings: string[], media: MediaRegistry) => {
   let number = 0;
   const questions = spec.sections
     .map((section) => {
       const items = section.items
         .map((item) => {
-          const rendered = renderItem(item, ++number);
+          const rendered = renderItem(item, ++number, media);
           warnings.push(...rendered.warnings);
           return rendered.xml;
         })
         .join('');
-      return sectionHeading(section, warnings) + items;
+      return sectionHeading(section, warnings, media) + items;
     })
     .join('');
   const items = spec.sections.flatMap((section) => section.items);
@@ -95,47 +103,62 @@ const body = (spec: PaperSpec, warnings: string[]) => {
   );
 };
 
-const documentXml = (spec: PaperSpec, warnings: string[]) =>
+const documentXml = (spec: PaperSpec, warnings: string[], media: MediaRegistry) =>
   xml(
-    `<w:document xmlns:w="${W}" xmlns:r="${R}"><w:body>${body(spec, warnings)}` +
+    `<w:document xmlns:w="${W}" xmlns:r="${R}" xmlns:m="${M}" xmlns:wp="${WP}" xmlns:a="${A}" xmlns:pic="${PIC}"><w:body>${body(spec, warnings, media)}` +
       `<w:sectPr><w:headerReference w:type="default" r:id="rIdHeader"/><w:footerReference w:type="default" r:id="rIdFooter"/>` +
       `<w:pgSz w:w="11906" w:h="16838"/>` +
       `<w:pgMar w:top="${mmToTwips(15)}" w:right="${mmToTwips(8)}" w:bottom="${mmToTwips(15)}" w:left="${mmToTwips(9)}" ` +
       `w:header="${mmToTwips(5)}" w:footer="${mmToTwips(10)}" w:gutter="0"/></w:sectPr></w:body></w:document>`,
   );
 
-const CONTENT_TYPES = xml(
-  `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
-    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
-    `<Default Extension="xml" ContentType="application/xml"/>` +
-    `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
-    `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
-    `<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` +
-    `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>`,
-);
+const contentTypes = (mediaExtensions: Set<string>) =>
+  xml(
+    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+      `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+      `<Default Extension="xml" ContentType="application/xml"/>` +
+      [...mediaExtensions]
+        .map((ext) => `<Default Extension="${ext}" ContentType="image/${ext}"/>`)
+        .join('') +
+      `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
+      `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
+      `<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` +
+      `<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>`,
+  );
 
 const ROOT_RELS = xml(
   `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
     `<Relationship Id="rId1" Type="${R}/officeDocument" Target="word/document.xml"/></Relationships>`,
 );
 
-const DOCUMENT_RELS = xml(
-  `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-    `<Relationship Id="rIdStyles" Type="${R}/styles" Target="styles.xml"/>` +
-    `<Relationship Id="rIdHeader" Type="${R}/header" Target="header1.xml"/>` +
-    `<Relationship Id="rIdFooter" Type="${R}/footer" Target="footer1.xml"/></Relationships>`,
-);
+const documentRels = (media: { relationshipId: string; target: string }[]) =>
+  xml(
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rIdStyles" Type="${R}/styles" Target="styles.xml"/>` +
+      `<Relationship Id="rIdHeader" Type="${R}/header" Target="header1.xml"/>` +
+      `<Relationship Id="rIdFooter" Type="${R}/footer" Target="footer1.xml"/>` +
+      media
+        .map(
+          (m) => `<Relationship Id="${m.relationshipId}" Type="${R}/image" Target="${m.target}"/>`,
+        )
+        .join('') +
+      `</Relationships>`,
+  );
 
 export async function buildPaperDocument(spec: PaperSpec): Promise<PaperDocument> {
   const zip = new JSZip();
-  zip.file('[Content_Types].xml', CONTENT_TYPES);
-  zip.file('_rels/.rels', ROOT_RELS);
   const warnings: string[] = [];
-  zip.file('word/document.xml', documentXml(spec, warnings));
-  zip.file('word/_rels/document.xml.rels', DOCUMENT_RELS);
+  const registry = await MediaRegistry.from(spec.images);
+  // dựng thân trước vì chỉ lúc đó mới biết hình nào được dùng
+  const documentPart = documentXml(spec, warnings, registry);
+  zip.file('[Content_Types].xml', contentTypes(registry.extensions));
+  zip.file('_rels/.rels', ROOT_RELS);
+  zip.file('word/document.xml', documentPart);
+  zip.file('word/_rels/document.xml.rels', documentRels(registry.media));
   zip.file('word/styles.xml', stylesXml());
   zip.file('word/header1.xml', headerXml(spec.school));
   zip.file('word/footer1.xml', footerXml(spec.unit, spec.examCode));
+  for (const media of registry.media) zip.file(`word/${media.target}`, media.bytes);
   const bytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
   return { bytes, warnings };
 }

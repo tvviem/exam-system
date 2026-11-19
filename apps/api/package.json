@@ -40,6 +40,7 @@
     "ioredis": "^6.0.0",
     "jszip": "3.10.2",
     "katex": "0.19.1",
+    "mathml2omml": "0.5.0",
     "nestjs-pino": "^5.3.1",
     "nodemailer": "^10.4.0",
     "pdfkit": "^0.20.2",

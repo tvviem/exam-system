@@ -195,7 +195,7 @@ Khi có Rút câu, mỗi Người dự thi nhận một bộ câu khác nhau. B�
 |---|---|---|
 | X0 | **Bản thử** công thức LaTeX → OMML và nhúng hình trong .docx, trên dữ liệu thật; chốt hướng 5.1 và 5.2 | Mở bằng Word và LibreOffice, chụp ảnh |
 | X1 (**xong**, mã trong `apps/api/src/modules/paper`) | Lõi thuần `buildPaperDocument`: **Mẫu Trường** (đầu trang, chân trang, khung thông tin, lưới trả lời, cách xếp Phương án theo độ rộng 4/2/1, "HẾT"), hai bộ cài sẵn Mẫu Trường và Gọn, **bảng đăng ký Loại câu hỏi** (chọn một trước; mọi Loại khác có bộ trình bày hoặc cảnh báo), khối Quốc hiệu tùy chọn | Đọc lại .docx: đầu và chân trang, khung, lưới 17 cột, cách xếp 4/2/1 theo độ rộng, lề và cỡ chữ khớp mục 3.2; bài cưỡng chế mọi Loại có bộ trình bày |
-| X2 | Công thức và hình minh họa | Số công thức, số hình khớp bản chụp; hình đúng biến thể |
+| X2 (**xong**) | Công thức và hình minh họa | Số công thức, số hình khớp bản chụp; hình đúng biến thể |
 | X3 | API (`PaperService`, cổng, quyền, nhật ký), chỉ Đã phát hành hoặc Lưu trữ | Tích hợp: quyền, Người dự thi bị từ chối, nhật ký, tên tệp |
 | X4 | Giao diện: hộp thoại "Xuất Bộ đề" ở Phiên thi và Bộ đề, điền sẵn, ô Học phần | E2E desktop và mobile, ảnh chụp, bộ quét `ui-layout` |
 | X5 | Tệp Đáp án và thang điểm (đáp án hiệu lực), xác nhận cảnh báo | Có Đính chính thì đáp án là bản đã sửa |
@@ -205,6 +205,16 @@ Khi có Rút câu, mỗi Người dự thi nhận một bộ câu khác nhau. B�
 Mỗi PR có kiểm đột biến. Bản xuất **không đổi** dữ liệu hay hành vi nào đang chạy.
 
 **Kết quả X1 (19/11/2026):** khoảng đệm cột khi xếp Phương án là 13 mm (đo từ đề mẫu: hợp lệ trong 10,9 đến 15,9 mm; tái hiện đúng 9 câu một hàng, 7 câu hai cột, 34 câu mỗi dòng). Bảng đo chữ `font-metrics.ts` sinh từ Liberation Serif bằng PyMuPDF (tương thích số đo Times New Roman). Công thức và hình trong X1 chỉ là chỗ giữ màu đỏ kèm cảnh báo; làm thật ở X2 (dùng `mathml2omml`, giấy phép LGPL-3.0 đã được chủ dự án chấp nhận 19/11/2026, kèm lớp sửa lỗi của bản thử X0 ở nhánh `prototype/xuat-bo-de-cong-thuc`).
+
+**Quyết định X2 (chủ dự án đồng ý ngày 20/11/2026) và kết quả:**
+
+- **Q417, công thức không chuyển được:** chữ đỏ mã LaTeX tại chỗ kèm một cảnh báo theo câu (không vẽ thành ảnh, vì KaTeX không xuất SVG). Bộ 45 công thức mẫu: 44 chuyển được và hợp lệ, `\overset` rơi về chữ đỏ.
+- **Q418, kích thước hình:** hình đứng riêng một đoạn, canh giữa, giữ tỉ lệ, không phóng to hình nhỏ. Trần ban đầu 120 mm rộng và 90 mm cao; chủ dự án xem bản Word ngày 20/11 thấy hình **to**, nên thu nhỏ còn **100 mm rộng và 60 mm cao**.
+- **Q419, Phương án có hình hoặc công thức riêng dòng:** cả câu xếp mỗi Phương án một dòng, nội dung dựng ngay dưới nhãn.
+- **Q420, giấy phép LGPL-3.0 của `mathml2omml`:** dùng nguyên gói, không sửa mã; ghi ở [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
+- **Phát sinh khi làm:** biến thể ảnh của hệ thống là WebP mà Word 2019 không đọc WebP trong `.docx`, nên lõi **đổi WebP thành PNG** (PNG và JPEG giữ nguyên byte). Ngoặc `\left..\right` thành đối tượng `m:d` của Word (thanh đứng `∣` của KaTeX chuẩn hóa thành `|`); công thức riêng dòng đứng một đoạn `m:oMathPara`. Lõi nhận hình qua `PaperSpec.images` (không tự đọc ổ đĩa); việc đọc hình từ kho là của X3.
+- **Hiệu năng:** Bộ đề 100 câu, 10 hình WebP 960 px, 30 công thức dựng khoảng 0,3 giây (ngân sách 1 giây).
+- **Giới hạn đã biết:** Mệnh đề của chùm đúng/sai và các đoạn thêm trong Mệnh đề chưa dựng hình hoặc công thức riêng dòng (chỉ đoạn đầu của Mệnh đề); sẽ làm khi có nhu cầu.
 
 ## 10. Thuật ngữ cần thống nhất (domain-modeling)
 
