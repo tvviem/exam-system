@@ -199,8 +199,8 @@ Khi có Rút câu, mỗi Người dự thi nhận một bộ câu khác nhau. B�
 | X3 (**xong**) | API (`PaperService`, cổng, quyền, nhật ký), chỉ Đã phát hành hoặc Lưu trữ | Tích hợp: quyền, Người dự thi bị từ chối, nhật ký, tên tệp |
 | X4 (**xong**) | Giao diện: hộp thoại "Xuất Bộ đề" ở Phiên thi và Bộ đề, điền sẵn, ô Học phần | E2E desktop và mobile, ảnh chụp, bộ quét `ui-layout` |
 | X5 (**xong**) | Tệp Đáp án và thang điểm (đáp án hiệu lực), xác nhận cảnh báo | Có Đính chính thì đáp án là bản đã sửa |
-| X6 | (Tùy chọn) PDF bằng `pdfkit` và phông nhúng | Số trang, phông, công thức |
-| X7 | (Sau) Xuất đề **đúng như một Lượt đã nhận** (thứ tự câu và Phương án thực tế) kèm bảng hoán vị theo mẫu của Trường; cần định nghĩa mã đề và mã câu hỏi (Q416) | Khớp `layout` của Lượt; đáp án hoán vị đúng |
+| X6 (**tùy chọn, làm sau**, mục 16) | (Tùy chọn) PDF bằng `pdfkit` và phông nhúng | Số trang, phông, công thức |
+| X7 (**tùy chọn, làm sau**, mục 16) | (Sau) Xuất đề **đúng như một Lượt đã nhận** (thứ tự câu và Phương án thực tế) kèm bảng hoán vị theo mẫu của Trường; cần định nghĩa mã đề và mã câu hỏi (Q416) | Khớp `layout` của Lượt; đáp án hoán vị đúng |
 
 Mỗi PR có kiểm đột biến. Bản xuất **không đổi** dữ liệu hay hành vi nào đang chạy.
 
@@ -311,6 +311,24 @@ Không đổi Bộ đề đã Phát hành, không thêm cột dữ liệu, khôn
    - số "Câu N." là chữ thường (khớp tệp Đáp án và hệ thống); đánh số tự động của Word là phương án khác, chỉ làm nếu chủ dự án thấy cần khi sắp xếp lại câu;
    - mặc định theo thể thức chung ở mục 3, và chỉnh lại sau khi xem đề mẫu của Trường.
 
-## 15. Bước tiếp theo
+## 15. Trạng thái và bước tiếp theo (cập nhật 20/11/2026)
 
-Chưa viết mã. Khi bắt đầu: nạp skill `tdd` và chốt các điểm kiểm thử (seam) với chủ dự án; làm **PR X0** (bản thử công thức LaTeX sang công thức Word và nhúng hình) trước, rồi X1 (lõi thuần `buildPaperDocument` theo Mẫu Trường). Các tệp đề mẫu của Trường chỉ dùng để tham khảo và đối chiếu, **không đưa vào kho**; số đo ở mục 3.2 đã đủ để viết bài kiểm thử.
+**X0 đến X5 đã xong, đã deploy và gắn tag `v0.2.0` (20/11/2026, commit `8c48220`).** Người ra đề xuất được tệp Đề thi và tệp Đáp án và thang điểm (Word, `.docx`) từ Phiên thi hoặc Bộ đề, kèm công thức Word gốc, hình, bước xác nhận khi xuất đáp án và nhật ký. Phần còn lại của nhóm "Xuất Bộ đề" là các chức năng tùy chọn ở mục 16, **chưa cần** nên không có lịch làm. Khi chủ dự án thử trên đề thật và gặp nhu cầu thì chọn mục ở mục 16 để làm (mỗi mục một PR nhỏ, TDD, chốt điểm kiểm thử với chủ dự án trước).
+
+## 16. Chức năng tùy chọn (làm sau, chưa cần)
+
+Ghi nhận ngày 20/11/2026 theo yêu cầu của chủ dự án: các mục dưới đây thuộc nhóm "Xuất Bộ đề" nhưng chưa cần thiết, nên **không làm bây giờ**. Mỗi mục ghi vì sao chưa cần, khi nào nên làm và điều cần nhớ để khỏi phải tìm lại.
+
+| # | Chức năng | Vì sao chưa cần | Khi nào nên làm | Ghi chú thiết kế (nguồn) |
+|---|---|---|---|---|
+| T1 | **Xuất PDF** (X6) | Word đã đủ để chỉnh theo mẫu của Trường, và Word có "Lưu thành PDF" | Khoa cần PDF tự động, không qua Word, hoặc cần cố định bố cục tuyệt đối | `pdfkit` đã có trong kho nhưng phải **nhúng phông** (Tinos hoặc Liberation Serif, tương thích Times New Roman; mục 5.1). Bảng đo chữ `font-metrics.ts` đã có sẵn. **Rủi ro chính là công thức:** PDF không có công thức Word (OMML) nên phải vẽ công thức (MathML sang đường nét), việc lớn nhất của mục này |
+| T2 | **Xuất đề đúng như một Lượt đã nhận** kèm bảng hoán vị (X7, Q416) | Đề chuẩn đã đủ để lưu trữ; thi trực tuyến mỗi Lượt đã tự xáo trộn nên không cần công cụ trộn riêng (mục 3.6) | Sau khi có "Rút câu theo Phần" (mỗi người một bộ câu khác nhau) và Trường cần lưu đúng đề từng người | Cần định nghĩa **mã đề** (ví dụ suy từ `seed` của Lượt) và **mã câu hỏi** dễ đọc, hiện chưa có hai khái niệm này. Bảng hoán vị theo mẫu của Trường: Mã câu hỏi, Câu đề chuẩn, Câu đề hoán vị, Thứ tự Phương án (ví dụ C-B-A-D), Đáp án chuẩn, Đáp án hoán vị (mục 3.6, mục 8) |
+| T3 | **Điền sẵn Lớp** vào ô thí sinh (Q415) | Mặc định để trống như đề giấy, thí sinh tự viết | Có Người ra đề muốn in sẵn Lớp lên đề | Công tắc "điền sẵn Lớp của Phiên thi"; Lớp lấy từ Danh sách dự thi (`session_roster.class_label`). Cần thêm một ô vào hộp thoại và một trường vào yêu cầu (nhớ cập nhật lược đồ dùng chung `@exam/shared`) |
+| T4 | **Hình và công thức riêng dòng trong Mệnh đề** của câu chùm đúng/sai | Mệnh đề thường chỉ là một câu chữ ngắn; hiện chỉ dựng đoạn đầu của Mệnh đề (giới hạn đã ghi ở kết quả X2) | Đề thật có Mệnh đề chứa hình hoặc công thức riêng dòng | Dùng lại cách Phương án đã làm (Q419): khối riêng dòng xuống dòng dưới nhãn `a)`. Làm ở `question-renderers.ts` (bộ trình bày chùm đúng/sai) |
+| T5 | **Công thức chưa chuyển được sang Word** (ví dụ `\overset`) | Hiện rơi về chữ đỏ mã LaTeX kèm cảnh báo (Q417); bộ mẫu 45 công thức chuyển được 44 | Đề thật hay dùng cấu trúc đó | `\overset{a}{b}` có tương đương trong Word là `m:limUpp`; sửa ở lớp `math/` (xem `omml-repair.ts`). Phương án vẽ công thức thành ảnh cần thêm thư viện (MathJax) vì KaTeX không xuất SVG, nên chỉ làm khi thật cần |
+| T6 | **Đánh số tự động của Word** cho "Câu N" | Số "Câu N" hiện là chữ thường để khớp tệp Đáp án và hệ thống | Người ra đề thường xuyên sắp xếp lại câu trong Word và muốn số tự đổi | Phải đổi cả tệp Đáp án hoặc ghi rõ hai tệp lệch số sau khi sửa tay (mục 14, nguyên tắc 2) |
+| T7 | **Người được Ủy quyền chấm xuất tệp Đáp án** | Chỉ chủ Bộ đề và chủ Phiên thi xuất (Q410, Q433); người được Ủy quyền chấm đã xem đáp án ở màn Chấm khi cần | Có yêu cầu thật từ người được Ủy quyền | Mở quyền ở `PaperService.resolve`; thêm bài kiểm thử quyền và nhật ký ghi rõ người xuất không phải chủ |
+| T8 | **Lưu Học phần thành dữ liệu** (cột riêng) | Học phần chỉ là ô nhập khi xuất, trình duyệt nhớ lần gần nhất (mục 4.2) | Cần thống kê hay lọc theo Học phần | Thêm cột riêng ở `exams` hoặc `sessions` (có migration, cần duyệt thiết kế) |
+| T9 | **Dựng ở nền kèm thông báo "đã xong, tải về"** | Bộ đề 100 câu có công thức và hình xuất trong khoảng 0,05 giây qua HTTP (ngân sách 1 giây, mục 5.3) | Đo thấy chậm trên Bộ đề rất lớn hoặc rất nhiều hình | Hạ tầng BullMQ có sẵn (như xuất Excel); thêm trạng thái chờ ở hộp thoại |
+
+**Cách chọn làm:** khi có nhu cầu thật (thường từ phản hồi khi dùng tệp trên đề của Trường), nêu rõ mục T nào, tôi đề xuất điểm kiểm thử và câu hỏi quyết, chủ dự án duyệt rồi mới làm, theo cùng quy trình các PR X1 đến X5.
