@@ -28,7 +28,7 @@ const exam = (...items: ContentItem[]) => ({
     examId: 'e1',
     title: 'Giữa kỳ Giải tích',
     instructions: rt(''),
-    sections: [{ id: 's1', title: null, instructions: rt(''), items }],
+    sections: [{ id: 's1', title: null, instructions: rt(''), drawPercent: 100, items }],
   },
   correctedItemIds: [] as string[],
 });
@@ -125,8 +125,8 @@ describe('toAnswerSpec: từ đáp án hiệu lực sang dữ liệu dựng tệ
         title: 'Đề',
         instructions: rt(''),
         sections: [
-          { id: 's1', title: '  ', instructions: rt(''), items: [a] },
-          { id: 's2', title: 'PHẦN II', instructions: rt(''), items: [b] },
+          { id: 's1', title: '  ', instructions: rt(''), drawPercent: 100, items: [a] },
+          { id: 's2', title: 'PHẦN II', instructions: rt(''), drawPercent: 100, items: [b] },
         ],
       },
       correctedItemIds: [b.itemId],

@@ -158,6 +158,21 @@ describe('ghi đè tỷ lệ khi tạo và sửa Phiên thi', () => {
     expect(await overrideRows(session.id)).toHaveLength(0);
   });
 
+  it('đổi sang Bộ đề khác thì ghi đè của Bộ đề cũ bị xóa (Phần cũ không thuộc Bộ đề mới)', async () => {
+    const session = await create({
+      sectionDraws: [{ sectionId: exam.sectionIds[0], percent: 70 }],
+    });
+    const other = await publishedDrawExam(t, cookie, [{ points: [1, 1, 1, 1] }], 'Bộ đề khác');
+    const res = await api('PUT', `/sessions/${session.id}`, {
+      ...settings({ examId: other.id }),
+      version: session.version,
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    expect(rowsOf(res.json()).map((r) => r.sectionId)).toEqual(other.sectionIds);
+    expect(rowsOf(res.json()).map((r) => r.overridePercent)).toEqual([null]);
+    expect(await overrideRows(session.id)).toHaveLength(0);
+  });
+
   it('Nhân bản Phiên thi mang theo các ghi đè', async () => {
     const session = await create({
       sectionDraws: [{ sectionId: exam.sectionIds[0], percent: 70 }],

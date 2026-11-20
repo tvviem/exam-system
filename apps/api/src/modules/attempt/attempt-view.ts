@@ -76,6 +76,8 @@ export function buildAttemptSections(input: {
         },
       ];
     });
+    // Phần có câu nhưng không câu nào được rút (tỷ lệ 0 %) thì không hiện tiêu đề rỗng.
+    if (items.length === 0 && section.items.length > 0) return [];
     return [{ id: section.id, title: section.title, instructions: section.instructions, items }];
   });
 }

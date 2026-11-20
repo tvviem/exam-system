@@ -28,7 +28,14 @@ export interface ExamContentData {
   examId: string;
   title: string;
   instructions: unknown;
-  sections: { id: string; title: string | null; instructions: unknown; items: ContentItem[] }[];
+  sections: {
+    id: string;
+    title: string | null;
+    instructions: unknown;
+    /** Tỷ lệ rút mặc định của Phần ở Bộ đề (Q438); 100 nếu không đặt. */
+    drawPercent: number;
+    items: ContentItem[];
+  }[];
 }
 
 export interface ExamContentProvider {
