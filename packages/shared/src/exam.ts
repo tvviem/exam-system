@@ -38,6 +38,11 @@ const sectionSchema = z.strictObject({
   id: z.uuid().optional(),
   title: sectionTitle,
   instructions: instructionsSchema,
+  /**
+   * Tỷ lệ rút mặc định của Phần (Q438), 0 đến 100, tối đa hai chữ số lẻ; không có thì lấy đủ (100 %). Phiên thi kế thừa và
+   * có thể ghi đè. Đóng băng khi Phát hành cùng Bộ đề (Q439).
+   */
+  drawPercent: z.number().min(0).max(100).multipleOf(0.01).optional(),
   items: z.array(itemSchema),
 });
 
@@ -131,7 +136,11 @@ export type PublishProblemCode =
   | 'question_archived'
   | 'question_invalid'
   | 'illustration_not_ready'
-  | 'points_invalid';
+  | 'points_invalid'
+  /** Phần có tỷ lệ rút dưới 100 % mà các câu khác điểm (Q388, Q441). */
+  | 'draw_points_uneven'
+  /** Cấu hình khiến không câu nào được rút (Q440). */
+  | 'draw_all_zero';
 
 /** Một vấn đề chặn Phát hành (Q171); `questionId`/`sectionId` để giao diện dẫn tới đúng chỗ. */
 export interface PublishProblem {

@@ -1,5 +1,7 @@
 import type { RichText } from '@exam/shared';
+import { sql } from 'drizzle-orm';
 import {
+  check,
   index,
   integer,
   jsonb,
@@ -77,6 +79,23 @@ export const examItems = pgTable(
   (t) => [
     unique('exam_items_exam_question_unique').on(t.examId, t.questionId),
     index('exam_items_section_idx').on(t.sectionId, t.sort),
+  ],
+);
+
+/**
+ * Tỷ lệ rút mặc định của Phần ở Bộ đề (Q438, docs/plan/rut-cau-theo-phan-thiet-ke.md mục 8). Không có dòng = 100 % (lấy đủ).
+ * Đóng băng khi Phát hành cùng Bộ đề (Q439): trigger `exam_section_draws_guard`. Phiên thi ghi đè ở `session_section_draws`.
+ */
+export const examSectionDraws = pgTable(
+  'exam_section_draws',
+  {
+    sectionId: uuid('section_id')
+      .primaryKey()
+      .references(() => examSections.id, { onDelete: 'cascade' }),
+    percent: numeric('percent', { precision: 5, scale: 2 }).notNull(),
+  },
+  (t) => [
+    check('exam_section_draws_percent_range', sql`${t.percent} >= 0 AND ${t.percent} <= 100`),
   ],
 );
 

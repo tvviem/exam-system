@@ -185,3 +185,23 @@ describe('distributePoints (Q168)', () => {
     expect(r).toEqual({ ok: true, points: [0.6, 0.55] });
   });
 });
+
+describe('drawPercent của Phần: tỷ lệ rút mặc định ở Bộ đề (Q438)', () => {
+  it('tùy chọn: Phần không có drawPercent vẫn hợp lệ (coi là 100 %)', () => {
+    expect(ok(exam())).toBe(true);
+    expect(examContentSchema.parse(exam()).sections[0]?.drawPercent).toBeUndefined();
+  });
+
+  it('nhận 0 đến 100, tối đa hai chữ số lẻ (như cột numeric(5,2)); ngoài khoảng hay quá hai chữ số lẻ thì bị từ chối', () => {
+    for (const value of [0, 0.01, 12.5, 40, 99.99, 100]) {
+      expect(ok(exam({ sections: [section([item(1)], { drawPercent: value })] })), `${value}`).toBe(
+        true,
+      );
+    }
+    for (const value of [-0.01, 100.01, 150, 33.333, Number.NaN, '40']) {
+      expect(ok(exam({ sections: [section([item(1)], { drawPercent: value })] })), `${value}`).toBe(
+        false,
+      );
+    }
+  });
+});

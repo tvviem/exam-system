@@ -1,4 +1,5 @@
 import {
+  drawProblemsOf,
   EXAM_TITLE_MAX,
   imageNodesOf,
   POINTS_MAX,
@@ -13,7 +14,13 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { type Database, DB } from '../../db/db.module';
 import { illustrations, questions } from '../question-bank/question-bank.schema';
-import { examItemIllustrations, examItems, examSections, exams } from './exam.schema';
+import {
+  examItemIllustrations,
+  examItems,
+  examSectionDraws,
+  examSections,
+  exams,
+} from './exam.schema';
 
 type Db = Pick<Database, 'select'>;
 
@@ -122,6 +129,15 @@ export class ExamLifecycleService {
           })
           .returning({ id: examSections.id });
         if (!created) throw new Error('Không nhân bản được Phần');
+        const [draw] = await tx
+          .select()
+          .from(examSectionDraws)
+          .where(eq(examSectionDraws.sectionId, section.id));
+        if (draw) {
+          await tx
+            .insert(examSectionDraws)
+            .values({ sectionId: created.id, percent: draw.percent });
+        }
         const own = items.filter((item) => item.sectionId === section.id);
         if (own.length > 0) {
           await tx.insert(examItems).values(
@@ -217,6 +233,33 @@ export class ExamLifecycleService {
           problems.push({ code: 'empty_section', sectionId: section.id });
         }
       }
+    }
+    if (items.length > 0) {
+      const draws = new Map(
+        (
+          await db
+            .select()
+            .from(examSectionDraws)
+            .where(
+              inArray(
+                examSectionDraws.sectionId,
+                sections.map((section) => section.id),
+              ),
+            )
+        ).map((row) => [row.sectionId, Number(row.percent)]),
+      );
+      // Rút câu theo Phần (Q440, Q441): Phần rút dưới 100 % phải cùng điểm; không để Người dự thi không có câu nào.
+      problems.push(
+        ...drawProblemsOf(
+          sections.map((section) => ({
+            id: section.id,
+            percent: draws.get(section.id) ?? 100,
+            points: items
+              .filter((item) => item.sectionId === section.id)
+              .map((item) => Number(item.points)),
+          })),
+        ),
+      );
     }
     for (const { itemId, sectionId, points, question: q } of items) {
       const at = { questionId: q.id, sectionId };

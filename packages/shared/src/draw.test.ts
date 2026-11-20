@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type LayoutInput, layoutOf } from './attempt.js';
-import { drawCountOf, drawSeedOf } from './draw.js';
+import { drawCountOf, drawProblemsOf, drawSeedOf, effectiveDrawPercents } from './draw.js';
 
 // Rút câu theo Phần (docs/plan/rut-cau-theo-phan-thiet-ke.md mục 4.3): số câu rút của một Phần theo Tỷ lệ rút.
 describe('drawCountOf: số câu rút của một Phần', () => {
@@ -348,5 +348,67 @@ describe('layoutOf có rút: rút đều, mỗi câu của Phần có cùng xác
       expect(frequency, `${x},${y}`).toBeGreaterThan(0.1);
       expect(frequency, `${x},${y}`).toBeLessThan(0.17);
     }
+  });
+});
+
+// ---------------- cấu hình rút ở Bộ đề và Phiên thi (R2, Q438 đến Q441) ----------------
+
+describe('effectiveDrawPercents: tỷ lệ hiệu lực của từng Phần (Q438)', () => {
+  const sections = [{ id: 'A' }, { id: 'B' }, { id: 'C' }, { id: 'D' }];
+
+  it('ghi đè của Phiên thi thắng mặc định của Bộ đề, mặc định thắng 100 %, Phần không nêu ở đâu là 100 %', () => {
+    expect(effectiveDrawPercents(sections, { A: 40, B: 100 }, { B: 50, C: 25 })).toEqual({
+      A: 40,
+      B: 50,
+      C: 25,
+      D: 100,
+    });
+  });
+
+  it('0 % là một giá trị thật: ghi đè 0 vẫn thắng mặc định 40, mặc định 0 vẫn thắng 100', () => {
+    expect(effectiveDrawPercents(sections, { A: 40, B: 0 }, { A: 0 })).toMatchObject({
+      A: 0,
+      B: 0,
+    });
+  });
+
+  it('không có cấu hình nào: mọi Phần 100 % (Phiên thi cũ); mã Phần lạ trong cấu hình bị bỏ qua', () => {
+    expect(effectiveDrawPercents(sections, {}, {})).toEqual({ A: 100, B: 100, C: 100, D: 100 });
+    expect(effectiveDrawPercents([{ id: 'A' }], { Z: 10 }, { Y: 20 })).toEqual({ A: 100 });
+  });
+});
+
+describe('drawProblemsOf: vấn đề của cấu hình rút (Q388, Q440, Q441)', () => {
+  const section = (id: string, percent: number, points: number[]) => ({ id, percent, points });
+
+  it('Phần có tỷ lệ dưới 100 % mà các câu khác điểm là lệch điểm; đủ 100 % hay cùng điểm thì không', () => {
+    expect(
+      drawProblemsOf([
+        section('A', 40, [1, 1, 2]),
+        section('B', 100, [1, 2, 3]),
+        section('C', 60, [0.5, 0.5, 0.5]),
+        section('D', 40, [1.1, 1.1, 1.2]),
+      ]),
+    ).toEqual([
+      { code: 'draw_points_uneven', sectionId: 'A' },
+      { code: 'draw_points_uneven', sectionId: 'D' },
+    ]);
+  });
+
+  it('so điểm bằng số nguyên: 0,1 + 0,2 không bị coi là khác 0,3', () => {
+    expect(drawProblemsOf([section('A', 50, [0.3, 0.1 + 0.2])])).toEqual([]);
+  });
+
+  it('không câu nào được rút (mọi Phần 0 %) là vấn đề; còn ít nhất một câu thì không', () => {
+    expect(drawProblemsOf([section('A', 0, [1, 1]), section('B', 0, [2])])).toEqual([
+      { code: 'draw_all_zero' },
+    ]);
+    expect(drawProblemsOf([section('A', 0, [1, 1]), section('B', 10, [2, 2, 2])])).toEqual([]);
+    // Phần rỗng không rút được câu nào dù 100 %
+    expect(drawProblemsOf([section('A', 100, [])])).toEqual([{ code: 'draw_all_zero' }]);
+  });
+
+  it('Phần rỗng không gây lỗi lệch điểm', () => {
+    expect(drawProblemsOf([section('A', 40, []), section('B', 100, [1])])).toEqual([]);
   });
 });
