@@ -257,6 +257,14 @@ _Avoid_: thi thử, demo
 Hành động Người ra đề tải một tệp Word (.docx) của Bộ đề đã Phát hành hoặc Lưu trữ để in, nộp hồ sơ hay lưu trữ, từ Phiên thi hoặc từ Bộ đề của chính mình. Tệp chỉ có đề (không có đáp án), dựng từ bản chụp nên đúng "đề đã thi", và không lưu ở server. Học phần là ô nhập mỗi lần xuất, không thuộc Bộ đề hay Phiên thi. "ĐỀ THI" chỉ là chữ in trên tệp, không phải khái niệm mới.
 _Avoid_: in đề, tải đề, export đề thi
 
+**Rút câu** (`Draw`):
+Cách một Phiên thi chọn ngẫu nhiên một số câu của mỗi Phần cho từng Người dự thi, khi Người dự thi vào phòng thi lần đầu. Bộ câu đã rút là cố định cho người đó ở mọi Lượt làm bài của Phiên thi, và khác nhau giữa người với người. Phiên thi không đặt Tỷ lệ rút (hoặc đặt 100 %) thì mọi người làm đủ mọi câu của Bộ đề, đúng như trước khi có tính năng này.
+_Avoid_: ngẫu nhiên hóa, random, bốc câu
+
+**Tỷ lệ rút** (`Draw ratio`):
+Phần trăm số câu của một Phần được rút cho mỗi Người dự thi, do Người ra đề đặt ở Phiên thi (không đặt ở Bộ đề). Mặc định 100 % (lấy đủ). Số câu rút làm tròn nửa lên, tối thiểu 1 câu nếu tỷ lệ lớn hơn 0.
+_Avoid_: tỷ lệ lấy câu, phần trăm đề
+
 **Lượt làm bài** (`Attempt`):
 Một lần Người dự thi làm bài trong Phiên thi, có thứ tự Câu hỏi và Phương án cố định sau khi bắt đầu.
 _Avoid_: bài thi, lần thi, submission
