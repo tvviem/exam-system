@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { PAPER_PRESET_BLOCKS, paperExportRequestSchema, resolvePaperBlocks } from './paper.js';
+import {
+  PAPER_PRESET_BLOCKS,
+  paperAnswersRequestSchema,
+  paperExportRequestSchema,
+  resolvePaperBlocks,
+} from './paper.js';
 
 const EXAM = '00000000-0000-4000-8000-000000000001';
 const SESSION = '00000000-0000-4000-8000-000000000002';
@@ -64,5 +69,35 @@ describe('paperExportRequestSchema: yêu cầu xuất Đề thi', () => {
     });
     expect(parsed.preset).toBe('compact');
     expect(parsed.blocks).toEqual({ nationalHeader: true });
+  });
+});
+
+describe('paperAnswersRequestSchema: yêu cầu xuất tệp Đáp án (phải xác nhận)', () => {
+  it('nhận Bộ đề hoặc Phiên thi kèm Học phần và confirm: true', () => {
+    expect(
+      paperAnswersRequestSchema.parse({ sessionId: SESSION, course: ' Toán ', confirm: true }),
+    ).toEqual({ sessionId: SESSION, course: 'Toán', confirm: true });
+    expect(
+      paperAnswersRequestSchema.parse({
+        examId: EXAM,
+        course: 'X',
+        title: 'T',
+        examCode: '1',
+        unit: 'U',
+        confirm: true,
+      }).examCode,
+    ).toBe('1');
+  });
+
+  it.each([
+    ['thiếu confirm', { examId: EXAM, course: 'X' }],
+    ['confirm false', { examId: EXAM, course: 'X', confirm: false }],
+    ['confirm là chuỗi', { examId: EXAM, course: 'X', confirm: 'true' }],
+    ['không có nguồn', { course: 'X', confirm: true }],
+    ['cả hai nguồn', { examId: EXAM, sessionId: SESSION, course: 'X', confirm: true }],
+    ['thiếu Học phần', { examId: EXAM, confirm: true }],
+    ['Mẫu không thuộc tệp Đáp án', { examId: EXAM, course: 'X', confirm: true, preset: 'school' }],
+  ])('từ chối: %s', (_name, body) => {
+    expect(paperAnswersRequestSchema.safeParse(body).success).toBe(false);
   });
 });

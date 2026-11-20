@@ -61,6 +61,6 @@ import { ResultsExportService } from './results-export.service';
     KeyCorrectionsService,
     KeyRecorrectService,
   ],
-  exports: [AutogradeService, GradingHooksService, GradingStatusService],
+  exports: [AutogradeService, GradingHooksService, GradingStatusService, EffectiveContentService],
 })
 export class GradingModule {}
