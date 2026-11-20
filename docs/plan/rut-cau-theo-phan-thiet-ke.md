@@ -118,7 +118,7 @@ Màu và cảnh báo theo skill UX/UI (không chỉ dùng màu, có chữ và bi
 | PR | Nội dung | Điểm kiểm thử (seam) |
 |---|---|---|
 | R1 | `drawCountOf` và `layoutOf` có rút (hàm thuần) | Tính chất: đúng số câu mỗi Phần, không lặp, tập con của Phần, xác định theo `drawSeed` (cùng `drawSeed` thì cùng tập câu dù `seed` của Lượt khác nhau; khác người thì khác tập), đều (kiểm thống kê với hạt giống cố định), đổi cờ xáo không đổi tập rút, không `draw` thì kết quả y hệt hiện nay |
-| R2 | Bảng `session_section_draws`, API Phiên thi (kiểm điểm đồng nhất, khóa), bắt đầu Lượt rút thật, `saveResponses` kiểm layout | API tích hợp: hai người khác bộ câu; vào lại vẫn đúng bộ; **Lượt 2 của cùng một người có cùng tập câu với Lượt 1** (chỉ đổi thứ tự); câu ngoài layout bị từ chối; sau Lượt đầu không sửa được |
+| R2 | (xem mục 8) Hai bảng `exam_section_draws` (mặc định ở Bộ đề) và `session_section_draws` (ghi đè ở Phiên thi), tỷ lệ hiệu lực, API Bộ đề và Phiên thi (kiểm điểm đồng nhất, khóa), bắt đầu Lượt rút thật, `saveResponses` kiểm layout | Mục 8.4 (S1 đến S8)
 | R3 | Chấm điểm và kết quả theo tập câu của Lượt (autograde, điểm tối đa, hạn mức Phúc khảo, theo dõi, xuất Excel, Đính chính) | Tích hợp: không sinh điểm cho câu không được rút; điểm tối đa đúng; Đính chính chỉ tác động Lượt có câu |
 | R4 | Giao diện (form Phiên thi, màn làm bài, kết quả, Xem thử) | E2E desktop và mobile, ảnh chụp thật, bộ quét `ui-layout` |
 | R5 | E2E toàn luồng, đo tải (500 người), tài liệu, hướng dẫn Người ra đề, GLOSSARY, data-model, architecture 5.1 | Đo thời gian bắt đầu Lượt (ngân sách phản hồi) |
@@ -130,7 +130,7 @@ Mỗi PR có kiểm đột biến. Tính năng này **không đổi hành vi** c
 **Đã chốt cả 11 câu:** Q388 chọn **(a)** (các câu cùng Phần phải cùng điểm), Q389 chọn **(a)** (giữ nguyên bộ câu của người đó cho mọi Lượt), các câu còn lại **đồng ý** theo đề xuất. Nội dung từng câu giữ nguyên bên dưới để biết lý do.
 
 1. **Q385, thuật ngữ:** dùng **Rút câu** và **Tỷ lệ rút**, và gọi chung là **Bộ đề** (không "Bộ câu hỏi")? *(đã đồng ý)*
-2. **Q386, nơi thiết lập:** tỷ lệ rút đặt ở **Phiên thi**, không ở Bộ đề (vì Bộ đề đã Phát hành bất biến và nhiều Phiên thi dùng chung)? *(đã đồng ý)*
+2. **Q386, nơi thiết lập:** tỷ lệ rút đặt ở **Phiên thi**, không ở Bộ đề (vì Bộ đề đã Phát hành bất biến và nhiều Phiên thi dùng chung)? *(đã đồng ý)* **Điều chỉnh 20/11/2026 (Q438): đặt mặc định ở Bộ đề khi soạn, Phiên thi ghi đè được; xem mục 8.**
 3. **Q387, cách nhập và làm tròn:** nhập theo **%** (như anh nói), giao diện hiện số câu kết quả; làm tròn nửa lên, tối thiểu 1 câu nếu tỷ lệ lớn hơn 0 (ví dụ 33 câu × 40 % = 13,2 thành 13)? *(đã đồng ý)*
 4. **Q388, điểm:** khi Phần có rút, **các câu trong Phần phải cùng điểm** để mọi người cùng điểm tối đa? *(Phương án khác: cho điểm khác nhau, mỗi người có điểm tối đa riêng và quy đổi theo từng người; không đề xuất vì khó so sánh công bằng.)* *(đã đồng ý)*
 5. **Q389, nhiều Lượt:** khi Phiên thi cho làm lại (tối đa 5 Lượt), **giữ nguyên bộ câu của người đó** cho mọi Lượt, không rút lại? *(Phương án khác: mỗi Lượt rút lại độc lập. Đề xuất giữ nguyên vì "lấy Lượt cao nhất" không nên phụ thuộc vận may bộ câu.)* *(đã chốt: giữ nguyên)*
@@ -140,6 +140,53 @@ Mỗi PR có kiểm đột biến. Tính năng này **không đổi hành vi** c
 9. **Q393, Đính chính và Phúc khảo:** chỉ tác động người có câu đó; hạn mức Phúc khảo tính theo số câu của **Lượt** (40 câu thì 4)? *(đã đồng ý)*
 10. **Q394, phạm vi lát này:** chỉ rút đều ngẫu nhiên **theo Phần**; chưa làm rút theo Chủ đề, Loại hay độ khó, và chưa có "câu bắt buộc luôn có" (ghi backlog)? *(đã đồng ý)*
 11. **Q395, xuất Excel:** sheet "Chi tiết" giữ cột theo câu của Bộ đề, ô để trống cho câu không được rút? *(đã đồng ý)*
+
+## 8. Điều chỉnh khi bắt đầu làm R2 (chủ dự án chốt 20/11/2026: Q438 đến Q441)
+
+**Bối cảnh.** Khi chuẩn bị R2, chủ dự án nói việc cấu hình tỷ lệ rút của từng Phần là của Người ra đề **khi tạo Bộ đề**, trong khi Q386 (18/11) đặt tỷ lệ ở Phiên thi. Hai ý được dung hòa bằng phương án C dưới đây; phần còn lại của thiết kế (rút ở server lúc Người dự thi vào lần đầu, `drawSeed`, không cần lưu bộ câu) giữ nguyên.
+
+### 8.1 Quyết định
+
+- **Q438, nơi đặt cấu hình (phương án C):** Người ra đề đặt **tỷ lệ mặc định của từng Phần khi soạn Bộ đề**; Phiên thi **kế thừa** và có thể **ghi đè** từng Phần. Thay cho Q386 (chỉ ở Phiên thi). Lý do: giữ được cả hai ý, tỷ lệ gắn với cấu trúc Phần lúc soạn, và vẫn dùng lại một Bộ đề với tỷ lệ khác (ví dụ 40 % cho kiểm tra, 100 % cho ôn tập).
+- **Q439, đóng băng:** tỷ lệ mặc định ở Bộ đề **đóng băng khi Phát hành** cùng Bộ đề (muốn đổi thì Nhân bản), đúng nguyên tắc Bộ đề bất biến (ADR-0005).
+- **Q440, chặn mọi Phần 0 %:** cấu hình khiến Người dự thi không có câu nào (mọi Phần hiệu lực 0 %) bị từ chối khi lưu.
+- **Q441, báo lệch điểm (Q388):** ở Bộ đề, Phần có tỷ lệ dưới 100 % mà các câu khác điểm là **vấn đề chặn Phát hành** (kèm danh sách câu lệch; dùng "Đặt điểm nhanh" để sửa); ở Phiên thi là lỗi lưu nói rõ Phần nào lệch và hướng dẫn Nhân bản Bộ đề (Bộ đề đã Phát hành không sửa điểm được).
+
+### 8.2 Dữ liệu (hai bảng mới, không đổi cột nào của bảng cũ nên vẫn `0.3.0`)
+
+```sql
+exam_section_draws (                        -- Mặc định của Bộ đề; không có dòng = 100 %
+  section_id → exam_sections ON DELETE CASCADE,
+  percent numeric(5,2) CHECK (percent BETWEEN 0 AND 100),
+  PRIMARY KEY (section_id)
+)
+-- Trigger như exam_sections_guard: Bộ đề đã Phát hành hoặc Lưu trữ thì không thêm, sửa, xóa dòng nào.
+
+session_section_draws (                     -- Ghi đè ở Phiên thi; không có dòng = kế thừa mặc định của Bộ đề
+  session_id → sessions ON DELETE CASCADE,
+  section_id → exam_sections,               -- trigger: Phần phải thuộc Bộ đề của Phiên thi
+  percent numeric(5,2) CHECK (percent BETWEEN 0 AND 100),
+  PRIMARY KEY (session_id, section_id)
+)
+-- Trigger như sessions_guard (Q161, Q392): Phiên thi đã có Lượt thì không thêm, sửa, xóa dòng nào.
+```
+
+### 8.3 Tỷ lệ hiệu lực (một nơi duy nhất)
+
+Tỷ lệ hiệu lực của một Phần trong một Phiên thi = **ghi đè của Phiên thi** nếu có, nếu không thì **mặc định của Bộ đề**, nếu không thì **100 %**. Một hàm thuần trong `@exam/shared` tính từ danh sách Phần, mặc định và ghi đè; mọi nơi (bắt đầu Lượt, điểm tối đa ở R3, giao diện) dùng hàm này, không nơi nào tự dò hai bảng.
+
+### 8.4 Điểm kiểm thử (seam) của R2
+
+| # | Điểm kiểm thử | Bắt được |
+|---|---|---|
+| S1 | Hàm tỷ lệ hiệu lực (thuần): ghi đè thắng mặc định, mặc định thắng 100 %, Phần không nêu là 100 % | sai thứ tự ưu tiên |
+| S2 | Tích hợp cơ sở dữ liệu (trigger): Bộ đề đã Phát hành không đổi tỷ lệ; Phiên thi đã có Lượt không đổi ghi đè; Phần không thuộc Bộ đề bị từ chối; ngoài 0 đến 100 bị từ chối | lỗi khóa |
+| S3 | API Bộ đề: lưu tỷ lệ khi soạn nháp; Phát hành bị chặn kèm danh sách câu lệch điểm khi tỷ lệ dưới 100 % | quy tắc điểm đồng nhất |
+| S4 | API Phiên thi: ghi đè, lỗi lệch điểm, mọi Phần 0 %, khóa 409, người khác 404 | quyền, quy tắc |
+| S5 | Vào thi thật: hai người ra hai bộ khác nhau; vào lại vẫn đúng bộ; Lượt 2 của cùng một người cùng tập câu với Lượt 1; số câu đúng theo tỷ lệ hiệu lực | rút, ổn định |
+| S6 | `saveResponses` từ chối câu ngoài bố cục; câu không được rút không xuất hiện trong bất kỳ phản hồi nào gửi cho Người dự thi | rò rỉ câu |
+| S7 | Tương thích: không cấu hình, hoặc 100 % (ví dụ Bộ đề 40 câu lấy đủ 40) cho đúng như hiện nay; toàn bộ bài tích hợp cũ xanh | làm hỏng Phiên thi cũ |
+| S8 | Kiểm đột biến; migration không lệch lược đồ | |
 
 ## 7. Ngoài phạm vi
 
