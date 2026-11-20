@@ -1,5 +1,6 @@
 export * from './attempt.js';
 export * from './candidate-view.js';
+export * from './draw.js';
 export * from './exam.js';
 export * from './grading.js';
 export * from './health.js';

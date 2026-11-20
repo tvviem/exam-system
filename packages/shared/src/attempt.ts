@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { drawCountOf, drawSeedOf } from './draw.js';
 
 // Luật thuần của Lượt làm bài, dùng chung cho api và (sau này) giao diện (docs/plan/slice-4.md, Q199, Q208, Q215, Q230).
 
@@ -67,19 +68,57 @@ function shuffled<T>(list: readonly T[], random: () => number): T[] {
   return result;
 }
 
+/** Rút câu theo Phần (docs/plan/rut-cau-theo-phan-thiet-ke.md): người nào, Phiên thi nào, Tỷ lệ rút (%) của từng Phần. */
+export interface DrawInput {
+  sessionId: string;
+  userId: string;
+  /** Tỷ lệ rút (0 đến 100) theo mã Phần; Phần không có trong danh sách thì lấy đủ (100 %). */
+  percents: Record<string, number>;
+}
+
+/**
+ * Chọn `count` câu trong `list` bằng luồng ngẫu nhiên riêng của hạt giống rút (Fisher–Yates từng phần), rồi trả theo **thứ tự
+ * gốc**. Mọi câu có cùng xác suất `count / list.length`.
+ */
+function drawn<T>(list: readonly T[], count: number, seed: number): T[] {
+  const random = prng(seed);
+  const indices = list.map((_, index) => index);
+  for (let i = 0; i < count; i++) {
+    const j = i + Math.floor(random() * (indices.length - i));
+    [indices[i], indices[j]] = [indices[j] as number, indices[i] as number];
+  }
+  return indices
+    .slice(0, count)
+    .sort((x, y) => x - y)
+    .map((index) => list[index] as T);
+}
+
 /**
  * Bố cục của một Lượt. Công tắc Phiên thi tắt thì giữ nguyên; bật thì xáo câu trong từng Phần (không xáo Phần) và
  * Phương án của câu chọn một, chọn nhiều có cờ `shuffleOptions`. Mệnh đề của chùm đúng/sai không xáo (Q215).
+ *
+ * `draw` (Rút câu theo Phần): mỗi Phần chỉ lấy `drawCountOf` câu, chọn bằng **hạt giống rút** (`drawSeedOf`: Phiên thi, người dự
+ * thi, Phần), không phải `seed` của Lượt. Nên một người luôn có cùng tập câu ở mọi Lượt (Q389 a) và bật hay tắt xáo không đổi
+ * tập câu; `seed` của Lượt chỉ quyết thứ tự xáo của các câu đã rút. Không có `draw`, hoặc Phần lấy đủ 100 %, thì kết quả
+ * **y hệt** bố cục không rút (Phiên thi cũ không đổi).
  */
 export function layoutOf(
   seed: number,
   input: LayoutInput,
   flags: { shuffleItems: boolean; shuffleOptions: boolean },
+  draw?: DrawInput,
 ): Layout {
   const random = prng(seed);
   return {
     sections: input.sections.map((section) => {
-      const items = flags.shuffleItems ? shuffled(section.items, random) : section.items;
+      const count = draw
+        ? drawCountOf(draw.percents[section.sectionId] ?? 100, section.items.length)
+        : section.items.length;
+      const available =
+        count === section.items.length || !draw
+          ? section.items
+          : drawn(section.items, count, drawSeedOf(draw.sessionId, draw.userId, section.sectionId));
+      const items = flags.shuffleItems ? shuffled(available, random) : available;
       return {
         sectionId: section.sectionId,
         items: items.map((item) => {
