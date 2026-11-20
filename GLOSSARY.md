@@ -253,6 +253,10 @@ _Avoid_: hủy (đứng một mình, dễ nhầm với Hủy Phiên thi), gỡ P
 Chế độ Người ra đề đi qua Phiên thi của mình đúng như Người dự thi sẽ thấy, không tạo Lượt làm bài và không lưu gì. Người ra đề không được có tên trong Danh sách dự thi của Phiên thi do chính mình tạo.
 _Avoid_: thi thử, demo
 
+**Xuất Bộ đề** (`PaperExport`):
+Hành động Người ra đề tải một tệp Word (.docx) của Bộ đề đã Phát hành hoặc Lưu trữ để in, nộp hồ sơ hay lưu trữ, từ Phiên thi hoặc từ Bộ đề của chính mình. Tệp chỉ có đề (không có đáp án), dựng từ bản chụp nên đúng "đề đã thi", và không lưu ở server. Học phần là ô nhập mỗi lần xuất, không thuộc Bộ đề hay Phiên thi. "ĐỀ THI" chỉ là chữ in trên tệp, không phải khái niệm mới.
+_Avoid_: in đề, tải đề, export đề thi
+
 **Lượt làm bài** (`Attempt`):
 Một lần Người dự thi làm bài trong Phiên thi, có thứ tự Câu hỏi và Phương án cố định sau khi bắt đầu.
 _Avoid_: bài thi, lần thi, submission

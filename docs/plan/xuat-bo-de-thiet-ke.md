@@ -197,7 +197,7 @@ Khi có Rút câu, mỗi Người dự thi nhận một bộ câu khác nhau. B�
 | X1 (**xong**, mã trong `apps/api/src/modules/paper`) | Lõi thuần `buildPaperDocument`: **Mẫu Trường** (đầu trang, chân trang, khung thông tin, lưới trả lời, cách xếp Phương án theo độ rộng 4/2/1, "HẾT"), hai bộ cài sẵn Mẫu Trường và Gọn, **bảng đăng ký Loại câu hỏi** (chọn một trước; mọi Loại khác có bộ trình bày hoặc cảnh báo), khối Quốc hiệu tùy chọn | Đọc lại .docx: đầu và chân trang, khung, lưới 17 cột, cách xếp 4/2/1 theo độ rộng, lề và cỡ chữ khớp mục 3.2; bài cưỡng chế mọi Loại có bộ trình bày |
 | X2 (**xong**) | Công thức và hình minh họa | Số công thức, số hình khớp bản chụp; hình đúng biến thể |
 | X3 (**xong**) | API (`PaperService`, cổng, quyền, nhật ký), chỉ Đã phát hành hoặc Lưu trữ | Tích hợp: quyền, Người dự thi bị từ chối, nhật ký, tên tệp |
-| X4 | Giao diện: hộp thoại "Xuất Bộ đề" ở Phiên thi và Bộ đề, điền sẵn, ô Học phần | E2E desktop và mobile, ảnh chụp, bộ quét `ui-layout` |
+| X4 (**xong**) | Giao diện: hộp thoại "Xuất Bộ đề" ở Phiên thi và Bộ đề, điền sẵn, ô Học phần | E2E desktop và mobile, ảnh chụp, bộ quét `ui-layout` |
 | X5 | Tệp Đáp án và thang điểm (đáp án hiệu lực), xác nhận cảnh báo | Có Đính chính thì đáp án là bản đã sửa |
 | X6 | (Tùy chọn) PDF bằng `pdfkit` và phông nhúng | Số trang, phông, công thức |
 | X7 | (Sau) Xuất đề **đúng như một Lượt đã nhận** (thứ tự câu và Phương án thực tế) kèm bảng hoán vị theo mẫu của Trường; cần định nghĩa mã đề và mã câu hỏi (Q416) | Khớp `layout` của Lượt; đáp án hoán vị đúng |
@@ -228,7 +228,17 @@ Mỗi PR có kiểm đột biến. Bản xuất **không đổi** dữ liệu ha
 - **Nhật ký:** `audit_logs` ghi `paper.export` (ai, Bộ đề, Phiên thi, loại tệp, số cảnh báo), không ghi nội dung; xuất thất bại không ghi.
 - **Hiệu năng:** Bộ đề 100 câu, 30 câu có công thức, toàn bộ yêu cầu HTTP khoảng 0,05 giây (ngân sách 1 giây), nên chưa cần job nền.
 - **Hướng dẫn chung của Bộ đề (`exams.instructions`):** ban đầu X3 chưa in; đã bổ sung ngày 20/11/2026 (Q429): in dưới khung thông tin bằng kiểu "Ghi chú", trước lưới và câu hỏi, trống thì không in.
-- **Chưa làm:** Lớp điền sẵn (Q415); sẽ bàn khi làm giao diện (X4).
+- **Chưa làm:** Lớp điền sẵn (Q415); chưa có nhu cầu rõ, bàn khi cần.
+
+**Quyết định X4 (chủ dự án đồng ý ngày 20/11/2026) và kết quả:**
+
+- **Q425, nút:** "Xuất Bộ đề" hiện rõ ở đầu trang Phiên thi (cạnh "Xem thử") và ở màn Bộ đề chỉ khi đã Phát hành hoặc Lưu trữ (cạnh "Nhân bản"); Bộ đề nháp không có nút.
+- **Q426, ô nhập:** hiện sẵn Học phần và Mẫu (Mẫu Trường, Gọn); Mã đề, Tiêu đề kỳ thi, Đơn vị và ba công tắc (Quốc hiệu, Ô thí sinh/điểm/chữ ký, Lưới) nằm trong "Tùy chỉnh" (đóng mặc định). Đổi Mẫu đặt lại ba công tắc theo Mẫu mới. Trình duyệt nhớ Học phần, Tiêu đề kỳ thi, Mẫu, công tắc (không nhớ Mã đề và Đơn vị).
+- **Q427, cảnh báo:** có cảnh báo thì tải tệp xong **giữ hộp thoại** và liệt kê theo câu; không có thì thông báo "Đã xuất tệp" và đóng.
+- **Q428, câu chữ:** nút "Xuất Bộ đề", hộp thoại "Xuất Bộ đề ra Word", nút "Tải tệp Word", ghi chú "Tệp chỉ có đề, không có đáp án."
+- **Dùng chung với máy chủ:** lược đồ yêu cầu (`paperExportRequestSchema`) và các khối của từng Mẫu (`PAPER_PRESET_BLOCKS`) chuyển vào `@exam/shared`; giao diện dựng yêu cầu rồi kiểm lại bằng chính lược đồ của máy chủ (hợp đồng chung).
+- **Kiểm thử:** 13 bài unit cho hàm thuần của giao diện (`lib/paper-export.ts`), 7 kịch bản E2E chạy trên cả máy tính và điện thoại (tải tệp, cảnh báo, nút ở màn Bộ đề, Mẫu và công tắc, bàn phím và trợ năng, bố cục sáng/tối), đột biến 13 lần đều bị bắt.
+- **Phát sinh khi làm:** native `<dialog>` đưa focus vào nút Đóng ngay khi mở, nên ô Học phần chỉ nhận focus sau một nhịp (bài E2E bàn phím bắt được lỗi này); mục "Tùy chỉnh" cần mũi tên xoay để người dùng nhận ra là bung được (phát hiện khi chụp ảnh tự duyệt).
 
 ## 10. Thuật ngữ cần thống nhất (domain-modeling)
 

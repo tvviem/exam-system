@@ -1,7 +1,7 @@
 import { sessionEditableFields } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { Copy, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Download, Eye, Pencil, Trash2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
@@ -30,6 +30,7 @@ import { Breadcrumb } from '../../../../lib/ui/breadcrumb';
 import { ResultsScreen } from '../../../../lib/ui/grading/results-screen';
 import { MonitorScreen } from '../../../../lib/ui/monitor/screen';
 import { PageHeader } from '../../../../lib/ui/page-header';
+import { PaperExportDialog } from '../../../../lib/ui/paper-export-dialog';
 import { RowMenu } from '../../../../lib/ui/row-menu';
 import {
   draftOf,
@@ -76,6 +77,7 @@ function SessionDetail({ session }: { session: SessionSummary }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [confirm, setConfirm] = useState<'cancel' | 'delete' | null>(null);
   const [reason, setReason] = useState('');
   const rules = sessionEditableFields(session.phase);
@@ -146,6 +148,10 @@ function SessionDetail({ session }: { session: SessionSummary }) {
               <Eye aria-hidden className="size-5" />
               {t('session.action.preview')}
             </Link>
+            <Button onClick={() => setExporting(true)}>
+              <Download aria-hidden className="size-5" />
+              {t('paper.action')}
+            </Button>
             <RowMenu
               label={t('session.action.more')}
               items={[
@@ -175,6 +181,13 @@ function SessionDetail({ session }: { session: SessionSummary }) {
             />
           </div>
         }
+      />
+
+      <PaperExportDialog
+        open={exporting}
+        onClose={() => setExporting(false)}
+        source={{ sessionId: session.id }}
+        title={session.title}
       />
 
       <Tabs

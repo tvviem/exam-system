@@ -1,7 +1,17 @@
 import { POINTS_MAX, POINTS_MIN, POINTS_STEP, plainTextOf } from '@exam/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
-import { ChevronDown, ChevronUp, Copy, ListChecks, Plus, Save, Send, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Download,
+  ListChecks,
+  Plus,
+  Save,
+  Send,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api';
@@ -40,6 +50,7 @@ import { ExamPreview } from './exam-preview';
 import { ExamPublishDialog } from './exam-publish-dialog';
 import { KeyCorrectionDialog } from './grading/key-correction-dialog';
 import { PageHeader } from './page-header';
+import { PaperExportDialog } from './paper-export-dialog';
 import { Rich } from './question-editor-fields';
 import { QuestionPicker } from './question-picker';
 import { QuickPointsDialog } from './quick-points-dialog';
@@ -222,6 +233,7 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const toast = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [exporting, setExporting] = useState(false);
   const [draft, setDraft] = useState<ExamDraft>(() => draftFromExam(exam));
   const [baseline, setBaseline] = useState(() => serialize(draftFromExam(exam)));
   const [version, setVersion] = useState(exam.version);
@@ -322,6 +334,10 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
               <Badge tone={isArchived ? 'warning' : 'success'}>
                 {t(`exam.status.${exam.status}`)}
               </Badge>
+              <Button onClick={() => setExporting(true)}>
+                <Download aria-hidden className="size-5" />
+                {t('paper.action')}
+              </Button>
               <Button disabled={duplicate.isPending} onClick={() => duplicate.mutate()}>
                 <Copy aria-hidden className="size-5" />
                 {t('exam.duplicate')}
@@ -338,6 +354,14 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
           )
         }
       />
+      {readOnly && (
+        <PaperExportDialog
+          open={exporting}
+          onClose={() => setExporting(false)}
+          source={{ examId: exam.id }}
+          title={draft.title}
+        />
+      )}
       {readOnly && (
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-sm">
           <p role="status">
