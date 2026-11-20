@@ -523,4 +523,34 @@ describe('buildPaperDocument: Mẫu Trường', () => {
     const between = paragraphs.slice(at('Câu 1:') + 1, at('Câu 2:'));
     expect(between.every((p) => /^[A-D]\./.test(p))).toBe(true);
   });
+
+  it('hướng dẫn chung của Bộ đề in dưới khung thông tin bằng kiểu "Ghi chú", trước lưới và câu hỏi; trống thì không in gì', async () => {
+    const guide = richText('Thí sinh không được dùng tài liệu.');
+    const withGuide = await buildPaperDocument({
+      ...baseSpec,
+      instructions: guide,
+      sections: [{ title: null, items: [singleChoice('Câu hỏi', ['1', '2', '3', '4'])] }],
+    });
+    const docx = await readDocx(withGuide.bytes);
+    const document = await docx.part('word/document.xml');
+    const styles = (await docx.part('word/styles.xml')).styleNames();
+    const paragraphs = document.paragraphs();
+
+    const at = (text: string) => paragraphs.findIndex((p) => p.startsWith(text));
+    expect(at('Thí sinh không được dùng tài liệu.')).toBeGreaterThan(-1);
+    expect(at('Thí sinh không được dùng tài liệu.')).toBeLessThan(at('PHẦN BÀI LÀM'));
+    expect(at('PHẦN BÀI LÀM')).toBeLessThan(at('Câu 1:'));
+    const noteParagraph = document
+      .all('p')
+      .find((p) => (p.textContent ?? '').startsWith('Thí sinh không được dùng tài liệu.'));
+    const ref = noteParagraph?.getElementsByTagNameNS(W_NS, 'pStyle')[0];
+    expect(styles.get(document.attr(ref as Element, 'val') ?? '')).toBe('Ghi chú');
+
+    const without = await buildPaperDocument({
+      ...baseSpec,
+      sections: [{ title: null, items: [singleChoice('Câu hỏi', ['1', '2', '3', '4'])] }],
+    });
+    const plain = (await (await readDocx(without.bytes)).part('word/document.xml')).text();
+    expect(plain).not.toContain('Thí sinh không được dùng tài liệu.');
+  });
 });

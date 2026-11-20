@@ -92,6 +92,7 @@ export function toPaperSpec(input: {
     heading,
     preset: request.preset,
     blocks: request.blocks,
+    instructions: isBlank(content.instructions) ? undefined : content.instructions,
     sections: content.sections.map((section) => ({
       title: section.title?.trim() ? section.title : null,
       instructions: isBlank(section.instructions) ? undefined : section.instructions,

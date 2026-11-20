@@ -21,6 +21,8 @@ export interface PaperSpec {
   heading: PaperHeading;
   /** Bộ cài sẵn các khối; mặc định `school` (Mẫu Trường). */
   preset?: PaperPreset;
+  /** Hướng dẫn chung của Bộ đề (văn bản có định dạng), in dưới khung thông tin bằng kiểu "Ghi chú". */
+  instructions?: unknown;
   /** Bật tắt riêng từng khối, đè lên bộ cài sẵn. */
   blocks?: Partial<PaperBlocks>;
   /** Hình minh họa theo mã (`illustrationId`) mà nội dung câu tham chiếu; bên gọi đọc từ kho ảnh. */
@@ -77,7 +79,19 @@ const sectionHeading = (
   return title + instructions;
 };
 
+/** Hướng dẫn chung của Bộ đề: các đoạn "Ghi chú" (không có hoặc trống thì không in). */
+const generalInstructions = (spec: PaperSpec, warnings: string[], media: MediaRegistry): string =>
+  spec.instructions
+    ? paragraphRuns(spec.instructions, {
+        warn: (message) => warnings.push(`Hướng dẫn của Bộ đề: ${message}`),
+        image: (id, alt) => media.drawing(id, alt),
+      })
+        .map((runs) => paragraph(runs, '', STYLE.note))
+        .join('')
+    : '';
+
 const body = (spec: PaperSpec, warnings: string[], media: MediaRegistry) => {
+  const guide = generalInstructions(spec, warnings, media);
   let number = 0;
   const questions = spec.sections
     .map((section) => {
@@ -97,6 +111,7 @@ const body = (spec: PaperSpec, warnings: string[], media: MediaRegistry) => {
   return (
     (blocks.nationalHeader ? nationalHeader() : '') +
     coverTable(spec.heading, spec.examCode, blocks.candidateFields) +
+    guide +
     (blocks.grid ? answerGrid(choiceCount) : '') +
     questions +
     endMarker()

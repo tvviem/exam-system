@@ -74,6 +74,9 @@ describe('xuất Đề thi: chủ xuất được', () => {
     expect(text).toContain('Ngày thi: 02/11/2026');
     expect(text).toContain('Thời gian: 45 phút');
     expect(text).toContain('Hình thức thi: Trắc nghiệm và tự luận');
+    // hướng dẫn chung của Bộ đề (dữ liệu mẫu: "Làm bài cẩn thận") in trước câu hỏi đầu tiên
+    expect(text).toContain('Làm bài cẩn thận');
+    expect(text.indexOf('Làm bài cẩn thận')).toBeLessThan(text.indexOf('Câu 1:'));
     expect(text.indexOf('Đạo hàm của x² là gì?')).toBeLessThan(
       text.indexOf('Chọn các số nguyên tố'),
     );
