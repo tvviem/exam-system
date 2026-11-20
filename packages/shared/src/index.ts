@@ -4,6 +4,7 @@ export * from './exam.js';
 export * from './grading.js';
 export * from './health.js';
 export * from './monitor.js';
+export * from './paper.js';
 export * from './question.js';
 export * from './realtime.js';
 export * from './rich-text.js';

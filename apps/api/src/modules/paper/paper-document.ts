@@ -1,6 +1,6 @@
+import { type PaperBlocks, type PaperPreset, resolvePaperBlocks } from '@exam/shared';
 import JSZip from 'jszip';
 import { answerGrid } from './answer-grid';
-import { type PaperBlocks, type PaperPreset, resolveBlocks } from './blocks';
 import { coverTable, endMarker, nationalHeader, type PaperHeading } from './cover';
 import { MediaRegistry, type PaperImage } from './media';
 import { type PaperItem, renderItem } from './question-renderers';
@@ -107,7 +107,7 @@ const body = (spec: PaperSpec, warnings: string[], media: MediaRegistry) => {
     .join('');
   const items = spec.sections.flatMap((section) => section.items);
   const choiceCount = items.filter((item) => item.type === 'single_choice').length;
-  const blocks = resolveBlocks(spec.preset, spec.blocks);
+  const blocks = resolvePaperBlocks(spec.preset, spec.blocks);
   return (
     (blocks.nationalHeader ? nationalHeader() : '') +
     coverTable(spec.heading, spec.examCode, blocks.candidateFields) +

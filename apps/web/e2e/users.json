@@ -1574,5 +1574,21 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-xuat-desktop",
+    "fullName": "Giảng viên Xuất đề desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-xuat-mobile",
+    "fullName": "Giảng viên Xuất đề mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]
