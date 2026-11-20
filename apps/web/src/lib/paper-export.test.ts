@@ -1,10 +1,15 @@
-import { PAPER_PRESET_BLOCKS, paperExportRequestSchema } from '@exam/shared';
+import {
+  PAPER_PRESET_BLOCKS,
+  paperAnswersRequestSchema,
+  paperExportRequestSchema,
+} from '@exam/shared';
 import { describe, expect, it } from 'vitest';
 import {
   emptyPaperForm,
   filenameOfDisposition,
   loadPaperPrefs,
   type PaperForm,
+  paperAnswersRequestOf,
   paperRequestOf,
   parsePaperWarnings,
   savePaperPrefs,
@@ -186,5 +191,31 @@ describe('ghi nhớ lần nhập gần nhất (localStorage)', () => {
     const blocked = memory({ throws: true });
     expect(loadPaperPrefs(blocked)).toEqual(defaults);
     expect(() => savePaperPrefs(form({ course: 'X' }), blocked)).not.toThrow();
+  });
+});
+
+describe('paperAnswersRequestOf: yêu cầu xuất tệp Đáp án', () => {
+  it('chỉ mang nguồn, Học phần và các ô thông tin; không có Mẫu và công tắc; luôn kèm confirm: true', () => {
+    const request = paperAnswersRequestOf(
+      { sessionId: SESSION },
+      form({
+        course: ' Giải tích 1 ',
+        title: 'THI GIỮA KỲ',
+        examCode: ' 132 ',
+        unit: '',
+        preset: 'compact',
+        blocks: { nationalHeader: true, candidateFields: false, grid: true },
+      }),
+    );
+
+    expect(request).toEqual({
+      sessionId: SESSION,
+      course: 'Giải tích 1',
+      title: 'THI GIỮA KỲ',
+      examCode: '132',
+      confirm: true,
+    });
+    // hợp đồng chung: máy chủ nhận đúng hình dạng này (lược đồ strict nên Mẫu và công tắc sẽ bị từ chối)
+    expect(() => paperAnswersRequestSchema.parse(request)).not.toThrow();
   });
 });

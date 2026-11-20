@@ -33,20 +33,37 @@ const bool = z.boolean().optional();
 
 export const PAPER_COURSE_MAX_CHARS = 150;
 
+const oneSource = (body: { sessionId?: string; examId?: string }) =>
+  (body.sessionId === undefined) !== (body.examId === undefined);
+const ONE_SOURCE_MESSAGE = 'Chọn đúng một trong sessionId hoặc examId';
+
+/** Các trường dùng chung của hai yêu cầu: nguồn (Phiên thi hoặc Bộ đề), Học phần và thông tin kỳ thi. */
+const commonFields = {
+  sessionId: z.uuid().optional(),
+  examId: z.uuid().optional(),
+  course: text(PAPER_COURSE_MAX_CHARS),
+  title: text(100).optional(),
+  examCode: text(50).optional(),
+  unit: text(150).optional(),
+};
+
 /** Yêu cầu xuất Đề thi: đúng một trong `sessionId` hoặc `examId`, kèm Học phần (không có trong dữ liệu, nhập mỗi lần xuất). */
 export const paperExportRequestSchema = z
   .strictObject({
-    sessionId: z.uuid().optional(),
-    examId: z.uuid().optional(),
-    course: text(PAPER_COURSE_MAX_CHARS),
-    title: text(100).optional(),
-    examCode: text(50).optional(),
-    unit: text(150).optional(),
+    ...commonFields,
     preset: z.enum(PAPER_PRESETS).optional(),
     blocks: z.strictObject({ nationalHeader: bool, candidateFields: bool, grid: bool }).optional(),
   })
-  .refine((body) => (body.sessionId === undefined) !== (body.examId === undefined), {
-    message: 'Chọn đúng một trong sessionId hoặc examId',
-  });
+  .refine(oneSource, { message: ONE_SOURCE_MESSAGE });
 
 export type PaperExportRequest = z.infer<typeof paperExportRequestSchema>;
+
+/**
+ * Yêu cầu xuất tệp Đáp án và thang điểm: như tệp Đề nhưng không có Mẫu và công tắc (tệp Đáp án chỉ một khuôn), và bắt buộc
+ * `confirm: true` vì tệp chứa Đáp án đúng. Thiếu xác nhận thì máy chủ từ chối.
+ */
+export const paperAnswersRequestSchema = z
+  .strictObject({ ...commonFields, confirm: z.literal(true) })
+  .refine(oneSource, { message: ONE_SOURCE_MESSAGE });
+
+export type PaperAnswersRequest = z.infer<typeof paperAnswersRequestSchema>;

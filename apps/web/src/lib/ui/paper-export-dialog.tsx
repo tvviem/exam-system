@@ -1,14 +1,16 @@
 import { PAPER_PRESETS, type PaperBlocks, type PaperPreset } from '@exam/shared';
 import { useMutation } from '@tanstack/react-query';
-import { ChevronRight, Download } from 'lucide-react';
+import { ChevronRight, Download, KeyRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
 import {
+  type ExportedPaper,
   emptyPaperForm,
   loadPaperPrefs,
   type PaperForm,
   type PaperSource,
+  paperAnswersRequestOf,
   paperRequestOf,
   requestPaper,
   saveBlob,
@@ -63,6 +65,7 @@ function PaperExportBody({
   const toast = useToast();
   const [form, setForm] = useState<PaperForm>(() => ({ ...emptyPaperForm(), ...loadPaperPrefs() }));
   const [warnings, setWarnings] = useState<string[] | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const courseField = useRef<HTMLInputElement>(null);
 
   // <dialog> gọi showModal() ở hiệu ứng của Dialog (chạy sau hiệu ứng của phần con) và đưa focus vào nút Đóng; đợi một nhịp
@@ -72,18 +75,25 @@ function PaperExportBody({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  /** Tải tệp rồi đóng (không cảnh báo) hoặc giữ hộp thoại và liệt kê cảnh báo. */
+  const finish = (doneMessage: string) => (file: ExportedPaper) => {
+    saveBlob(file.blob, file.filename);
+    savePaperPrefs(form);
+    if (file.warnings.length === 0) {
+      toast(doneMessage);
+      onClose();
+    } else {
+      setWarnings(file.warnings);
+    }
+  };
+
   const exportPaper = useMutation({
     mutationFn: () => requestPaper(paperRequestOf(source, form)),
-    onSuccess: ({ blob, filename, warnings: found }) => {
-      saveBlob(blob, filename);
-      savePaperPrefs(form);
-      if (found.length === 0) {
-        toast(t('paper.done'));
-        onClose();
-      } else {
-        setWarnings(found);
-      }
-    },
+    onSuccess: finish(t('paper.done')),
+  });
+  const exportAnswers = useMutation({
+    mutationFn: () => requestPaper(paperAnswersRequestOf(source, form)),
+    onSuccess: finish(t('paper.answersDone')),
   });
 
   if (warnings) {
@@ -108,6 +118,20 @@ function PaperExportBody({
           <PrimaryButton onClick={onClose}>{t('common.close')}</PrimaryButton>
         </div>
       </>
+    );
+  }
+
+  if (confirming) {
+    return (
+      <ConfirmAnswers
+        busy={exportAnswers.isPending}
+        error={exportAnswers.isError ? errorMessage(t, exportAnswers.error) : null}
+        onCancel={() => {
+          exportAnswers.reset();
+          setConfirming(false);
+        }}
+        onConfirm={() => exportAnswers.mutate()}
+      />
     );
   }
 
@@ -226,6 +250,15 @@ function PaperExportBody({
         </div>
       </details>
 
+      <section className="flex flex-col gap-2 rounded-xl border border-border p-3">
+        <h3 className="text-sm font-medium">{t('paper.answersTitle')}</h3>
+        <p className="text-sm text-fg-muted">{t('paper.answersHint')}</p>
+        <Button className="w-fit" disabled={!canExport} onClick={() => setConfirming(true)}>
+          <KeyRound aria-hidden className="size-5" />
+          {t('paper.answersAction')}
+        </Button>
+      </section>
+
       {exportPaper.isError && <ErrorMessage>{errorMessage(t, exportPaper.error)}</ErrorMessage>}
 
       <div className="flex flex-col gap-2 sm:flex-row-reverse">
@@ -238,5 +271,41 @@ function PaperExportBody({
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Bước xác nhận trước khi tải tệp Đáp án; focus vào "Hủy" (hành động an toàn) khi mở. */
+function ConfirmAnswers({
+  busy,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  busy: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslation();
+  const cancel = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => cancel.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return (
+    <div className="flex flex-col gap-4">
+      <h3 className="text-base font-semibold">{t('paper.confirmTitle')}</h3>
+      <p className="text-sm">{t('paper.confirmBody')}</p>
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+      <div className="flex flex-col gap-2 sm:flex-row-reverse">
+        <PrimaryButton loading={busy} onClick={onConfirm}>
+          <Download aria-hidden className="size-5" />
+          {busy ? t('paper.building') : t('paper.confirmAction')}
+        </PrimaryButton>
+        <Button ref={cancel} onClick={onCancel} disabled={busy}>
+          {t('common.cancel')}
+        </Button>
+      </div>
+    </div>
   );
 }

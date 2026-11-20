@@ -1,6 +1,7 @@
 import {
   PAPER_PRESET_BLOCKS,
   PAPER_PRESETS,
+  type PaperAnswersRequest,
   type PaperBlocks,
   type PaperExportRequest,
   type PaperPreset,
@@ -55,6 +56,12 @@ export function paperRequestOf(source: PaperSource, form: PaperForm): PaperExpor
     preset: form.preset,
     ...(Object.keys(changed).length > 0 && { blocks: changed }),
   };
+}
+
+/** Yêu cầu xuất tệp Đáp án: nguồn, Học phần và các ô thông tin (không có Mẫu và công tắc), kèm xác nhận đã hiểu tệp chứa đáp án. */
+export function paperAnswersRequestOf(source: PaperSource, form: PaperForm): PaperAnswersRequest {
+  const { preset: _preset, blocks: _blocks, ...shared } = paperRequestOf(source, form);
+  return { ...shared, confirm: true };
 }
 
 /** Header `X-Paper-Warnings` (JSON mã hóa URL) thành danh sách; hỏng thì rỗng (tệp vẫn tải được). */
@@ -142,9 +149,12 @@ export interface ExportedPaper {
   warnings: string[];
 }
 
-/** Gọi `POST /api/paper/exam`; trả tệp và cảnh báo, lỗi thì ném `ApiError` như `apiFetch`. */
-export async function requestPaper(request: PaperExportRequest): Promise<ExportedPaper> {
-  const res = await fetch('/api/paper/exam', {
+/** Gọi `POST /api/paper/exam` (hay `/answers` khi có `confirm`); trả tệp và cảnh báo, lỗi thì ném `ApiError` như `apiFetch`. */
+export async function requestPaper(
+  request: PaperExportRequest | PaperAnswersRequest,
+): Promise<ExportedPaper> {
+  // Có `confirm` là tệp Đáp án, không thì tệp Đề.
+  const res = await fetch('confirm' in request ? '/api/paper/answers' : '/api/paper/exam', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(request),

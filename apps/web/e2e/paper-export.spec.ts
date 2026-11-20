@@ -275,3 +275,78 @@ for (const scheme of ['light', 'dark'] as const) {
     );
   });
 }
+
+test('tệp Đáp án: có bước xác nhận (Hủy thì không tải), xác nhận thì tải dap-an-*.docx và yêu cầu mang confirm', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-xuat-${p}`);
+  const examId = await seedExam(page, `Xuất đề ${p} 8`);
+  const sessionId = await seedSession(page, examId, `Ca xuất đề ${p} 8`);
+  let downloads = 0;
+  page.on('download', () => {
+    downloads += 1;
+  });
+
+  await page.goto(`/examiner/sessions/${sessionId}`);
+  await exportButton(page).click();
+  const dialog = dialogOf(page);
+  await expect(dialog.getByText('Đáp án và thang điểm')).toBeVisible();
+
+  // Học phần bắt buộc, như tệp Đề
+  const answers = dialog.getByRole('button', { name: 'Tải tệp Đáp án…' });
+  await expect(answers).toBeDisabled();
+  await dialog.getByLabel('Học phần').fill('Giải tích 1');
+  await dialog.getByLabel('Gọn').check();
+  await answers.click();
+
+  // Bước xác nhận: cảnh báo tệp chứa đáp án; Hủy quay về biểu mẫu, không tải gì
+  await expect(dialog.getByText('Tệp này chứa đáp án đúng')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Hủy' })).toBeFocused();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow, 'cuộn ngang ở bước xác nhận').toBe(0);
+  await dialog.getByRole('button', { name: 'Hủy' }).click();
+  await expect(dialog.getByLabel('Học phần')).toHaveValue('Giải tích 1');
+  await page.waitForTimeout(500);
+  expect(downloads, 'Hủy không được tải tệp').toBe(0);
+
+  // Xác nhận: tải tệp Đáp án; yêu cầu có confirm và không có Mẫu (tệp Đáp án chỉ một khuôn)
+  await answers.click();
+  const request = page.waitForRequest((r) => r.url().endsWith('/api/paper/answers'));
+  const [file] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Tôi hiểu, tải tệp Đáp án' }).click(),
+  ]);
+  expect(file.suggestedFilename()).toMatch(/^dap-an-.*\.docx$/);
+  const { readFile } = await import('node:fs/promises');
+  expect((await readFile(await file.path())).subarray(0, 2).toString('latin1')).toBe('PK');
+  expect((await request).postDataJSON()).toEqual({
+    sessionId,
+    course: 'Giải tích 1',
+    confirm: true,
+  });
+  await expect(page.getByText('Đã xuất tệp Đáp án')).toBeVisible();
+  await expect(dialog).toBeHidden();
+});
+
+test('tệp Đáp án: Esc ở bước xác nhận đóng hộp thoại, không tải gì', async ({ page }, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-xuat-${p}`);
+  const examId = await seedExam(page, `Xuất đề ${p} 9`);
+  let downloads = 0;
+  page.on('download', () => {
+    downloads += 1;
+  });
+  await page.goto(`/examiner/exams/${examId}`);
+  await exportButton(page).click();
+  const dialog = dialogOf(page);
+  await dialog.getByLabel('Học phần').fill('Hóa');
+  await dialog.getByRole('button', { name: 'Tải tệp Đáp án…' }).click();
+  await expect(dialog.getByText('Tệp này chứa đáp án đúng')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await page.waitForTimeout(300);
+  expect(downloads).toBe(0);
+});

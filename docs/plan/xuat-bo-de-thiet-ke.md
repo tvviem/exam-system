@@ -198,7 +198,7 @@ Khi có Rút câu, mỗi Người dự thi nhận một bộ câu khác nhau. B�
 | X2 (**xong**) | Công thức và hình minh họa | Số công thức, số hình khớp bản chụp; hình đúng biến thể |
 | X3 (**xong**) | API (`PaperService`, cổng, quyền, nhật ký), chỉ Đã phát hành hoặc Lưu trữ | Tích hợp: quyền, Người dự thi bị từ chối, nhật ký, tên tệp |
 | X4 (**xong**) | Giao diện: hộp thoại "Xuất Bộ đề" ở Phiên thi và Bộ đề, điền sẵn, ô Học phần | E2E desktop và mobile, ảnh chụp, bộ quét `ui-layout` |
-| X5 | Tệp Đáp án và thang điểm (đáp án hiệu lực), xác nhận cảnh báo | Có Đính chính thì đáp án là bản đã sửa |
+| X5 (**xong**) | Tệp Đáp án và thang điểm (đáp án hiệu lực), xác nhận cảnh báo | Có Đính chính thì đáp án là bản đã sửa |
 | X6 | (Tùy chọn) PDF bằng `pdfkit` và phông nhúng | Số trang, phông, công thức |
 | X7 | (Sau) Xuất đề **đúng như một Lượt đã nhận** (thứ tự câu và Phương án thực tế) kèm bảng hoán vị theo mẫu của Trường; cần định nghĩa mã đề và mã câu hỏi (Q416) | Khớp `layout` của Lượt; đáp án hoán vị đúng |
 
@@ -239,6 +239,16 @@ Mỗi PR có kiểm đột biến. Bản xuất **không đổi** dữ liệu ha
 - **Dùng chung với máy chủ:** lược đồ yêu cầu (`paperExportRequestSchema`) và các khối của từng Mẫu (`PAPER_PRESET_BLOCKS`) chuyển vào `@exam/shared`; giao diện dựng yêu cầu rồi kiểm lại bằng chính lược đồ của máy chủ (hợp đồng chung).
 - **Kiểm thử:** 13 bài unit cho hàm thuần của giao diện (`lib/paper-export.ts`), 7 kịch bản E2E chạy trên cả máy tính và điện thoại (tải tệp, cảnh báo, nút ở màn Bộ đề, Mẫu và công tắc, bàn phím và trợ năng, bố cục sáng/tối), đột biến 13 lần đều bị bắt.
 - **Phát sinh khi làm:** native `<dialog>` đưa focus vào nút Đóng ngay khi mở, nên ô Học phần chỉ nhận focus sau một nhịp (bài E2E bàn phím bắt được lỗi này); mục "Tùy chỉnh" cần mũi tên xoay để người dùng nhận ra là bung được (phát hiện khi chụp ảnh tự duyệt).
+
+**Quyết định X5 (chủ dự án đồng ý ngày 20/11/2026) và kết quả:**
+
+- **Q430, nội dung tệp Đáp án:** tiêu đề "ĐÁP ÁN VÀ THANG ĐIỂM", khung thông tin gọn (cùng Mã đề, đầu và chân trang như tệp Đề), mỗi Phần một bảng Câu, Đáp án, Điểm, Cách chấm; tổng điểm kèm ghi chú thang 10; hướng dẫn chấm của câu tự luận nguyên văn ở cuối. Không in nội dung câu hỏi (số câu khớp tệp Đề).
+- **Q431, đáp án hiệu lực:** lấy qua cổng mới `EFFECTIVE_CONTENT` (`grading` cài đặt, nối ở `AttemptPortsWiringModule`) nên đã tính Đính chính, đúng như lúc chấm; câu đã đính chính ghi "(đã đính chính)".
+- **Q432, xác nhận và nhật ký:** `POST /api/paper/answers` bắt buộc `confirm: true` (lược đồ `paperAnswersRequestSchema` trong `@exam/shared`, strict, không nhận Mẫu và công tắc); nhật ký riêng `paper.export.answers`; giao diện có bước xác nhận "Tệp này chứa đáp án đúng", focus vào "Hủy" (hành động an toàn).
+- **Q433, quyền:** như tệp Đề (chỉ chủ Bộ đề hoặc chủ Phiên thi; người khác 404, Người dự thi và Quản trị viên 403, nháp 409); người được Ủy quyền chấm không xuất.
+- **Q434, cách ghi:** chọn một "B"; chọn nhiều "A, C"; chùm "a) Đúng; b) Sai"; tự luận "Xem hướng dẫn chấm"; cách chấm của câu nhiều ý: tỉ lệ số ý đúng, đúng hết mới có điểm, hoặc thang bậc ("đúng 1 ý được 25%, …"); điểm viết dấu phẩy ("0,5").
+- **Cấu trúc mã:** phần đóng gói `.docx` (đầu trang, chân trang, kiểu, quan hệ, hình) tách ra `docx-package.ts` dùng chung cho hai tệp; khung thông tin chung rút ra `paperFrameOf` để hai tệp luôn khớp nhau.
+- **Kiểm thử:** 8 bài unit `toAnswerSpec`, 3 bài `buildAnswerDocument`, 7 bài tích hợp (nội dung, Đính chính, xác nhận, quyền, nhật ký), 1 bài unit và 2 kịch bản E2E giao diện (cả máy tính và điện thoại); kiểm đột biến 10 lần ở máy chủ và 5 lần ở giao diện, đều bị bắt.
 
 ## 10. Thuật ngữ cần thống nhất (domain-modeling)
 

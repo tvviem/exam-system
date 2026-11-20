@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ADMIN_DIRECTORY } from './common/admin-directory';
 import { ATTEMPT_GRADE_GUARD, ATTEMPT_SUBMITTED_HOOKS } from './common/attempt-grading';
 import { CANDIDATE_MEDIA } from './common/candidate-media';
+import { EFFECTIVE_CONTENT } from './common/effective-content';
 import { EXAM_CONTENT } from './common/exam-content';
 import { EXAMINER_DIRECTORY } from './common/examiner-directory';
 import { GRADING_SESSIONS } from './common/grading-sessions';
@@ -19,6 +20,7 @@ import { SessionAttemptsService } from './modules/attempt/session-attempts.servi
 import { ViolationPenaltiesService } from './modules/attempt/violation-penalties.service';
 import { ExamModule } from './modules/exam/exam.module';
 import { ExamContentService } from './modules/exam/exam-content.service';
+import { EffectiveContentService } from './modules/grading/effective-content.service';
 import { GradingModule } from './modules/grading/grading.module';
 import { GradingHooksService } from './modules/grading/grading-hooks.service';
 import { GradingStatusService } from './modules/grading/grading-status.service';
@@ -46,6 +48,7 @@ import { SessionRosterScopeService } from './modules/session/session-roster-scop
     { provide: GRADING_SESSIONS, useExisting: GradingSessionsService },
     { provide: SESSION_GRADING_STATUS, useExisting: GradingStatusService },
     { provide: EXAMINER_DIRECTORY, useExisting: ExaminerDirectoryService },
+    { provide: EFFECTIVE_CONTENT, useExisting: EffectiveContentService },
     { provide: ADMIN_DIRECTORY, useExisting: AdminDirectoryService },
     { provide: VIOLATION_PENALTIES, useExisting: ViolationPenaltiesService },
     { provide: SUPPORT_ROSTER_SCOPE, useExisting: SessionRosterScopeService },
@@ -62,6 +65,7 @@ import { SessionRosterScopeService } from './modules/session/session-roster-scop
     GRADING_SESSIONS,
     SESSION_GRADING_STATUS,
     EXAMINER_DIRECTORY,
+    EFFECTIVE_CONTENT,
     ADMIN_DIRECTORY,
     VIOLATION_PENALTIES,
     SUPPORT_ROSTER_SCOPE,

@@ -61,13 +61,37 @@ const contentsOf = (list: unknown): { content: unknown }[] =>
 const displayPayload = (type: QuestionType, payload: Payload): Payload =>
   (DISPLAY_PAYLOAD[type] as ((payload: Payload) => Payload) | undefined)?.(payload) ?? {};
 
-const isBlank = (richText: unknown) => plainText(richText).trim() === '';
+export const isBlank = (richText: unknown) => plainText(richText).trim() === '';
 
 const formOf = (items: ContentItem[]): string => {
   const essays = items.filter((item) => item.snapshot.type === 'essay').length;
   if (essays === 0) return 'Trắc nghiệm';
   return essays === items.length ? 'Tự luận' : 'Trắc nghiệm và tự luận';
 };
+
+/** Khung chung của tệp Đề và tệp Đáp án: trường, Đơn vị, Mã đề, thông tin kỳ thi (hai tệp phải khớp nhau). */
+export function paperFrameOf(input: {
+  content: ExamContentData;
+  session: SessionTimes | null;
+  unitName: string | null;
+  request: PaperRequest;
+}): { school: string; unit: string; examCode: string; heading: PaperHeading } {
+  const { content, session, unitName, request } = input;
+  const items = content.sections.flatMap((section) => section.items);
+  return {
+    school: SCHOOL,
+    unit: unitName ?? '',
+    examCode: request.examCode ?? DEFAULT_EXAM_CODE,
+    heading: {
+      title: request.title ?? DEFAULT_TITLE,
+      examName: content.title,
+      course: request.course,
+      date: session ? examDateOf(session) : '',
+      form: formOf(items),
+      duration: session ? `${session.durationMinutes} phút` : '',
+    },
+  };
+}
 
 export function toPaperSpec(input: {
   content: ExamContentData;
@@ -76,20 +100,8 @@ export function toPaperSpec(input: {
   request: PaperRequest;
 }): PaperSpec {
   const { content, session, unitName, request } = input;
-  const items = content.sections.flatMap((section) => section.items);
-  const heading: PaperHeading = {
-    title: request.title ?? DEFAULT_TITLE,
-    examName: content.title,
-    course: request.course,
-    date: session ? examDateOf(session) : '',
-    form: formOf(items),
-    duration: session ? `${session.durationMinutes} phút` : '',
-  };
   return {
-    school: SCHOOL,
-    unit: unitName ?? '',
-    examCode: request.examCode ?? DEFAULT_EXAM_CODE,
-    heading,
+    ...paperFrameOf({ content, session, unitName, request }),
     preset: request.preset,
     blocks: request.blocks,
     instructions: isBlank(content.instructions) ? undefined : content.instructions,

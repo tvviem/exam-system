@@ -343,3 +343,132 @@ describe('xuất Đề thi: độ trễ (mục 5.3, ngân sách phản hồi)', 
     expect(elapsed).toBeLessThan(1000);
   });
 });
+
+const exportAnswers = (body: Record<string, unknown>, cookie = examiner) =>
+  call(t.app, 'POST', '/api/paper/answers', { cookie, body });
+
+/** Các bảng của tệp Đáp án: mỗi bảng là danh sách hàng, mỗi hàng là chữ trong các ô. */
+const tablesOfAnswers = async (rawPayload: Buffer) => {
+  const document = await (await readDocx(new Uint8Array(rawPayload))).part('word/document.xml');
+  return document
+    .all('tbl')
+    .map((tbl) =>
+      Array.from(tbl.getElementsByTagNameNS(W_NS, 'tr')).map((tr) =>
+        Array.from(tr.getElementsByTagNameNS(W_NS, 'tc')).map((tc) => tc.textContent ?? ''),
+      ),
+    );
+};
+const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+describe('xuất tệp Đáp án: chủ xuất được', () => {
+  it('từ Phiên thi: bảng Câu, Đáp án, Điểm, Cách chấm theo thứ tự câu; tổng điểm; hướng dẫn chấm tự luận', async () => {
+    const res = await exportAnswers({ sessionId, course: 'Giải tích 1', confirm: true });
+
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.headers['content-type']).toBe(DOCX);
+    expect(res.headers['content-disposition']).toBe(
+      'attachment; filename="dap-an-giua-ky-du-loai.docx"',
+    );
+    // dữ liệu mẫu của fullExam: chọn một (o2), chọn nhiều (o1, o3), chùm (s1 đúng, s2 sai, thang bậc), tự luận; mỗi câu 1 điểm
+    const [cover, answers] = await tablesOfAnswers(res.rawPayload);
+    expect(cover?.flat().join('|')).toContain('Học phần: Giải tích 1');
+    expect(answers).toEqual([
+      ['Câu', 'Đáp án', 'Điểm', 'Cách chấm'],
+      ['1', 'B', '1', ''],
+      ['2', 'A, C', '1', 'Theo tỉ lệ số ý đúng'],
+      ['3', 'a) Đúng; b) Sai', '1', 'Theo bậc: đúng 1 ý được 25%, đúng 2 ý được 100%'],
+      ['4', 'Xem hướng dẫn chấm', '1', ''],
+    ]);
+    const paragraphs = (
+      await (await readDocx(new Uint8Array(res.rawPayload))).part('word/document.xml')
+    ).paragraphs();
+    expect(paragraphs).toContain('Tổng điểm: 4');
+    expect(paragraphs).toContain('Câu 4: Nêu đủ định nghĩa ε-δ');
+  });
+
+  it('từ Bộ đề cũng được; khung thông tin không có ngày và thời gian', async () => {
+    const res = await exportAnswers({ examId, course: 'Giải tích 1', confirm: true });
+    expect(res.statusCode, res.body).toBe(200);
+  });
+
+  it('Đáp án hiệu lực: sau Đính chính tệp ghi đáp án đã sửa và đánh dấu câu đó; câu khác không đổi', async () => {
+    const item = (
+      await sql<{ id: string }>(
+        `select id from exam_items where exam_id = $1 and snapshot->>'type' = 'single_choice'`,
+        [examId],
+      )
+    )[0];
+    const corrected = await call(
+      t.app,
+      'POST',
+      `/api/exams/${examId}/items/${item?.id}/key-correction`,
+      {
+        cookie: examiner,
+        body: { newKey: ['o1'], reason: 'Nhập nhầm đáp án' },
+      },
+    );
+    expect(corrected.statusCode, corrected.body).toBe(202);
+    await t.queue.drain();
+
+    const res = await exportAnswers({ examId, course: 'X', confirm: true });
+    const [, answers] = await tablesOfAnswers(res.rawPayload);
+    expect(answers?.[1]).toEqual(['1', 'A (đã đính chính)', '1', '']);
+    expect(answers?.[2]?.[1]).toBe('A, C');
+  });
+});
+
+describe('xuất tệp Đáp án: xác nhận và quyền', () => {
+  it('thiếu hoặc sai xác nhận là 400, không ghi nhật ký', async () => {
+    expect((await exportAnswers({ examId, course: 'X' })).statusCode).toBe(400);
+    expect((await exportAnswers({ examId, course: 'X', confirm: false })).statusCode).toBe(400);
+    expect((await exportAnswers({ examId, course: 'X', confirm: 'true' })).statusCode).toBe(400);
+    expect(
+      await sql(`select 1 from audit_logs where action = 'paper.export.answers'`),
+    ).toHaveLength(0);
+  });
+
+  it('chỉ chủ: người khác 404; Người dự thi và Quản trị viên 403; chưa đăng nhập 401; nháp 409', async () => {
+    const body = { examId, course: 'X', confirm: true };
+    expect((await exportAnswers(body, otherExaminer)).statusCode).toBe(404);
+    expect(
+      (await exportAnswers({ sessionId, course: 'X', confirm: true }, otherExaminer)).statusCode,
+    ).toBe(404);
+    const an = (await login(t.app, 'an', DEFAULT_PASSWORD)).cookie as string;
+    await seedUser({ username: 'qt', isAdmin: true });
+    const admin = (await login(t.app, 'qt', DEFAULT_PASSWORD)).cookie as string;
+    expect((await exportAnswers(body, an)).statusCode).toBe(403);
+    expect((await exportAnswers(body, admin)).statusCode).toBe(403);
+    expect((await call(t.app, 'POST', '/api/paper/answers', { body })).statusCode).toBe(401);
+    const draft = (
+      await call(t.app, 'POST', '/api/exams', { cookie: examiner, body: { title: 'Nháp' } })
+    ).json();
+    const res = await exportAnswers({ examId: draft.id, course: 'X', confirm: true });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ code: 'INVALID_STATE', reason: 'EXAM_NOT_PUBLISHED' });
+  });
+});
+
+describe('xuất tệp Đáp án: nhật ký riêng', () => {
+  const rows = (action: string) =>
+    sql<{ entity_id: string; after: Record<string, unknown> }>(
+      `select entity_id, after from audit_logs where action = $1`,
+      [action],
+    );
+
+  it('mỗi lần xuất ghi paper.export.answers (không lẫn với paper.export), không ghi nội dung đáp án', async () => {
+    await exportAnswers({ sessionId, course: 'Chuỗi-bí-mật', confirm: true });
+    const [row] = await rows('paper.export.answers');
+
+    expect(await rows('paper.export.answers')).toHaveLength(1);
+    expect(await rows('paper.export')).toHaveLength(0);
+    expect(row?.entity_id).toBe(examId);
+    expect(row?.after).toEqual({ kind: 'answers', sessionId, warnings: 0 });
+    expect(JSON.stringify(row)).not.toContain('Chuỗi-bí-mật');
+    expect(JSON.stringify(row)).not.toContain('Nêu đủ định nghĩa');
+  });
+
+  it('xuất thất bại (người khác, nháp) không ghi nhật ký', async () => {
+    await exportAnswers({ examId, course: 'X', confirm: true }, otherExaminer);
+    expect(await rows('paper.export.answers')).toHaveLength(0);
+  });
+});

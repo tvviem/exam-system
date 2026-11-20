@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import sharp from 'sharp';
 import type { Actor } from '../../common/actor';
 import { ApiError } from '../../common/api-error';
+import { EFFECTIVE_CONTENT, type EffectiveContentProvider } from '../../common/effective-content';
 import { EXAM_CATALOG, type ExamCatalog } from '../../common/exam-catalog';
 import {
   EXAM_CONTENT,
@@ -13,6 +14,8 @@ import { fileSlug } from '../../common/file-slug';
 import { ILLUSTRATION_FILES, type IllustrationFiles } from '../../common/illustration-files';
 import { SESSION_INFO, type SessionInfoProvider } from '../../common/session-info';
 import { AuditService } from '../audit/audit.service';
+import { buildAnswerDocument } from './paper-answer-document';
+import { toAnswerSpec } from './paper-answer-spec';
 import { buildPaperDocument, type PaperImage } from './paper-document';
 import { type PaperRequest, type SessionTimes, toPaperSpec } from './paper-spec';
 
@@ -38,6 +41,7 @@ export class PaperService {
   constructor(
     @Inject(EXAM_CONTENT) private readonly exams: ExamContentProvider,
     @Inject(EXAM_CATALOG) private readonly catalog: ExamCatalog,
+    @Inject(EFFECTIVE_CONTENT) private readonly effective: EffectiveContentProvider,
     @Inject(SESSION_INFO) private readonly sessions: SessionInfoProvider,
     @Inject(EXAMINER_DIRECTORY) private readonly examiners: ExaminerDirectory,
     @Inject(ILLUSTRATION_FILES) private readonly illustrations: IllustrationFiles,
@@ -57,24 +61,59 @@ export class PaperService {
     const content = await this.exams.contentOf(examId);
     if (!content) throw new ApiError('INVALID_STATE', { reason: 'EXAM_NOT_PUBLISHED' });
 
-    const unitName = request.unit?.trim() || (await this.examiners.unitNameOf(actor.id));
-    const spec = toPaperSpec({ content, session, unitName: unitName ?? null, request });
+    const unitName = await this.unitNameFor(actor, request);
+    const spec = toPaperSpec({ content, session, unitName, request });
     spec.images = await this.imagesOf(content);
 
     const { bytes, warnings } = await buildPaperDocument(spec);
+    await this.record(actor, 'paper.export', 'exam', examId, source, warnings.length);
+    return { bytes, filename: `de-thi-${fileSlug(content.title, 'bo-de')}.docx`, warnings };
+  }
+
+  /**
+   * Xuất tệp Đáp án và thang điểm: đáp án hiệu lực (đã tính Đính chính), điểm từng câu, hướng dẫn chấm tự luận. Cùng quyền như tệp
+   * Đề (chỉ chủ) và nhật ký riêng; việc xác nhận "tệp chứa đáp án" do lược đồ yêu cầu bắt buộc (`confirm: true`) ở điểm vào.
+   */
+  async exportAnswers(
+    actor: Actor,
+    source: ExportSource,
+    request: ExportRequest,
+  ): Promise<ExportedPaper> {
+    const { examId, session } = await this.resolve(actor, source);
+    const effective = await this.effective.of(examId);
+    if (!effective) throw new ApiError('INVALID_STATE', { reason: 'EXAM_NOT_PUBLISHED' });
+
+    const unitName = await this.unitNameFor(actor, request);
+    const spec = toAnswerSpec({ ...effective, session, unitName, request });
+    const { bytes, warnings } = await buildAnswerDocument(spec);
+    await this.record(actor, 'paper.export.answers', 'answers', examId, source, warnings.length);
+    return {
+      bytes,
+      filename: `dap-an-${fileSlug(effective.content.title, 'bo-de')}.docx`,
+      warnings,
+    };
+  }
+
+  private async unitNameFor(actor: Actor, request: ExportRequest): Promise<string | null> {
+    return request.unit?.trim() || (await this.examiners.unitNameOf(actor.id));
+  }
+
+  /** Nhật ký: chỉ ghi đã xuất gì (ai, Bộ đề, Phiên thi, loại tệp, số cảnh báo), không ghi nội dung. */
+  private async record(
+    actor: Actor,
+    action: string,
+    kind: 'exam' | 'answers',
+    examId: string,
+    source: ExportSource,
+    warnings: number,
+  ): Promise<void> {
     await this.audit.record({
       actor,
-      action: 'paper.export',
+      action,
       entityType: 'exam',
       entityId: examId,
-      // Chỉ ghi đã xuất gì; không ghi nội dung đề.
-      after: {
-        kind: 'exam',
-        sessionId: 'sessionId' in source ? source.sessionId : null,
-        warnings: warnings.length,
-      },
+      after: { kind, sessionId: 'sessionId' in source ? source.sessionId : null, warnings },
     });
-    return { bytes, filename: `de-thi-${fileSlug(content.title, 'bo-de')}.docx`, warnings };
   }
 
   private async resolve(

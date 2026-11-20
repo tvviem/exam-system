@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
+import type { EffectiveContent, EffectiveContentProvider } from '../../common/effective-content';
 import {
   type ContentExecutor,
   EXAM_CONTENT,
@@ -15,11 +16,22 @@ import { keyCorrections } from './grading.schema';
  * đính chính mới nhất nếu có. Mọi nơi `grading` đọc đáp án đi qua đây, nên không chỗ nào còn dùng đáp án cũ.
  */
 @Injectable()
-export class EffectiveContentService {
+export class EffectiveContentService implements EffectiveContentProvider {
   constructor(
     @Inject(DB) private readonly db: Database,
     @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
   ) {}
+
+  /** Cổng `EFFECTIVE_CONTENT`: nội dung với đáp án hiệu lực, kèm các câu đã Đính chính (để tệp Đáp án ghi chú). */
+  async of(examId: string): Promise<EffectiveContent | null> {
+    const content = await this.contentOf(examId);
+    if (!content) return null;
+    const corrected = await this.db
+      .selectDistinct({ itemId: keyCorrections.itemId })
+      .from(keyCorrections)
+      .where(eq(keyCorrections.examId, examId));
+    return { content, correctedItemIds: corrected.map((row) => row.itemId) };
+  }
 
   async contentOf(
     examId: string,
