@@ -154,4 +154,22 @@ describe('toPaperSpec: từ nội dung Bộ đề đã Phát hành sang dữ li�
     expect(spec.sections[1]?.title).toBe('PHẦN II');
     expect(spec.sections[1]?.instructions).toEqual(rt('Làm hết.'));
   });
+
+  it('hướng dẫn chung của Bộ đề đi vào dữ liệu dựng tệp; hướng dẫn trống thì bỏ', () => {
+    const withGuide = toPaperSpec({
+      content: { ...content(single()), instructions: rt('Làm bài cẩn thận') },
+      session: null,
+      unitName: null,
+      request,
+    });
+    expect(withGuide.instructions).toEqual(rt('Làm bài cẩn thận'));
+
+    const blank = toPaperSpec({
+      content: { ...content(single()), instructions: rt('   ') },
+      session: null,
+      unitName: null,
+      request,
+    });
+    expect(blank.instructions).toBeUndefined();
+  });
 });

@@ -227,7 +227,8 @@ Mỗi PR có kiểm đột biến. Bản xuất **không đổi** dữ liệu ha
 - **Hình:** chọn biến thể nhỏ nhất từ 960 px trở lên trong danh sách `variants` của bản chụp (ảnh nhỏ không có biến thể lớn thì lấy biến thể lớn nhất có); chỉ đọc hình nằm trong bản chụp của Bộ đề.
 - **Nhật ký:** `audit_logs` ghi `paper.export` (ai, Bộ đề, Phiên thi, loại tệp, số cảnh báo), không ghi nội dung; xuất thất bại không ghi.
 - **Hiệu năng:** Bộ đề 100 câu, 30 câu có công thức, toàn bộ yêu cầu HTTP khoảng 0,05 giây (ngân sách 1 giây), nên chưa cần job nền.
-- **Chưa làm:** hướng dẫn chung của Bộ đề (`exams.instructions`) chưa in ở tệp; Lớp điền sẵn (Q415) chưa có; sẽ bàn khi làm giao diện (X4).
+- **Hướng dẫn chung của Bộ đề (`exams.instructions`):** ban đầu X3 chưa in; đã bổ sung ngày 20/11/2026 (Q429): in dưới khung thông tin bằng kiểu "Ghi chú", trước lưới và câu hỏi, trống thì không in.
+- **Chưa làm:** Lớp điền sẵn (Q415); sẽ bàn khi làm giao diện (X4).
 
 ## 10. Thuật ngữ cần thống nhất (domain-modeling)
 
