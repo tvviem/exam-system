@@ -4,6 +4,7 @@ import {
   check,
   index,
   integer,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -12,7 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { idColumn, timestamps } from '../../db/columns';
-import { exams } from '../exam/exam.schema';
+import { examSections, exams } from '../exam/exam.schema';
 import { users } from '../identity/identity.schema';
 
 export const attemptScoringEnum = pgEnum('attempt_scoring', ['highest', 'latest']);
@@ -86,5 +87,27 @@ export const sessionRoster = pgTable(
     primaryKey({ columns: [t.sessionId, t.userId] }),
     check('session_roster_extra_check', sql`${t.extraMinutes} BETWEEN 0 AND 600`),
     index('session_roster_user_idx').on(t.userId),
+  ],
+);
+
+/**
+ * Ghi đè tỷ lệ rút của một Phần ở Phiên thi (Q438, docs/plan/rut-cau-theo-phan-thiet-ke.md mục 8). Không có dòng là kế thừa
+ * mặc định của Bộ đề (`exam_section_draws`); tỷ lệ hiệu lực tính ở `effectiveDrawPercents` (`@exam/shared`). Trigger
+ * `session_section_draws_guard` (migration 0029): Phần phải thuộc Bộ đề của Phiên thi, và Phiên thi đã có Lượt thì không đổi.
+ */
+export const sessionSectionDraws = pgTable(
+  'session_section_draws',
+  {
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    sectionId: uuid('section_id')
+      .notNull()
+      .references(() => examSections.id),
+    percent: numeric('percent', { precision: 5, scale: 2 }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.sessionId, t.sectionId] }),
+    check('session_section_draws_percent_range', sql`${t.percent} >= 0 AND ${t.percent} <= 100`),
   ],
 );

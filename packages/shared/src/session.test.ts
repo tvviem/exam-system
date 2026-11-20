@@ -355,3 +355,63 @@ describe('countSessionActivities', () => {
     });
   });
 });
+
+describe('sectionDraws: ghi đè tỷ lệ rút của Phần ở Phiên thi (Q438)', () => {
+  const settings = {
+    examId: '0198f2f0-0000-7000-8000-000000000001',
+    title: 'Giữa kỳ',
+    opensAt: '2026-12-01T08:00:00+07:00',
+    closesAt: '2026-12-01T10:00:00+07:00',
+    durationMinutes: 45,
+  };
+  const sectionId = '0198f2f0-0000-7000-8000-0000000000aa';
+
+  it('không nêu là hợp lệ và giữ nguyên là không có (Phiên thi cũ không đổi)', () => {
+    const parsed = sessionSettingsSchema.parse(settings);
+    expect(parsed.sectionDraws).toBeUndefined();
+  });
+
+  it('nhận danh sách {sectionId, percent} với tỷ lệ 0 đến 100, tối đa hai chữ số lẻ', () => {
+    for (const percent of [0, 0.01, 12.5, 40, 99.99, 100]) {
+      const parsed = sessionSettingsSchema.parse({
+        ...settings,
+        sectionDraws: [{ sectionId, percent }],
+      });
+      expect(parsed.sectionDraws).toEqual([{ sectionId, percent }]);
+    }
+    expect(sessionSettingsSchema.parse({ ...settings, sectionDraws: [] }).sectionDraws).toEqual([]);
+  });
+
+  it('từ chối tỷ lệ sai, mã Phần không phải uuid, trường lạ và Phần nêu hai lần', () => {
+    const bad = (sectionDraws: unknown) =>
+      sessionSettingsSchema.safeParse({ ...settings, sectionDraws }).success;
+    for (const percent of [-0.01, 100.01, 33.333, Number.NaN, '40'])
+      expect(bad([{ sectionId, percent }]), String(percent)).toBe(false);
+    expect(bad([{ sectionId: 'khong-phai-uuid', percent: 40 }])).toBe(false);
+    expect(bad([{ sectionId, percent: 40, extra: 1 }])).toBe(false);
+    expect(
+      bad([
+        { sectionId, percent: 40 },
+        { sectionId, percent: 50 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('cũng có ở thiết lập khi sửa (kèm version)', () => {
+    const parsed = sessionUpdateSchema.parse({
+      ...settings,
+      version: 1,
+      sectionDraws: [{ sectionId, percent: 40 }],
+    });
+    expect(parsed.sectionDraws).toEqual([{ sectionId, percent: 40 }]);
+  });
+
+  it('không làm đổi quy tắc sửa theo trạng thái (đã khóa riêng theo Lượt làm bài)', () => {
+    const before = sessionSettingsSchema.parse(settings);
+    const after = sessionSettingsSchema.parse({
+      ...settings,
+      sectionDraws: [{ sectionId, percent: 40 }],
+    });
+    expect(sessionChangeProblems('open', before, after)).toEqual([]);
+  });
+});

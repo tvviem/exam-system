@@ -381,6 +381,18 @@ describe('effectiveDrawPercents: tỷ lệ hiệu lực của từng Phần (Q43
 describe('drawProblemsOf: vấn đề của cấu hình rút (Q388, Q440, Q441)', () => {
   const section = (id: string, percent: number, points: number[]) => ({ id, percent, points });
 
+  it('Phần 0 % không bao giờ được rút nên điểm lệch của nó không phải vấn đề (chỉ 0 < tỷ lệ < 100 mới cần điểm đồng nhất)', () => {
+    expect(
+      drawProblemsOf([
+        { id: 'a', percent: 0, points: [1, 2, 3] },
+        { id: 'b', percent: 50, points: [2, 2] },
+      ]),
+    ).toEqual([]);
+    expect(drawProblemsOf([{ id: 'a', percent: 0.01, points: [1, 2] }])).toEqual([
+      { code: 'draw_points_uneven', sectionId: 'a' },
+    ]);
+  });
+
   it('Phần có tỷ lệ dưới 100 % mà các câu khác điểm là lệch điểm; đủ 100 % hay cùng điểm thì không', () => {
     expect(
       drawProblemsOf([

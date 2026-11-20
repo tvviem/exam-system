@@ -33,6 +33,9 @@ const itemSchema = z.strictObject({
   points: z.number().min(POINTS_MIN).max(POINTS_MAX).multipleOf(POINTS_STEP),
 });
 
+/** Tỷ lệ rút của một Phần: 0 đến 100, tối đa hai chữ số lẻ (Q435). */
+export const drawPercentSchema = z.number().min(0).max(100).multipleOf(0.01);
+
 const sectionSchema = z.strictObject({
   /** Phần đã có thì nêu id để giữ; Phần mới không có id. */
   id: z.uuid().optional(),
@@ -42,7 +45,7 @@ const sectionSchema = z.strictObject({
    * Tỷ lệ rút mặc định của Phần (Q438), 0 đến 100, tối đa hai chữ số lẻ; không có thì lấy đủ (100 %). Phiên thi kế thừa và
    * có thể ghi đè. Đóng băng khi Phát hành cùng Bộ đề (Q439).
    */
-  drawPercent: z.number().min(0).max(100).multipleOf(0.01).optional(),
+  drawPercent: drawPercentSchema.optional(),
   items: z.array(itemSchema),
 });
 
