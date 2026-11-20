@@ -197,6 +197,13 @@
       "when": 1794797845183,
       "tag": "0027_khop_tai_khoan_da_xoa",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1795185815725,
+      "tag": "0028_rut_cau_bo_de",
+      "breakpoints": true
     }
   ]
 }

@@ -1,191 +1,170 @@
-# Mảng kiến thức, tài liệu tham khảo và hồ sơ kiến thức của Người dự thi (thiết kế đề xuất)
+# Nguồn tham khảo của Câu hỏi và gợi ý ôn tập sau khi làm bài (thiết kế đề xuất, bản 2)
 
-Trạng thái: **proposed** (chờ chủ dự án duyệt; chưa có mã). Ngày đề xuất: 20/11/2026. Câu hỏi quyết định đánh số từ Q442.
+Trạng thái: **định hướng mở, làm sau** (ghi nhận 21/11/2026; chưa lên lịch, chưa có mã). Chủ dự án quyết định tạm chưa tạo khóa Claude API, và tập trung vào [Rút câu theo Phần](rut-cau-theo-phan-thiet-ke.md) trước. Tài liệu này giữ **đặc tả đã chốt** (Q451 đến Q460) để khi bắt đầu thì làm ngay, không phải hỏi lại; Q461 (khóa API, hạn mức, xác nhận với Trường) là điều kiện riêng của bước K3. Ngày đề xuất: 20/11/2026; viết lại ngày 21/11/2026 sau vòng trao đổi đặc tả Q451 đến Q459 (chủ dự án đã trả lời từng câu). Câu hỏi quyết định đánh số từ Q442.
 
-**Phiên bản dự kiến:** `0.4.0` (MINOR) cho K1 đến K3, đặt sau "Rút câu theo Phần" (`0.3.0`). Chỉ thêm bảng mới, không đổi cột nào của bảng đã có dữ liệu (cùng lý do như [Rút câu theo Phần](rut-cau-theo-phan-thiet-ke.md)); quy tắc đánh số: [docs/ops/phat-hanh.md](../ops/phat-hanh.md).
+**Phiên bản dự kiến khi bắt đầu:** `0.4.0` (MINOR) cho K1 đến K3, đặt sau "Rút câu theo Phần" (`0.3.0`). Chỉ thêm bảng mới và hai cột có giá trị mặc định (`exams.review_hints`, `sessions.review_hints`), không đổi cột nào đang có dữ liệu; quy tắc đánh số: [docs/ops/phat-hanh.md](../ops/phat-hanh.md).
 
-## 1. Yêu cầu của chủ dự án
+> **Bản 1 (20/11) đề xuất cây mảng kiến thức, hồ sơ nhiều Lượt và AI tùy chọn. Bản 2 thu hẹp theo đúng yêu cầu của chủ dự án:** ghi nguồn tham khảo ở từng câu, và **sau khi làm bài xong** tổng hợp các câu chưa đạt thành gợi ý đọc lại tài liệu, có AI viết lời gợi mở. Những phần của bản 1 chưa cần cho yêu cầu này được chuyển sang mục "Làm sau" (cuối mục 9).
 
-1. Mỗi Câu hỏi có thể thuộc một **mảng kiến thức**, kèm **ghi chú tài liệu tham khảo** dùng để biên soạn. Cả hai là **tùy chọn**, không bắt buộc.
-2. Mục đích về sau: ghi nhận Người dự thi **hỏng kiến thức nào** (trả lời sai) và hệ thống **tự gợi ý lộ trình ôn tập**, để người dự thi biết mình đang thiếu phần nào và ngày càng hoàn thiện.
-3. Xem xét thiết kế cơ sở dữ liệu hiện tại và đề xuất bổ sung, có cân nhắc hỗ trợ của trí tuệ nhân tạo (AI).
+## 1. Yêu cầu của chủ dự án (nguyên văn ý, 21/11/2026)
 
-## 2. Hiện trạng cơ sở dữ liệu (đã đọc mã, 20/11/2026)
+1. Mỗi Câu hỏi, ngoài thông tin hiện có, Người ra đề có thể bổ sung **nguồn tham khảo dùng để soạn câu đó** (ví dụ "mục 3.3 của chương 3, chủ đề cây tìm kiếm nhị phân"). Tùy chọn.
+2. **Trong lúc làm bài thì không hiển thị** thông tin này.
+3. Khi Người dự thi làm bài xong, câu nào làm sai thì lấy nguồn này **tổng hợp thành gợi ý các mảng kiến thức nên xem lại**.
+4. Dùng **AI sinh ngôn ngữ gợi mở** để Người dự thi tìm đọc các tài liệu liên quan.
 
-| Có sẵn | Đặc điểm | Dùng được cho mục đích này không |
+## 2. Các quyết định đã chốt (vòng trao đổi 21/11/2026)
+
+| Q | Quyết định |
+|---|---|
+| Q452 | **Hai ô tùy chọn** trên mỗi Câu hỏi: "Tài liệu" (gõ có gợi ý từ tên đã nhập trước) và "Vị trí / chủ đề" (một dòng, ví dụ "Chương 3, mục 3.3: Cây tìm kiếm nhị phân"). Các câu cùng (tài liệu, vị trí) sau khi chuẩn hóa (bỏ dấu, chữ thường, gộp khoảng trắng) gom thành **một nhóm gợi ý**. Chưa có danh mục tài liệu dùng chung. |
+| Q453 | **Bỏ cây mảng kiến thức** ở giai đoạn đầu; nhóm (tài liệu, vị trí) đóng vai mảng kiến thức. Thêm cây sau nếu cần cộng điểm theo Học phần hay chương. |
+| Q454 | "Làm sai" = **câu đã chấm xong mà chưa đạt trọn điểm** (kể cả đúng một phần), thuộc Lượt đã Công bố. Câu chưa chấm không tính. |
+| Q455 | Gợi ý **gắn với từng Lượt**, hiện ở trang kết quả của Lượt đã Công bố. Không cần ngưỡng số câu. Tổng hợp nhiều Lượt làm sau. |
+| Q456, Q460 | Công tắc **"Gợi ý ôn tập sau khi Công bố"**: Người ra đề đặt **mặc định ở Bộ đề** khi soạn (mặc định **bật**, đóng băng cùng Bộ đề lúc Phát hành); **Phiên thi kế thừa và có thể ghi đè**, cố định khi có Lượt đầu tiên. Cùng mẫu với tỷ lệ rút (Q438). |
+| Q457 | **Quy tắc** quyết định nhóm nào cần ôn; **AI chỉ viết lời gợi mở**, sinh khi Người dự thi bấm nút, lưu đệm theo Lượt, có hạn mức theo ngày. AI lỗi hay hết hạn mức thì dùng **câu mẫu**. |
+| Q458 | Gửi cho AI chỉ **tên tài liệu, vị trí, số câu chưa đạt trên tổng, tên Học phần hoặc Bộ đề**; dịch vụ **Claude API**, khóa ở máy chủ, hạn mức tháng do chủ dự án đặt. Chủ dự án xác nhận với Trường về việc dữ liệu ra ngoài máy chủ. |
+| Q459 | Nguồn **sao vào bản chụp lúc Phát hành**, bất biến. Muốn đổi nguồn của Bộ đề đã Phát hành thì Nhân bản. |
+| Q451 | **Chỉ gợi ý tài liệu để đọc**; "làm thử câu theo phần yếu" hoãn (có thể dùng Phiên thi 100 % câu sẵn có). |
+
+Câu hỏi của bản 1 nay: Q442 và Q443 (cây, số mảng) và Q445 (ai tạo mảng) **hoãn** theo Q453; Q444 (một dòng tự do) **thay bằng Q452**; Q446 **xác nhận ở Q459**; Q447 phần Người dự thi chỉ thấy của chính mình **đã nằm trong Q455** (phần Người ra đề xem tổng hợp lớp: hoãn); Q448 (AI tùy chọn) **thay bằng Q457, Q458**; Q449 (thứ tự: sau Rút câu theo Phần) **giữ nguyên**; Q450 (ngưỡng 3 câu) **không cần ở bước này** (Q455), dùng khi làm tổng hợp nhiều Lượt.
+
+## 3. Hiện trạng (đã đọc mã, 20/11/2026)
+
+| Có sẵn | Đặc điểm | Dùng được không |
 |---|---|---|
-| **Chủ đề** (`topics`) | Thuộc **một Người ra đề** (`owner_id`), tên duy nhất theo từng người; mỗi Câu hỏi **bắt buộc** thuộc đúng một Chủ đề; Chuyển giao khi người nghỉ việc | **Không.** Là "thư mục" để sắp xếp Ngân hàng của riêng từng người: hai giảng viên cùng dạy một Học phần có hai Chủ đề tên khác nhau, nên không cộng gộp được hồ sơ của Người dự thi qua nhiều Phiên thi, nhiều người ra đề |
-| **Nhãn** (`questions.tags`, `text[]`, chỉ mục GIN) | Chữ tự do, không có danh mục chung | **Không đủ.** Gõ khác nhau ("Đạo hàm", "dao ham", "đạo hàm ") là khác nhau; không có cấu trúc cha con; không khóa theo bản chụp |
-| **Bản chụp** (`exam_items.snapshot`) | Bất biến sau Phát hành (ADR-0005); không mang thông tin phân loại | Cần cách ghi **phân loại tại thời điểm Phát hành** để lịch sử không trôi khi Ngân hàng sửa về sau |
-| **Kết luận từng câu** (`response_grades.verdict`, `score`) | Mỗi Lượt, mỗi câu đã có điểm và kết luận (đúng, đúng một phần, sai...), đã tính Đính chính và Phúc khảo | **Có.** Đây là nguồn dữ liệu "trả lời sai câu nào" |
-| **Kết quả của tôi** | Người dự thi chỉ thấy kết quả của mình **sau Công bố**, không thấy Đáp án đúng | Là khuôn để làm hồ sơ kiến thức: cùng thời điểm Công bố, cùng nguyên tắc không lộ đáp án |
-| **Học phần** | **Không phải thực thể** (chỉ là ô nhập khi xuất Bộ đề, [xuat-bo-de-thiet-ke.md](xuat-bo-de-thiet-ke.md) mục 4.2) | Chưa có "gốc" để gom các mảng kiến thức |
-| Tiền lệ trong mã | Bảng `exam_item_illustrations` ghi **lúc Phát hành** những ảnh nào nằm trong bản chụp (Q176) | Mẫu để làm tương tự cho phân loại |
+| **Chủ đề** (`topics`) và **Nhãn** (`questions.tags`) | Sắp xếp riêng của từng Người ra đề; chữ tự do | **Không**: không chuẩn hóa được để gom gợi ý |
+| **Bản chụp** (`exam_items.snapshot`) | Bất biến sau Phát hành (ADR-0005) | Không chứa nguồn, cần bảng sao riêng lúc Phát hành (như `exam_item_illustrations`, Q176) |
+| **Kết luận từng câu** (`response_grades.score`, `verdict`) | Mỗi Lượt, mỗi câu đã có điểm, đã tính Đính chính và Phúc khảo | **Có**: nguồn của "câu nào chưa đạt trọn điểm" |
+| **Kết quả của tôi** | Người dự thi chỉ thấy sau Công bố, không thấy Đáp án đúng | **Có**: nơi đặt mục gợi ý, cùng thời điểm và cùng nguyên tắc |
 
-Kết luận: **hệ thống đã có dữ liệu "đúng hay sai từng câu của từng người" nhưng chưa có "câu đó thuộc kiến thức nào" ở dạng dùng chung, ổn định và gom được**. Phần thiếu là danh mục mảng kiến thức và cách gắn nó vào Câu hỏi và bản chụp.
+## 4. Nguyên tắc thiết kế
 
-## 3. Nguyên tắc thiết kế
+1. **Tùy chọn hoàn toàn.** Câu không có nguồn dùng bình thường; chỉ không góp gợi ý (hiển thị "N câu chưa có nguồn tham khảo" để Người dự thi hiểu).
+2. **Không hiện trong lúc làm bài.** Không API nào phục vụ Lượt đang làm trả trường nguồn; có bài quét kiểm (như bài quét tệp Đề). Gợi ý chỉ mở **sau Công bố**.
+3. **Không lộ nội dung câu, đáp án hay câu cụ thể đã sai.** Chỉ có tên nhóm nguồn và số câu.
+4. **Chỉ thêm bảng mới, hai cột mặc định ở `exams` và `sessions`**; bản chụp vẫn bất biến.
+5. **Phần chắc chắn không phụ thuộc AI.** Danh sách nhóm cần xem lại do quy tắc tính và hiện ngay; AI chỉ viết lời. Không AI vẫn chạy đủ.
+6. **Hiệu năng:** theo [AGENTS.md](../../AGENTS.md), quá khoảng 300 ms là đáng xem lại. Danh sách nhóm là một truy vấn có chỉ mục theo một Lượt (vài chục dòng); AI chạy ngoài đường chính, không chặn trang.
 
-1. **Tùy chọn hoàn toàn.** Câu hỏi không phân loại vẫn dùng bình thường ở mọi nơi; không phân loại thì chỉ không có mặt trong hồ sơ kiến thức.
-2. **Chỉ thêm bảng mới**, không đổi cột bảng cũ (giữ MINOR, không rủi ro cho dữ liệu đang chạy).
-3. **Bản chụp vẫn bất biến.** Phân loại được **sao vào bảng riêng lúc Phát hành** như đã làm với ảnh; sửa phân loại ở Ngân hàng về sau không làm đổi lịch sử của Phiên thi đã diễn ra.
-4. **Không lộ đáp án và câu.** Hồ sơ và gợi ý chỉ nói **mảng nào, tỷ lệ đúng, tài liệu nào để ôn**; tuyệt đối không đưa nội dung câu hỏi hay đáp án đúng cho Người dự thi (giữ bất biến của hệ thống).
-5. **Chỉ dùng dữ liệu đã Công bố** (cùng thời điểm với Kết quả của tôi), đã tính Đính chính và Phúc khảo.
-6. **AI là phần hỗ trợ tùy chọn, không phải điều kiện.** Hệ thống phải chạy đủ chức năng chỉ bằng quy tắc xác định; AI chỉ làm việc nhanh hơn hoặc dễ đọc hơn, và không thấy dữ liệu cá nhân hay nội dung câu (mục 7).
-7. **Hiệu năng:** theo [AGENTS.md](../../AGENTS.md), thao tác nào quá khoảng 300 ms là đáng xem lại; hồ sơ tính theo yêu cầu bằng một truy vấn có chỉ mục, chỉ lưu sẵn (bảng tổng hợp) khi đo thấy chậm.
-
-## 4. Mô hình dữ liệu đề xuất
+## 5. Mô hình dữ liệu đề xuất
 
 ```sql
-knowledge_areas (                          -- Danh mục mảng kiến thức, một cây theo Đơn vị
-  id,
-  unit_id → units,                          -- Khoa, Bộ môn: cùng Đơn vị dùng chung danh mục
-  parent_id → knowledge_areas NULL,         -- cây tối đa 3 mức (kiểm ở service)
-  name text, name_key text,                 -- name_key: bỏ dấu, thường (như topics)
-  sort int,
-  archived_at NULL,                         -- Lưu trữ thay vì xóa; nút cũ vẫn hiện trong hồ sơ cũ
-  created_at, updated_at,
-  UNIQUE (unit_id, parent_id, name_key) WHERE archived_at IS NULL
-)
-
-question_classifications (                 -- Phân loại của Câu hỏi trong Ngân hàng; không có dòng = chưa phân loại
-  question_id PRIMARY KEY → questions,
-  knowledge_area_id → knowledge_areas NULL,
-  reference_note text NULL CHECK (char_length <= 500),  -- "Giáo trình Giải tích 1, chương 3, mục 3.2"
+question_references (                       -- nguồn tham khảo của Câu hỏi trong Ngân hàng; không có dòng = chưa ghi
+  question_id PRIMARY KEY → questions ON DELETE CASCADE,
+  source_title text NULL CHECK (char_length <= 200),     -- "Giáo trình Cấu trúc dữ liệu và giải thuật"
+  location text NULL CHECK (char_length <= 200),         -- "Chương 3, mục 3.3: Cây tìm kiếm nhị phân"
   updated_at,
-  CHECK (knowledge_area_id IS NOT NULL OR reference_note IS NOT NULL)
+  CHECK (nullif(trim(source_title),'') IS NOT NULL OR nullif(trim(location),'') IS NOT NULL)
 )
 
-exam_item_knowledge (                      -- Sao lúc Phát hành, bất biến như bản chụp
-  item_id PRIMARY KEY → exam_items,
-  knowledge_area_id → knowledge_areas NULL,
-  reference_note text NULL
+exam_item_references (                      -- sao lúc Phát hành, bất biến như bản chụp (Q459)
+  item_id PRIMARY KEY → exam_items ON DELETE CASCADE,
+  source_title text NULL,
+  location text NULL,
+  group_key text NOT NULL                   -- chuẩn hóa (tài liệu, vị trí): bỏ dấu, chữ thường, gộp khoảng trắng
 )
--- Trigger như exam_children_guard: Bộ đề đã Phát hành thì không sửa. Điền trong cùng giao dịch Phát hành.
+-- Trigger như exam_children_guard (migration 0011): Bộ đề không còn nháp thì không thêm, sửa, xóa dòng. Điền trong cùng giao dịch Phát hành.
+
+exams.review_hints boolean NOT NULL DEFAULT true      -- mặc định ở Bộ đề (Q460); đóng băng khi Phát hành như tiêu đề và hướng dẫn
+sessions.review_hints boolean NULL                    -- ghi đè ở Phiên thi; NULL = kế thừa Bộ đề; sessions_guard khóa khi có Lượt đầu
+-- Giá trị hiệu lực = Phiên thi ?? Bộ đề ?? true, tính ở MỘT hàm thuần dùng chung (như effectiveDrawPercents)
+
+attempt_review_advice (                     -- lời gợi mở của AI hoặc câu mẫu, lưu đệm theo Lượt (Q457)
+  attempt_id PRIMARY KEY → attempts ON DELETE CASCADE,
+  text text NOT NULL,
+  source text NOT NULL CHECK (source IN ('ai','template')),
+  created_at
+)
 ```
 
-Giải thích các lựa chọn:
+Cách sinh `group_key` đặt ở **một hàm thuần dùng chung** (cùng quy tắc bỏ dấu như `topics.name_key`) để Ngân hàng, Excel và Phát hành không sinh khác nhau.
 
-- **Cây theo Đơn vị, không có thực thể Học phần riêng.** Nút gốc chính là Học phần (ví dụ "Giải tích 1"), nút con là chương, nút cháu là mảng kiến thức cụ thể ("Đạo hàm của hàm hợp"). Nhờ vậy các giảng viên cùng Khoa dùng chung một danh mục (cần để cộng gộp hồ sơ), và về sau nếu muốn lưu Học phần thành dữ liệu (mục T8 của [xuat-bo-de-thiet-ke.md](xuat-bo-de-thiet-ke.md) mục 16) thì đã có sẵn nút gốc.
-- **Mỗi câu 0 hoặc 1 mảng chính** (khóa chính là `question_id`). Câu "tổng hợp" nhiều mảng là hiếm và làm hồ sơ khó diễn giải (câu sai tính cho mảng nào?). Muốn nhiều mảng sau này chỉ đổi khóa chính; không phải làm lại dữ liệu.
-- **Ghi chú tài liệu tham khảo là văn bản tự do** (tối đa 500 ký tự), gắn vào câu, đủ cho yêu cầu hiện tại ("tên tài liệu tham khảo biên soạn"). Danh mục tài liệu dùng chung (nhiều câu cùng một tài liệu, có đường dẫn) là mở rộng về sau, không cần ngay.
-- **Hai bảng cho Câu hỏi và cho bản chụp.** Đúng như tách `questions` và `exam_items.snapshot`: bảng thứ nhất sửa được, bảng thứ hai bất biến và là nguồn của hồ sơ.
-- **Không đụng `questions`, `topics`, `exam_items`:** Chủ đề và Nhãn giữ nguyên vai trò sắp xếp riêng của từng người.
+## 6. Gợi ý sau khi làm bài
 
-## 5. Hồ sơ kiến thức và gợi ý ôn tập (quy tắc xác định, không cần AI)
+### 6.1 Danh sách nhóm cần xem lại (quy tắc, không AI)
 
-### 5.1 Hồ sơ của một Người dự thi
+Với một Lượt đã Công bố, các câu có `exam_item_references`, gom theo `group_key`; mỗi nhóm có:
 
-Với mỗi mảng kiến thức, gom từ mọi Lượt **đã Công bố** của người đó:
+- `thiếu` = số câu **đã chấm xong mà `score` < điểm tối đa của câu** (Q454);
+- `tổng` = số câu của nhóm có trong Lượt đó (đã chấm xong);
+- chỉ giữ nhóm có `thiếu` ≥ 1, xếp theo `thiếu` giảm dần, rồi tỷ lệ thiếu giảm dần, rồi theo tên.
 
-```sql
--- ý tưởng truy vấn (tính theo yêu cầu, không lưu sẵn)
-SELECT eik.knowledge_area_id,
-       SUM(rg.score)            AS earned,
-       SUM(ei.points)           AS possible,
-       COUNT(*)                 AS answered,
-       MAX(rg.graded_at)        AS last_at
-FROM response_grades rg
-JOIN attempts a            ON a.id = rg.attempt_id   -- của người này, đã Công bố
-JOIN exam_items ei         ON ei.id = rg.item_id
-JOIN exam_item_knowledge eik ON eik.item_id = ei.id
-GROUP BY eik.knowledge_area_id;
-```
+Kèm riêng: "N câu chưa có nguồn tham khảo", "M câu chưa chấm xong, chưa tính". Tên hiển thị của nhóm lấy từ câu đầu tiên của nhóm (văn bản gốc, không phải `group_key`).
 
-- **Mức nắm vững** = `(earned + 1) / (possible + 2)` (làm mượt kiểu Laplace): mảng mới có ít câu không bị coi là 0 % hay 100 % vì may rủi.
-- **Đủ bằng chứng:** chỉ kết luận "yếu" khi mảng có từ **3 câu** trở lên (ngưỡng cấu hình); dưới ngưỡng ghi "chưa đủ dữ liệu".
-- **Cộng dồn lên cây:** điểm của nút cha là tổng của các nút con, để thấy ở mức chương hay mức Học phần.
-- Tính **theo yêu cầu bằng truy vấn trên** (một người, vài chục mảng, vài trăm dòng). Chưa cần bảng tổng hợp; thêm khi đo thấy quá 300 ms.
+Câu mẫu khi không có AI:
 
-### 5.2 Gợi ý lộ trình ôn tập (quy tắc)
+> Bạn nên xem lại **Giáo trình Cấu trúc dữ liệu và giải thuật, Chương 3, mục 3.3: Cây tìm kiếm nhị phân** (chưa đạt trọn điểm 3 trên 4 câu).
 
-Xếp các mảng **đủ bằng chứng** theo mức cần ôn giảm dần:
+### 6.2 Điều kiện hiện
 
-`ưu tiên = (1 − mức nắm vững) × trọng số gần đây`, trong đó trọng số gần đây giảm theo thời gian kể từ lần làm gần nhất (kiến thức lâu không kiểm tra cần xem lại).
+- Chỉ chủ của Lượt (Người dự thi đó), chỉ **sau Công bố** của chính Lượt, và chỉ khi giá trị hiệu lực của `review_hints` là bật. Ngược lại: không có mục này (trả 404, không nói rõ lý do, như quy ước quyền hiện có).
+- Đính chính đáp án và Phúc khảo đổi `response_grades` nên danh sách **tự khớp** (tính theo yêu cầu).
 
-Mỗi gợi ý hiển thị: tên mảng (kèm chương cha), tỷ lệ đúng và số câu, lần làm gần nhất, và **các ghi chú tài liệu tham khảo** của chính các câu người đó đã làm sai trong mảng. Ví dụ:
+### 6.3 Lời gợi mở của AI (Q457, Q458)
 
-> **Đạo hàm của hàm hợp** (Chương 3): đúng 40 % trên 10 câu, lần gần nhất 12/11. Nên ôn: Giáo trình Giải tích 1, chương 3, mục 3.2.
+- Người dự thi bấm "Gợi ý ôn tập"; nếu `attempt_review_advice` đã có thì trả lại ngay (không tốn thêm); chưa có thì gọi AI, lưu kết quả.
+- **Cổng** `ReviewAdvisor` với hai bộ cài đặt: bộ **mẫu** (6.1) và bộ **Claude API**. Cổng thật vì có hai bộ cài đặt ngay từ đầu.
+- Dữ liệu gửi đi **chỉ**: tên Học phần hoặc Bộ đề, và với mỗi nhóm: tên tài liệu, vị trí, `thiếu` trên `tổng`. Không họ tên, mã người dùng, nội dung câu, đáp án, câu trả lời (có bài kiểm bắt buộc kiểm nội dung yêu cầu gửi đi).
+- Chỉ dẫn cho AI: giọng khích lệ, nêu đúng các nhóm đã cho, **không bịa tài liệu hay số trang**, không nhắc câu hỏi cụ thể, tiếng Việt, ngắn. Lời AI trả về chỉ hiển thị dưới dạng chữ thuần (không HTML), có giới hạn độ dài, và kiểm tra tối thiểu (không rỗng, không quá dài).
+- **Thời gian chờ** ngắn (vài giây); hết thời gian, lỗi hay hết hạn mức (theo ngày, đếm bằng Redis; hạn mức tháng ở cấu hình) thì **dùng câu mẫu** và lưu `source='template'` để trang không bao giờ trống. Danh sách nhóm (6.1) luôn hiện ngay, AI chỉ thêm lời.
+- Khóa API ở máy chủ (biến môi trường), không bao giờ ở trình duyệt; ghi nhật ký (số lần gọi, thời gian, kết quả; **không** ghi nội dung gửi đi).
+- Dữ liệu ra ngoài Trường: cần chủ dự án xác nhận với Trường (Q458). Hệ thống mặc định **tắt AI** cho đến khi có khóa và bật trong cấu hình, nên không có AI thì dùng câu mẫu.
 
-Lịch nhắc ôn lại theo khoảng cách tăng dần (3, 7, 14 ngày) là mở rộng ở bước sau (K4).
+## 7. Giao diện (tóm tắt, chi tiết ở từng PR)
 
-### 5.3 Điều Người dự thi không bao giờ thấy
+- **Người ra đề, form Câu hỏi:** hai ô tùy chọn "Tài liệu" (gõ có gợi ý) và "Vị trí / chủ đề"; chú thích rõ **"Nội dung này có thể hiện cho Người dự thi sau khi Công bố kết quả"**. Nhập hàng loạt từ Excel có hai cột tùy chọn cùng tên; sửa hàng loạt (chọn nhiều câu, gán nguồn) để dùng được cho Ngân hàng đã có.
+- **Người ra đề, soạn Bộ đề:** công tắc "Gợi ý ôn tập sau khi Công bố" ở phần thuộc tính Bộ đề (mặc định bật).
+- **Người ra đề, Phiên thi:** hiện giá trị kế thừa từ Bộ đề, đổi được cho riêng Phiên thi đó, khóa khi có Lượt đầu.
+- **Người dự thi, trang kết quả của Lượt:** mục "Từ bài này, bạn nên xem lại", danh sách nhóm, nút "Gợi ý ôn tập" để AI viết lời; chữ rõ, không chỉ dùng màu; hoạt động tốt trên điện thoại.
 
-Nội dung câu hỏi, đáp án đúng, hay câu cụ thể đã sai. Chỉ có tên mảng, phần trăm, số câu, ngày và ghi chú tài liệu của Người ra đề. Ghi chú tài liệu là chữ do Người ra đề soạn; Người ra đề cần biết rằng nó có thể hiện cho Người dự thi (hướng dẫn ở giao diện nhập).
+## 8. Quyền riêng tư
 
-## 6. Giao diện (tóm tắt, chi tiết ở từng PR)
+- Gợi ý chỉ hiện cho **chính chủ Lượt**, không có màn xem của người khác, Quản trị viên không có màn xem gợi ý cá nhân.
+- Không dùng để chấm điểm, xếp hạng hay phạt; ghi rõ ở giao diện.
+- Dữ liệu gửi AI không chứa dữ liệu cá nhân (6.3). Lời gợi mở lưu theo Lượt nên đi theo Lượt khi xóa.
+- Khuyến nghị: thông báo ngắn lúc vào thi (như thông báo Rút câu, Q390) rằng sau khi Công bố sẽ có gợi ý ôn tập từ kết quả của chính người đó.
 
-- **Người ra đề, form Câu hỏi:** hai ô tùy chọn "Mảng kiến thức" (chọn từ cây, có ô tìm, gõ để thêm mới nếu chưa có) và "Tài liệu tham khảo" (một dòng). Nhập hàng loạt từ Excel có thêm hai cột tùy chọn cùng tên.
-- **Người ra đề, quản lý danh mục:** màn cây mảng kiến thức theo Đơn vị (thêm, đổi tên, kéo vào nút khác, Lưu trữ).
-- **Người dự thi, "Kiến thức của tôi"** (sau Công bố): danh sách mảng theo mức cần ôn, thanh tiến độ có chữ (không chỉ màu), gợi ý ôn kèm tài liệu.
-- **Người ra đề, kết quả Phiên thi:** thêm khối "Lỗ hổng kiến thức của lớp" (tổng hợp theo mảng của cả Phiên thi, không nêu tên Người dự thi), cùng chỗ với Thống kê câu.
+## 9. Lộ trình đề xuất (PR nhỏ, TDD, mỗi PR một lát dọc)
 
-## 7. Vai trò của AI (đúng chỗ, có ranh giới)
-
-Nguyên tắc: **AI chỉ ở ba chỗ, đều tùy chọn, đều có đường chạy không cần AI.**
-
-| # | Chỗ dùng AI | Ai được lợi | Cách làm an toàn | Khi không có AI |
-|---|---|---|---|---|
-| A1 | **Gợi ý phân loại**: đọc đề bài của Câu hỏi và đề xuất mảng kiến thức và tài liệu từ danh mục sẵn có | Người ra đề có hàng trăm câu cần phân loại (nút nghẽn thật của tính năng này: dữ liệu thưa thì hồ sơ vô nghĩa) | Chỉ **đề xuất**, Người ra đề duyệt từng câu (người quyết); chỉ gửi nội dung câu của chính họ, không có thông tin người dùng; chọn trong danh mục có sẵn, không tự tạo mảng | Gõ tay, chọn theo Nhãn đang có, hoặc nhập từ Excel |
-| A2 | **Diễn giải lộ trình ôn tập** bằng lời tự nhiên, thân thiện, theo mức nắm vững | Người dự thi | Chỉ gửi **tên mảng, tỷ lệ, số câu, ngày**; không gửi họ tên, mã, nội dung câu, đáp án; lưu đệm kết quả theo hồ sơ; có hạn mức và thời gian chờ | Dùng đúng câu mẫu ở mục 5.2 (đã đủ dùng) |
-| A3 | **Gợi ý gom mảng trùng nhau** khi danh mục phình to (ví dụ "Đạo hàm" và "Phép đạo hàm") | Người quản lý danh mục | Chỉ đề xuất gộp, người duyệt | Rà tay |
-
-Điều **không** làm: không để AI chấm điểm, không để AI quyết định ai "yếu", không sinh đề hay đáp án mới (rủi ro đáp án sai và lộ nội dung), không gửi dữ liệu cá nhân ra ngoài, không dùng dữ liệu của Trường để huấn luyện mô hình.
-
-Về kiến trúc: tạo **cổng** (`QuestionClassifier`, `ReviewAdvisor`) khi có bộ cài đặt thứ hai. Bước đầu chỉ có bộ cài đặt theo quy tắc (không AI); khi thêm AI ở K5 thì thêm bộ cài đặt thứ hai sau cùng một cổng, bật bằng cấu hình, có hạn mức chi phí, thời gian chờ và ghi nhật ký (không ghi nội dung). Đúng nguyên tắc "một bộ cài đặt là cổng giả định, hai bộ mới là cổng thật" của skill `codebase-design`.
-
-## 8. Quyền riêng tư và đạo đức
-
-- Hồ sơ kiến thức là **dữ liệu cá nhân về năng lực học tập**: Người dự thi chỉ thấy **của chính mình**. Người ra đề chỉ thấy **tổng hợp theo Phiên thi của mình**, không thấy hồ sơ xuyên các Phiên thi của người khác. Quản trị viên không có màn xem hồ sơ cá nhân.
-- **Không dùng để chấm điểm, xếp hạng hay phạt.** Hồ sơ chỉ để người học tự cải thiện; ghi rõ ở giao diện.
-- Hồ sơ **không có bản lưu riêng** (tính theo yêu cầu từ các Lượt của người đó), nên không có thêm dữ liệu cá nhân nào cần dọn; người dùng đã Xóa thì không còn ai xem được hồ sơ của họ.
-- Khuyến nghị: thông báo ngắn lúc vào thi rằng kết quả sẽ được dùng để gợi ý ôn tập cho chính người đó (minh bạch, như thông báo Rút câu Q390).
-
-## 9. Liên hệ với các tính năng khác
-
-- **Rút câu theo Phần** ([rut-cau-theo-phan-thiet-ke.md](rut-cau-theo-phan-thiet-ke.md)): mục backlog "rút theo Chủ đề" (Q394) nay có nền tốt hơn: **rút theo mảng kiến thức** (ví dụ mỗi người nhận đủ mọi mảng), thay vì theo Phần. Hàm `layoutOf` có rút hiện làm theo Phần; mở rộng về sau là thay đơn vị gom.
-- **Thống kê câu hỏi** (backlog): độ khó theo mảng là bước tự nhiên.
-- **Đính chính đáp án, Phúc khảo:** hồ sơ lấy `response_grades` đã có nên **tự khớp**, không cần xử lý riêng.
-- **Xuất Bộ đề:** có thể in mảng kiến thức ở tệp Đáp án (tùy chọn, chưa cần).
-
-## 10. Lộ trình đề xuất (PR nhỏ, TDD, mỗi PR một lát dọc)
+> **Làm sau, chưa lên lịch.** K1 và K2 không cần AI nên bắt đầu được bất cứ lúc nào chủ dự án muốn (gợi ý dùng câu mẫu). K3 chỉ làm khi có khóa Claude API (Q461). Cho đến khi bắt đầu, không đổi gì ở mã.
 
 | PR | Nội dung | Điểm kiểm thử (seam) |
 |---|---|---|
-| K1 | Danh mục `knowledge_areas`, `question_classifications`, `exam_item_knowledge`; API quản lý danh mục; chọn mảng và ghi chú ở form Câu hỏi; hai cột Excel tùy chọn; **sao vào `exam_item_knowledge` lúc Phát hành** | Tích hợp: cây (3 mức, tên không trùng, Lưu trữ); phân loại tùy chọn (câu không phân loại vẫn dùng như cũ); Phát hành sao đúng và bất biến; sửa phân loại sau Phát hành không đổi Bộ đề đã Phát hành; quyền theo Đơn vị |
-| K2 | Hồ sơ kiến thức: hàm thuần tính mức nắm vững và xếp ưu tiên; truy vấn; API và màn "Kiến thức của tôi" (sau Công bố) | Hàm thuần theo tính chất (làm mượt, ngưỡng, cộng dồn cây, xếp thứ tự); tích hợp: chỉ dữ liệu đã Công bố, Đính chính đổi hồ sơ, không lộ nội dung câu hay đáp án (bài quét như tệp Đề); E2E desktop và mobile |
-| K3 | Góc nhìn Người ra đề: "Lỗ hổng kiến thức của lớp" trong kết quả Phiên thi | Tích hợp: chỉ Phiên thi của mình, không có tên người; E2E |
-| K4 | Ôn tập tự thân (chế độ ôn, lịch nhắc ôn 3, 7, 14 ngày) | Cần quyết riêng: Người dự thi hiện **không** có quyền vào Ngân hàng câu hỏi của Người ra đề (mục 11) |
-| K5 | AI hỗ trợ: A1 gợi ý phân loại (trước), A2 diễn giải lộ trình, A3 gợi ý gộp mảng | Bộ cài đặt thứ hai sau cổng; kiểm: không gửi dữ liệu cá nhân, có thời gian chờ và hạn mức, không có AI vẫn chạy đủ |
+| K1 | Bảng `question_references`, `exam_item_references`, hàm chuẩn hóa `group_key` dùng chung; hai ô ở form Câu hỏi; hai cột Excel; sửa hàng loạt; **sao lúc Phát hành** | Hàm thuần theo tính chất (bỏ dấu, hoa thường, khoảng trắng, hai câu cùng nguồn cùng khóa); tích hợp: lưu, đọc, xóa nguồn; câu không có nguồn dùng như cũ; Phát hành sao đúng và bất biến (SQL ghi trực tiếp cũng bị chặn); sửa nguồn ở Ngân hàng sau Phát hành không đổi Bộ đề đã Phát hành; **API làm bài không trả nguồn** (bài quét) |
+| K2 | Công tắc `exams.review_hints` (mặc định) và `sessions.review_hints` (ghi đè), hàm giá trị hiệu lực; hàm thuần gom nhóm và xếp; API gợi ý theo Lượt; mục trên trang kết quả (câu mẫu) | Hàm thuần: chỉ câu chưa đạt trọn điểm, đúng một phần có tính, câu chưa chấm không tính, câu không nguồn đếm riêng, thứ tự; tích hợp: chỉ chủ Lượt, chỉ sau Công bố, tắt công tắc (ở Bộ đề hoặc ghi đè ở Phiên thi) thì 404, Phiên thi ghi đè thắng Bộ đề, Bộ đề đã Phát hành không đổi được mặc định, Đính chính đổi danh sách, **không lộ nội dung câu, đáp án** (bài quét); E2E desktop và mobile |
+| K3 | Cổng `ReviewAdvisor` + bộ cài Claude API, lưu đệm `attempt_review_advice`, hạn mức ngày, thời gian chờ, dự phòng câu mẫu | Bộ cài giả lập: lỗi, hết giờ, hết hạn mức đều ra câu mẫu; bấm lại không gọi lần hai (lưu đệm); nội dung gửi đi **chỉ** các trường đã duyệt (kiểm chuỗi yêu cầu); lời AI hiển thị chữ thuần; tắt AI thì chạy đủ |
 
-Mỗi PR có kiểm đột biến. K1 đến K3 cùng thuộc `0.4.0`; tag đặt khi Người ra đề và Người dự thi dùng được thật và đã kiểm trên production.
+Mỗi PR có kiểm đột biến. K1 đến K3 cùng thuộc `0.4.0`; tag đặt khi dùng được thật và đã kiểm trên production.
 
-## 11. Rủi ro và cách giảm
+### Làm sau (đã bàn, chưa làm)
+
+- **Tổng hợp nhiều Lượt** ("Kiến thức của tôi"), dùng mức nắm vững làm mượt và ngưỡng bằng chứng 3 câu (Q450), cộng dồn theo thời gian.
+- **Cây mảng kiến thức theo Đơn vị** (`knowledge_areas`, tối đa 3 mức, gộp và Lưu trữ) khi cần cộng điểm theo chương hay Học phần (bản 1 mục 4).
+- **Góc nhìn Người ra đề:** "Lỗ hổng kiến thức của lớp" theo Phiên thi, không tên người.
+- **AI gợi ý phân loại** cho Người ra đề có hàng trăm câu (đọc đề bài, đề xuất tài liệu và vị trí; người duyệt từng câu), **AI gợi ý gộp nhóm trùng nhau** khi danh sách tên phình to.
+- **Ôn tập tự thân** (làm thử câu theo phần yếu, lịch nhắc 3, 7, 14 ngày), cần quyết riêng vì Người dự thi hiện không vào Ngân hàng câu hỏi (Q451).
+- **Rút câu theo mảng kiến thức** (backlog Q394 của [Rút câu theo Phần](rut-cau-theo-phan-thiet-ke.md)).
+
+## 10. Rủi ro và cách giảm
 
 | Rủi ro | Hệ quả | Cách giảm |
 |---|---|---|
-| **Dữ liệu thưa** (phân loại tùy chọn nên nhiều câu bỏ trống) | Hồ sơ nghèo, gợi ý vô nghĩa | Hiện rõ "đã phân loại bao nhiêu % câu" ở hồ sơ; chỉ gợi ý khi đủ bằng chứng; Excel và A1 (AI) để giảm công phân loại |
-| Mảng quá nhỏ, ít câu | Kết luận ngẫu nhiên | Ngưỡng 3 câu, làm mượt |
-| Mỗi giảng viên đặt tên mảng một kiểu | Hồ sơ rời rạc | Danh mục chung theo Đơn vị, ô tìm khi chọn, Quản trị viên gộp và Lưu trữ |
-| Người học áp lực hay bị so sánh | Tác dụng ngược | Chỉ thấy của mình, không xếp hạng, ngôn ngữ khích lệ |
-| Rò rỉ nội dung qua gợi ý | Phá bất biến "đáp án chỉ ở server" | Gợi ý chỉ chứa tên mảng, tỷ lệ, ghi chú tài liệu; bài quét kiểm như ở tệp Đề |
-| Chi phí và độ tin cậy của AI | Tốn tiền, sai | AI chỉ đề xuất và người duyệt; hạn mức; thời gian chờ; đường chạy không AI |
-| Người dự thi chưa có chỗ thực hành (K4) | Gợi ý "ôn gì" mà không có chỗ làm | K2 và K3 chỉ chỉ ra **tài liệu để đọc** (đã có nhờ ghi chú tham khảo); K4 bàn riêng |
+| **Dữ liệu thưa** (nguồn là tùy chọn) | Nhiều câu không có nguồn, gợi ý nghèo | Hiện "N câu chưa có nguồn"; nhập Excel và sửa hàng loạt; AI gợi ý phân loại ở bước sau |
+| Mỗi người ghi nguồn một kiểu | Một mục bị tách thành nhiều nhóm | Gõ có gợi ý từ tên đã nhập; chuẩn hóa `group_key`; hướng dẫn mẫu ở giao diện |
+| Gợi ý tiết lộ mục kiến thức của câu sai | Không mong muốn với kỳ thi chính thức | Công tắc ở Bộ đề và Phiên thi (Q456, Q460); chỉ hiện sau Công bố; không nêu câu cụ thể |
+| Rò rỉ nội dung qua gợi ý hay qua API làm bài | Phá bất biến "đáp án chỉ ở server" | Chỉ nhóm nguồn và số câu; bài quét kiểm API làm bài và API gợi ý |
+| Lời AI sai hoặc bịa tài liệu | Người học tìm sách không có | Chỉ dẫn "không bịa"; AI chỉ nhận đúng các nhóm đã có; nhóm chắc chắn hiện riêng; chữ thuần; câu mẫu dự phòng |
+| Chi phí và độ trễ AI | Tốn tiền, chậm | Sinh khi bấm, lưu đệm theo Lượt, hạn mức ngày và tháng, thời gian chờ, chạy ngoài đường chính |
+| Dữ liệu ra ngoài Trường | Quy định của Trường | Chỉ gửi các trường không cá nhân; mặc định tắt đến khi chủ dự án bật; chủ dự án xác nhận với Trường |
+| Tiêm lệnh qua chữ nguồn tham khảo (Người ra đề nhập chữ đưa vào lời nhắc) | AI làm theo chỉ dẫn lạ | Chữ nguồn đặt trong khối dữ liệu có phân tách rõ, chỉ dẫn hệ thống nằm riêng; đầu ra chỉ hiển thị chữ thuần nên tác hại nhỏ |
 
-## 12. Câu cần chủ dự án quyết (vòng 1)
+## 11. Còn cần chủ dự án quyết
 
-Mỗi câu kèm đề xuất; trả lời "đồng ý" là nhận đề xuất.
+1. **Duyệt bản 2 này** (hoặc nêu điểm cần sửa).
+2. **Q461, đường chạy AI:** tạo khóa Claude API và đặt hạn mức tháng khi tới K3; xác nhận với Trường về việc gửi dữ liệu không cá nhân ra ngoài (Q458).
+3. **Thứ tự làm (Q449):** sau Rút câu theo Phần (R2 đến R5), bắt đầu bằng K1, **đã đồng ý** theo chỉ đạo "tập trung Rút câu trước".
 
-1. **Q442, danh mục:** một **cây theo Đơn vị**, tối đa 3 mức, nút gốc là Học phần, không thêm thực thể Học phần riêng? *(đề xuất: đồng ý)*
-2. **Q443, số mảng mỗi câu:** **0 hoặc 1** mảng chính (mở rộng nhiều mảng sau nếu cần)? *(đề xuất: đồng ý)*
-3. **Q444, tài liệu tham khảo:** **một dòng văn bản tự do** (tối đa 500 ký tự) gắn vào từng câu, tùy chọn; chưa làm danh mục tài liệu dùng chung? *(đề xuất: đồng ý)*
-4. **Q445, ai tạo mảng:** Người ra đề tự thêm trong **Đơn vị của mình**; Quản trị viên được đổi tên, gộp, Lưu trữ? *(đề xuất: đồng ý)*
-5. **Q446, bất biến:** sao phân loại vào `exam_item_knowledge` **lúc Phát hành**, bất biến như bản chụp? *(đề xuất: đồng ý)*
-6. **Q447, quyền riêng tư:** hồ sơ chỉ tính từ kết quả **đã Công bố**; Người dự thi chỉ thấy hồ sơ của mình; Người ra đề chỉ thấy tổng hợp theo Phiên thi của mình, không tên người? *(đề xuất: đồng ý)*
-7. **Q448, AI:** chỉ là hỗ trợ tùy chọn ở K5; làm **quy tắc xác định trước**, hệ thống chạy đủ không cần AI; AI không thấy dữ liệu cá nhân hay nội dung câu của người khác? *(đề xuất: đồng ý)*
-8. **Q449, thứ tự làm:** sau **Rút câu theo Phần** (R2 đến R5 trước), bắt đầu bằng K1? *(đề xuất: đồng ý)*
-9. **Q450, ngưỡng bằng chứng:** chỉ kết luận "cần ôn" khi mảng có từ **3 câu** đã làm (cấu hình được)? *(đề xuất: đồng ý)*
+## 12. Ngoài phạm vi (lát này)
 
-## 13. Ngoài phạm vi (lát này)
-
-Không sinh câu hỏi hay đáp án bằng AI; không chế độ ôn tập tự thân (K4, cần quyết riêng); không danh mục tài liệu dùng chung; không nhiều mảng cho một câu; không xếp hạng hay so sánh giữa Người dự thi; không đổi cách chấm; không đổi Chủ đề và Nhãn hiện có.
+Không sinh câu hỏi hay đáp án bằng AI; không để AI chấm điểm hay quyết định ai yếu; không ôn tập tự thân; không danh mục tài liệu dùng chung; không tổng hợp nhiều Lượt; không cây mảng kiến thức; không xếp hạng hay so sánh giữa Người dự thi; không đổi cách chấm; không đổi Chủ đề và Nhãn hiện có.

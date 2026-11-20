@@ -14,7 +14,7 @@ import { type Page, paginate } from '../../common/pagination';
 import { SESSION_USAGE, type SessionUsage } from '../../common/session-usage';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { questions, topics } from '../question-bank/question-bank.schema';
-import { examItems, examSections, exams } from './exam.schema';
+import { examItems, examSectionDraws, examSections, exams } from './exam.schema';
 
 const PREVIEW_CHARS = 160;
 const isForeignKeyViolation = (error: unknown) =>
@@ -123,6 +123,24 @@ export class ExamsService {
     return this.detail(this.db, ownerId, id);
   }
 
+  /**
+   * Tỷ lệ rút mặc định của Phần (Q438): chỉ ghi dòng khi dưới 100 % (không có dòng nghĩa là lấy đủ, nên 100 % và "không nêu" như
+   * nhau); trở về 100 % thì xóa dòng.
+   */
+  private async saveDraw(tx: Transaction, sectionId: string, percent: number | undefined) {
+    if (percent === undefined || percent >= 100) {
+      await tx.delete(examSectionDraws).where(eq(examSectionDraws.sectionId, sectionId));
+      return;
+    }
+    await tx
+      .insert(examSectionDraws)
+      .values({ sectionId, percent: String(percent) })
+      .onConflictDoUpdate({
+        target: examSectionDraws.sectionId,
+        set: { percent: String(percent) },
+      });
+  }
+
   /** Thay Phần và câu của Bộ đề nháp bằng nội dung mới, giữ id của Phần đã có. */
   private async replaceLayout(tx: Transaction, id: string, content: ExamContent) {
     await tx.delete(examItems).where(eq(examItems.examId, id));
@@ -152,6 +170,7 @@ export class ExamsService {
         sectionId = row?.id;
       }
       if (!sectionId) throw new Error('Không lưu được Phần');
+      await this.saveDraw(tx, sectionId, section.drawPercent);
       if (section.items.length > 0) {
         await tx.insert(examItems).values(
           section.items.map((item, position) => ({
@@ -333,6 +352,21 @@ export class ExamsService {
         .where(eq(examItems.examId, id))
         .orderBy(asc(examItems.sort)),
     ]);
+    const draws = new Map(
+      sections.length === 0
+        ? []
+        : (
+            await db
+              .select()
+              .from(examSectionDraws)
+              .where(
+                inArray(
+                  examSectionDraws.sectionId,
+                  sections.map((section) => section.id),
+                ),
+              )
+          ).map((row) => [row.sectionId, Number(row.percent)]),
+    );
     const totalUnits = items.reduce((sum, item) => sum + Math.round(Number(item.points) * 100), 0);
     const sessionCount = (await this.sessionUsage.countByExam([id])).get(id) ?? 0;
     return {
@@ -348,6 +382,8 @@ export class ExamsService {
         id: section.id,
         title: section.title,
         instructions: section.instructions,
+        /** Tỷ lệ rút mặc định (Q438); không có dòng là 100 %. */
+        drawPercent: draws.get(section.id) ?? 100,
         items: items
           .filter((item) => item.sectionId === section.id)
           .map((item) => {

@@ -36,3 +36,53 @@ function hash53(text: string): number {
 export function drawSeedOf(sessionId: string, userId: string, sectionId: string): number {
   return hash53(JSON.stringify([sessionId, userId, sectionId])) % 2 ** 48;
 }
+
+// ---------------- Cấu hình rút ở Bộ đề và Phiên thi (R2, docs/plan/rut-cau-theo-phan-thiet-ke.md mục 8) ----------------
+
+/**
+ * Tỷ lệ hiệu lực của từng Phần (Q438): **ghi đè của Phiên thi** nếu có, nếu không thì **mặc định của Bộ đề**, nếu không thì
+ * **100 %**. Một nơi duy nhất quyết điều này: bắt đầu Lượt, điểm tối đa và giao diện đều dùng hàm này. Mã Phần lạ trong cấu
+ * hình bị bỏ qua. 0 % là giá trị thật (không bị coi là "chưa đặt").
+ */
+export function effectiveDrawPercents(
+  sections: readonly { id: string }[],
+  examDefaults: Readonly<Record<string, number>>,
+  sessionOverrides: Readonly<Record<string, number>>,
+): Record<string, number> {
+  return Object.fromEntries(
+    sections.map((section) => [
+      section.id,
+      sessionOverrides[section.id] ?? examDefaults[section.id] ?? 100,
+    ]),
+  );
+}
+
+export type DrawProblemCode = 'draw_points_uneven' | 'draw_all_zero';
+
+export interface DrawProblem {
+  code: DrawProblemCode;
+  /** Có ở `draw_points_uneven`: Phần có các câu khác điểm. */
+  sectionId?: string;
+}
+
+/**
+ * Vấn đề của một cấu hình rút (`percent` là tỷ lệ hiệu lực, `points` là điểm từng câu của Phần):
+ * - `draw_points_uneven` (Q388): Phần rút dưới 100 % mà các câu khác điểm, nên mọi người sẽ không cùng điểm tối đa;
+ * - `draw_all_zero` (Q440): không câu nào được rút ở bất kỳ Phần nào, Người dự thi không có gì để làm.
+ * Điểm so bằng số nguyên (phần trăm của một điểm) nên 0,1 + 0,2 không bị coi là khác 0,3.
+ */
+export function drawProblemsOf(
+  sections: readonly { id: string; percent: number; points: readonly number[] }[],
+): DrawProblem[] {
+  const problems: DrawProblem[] = [];
+  let drawn = 0;
+  for (const section of sections) {
+    drawn += drawCountOf(section.percent, section.points.length);
+    const centi = new Set(section.points.map((points) => Math.round(points * 100)));
+    if (section.percent < 100 && centi.size > 1) {
+      problems.push({ code: 'draw_points_uneven', sectionId: section.id });
+    }
+  }
+  if (drawn === 0) problems.push({ code: 'draw_all_zero' });
+  return problems;
+}
