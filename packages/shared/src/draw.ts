@@ -79,7 +79,8 @@ export function drawProblemsOf(
   for (const section of sections) {
     drawn += drawCountOf(section.percent, section.points.length);
     const centi = new Set(section.points.map((points) => Math.round(points * 100)));
-    if (section.percent < 100 && centi.size > 1) {
+    // Phần 0 % không bao giờ được rút nên điểm lệch của nó vô hại; Phần 100 % lấy đủ nên cũng không cần đồng nhất.
+    if (section.percent > 0 && section.percent < 100 && centi.size > 1) {
       problems.push({ code: 'draw_points_uneven', sectionId: section.id });
     }
   }

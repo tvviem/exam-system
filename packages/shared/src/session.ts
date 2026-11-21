@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { drawPercentSchema } from './exam.js';
 
 // Luật thuần của Phiên thi, dùng chung cho web và api (docs/plan/slice-4.md, Q192–Q222).
 
@@ -129,6 +130,17 @@ const settingsShape = {
   reviewAfterRelease: z.boolean().default(false),
   accessCode: accessCode.optional(),
 };
+/**
+ * Ghi đè tỷ lệ rút của từng Phần ở Phiên thi (Q438); Phần không nêu thì kế thừa mặc định của Bộ đề. Nằm ngoài `settingsShape`
+ * vì không theo quy tắc sửa theo trạng thái: khóa riêng khi Phiên thi đã có Lượt làm bài.
+ */
+const sectionDraws = z
+  .array(z.strictObject({ sectionId: z.uuid(), percent: drawPercentSchema }))
+  .max(200)
+  .refine((list) => new Set(list.map((entry) => entry.sectionId)).size === list.length, {
+    message: 'duplicate_section',
+  })
+  .optional();
 const closesAfterOpens = {
   path: ['closesAt'],
   message: 'closes_not_after_opens',
@@ -136,12 +148,12 @@ const closesAfterOpens = {
 
 /** Thiết lập một Phiên thi (Q199–Q202, Q208). Không có `accessCode` thì server gợi ý khi tạo. */
 export const sessionSettingsSchema = z
-  .strictObject(settingsShape)
+  .strictObject({ ...settingsShape, sectionDraws })
   .refine((value) => value.closesAt > value.opensAt, closesAfterOpens);
 
 /** Sửa Phiên thi: thiết lập đầy đủ kèm `version` (khóa lạc quan). Không có `accessCode` là giữ mã cũ. */
 export const sessionUpdateSchema = z
-  .strictObject({ ...settingsShape, version: z.number().int().min(1) })
+  .strictObject({ ...settingsShape, sectionDraws, version: z.number().int().min(1) })
   .refine((value) => value.closesAt > value.opensAt, closesAfterOpens);
 export type SessionSettings = z.output<typeof sessionSettingsSchema>;
 export type SessionUpdate = z.output<typeof sessionUpdateSchema>;

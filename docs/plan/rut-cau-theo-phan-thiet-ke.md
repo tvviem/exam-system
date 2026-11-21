@@ -125,6 +125,8 @@ Màu và cảnh báo theo skill UX/UI (không chỉ dùng màu, có chữ và bi
 
 Mỗi PR có kiểm đột biến. Tính năng này **không đổi hành vi** của Phiên thi cũ (không có dòng rút nghĩa là 100 %).
 
+**Tiến độ (21/11/2026):** R1 (#127), R2a (#130, Bộ đề) và R2b (Phiên thi và vào thi rút thật) đã xong. **Chưa nên triển khai lên production rồi để Người ra đề đặt tỷ lệ dưới 100 % trước khi có R3**: từ R2b Người dự thi đã nhận bộ câu rút, nhưng chấm điểm, điểm tối đa, Phúc khảo, theo dõi và xuất Excel vẫn tính theo mọi câu của Bộ đề cho đến R3. Bộ đề và Phiên thi không cấu hình (hoặc 100 %) chạy y như trước. Thẻ phiên bản `0.3.0` đặt sau R3 (hoặc sau R5, tùy chủ dự án).
+
 ## 6. Quyết định của chủ dự án (Q385–Q395, chốt 18/11/2026)
 
 **Đã chốt cả 11 câu:** Q388 chọn **(a)** (các câu cùng Phần phải cùng điểm), Q389 chọn **(a)** (giữ nguyên bộ câu của người đó cho mọi Lượt), các câu còn lại **đồng ý** theo đề xuất. Nội dung từng câu giữ nguyên bên dưới để biết lý do.

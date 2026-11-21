@@ -10,7 +10,7 @@ import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
-import { sessionRoster, sessions } from './session.schema';
+import { sessionRoster, sessionSectionDraws, sessions } from './session.schema';
 import { lockOwnedSession, notifyRoster } from './session-access';
 import { SessionsService } from './sessions.service';
 
@@ -110,6 +110,16 @@ export class SessionLifecycleService {
         shuffleOptions: source.shuffleOptions,
         showScoringRules: source.showScoringRules,
         reviewAfterRelease: source.reviewAfterRelease,
+        // Mang theo các ghi đè tỷ lệ rút (Q438); Bộ đề giữ nguyên nên vẫn hợp lệ.
+        sectionDraws: (
+          await tx
+            .select({
+              sectionId: sessionSectionDraws.sectionId,
+              percent: sessionSectionDraws.percent,
+            })
+            .from(sessionSectionDraws)
+            .where(eq(sessionSectionDraws.sessionId, id))
+        ).map((row) => ({ sectionId: row.sectionId, percent: Number(row.percent) })),
       };
       const created = await this.sessions.createWithin(tx, ownerId, input);
       // Chỉ chép người còn đủ điều kiện dự thi; Lớp chụp lại theo hồ sơ hiện tại (như lúc thêm).

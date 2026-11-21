@@ -1,5 +1,8 @@
 import { randomInt } from 'node:crypto';
 import {
+  drawCountOf,
+  drawProblemsOf,
+  effectiveDrawPercents,
   generateAccessCode,
   normalizeForSearch,
   phaseOf,
@@ -16,10 +19,11 @@ import { EXAM_CATALOG, type ExamCatalog } from '../../common/exam-catalog';
 import { SESSION_GRADING_STATUS, type SessionGradingStatus } from '../../common/grading-status';
 import { type Page, paginate } from '../../common/pagination';
 import { exclusionViolationOf } from '../../common/pg-error';
+import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { escapeLike } from '../../common/sql-like';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
-import { sessions } from './session.schema';
+import { sessionSectionDraws, sessions } from './session.schema';
 import { lockOwnedSession, notifyRoster } from './session-access';
 
 const SUGGEST_ATTEMPTS = 10;
@@ -60,6 +64,9 @@ const releaseFlags = (states: Map<string, { finalizedAt: Date | null }>, id: str
   resultFinalized: states.get(id)?.finalizedAt != null,
 });
 
+const sameDraws = (a: Map<string, number>, b: Map<string, number>) =>
+  a.size === b.size && [...a].every(([sectionId, percent]) => b.get(sectionId) === percent);
+
 @Injectable()
 export class SessionsService {
   constructor(
@@ -68,6 +75,7 @@ export class SessionsService {
     @Inject(EXAM_CATALOG) private readonly exams: ExamCatalog,
     private readonly notifications: NotificationsService,
     @Inject(SESSION_GRADING_STATUS) private readonly gradingStatus: SessionGradingStatus,
+    @Inject(SESSION_ATTEMPTS) private readonly attempts: SessionAttempts,
   ) {}
 
   async create(ownerId: string, input: SessionSettings) {
@@ -78,7 +86,12 @@ export class SessionsService {
   /** Tạo trong giao dịch của bên gọi (Nhân bản); trả id Phiên thi mới. */
   async createWithin(tx: Transaction, ownerId: string, input: SessionSettings): Promise<string> {
     await this.requireUsableExam(ownerId, input.examId);
-    return this.insert(tx, ownerId, input);
+    const { sectionDraws, ...settings } = input;
+    const id = await this.insert(tx, ownerId, settings);
+    if (sectionDraws !== undefined) {
+      await this.replaceDraws(tx, id, await this.normalizeDraws(tx, input.examId, sectionDraws));
+    }
+    return id;
   }
 
   /**
@@ -90,7 +103,7 @@ export class SessionsService {
       const current = await lockOwnedSession(tx, ownerId, id);
       if (current.version !== input.version) throw new ApiError('CONFLICT', { field: 'version' });
 
-      const { version: _version, ...settings } = input;
+      const { version: _version, sectionDraws, ...settings } = input;
       const next = { ...settings, accessCode: settings.accessCode ?? current.accessCode };
       const problems = sessionChangeProblems(phaseOf(current, this.clock.now()), current, next);
       if (problems.length > 0)
@@ -102,6 +115,20 @@ export class SessionsService {
       if (next.reviewAfterRelease !== current.reviewAfterRelease) {
         if ((await this.gradingStatus.releaseStates([id], tx)).has(id)) {
           throw new ApiError('INVALID_STATE', { reason: 'ALREADY_RELEASED' });
+        }
+      }
+
+      // Ghi đè tỷ lệ rút (Q438): đổi Bộ đề thì ghi đè của Bộ đề cũ không còn nghĩa nên bị xóa; có `sectionDraws` thì thay toàn bộ.
+      const examChanged = next.examId !== current.examId;
+      const requested = sectionDraws ?? (examChanged ? [] : undefined);
+      if (requested !== undefined) {
+        const wanted = await this.normalizeDraws(tx, next.examId, requested);
+        const existing = await this.overridesOf(tx, id);
+        if (!sameDraws(existing, wanted)) {
+          if (await this.attempts.hasAttempts(id, tx)) {
+            throw new ApiError('INVALID_STATE', { reason: 'HAS_ATTEMPTS' });
+          }
+          await this.replaceDraws(tx, id, wanted);
         }
       }
 
@@ -224,7 +251,97 @@ export class SessionsService {
     return {
       ...this.present(row, await this.exams.titlesOf([row.examId]), this.clock.now()),
       ...releaseFlags(states, row.id),
+      sectionDraws: await this.drawRowsOf(db, row.id, row.examId),
     };
+  }
+
+  /** Cấu hình rút câu từng Phần của Phiên thi: mặc định của Bộ đề, ghi đè, tỷ lệ hiệu lực và số câu mỗi người nhận (Q438). */
+  private async drawRowsOf(db: Db, sessionId: string, examId: string) {
+    const [sections, overrides] = await Promise.all([
+      this.exams.drawSectionsOf(examId),
+      this.overridesOf(db, sessionId),
+    ]);
+    const percents = effectiveDrawPercents(
+      sections,
+      Object.fromEntries(sections.map((section) => [section.id, section.defaultPercent])),
+      Object.fromEntries(overrides),
+    );
+    return sections.map((section) => {
+      const percent = percents[section.id] as number;
+      return {
+        sectionId: section.id,
+        title: section.title,
+        itemCount: section.points.length,
+        defaultPercent: section.defaultPercent,
+        overridePercent: overrides.get(section.id) ?? null,
+        percent,
+        drawCount: drawCountOf(percent, section.points.length),
+      };
+    });
+  }
+
+  private async overridesOf(db: Db, sessionId: string): Promise<Map<string, number>> {
+    const rows = await db
+      .select({ sectionId: sessionSectionDraws.sectionId, percent: sessionSectionDraws.percent })
+      .from(sessionSectionDraws)
+      .where(eq(sessionSectionDraws.sessionId, sessionId));
+    return new Map(rows.map((row) => [row.sectionId, Number(row.percent)]));
+  }
+
+  /**
+   * Kiểm cấu hình ghi đè theo Bộ đề (Q388, Q440, Q441) rồi trả những ghi đè **khác mặc định** (bằng mặc định là kế thừa, không
+   * cần dòng). Phần lạ, Phần rút dưới 100 % mà các câu khác điểm, hoặc mọi Phần hiệu lực 0 % là VALIDATION_FAILED.
+   */
+  private async normalizeDraws(
+    tx: Transaction,
+    examId: string,
+    requested: { sectionId: string; percent: number }[],
+  ): Promise<Map<string, number>> {
+    const sections = await this.exams.drawSectionsOf(examId, tx);
+    const defaults = Object.fromEntries(
+      sections.map((section) => [section.id, section.defaultPercent]),
+    );
+    if (requested.some((entry) => !(entry.sectionId in defaults))) {
+      throw validationFailed('sectionDraws', 'unknown_section');
+    }
+    const effective = effectiveDrawPercents(
+      sections,
+      defaults,
+      Object.fromEntries(requested.map((entry) => [entry.sectionId, entry.percent])),
+    );
+    const problems = drawProblemsOf(
+      sections.map((section) => ({
+        id: section.id,
+        percent: effective[section.id] as number,
+        points: section.points,
+      })),
+    );
+    if (problems.length > 0) {
+      throw new ApiError('VALIDATION_FAILED', {
+        issues: problems.map((problem) => ({
+          path: 'sectionDraws',
+          code: problem.code,
+          ...(problem.sectionId ? { sectionId: problem.sectionId } : {}),
+        })),
+      });
+    }
+    return new Map(
+      requested
+        .filter((entry) => entry.percent !== defaults[entry.sectionId])
+        .map((entry) => [entry.sectionId, entry.percent]),
+    );
+  }
+
+  private async replaceDraws(tx: Transaction, sessionId: string, wanted: Map<string, number>) {
+    await tx.delete(sessionSectionDraws).where(eq(sessionSectionDraws.sessionId, sessionId));
+    if (wanted.size === 0) return;
+    await tx.insert(sessionSectionDraws).values(
+      [...wanted].map(([sectionId, percent]) => ({
+        sessionId,
+        sectionId,
+        percent: String(percent),
+      })),
+    );
   }
 
   /** Bộ đề phải của chính người tạo và đã Phát hành, chưa Lưu trữ (Q203). */

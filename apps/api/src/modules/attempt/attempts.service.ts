@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto';
 import {
   canEnterWaitingRoom,
   deadlineOf,
+  effectiveDrawPercents,
   HARD_CLOSE_MIN_SECONDS,
   type HeartbeatRequest,
   isDisconnected,
@@ -25,6 +26,7 @@ import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-
 import type { SubmitReason } from '../../common/session-attempts';
 import { type EntryGate, SESSION_ENTRY, type SessionEntry } from '../../common/session-entry';
 import { type Database, DB, type Transaction } from '../../db/db.module';
+import type { StoredLayout } from './attempt.schema';
 import {
   attemptReopenings,
   attempts,
@@ -486,6 +488,13 @@ export class AttemptsService {
       if (!content) throw new ApiError('NOT_FOUND');
       const seed = randomInt(0, 2 ** 48 - 1);
       const layoutInput = layoutInputOf(content);
+      // Rút câu theo Phần (Q438): ghi đè của Phiên thi, rồi mặc định của Bộ đề, rồi 100 %. Bộ câu của người này cố định qua mọi
+      // Lượt vì hạt giống rút băm từ Phiên thi và người dự thi, không từ hạt giống của Lượt.
+      const percents = effectiveDrawPercents(
+        content.sections,
+        Object.fromEntries(content.sections.map((s) => [s.id, s.drawPercent])),
+        await this.entry.drawOverridesOf(sessionId, tx),
+      );
       try {
         // Điểm lưu (savepoint): vi phạm chỉ mục duy nhất chỉ hủy lần chèn này, không hủy cả giao dịch.
         return await tx.transaction(async (inner) => {
@@ -496,7 +505,11 @@ export class AttemptsService {
               userId,
               attemptNo: used + 1,
               seed,
-              layout: layoutOf(seed, layoutInput, gate),
+              layout: layoutOf(seed, layoutInput, gate, {
+                sessionId,
+                userId,
+                percents,
+              }),
               startedAt: now,
               deadline: deadlineOf({
                 startedAt: now,
@@ -626,9 +639,13 @@ export class AttemptsService {
       if (isPastGrace(attempt.deadline, this.clock.now())) throw invalidState('ATTEMPT_CLOSED');
 
       const items = await this.content.itemsOf(gate.examId, [...latest.keys()], tx);
+      // Chỉ câu nằm trong bố cục của Lượt (đã rút) mới nhận câu trả lời; câu không được rút coi như không tồn tại.
+      const inLayout = new Set(
+        (attempt.layout as StoredLayout).sections.flatMap((s) => s.items.map((i) => i.itemId)),
+      );
       const results: SaveItemResult[] = [];
       for (const item of latest.values()) {
-        const known = items.get(item.itemId);
+        const known = inLayout.has(item.itemId) ? items.get(item.itemId) : undefined;
         if (!known) {
           results.push({ itemId: item.itemId, status: 'rejected', reason: 'unknown_item' });
           continue;

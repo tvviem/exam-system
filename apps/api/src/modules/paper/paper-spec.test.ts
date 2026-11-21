@@ -33,7 +33,7 @@ const content = (...items: ContentItem[]): ExamContentData => ({
   examId: 'e1',
   title: 'Giữa kỳ Giải tích',
   instructions: rt(''),
-  sections: [{ id: 's1', title: null, instructions: rt(''), items }],
+  sections: [{ id: 's1', title: null, instructions: rt(''), drawPercent: 100, items }],
 });
 
 const request = { course: 'Giải tích 1' };
@@ -141,8 +141,14 @@ describe('toPaperSpec: từ nội dung Bộ đề đã Phát hành sang dữ li�
         title: 'Đề',
         instructions: rt(''),
         sections: [
-          { id: 's1', title: '   ', instructions: rt(''), items: [single()] },
-          { id: 's2', title: 'PHẦN II', instructions: rt('Làm hết.'), items: [essay()] },
+          { id: 's1', title: '   ', instructions: rt(''), drawPercent: 100, items: [single()] },
+          {
+            id: 's2',
+            title: 'PHẦN II',
+            instructions: rt('Làm hết.'),
+            drawPercent: 100,
+            items: [essay()],
+          },
         ],
       },
       session: null,

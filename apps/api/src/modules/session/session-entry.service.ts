@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gt } from 'drizzle-orm';
 import type { EntryExecutor, EntryGate, SessionEntry } from '../../common/session-entry';
 import { type Database, DB } from '../../db/db.module';
-import { sessionRoster, sessions } from './session.schema';
+import { sessionRoster, sessionSectionDraws, sessions } from './session.schema';
 
 const gateColumns = {
   sessionId: sessions.id,
@@ -75,5 +75,16 @@ export class SessionEntryService implements SessionEntry {
       .where(and(eq(sessionRoster.userId, userId), gt(sessions.closesAt, since)))
       .orderBy(desc(sessions.opensAt))
       .limit(100);
+  }
+
+  async drawOverridesOf(
+    sessionId: string,
+    executor: EntryExecutor = this.db,
+  ): Promise<Record<string, number>> {
+    const rows = await executor
+      .select({ sectionId: sessionSectionDraws.sectionId, percent: sessionSectionDraws.percent })
+      .from(sessionSectionDraws)
+      .where(eq(sessionSectionDraws.sessionId, sessionId));
+    return Object.fromEntries(rows.map((row) => [row.sectionId, Number(row.percent)]));
   }
 }

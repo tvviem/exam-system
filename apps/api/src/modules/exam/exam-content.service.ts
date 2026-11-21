@@ -8,7 +8,13 @@ import type {
   ExamContentProvider,
 } from '../../common/exam-content';
 import { type Database, DB } from '../../db/db.module';
-import { examItemIllustrations, examItems, examSections, exams } from './exam.schema';
+import {
+  examItemIllustrations,
+  examItems,
+  examSectionDraws,
+  examSections,
+  exams,
+} from './exam.schema';
 
 const toItem = (row: {
   itemId: string;
@@ -38,8 +44,14 @@ export class ExamContentService implements ExamContentProvider {
     if (!exam) return null;
     const [sections, items] = await Promise.all([
       executor
-        .select()
+        .select({
+          id: examSections.id,
+          title: examSections.title,
+          instructions: examSections.instructions,
+          drawPercent: examSectionDraws.percent,
+        })
         .from(examSections)
+        .leftJoin(examSectionDraws, eq(examSectionDraws.sectionId, examSections.id))
         .where(eq(examSections.examId, examId))
         .orderBy(asc(examSections.sort)),
       executor
@@ -61,6 +73,7 @@ export class ExamContentService implements ExamContentProvider {
         id: section.id,
         title: section.title,
         instructions: section.instructions,
+        drawPercent: section.drawPercent === null ? 100 : Number(section.drawPercent),
         items: items.filter((item) => item.sectionId === section.id).map(toItem),
       })),
     };

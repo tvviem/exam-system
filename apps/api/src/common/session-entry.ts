@@ -50,6 +50,11 @@ export interface SessionEntry {
     userId: string,
     executor?: EntryExecutor,
   ): Promise<EntryGate | null>;
+  /**
+   * Ghi đè tỷ lệ rút của Phiên thi theo mã Phần (Q438); Phần không có trong kết quả thì kế thừa mặc định của Bộ đề. Phiên thi
+   * đã có Lượt thì không đổi được nên đọc lúc bắt đầu Lượt là ổn định.
+   */
+  drawOverridesOf(sessionId: string, executor?: EntryExecutor): Promise<Record<string, number>>;
   /** Phiên thi của người này (mới nhất trước, tối đa 100), bỏ những cái đã đóng quá `since`. */
   listFor(userId: string, since: Date, executor?: EntryExecutor): Promise<EntryGate[]>;
 }
