@@ -1,5 +1,9 @@
 import {
+  type DrawProblem,
   distributePoints,
+  drawPercentSchema,
+  drawProblemsOf,
+  drawTotalsOf,
   EXAM_MAX_ITEMS,
   EXAM_MAX_SECTIONS,
   type ExamContent,
@@ -34,6 +38,11 @@ export interface DraftSection {
   id?: string;
   title: string;
   instructions: RichText;
+  /**
+   * Tỷ lệ rút mặc định của Phần (Rút câu, Q438): 0 đến 100, 100 là lấy đủ (như trước khi có Rút câu). Giữ NaN khi người dùng
+   * đang gõ dở; chỉ gửi lên server khi dưới 100 %.
+   */
+  drawPercent: number;
   items: DraftItem[];
 }
 
@@ -54,6 +63,7 @@ const emptySection = (key: string): DraftSection => ({
   key,
   title: '',
   instructions: textDoc(''),
+  drawPercent: 100,
   items: [],
 });
 
@@ -70,6 +80,7 @@ interface SavedExam {
     id: string;
     title: string | null;
     instructions: RichText;
+    drawPercent?: number;
     items: DraftItem[];
   }[];
 }
@@ -82,6 +93,7 @@ export const draftFromExam = (exam: SavedExam): ExamDraft => ({
     id: section.id,
     title: section.title ?? '',
     instructions: section.instructions,
+    drawPercent: section.drawPercent ?? 100,
     items: section.items,
   })),
 });
@@ -94,6 +106,8 @@ export const toContent = (draft: ExamDraft, version: number): ExamContent => ({
     ...(section.id ? { id: section.id } : {}),
     title: section.title.trim() || null,
     instructions: section.instructions,
+    // Chỉ gửi khi dưới 100 %: vắng nghĩa là lấy đủ, nên Bộ đề không dùng Rút câu gửi y như trước.
+    ...(section.drawPercent < 100 ? { drawPercent: section.drawPercent } : {}),
     items: section.items.map(({ questionId, points }) => ({ questionId, points })),
   })),
 });
@@ -211,7 +225,7 @@ export const removeSection = (draft: ExamDraft, key: string): ExamDraft =>
 export const updateSection = (
   draft: ExamDraft,
   key: string,
-  changes: Partial<Pick<DraftSection, 'title' | 'instructions'>>,
+  changes: Partial<Pick<DraftSection, 'title' | 'instructions' | 'drawPercent'>>,
 ): ExamDraft => mapSection(draft, key, (s) => ({ ...s, ...changes }));
 
 /** Phạm vi của Đặt điểm nhanh: cả Bộ đề, một Phần hoặc một Loại câu hỏi. */
@@ -250,5 +264,57 @@ export function applyPoints(
         ),
       })),
     },
+  };
+}
+
+/** Tỷ lệ rút hợp lệ: 0 đến 100, tối đa hai chữ số lẻ (cùng quy tắc với server). */
+export const drawPercentValid = (percent: number): boolean =>
+  drawPercentSchema.safeParse(percent).success;
+
+export const setDrawPercent = (draft: ExamDraft, key: string, percent: number): ExamDraft =>
+  mapSection(draft, key, (s) => ({ ...s, drawPercent: percent }));
+
+export interface DrawSummary {
+  /** Có Phần nào rút dưới 100 % không (không thì Bộ đề dùng nguyên, như trước khi có Rút câu). */
+  active: boolean;
+  /** Số câu và điểm tối đa mỗi Người dự thi nhận. */
+  count: number;
+  /** `null` khi còn Phần lệch điểm: không xác định được điểm tối đa nên không hiện số. */
+  maxPoints: number | null;
+  sections: { key: string; count: number; total: number; valid: boolean }[];
+  /** Vấn đề chặn Phát hành (Q440, Q441); `sectionId` là khóa của Phần trong bản nháp. */
+  problems: DrawProblem[];
+}
+
+/**
+ * Tóm tắt rút câu của bản nháp bằng cùng hàm thuần với server. Tỷ lệ đang gõ dở (không hợp lệ) tạm tính như 100 % để số không
+ * nhảy lung tung, và được đánh dấu `valid: false` để chặn Lưu.
+ */
+export function drawSummaryOf(draft: ExamDraft): DrawSummary {
+  const sections = draft.sections.map((s) => ({
+    key: s.key,
+    valid: drawPercentValid(s.drawPercent),
+    percent: drawPercentValid(s.drawPercent) ? s.drawPercent : 100,
+    points: s.items.map((i) => i.points),
+  }));
+  const percents = Object.fromEntries(sections.map((s) => [s.key, s.percent]));
+  const totals = drawTotalsOf(
+    sections.map((s) => ({ id: s.key, points: s.points })),
+    percents,
+  );
+  const problems = drawProblemsOf(
+    sections.map((s) => ({ id: s.key, percent: s.percent, points: s.points })),
+  );
+  return {
+    active: sections.some((s) => s.percent < 100),
+    count: totals.count,
+    maxPoints: problems.some((p) => p.code === 'draw_points_uneven') ? null : totals.maxCenti / 100,
+    sections: sections.map((s) => ({
+      key: s.key,
+      valid: s.valid,
+      total: s.points.length,
+      count: drawTotalsOf([{ id: s.key, points: s.points }], { [s.key]: s.percent }).count,
+    })),
+    problems,
   };
 }

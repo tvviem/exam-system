@@ -1590,5 +1590,37 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rc-desktop",
+    "fullName": "Giảng viên Rút câu desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rc-mobile",
+    "fullName": "Giảng viên Rút câu mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rc0-desktop",
+    "fullName": "Giảng viên Rút câu 0 desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rc0-mobile",
+    "fullName": "Giảng viên Rút câu 0 mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]

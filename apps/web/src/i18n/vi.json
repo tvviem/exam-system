@@ -1418,6 +1418,19 @@
     "numberN": "Câu {{n}}",
     "archivedBadge": "Đã lưu trữ",
     "totals": "{{items}} câu · {{points}} điểm",
+    "draw": {
+      "label": "Rút câu từ Phần này",
+      "inputLabel": "Tỷ lệ rút của Phần (phần trăm số câu mỗi Người dự thi nhận)",
+      "result": "→ mỗi người nhận {{count}}/{{total}} câu",
+      "all": "→ lấy đủ {{total}} câu",
+      "hint": "Mỗi Người dự thi được rút ngẫu nhiên riêng, theo tỷ lệ này (làm tròn; còn ít nhất 1 câu nếu tỷ lệ lớn hơn 0). Phiên thi có thể đổi tỷ lệ cho riêng mình.",
+      "hintAll": "100 % là lấy đủ mọi câu của Phần, như trước đây. Nhập số nhỏ hơn để mỗi Người dự thi chỉ nhận một phần số câu.",
+      "invalid": "Nhập số từ 0 đến 100, tối đa hai chữ số lẻ.",
+      "uneven": "Các câu trong Phần này đang khác điểm. Phần rút dưới 100 % cần các câu cùng điểm để mọi Người dự thi có cùng điểm tối đa; dùng “Đặt điểm nhanh” để sửa trước khi Phát hành.",
+      "allZero": "Mọi Phần đều 0 %: Người dự thi sẽ không có câu nào. Hãy để ít nhất một Phần lớn hơn 0 %.",
+      "summary": "Mỗi Người dự thi nhận {{count}} câu, tối đa {{points}} điểm.",
+      "summaryCount": "Mỗi Người dự thi nhận {{count}} câu."
+    },
     "save": "Lưu",
     "saving": "Đang lưu…",
     "saved": "Đã lưu Bộ đề",
@@ -1449,7 +1462,9 @@
         "question_archived": "Câu hỏi đã Lưu trữ. Gỡ khỏi Bộ đề hoặc Khôi phục câu.",
         "question_invalid": "Nội dung Câu hỏi chưa hợp lệ. Mở câu để sửa.",
         "illustration_not_ready": "Hình minh họa của câu chưa xử lý xong hoặc bị lỗi.",
-        "points_invalid": "Điểm câu không hợp lệ (0,05 đến 100, bước 0,05)."
+        "points_invalid": "Điểm câu không hợp lệ (0,05 đến 100, bước 0,05).",
+        "draw_points_uneven": "Phần rút dưới 100 % có các câu khác điểm. Cho các câu cùng điểm (Đặt điểm nhanh) hoặc để Phần lấy đủ 100 %.",
+        "draw_all_zero": "Mọi Phần đều 0 %: Người dự thi sẽ không có câu nào."
       },
       "summary": "Phát hành “{{title}}” ({{items}} câu, {{points}} điểm)?",
       "warning": "Sau khi Phát hành không sửa được Bộ đề này; muốn đổi hãy Nhân bản.",
