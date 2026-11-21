@@ -449,6 +449,8 @@ Hủy Phiên thi: `409 SESSION_RELEASED`. Hoàn tác Buộc nộp: cổng `Attem
 
 Chủ hoặc người được Ủy quyền; hai trang tính: *Tổng hợp* (phần đầu: Tên Phiên thi, Ngày diễn ra, Thời gian làm bài, Tổng số câu; bảng: Mã định danh, Họ tên, Lớp, Số Lượt, Điểm thô, Tổng điểm, Điểm quy đổi, Ghi chú) và *Chi tiết* (mỗi câu một cột). Tạo bằng ExcelJS, ô bắt đầu `= + - @` thêm dấu nháy (chống chèn công thức). Chưa Công bố thì ghi "Chưa Công bố"; còn bài chờ chấm thì Ghi chú "chờ chấm". Mục tiêu dưới 1 giây cho 500 người.
 
+**Chỉnh lại khi làm Rút câu (21/11/2026):** dòng đầu "Tổng điểm Bộ đề" đổi thành **"Điểm tối đa mỗi người"** (Phiên thi rút câu thì mỗi người chỉ nhận một phần Bộ đề, ví dụ 40 điểm trên Bộ đề 100 điểm). Bảng từng người nay có các cột: Mã định danh, Họ tên, Lớp, Số Lượt, **Điểm thô**, **Điểm tối đa**, **Điểm sau Mức xử lý** (mới: điểm thô sau khi trừ phần trăm, hoặc 0 khi Hủy kết quả), **Điểm quy đổi (thang 10)**, Ghi chú. Điểm quy đổi vẫn là điểm sau Mức xử lý chia điểm tối đa nhân 10.
+
 ### 6. Giao diện (5c-2)
 
 - Màn Kết quả: khối **Công bố** (chọn hạn Phúc khảo 1–14 ngày hoặc "không nhận Phúc khảo", nút Công bố tự tắt kèm lý do, hộp xác nhận nêu số người nhận, số Vi phạm chưa quyết, hạn Phúc khảo), thẻ trạng thái *Đã Công bố đến …* / *Đã Chốt*, nút **Xuất Excel**; sau Công bố các điều khiển chấm bị khóa kèm lời giải thích.
