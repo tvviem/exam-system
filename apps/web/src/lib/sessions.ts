@@ -9,6 +9,17 @@ import { queryString } from './query-string';
 export { SESSION_PHASES } from '@exam/shared';
 export type { SessionPhase };
 
+/** Cấu hình rút câu của một Phần ở Phiên thi (Q438): mặc định của Bộ đề, ghi đè, tỷ lệ hiệu lực và số câu mỗi người nhận. */
+export interface SessionDrawRow {
+  sectionId: string;
+  title: string | null;
+  itemCount: number;
+  defaultPercent: number;
+  overridePercent: number | null;
+  percent: number;
+  drawCount: number;
+}
+
 export interface SessionSummary {
   id: string;
   examId: string;
@@ -34,6 +45,10 @@ export interface SessionSummary {
   version: number;
   rosterCount: number;
   phase: SessionPhase;
+  /** Chỉ có ở chi tiết Phiên thi. */
+  sectionDraws?: SessionDrawRow[];
+  /** Đã có Lượt làm bài: không đổi được tỷ lệ rút nữa. Chỉ có ở chi tiết. */
+  drawLocked?: boolean;
 }
 
 /** Thiết lập gửi lên khi tạo; sửa thêm `version`. Giờ là ISO có múi giờ. */
@@ -51,6 +66,8 @@ export interface SessionInput {
   showScoringRules: boolean;
   reviewAfterRelease: boolean;
   accessCode?: string;
+  /** Ghi đè tỷ lệ rút theo Phần; vắng là giữ nguyên khi sửa, mảng rỗng là xóa hết ghi đè. */
+  sectionDraws?: { sectionId: string; percent: number }[];
 }
 
 export interface SessionListParams {

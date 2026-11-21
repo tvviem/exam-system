@@ -252,6 +252,8 @@ export class SessionsService {
       ...this.present(row, await this.exams.titlesOf([row.examId]), this.clock.now()),
       ...releaseFlags(states, row.id),
       sectionDraws: await this.drawRowsOf(db, row.id, row.examId),
+      /** Đã có Lượt làm bài: không đổi được ghi đè tỷ lệ rút nữa (giao diện khóa ô). */
+      drawLocked: await this.attempts.hasAttempts(row.id),
     };
   }
 

@@ -125,7 +125,7 @@ Màu và cảnh báo theo skill UX/UI (không chỉ dùng màu, có chữ và bi
 
 Mỗi PR có kiểm đột biến. Tính năng này **không đổi hành vi** của Phiên thi cũ (không có dòng rút nghĩa là 100 %).
 
-**Tiến độ (21/11/2026):** R1 (#127), R2a (#130, Bộ đề), R2b (#131, Phiên thi và vào thi rút thật) và R3 (chấm điểm, điểm tối đa, Phúc khảo, theo dõi, Excel theo bộ câu của từng Lượt) đã xong. R4a (form Bộ đề: ô tỷ lệ rút từng Phần, số câu mỗi người nhận, cảnh báo lệch điểm) đã xong. Còn R4b (form Phiên thi), R4c (phía Người dự thi) và R5 (E2E toàn luồng, đo tải, tài liệu). **Chưa có giao diện nhập tỷ lệ nên chưa dùng được từ trình duyệt**; Bộ đề và Phiên thi không cấu hình (hoặc 100 %) chạy y như trước. Thẻ phiên bản `0.3.0` đặt sau R4 (hoặc R5, tùy chủ dự án).
+**Tiến độ (21/11/2026):** R1 (#127), R2a (#130, Bộ đề), R2b (#131, Phiên thi và vào thi rút thật) và R3 (chấm điểm, điểm tối đa, Phúc khảo, theo dõi, Excel theo bộ câu của từng Lượt) đã xong. R4a (form Bộ đề) và R4b (form Phiên thi: kế thừa tỷ lệ của Bộ đề, ghi đè từng Phần, khóa khi đã có Lượt, hiện ở Tổng quan) đã xong. Còn R4c (phía Người dự thi: thông báo lúc vào thi, "câu x / N", Xem thử một lượt rút) và R5 (E2E toàn luồng, đo tải, tài liệu). **Chưa có giao diện nhập tỷ lệ nên chưa dùng được từ trình duyệt**; Bộ đề và Phiên thi không cấu hình (hoặc 100 %) chạy y như trước. Thẻ phiên bản `0.3.0` đặt sau R4 (hoặc R5, tùy chủ dự án).
 
 ## 6. Quyết định của chủ dự án (Q385–Q395, chốt 18/11/2026)
 

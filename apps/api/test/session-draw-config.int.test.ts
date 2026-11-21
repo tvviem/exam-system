@@ -305,6 +305,17 @@ describe('khóa khi đã có Lượt làm bài, và quyền', () => {
     expect((await put([{ sectionId: exam.sectionIds[0], percent: 70 }])).statusCode).toBe(200);
   });
 
+  it('chi tiết Phiên thi báo drawLocked: false khi chưa có Lượt, true khi đã có (để giao diện khóa ô tỷ lệ)', async () => {
+    const open = {
+      opensAt: '2026-11-02T07:00:00+07:00',
+      closesAt: '2026-11-02T10:00:00+07:00',
+    };
+    const session = await create(open);
+    expect(session.drawLocked).toBe(false);
+    await startAttempt(session.id);
+    expect((await api('GET', `/sessions/${session.id}`)).json().drawLocked).toBe(true);
+  });
+
   it('Người ra đề khác không thấy và không sửa được ghi đè (404)', async () => {
     const session = await create({
       sectionDraws: [{ sectionId: exam.sectionIds[0], percent: 70 }],

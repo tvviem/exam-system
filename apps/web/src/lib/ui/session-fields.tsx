@@ -7,9 +7,11 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { examsQuery } from '../exams';
+import { overridesInputOf } from '../session-draw';
 import type { SessionInput, SessionSummary } from '../sessions';
 import { isoToVnInput, vnInputToIso } from '../vn-time';
 import { Button, SelectField, TextField } from '.';
+import { SessionDrawBlock } from './session-draw';
 
 /** Bản nháp trên màn hình: giờ là giá trị ô nhập (giờ Việt Nam), số là chuỗi để gõ dở không mất. */
 export interface SessionDraft {
@@ -26,6 +28,8 @@ export interface SessionDraft {
   showScoringRules: boolean;
   reviewAfterRelease: boolean;
   accessCode: string;
+  /** Ghi đè tỷ lệ rút theo Phần (Q438): mã Phần → chuỗi đang gõ; vắng là kế thừa mặc định của Bộ đề. */
+  drawOverrides: Record<string, string>;
 }
 
 export const emptySessionDraft: SessionDraft = {
@@ -42,6 +46,7 @@ export const emptySessionDraft: SessionDraft = {
   showScoringRules: false,
   reviewAfterRelease: false,
   accessCode: '',
+  drawOverrides: {},
 };
 
 export const draftOf = (session: SessionSummary): SessionDraft => ({
@@ -58,6 +63,11 @@ export const draftOf = (session: SessionSummary): SessionDraft => ({
   showScoringRules: session.showScoringRules,
   reviewAfterRelease: session.reviewAfterRelease,
   accessCode: session.accessCode,
+  drawOverrides: Object.fromEntries(
+    (session.sectionDraws ?? [])
+      .filter((row) => row.overridePercent !== null)
+      .map((row) => [row.sectionId, String(row.overridePercent)]),
+  ),
 });
 
 export const inputOf = (draft: SessionDraft): SessionInput => ({
@@ -74,6 +84,8 @@ export const inputOf = (draft: SessionDraft): SessionInput => ({
   showScoringRules: draft.showScoringRules,
   reviewAfterRelease: draft.reviewAfterRelease,
   ...(draft.accessCode.trim() ? { accessCode: draft.accessCode } : {}),
+  // Luôn gửi đủ bộ ghi đè hiện tại (rỗng nếu không có): sửa Phiên thi thay toàn bộ, nên không còn ghi đè cũ sót lại.
+  sectionDraws: overridesInputOf(draft.drawOverrides),
 });
 
 export type SessionFieldName = keyof SessionSettings;
@@ -91,6 +103,7 @@ export const GROUP_FIELDS: Record<SessionGroup, SessionFieldName[]> = {
     'showScoringRules',
     'reviewAfterRelease',
     'accessCode',
+    'sectionDraws',
   ],
 };
 
@@ -152,6 +165,7 @@ export function SessionFields({
   invalid,
   onSuggestCode,
   codeBusy,
+  drawLocked = false,
 }: {
   group: SessionGroup;
   draft: SessionDraft;
@@ -162,6 +176,8 @@ export function SessionFields({
   invalid?: Set<string>;
   onSuggestCode?: () => void;
   codeBusy?: boolean;
+  /** Đã có Lượt làm bài: ghi đè tỷ lệ rút bị khóa (Q438, Q392). */
+  drawLocked?: boolean;
 }) {
   const { t } = useTranslation();
   const open = (field: SessionFieldName) => rules[field] !== undefined;
@@ -194,7 +210,7 @@ export function SessionFields({
           }
           value={draft.examId}
           disabled={!open('examId')}
-          onChange={(e) => patch({ examId: e.target.value })}
+          onChange={(e) => patch({ examId: e.target.value, drawOverrides: {} })}
         >
           <option value="">{t('session.field.examPlaceholder')}</option>
           {hasCurrent && <option value={currentExam.id}>{currentExam.title}</option>}
@@ -275,6 +291,12 @@ export function SessionFields({
   const multiple = Number(draft.maxAttempts) > 1;
   return (
     <div className="flex flex-col gap-4">
+      <SessionDrawBlock
+        examId={draft.examId}
+        overrides={draft.drawOverrides}
+        locked={drawLocked}
+        onChange={(drawOverrides) => patch({ drawOverrides })}
+      />
       <SelectField
         id="session-attempts"
         label={t('session.field.maxAttempts')}
