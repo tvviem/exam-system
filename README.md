@@ -318,7 +318,7 @@ Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Ngư�
 - **Duyệt thiết kế trước khi code:** thay đổi kiến trúc hoặc mô hình dữ liệu được đề xuất bằng tài liệu hoặc ADR ở trạng thái `proposed`, rồi mới triển khai.
 - **Nhánh và PR:** tạo nhánh từ `main`, mở pull request theo mẫu Summary / Evidence / Merge Danger. CI có 4 check phải xanh (Lint·typecheck·unit; Integration·e2e·migration drift; Image web; Image api) trước khi merge squash; chỉ merge khi chủ dự án ra lệnh. Quy trình mỗi lát cắt: thiết kế được duyệt, test đỏ rồi xanh theo từng đường cắt, review hai trục (Standards, Spec).
 - **Commit:** thông điệp ngắn bằng tiếng Việt nêu việc đã làm (tiêu đề PR kèm số, ví dụ "4e: … (#51)").
-- **Prototype:** đặt trên nhánh `prototype/*`, không merge vào `main`. Ví dụ: `prototype/exam-taking-ui`.
+- **Prototype:** đặt trên nhánh `prototype/*`, không merge vào `main`. Sổ các bản thử đã làm, kết luận của từng bản và cách xem lại: [docs/ban-thu.md](docs/ban-thu.md).
 - **Phát hành:** tag và Release chỉ gắn trên commit đã chạy thật ở production và đã kiểm tra, khi chủ dự án đồng ý ([docs/ops/phat-hanh.md](docs/ops/phat-hanh.md)).
 - **Kiểm tra cục bộ:** `pnpm lint` coi cảnh báo của Biome là lỗi; hook pre-commit (`.githooks`, bật qua `pnpm install`) chạy Biome trên các tệp sắp commit.
 - **Agent:** Claude Code, Codex và Copilot cùng đọc [AGENTS.md](AGENTS.md); [CLAUDE.md](CLAUDE.md) nạp file này.
