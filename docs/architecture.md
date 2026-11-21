@@ -287,7 +287,15 @@ Số đo vào thi khi Rút câu (21/11/2026, R2b, Bộ đề 100 câu gồm 5 Ph
 | Bắt đầu Lượt, 99 người cùng lúc (p50 / p95) | 1461–1478 / 1654–1666 ms | 1330–1339 / 1466–1477 ms |
 | Đọc đề, 99 người cùng lúc (p50 / p95) | 573–605 / 757–795 ms | 517–550 / 641–687 ms |
 
-Rút câu không làm vào thi chậm hơn (nhẹ hơn vì ít câu hơn). **Còn vượt ngân sách:** bắt đầu Lượt khi 99 người cùng lúc với Bộ đề 100 câu khoảng 1,5 giây (ngân sách dưới 1 giây), có cả khi không rút câu; Bộ đề hai câu ngày 3/11 chỉ khoảng 1 giây nên Bộ đề lớn mới lộ ra. Nguyên nhân chưa đo; việc tối ưu làm ở PR riêng.
+Rút câu không làm vào thi chậm hơn (nhẹ hơn vì ít câu hơn). Đo từng bước cho thấy bắt đầu Lượt chạy 29 truy vấn và đọc nội dung Bộ đề (3 truy vấn, 72 KB) **hai lần**, rồi đọc lại ở mỗi lần đọc đề và lưu bài; nội dung Bộ đề đã Phát hành bất biến (ADR-0005) nên nay được nhớ trong bộ nhớ (`ExamContentCache`, tối đa 50 Bộ đề, đóng băng). Số đo sau đó (cùng bài đo, hai lần chạy):
+
+| Đường | Đủ 100 câu | Rút 40 % |
+|---|---|---|
+| Bắt đầu Lượt, một người | 42 ms | 44–46 ms |
+| Bắt đầu Lượt, 99 người cùng lúc (p50 / p95) | 972–989 / 1096–1114 ms | 841–885 / 912–949 ms |
+| Đọc đề, 99 người cùng lúc (p50 / p95) | 434–442 / 551 ms | 343–351 / 403–418 ms |
+
+Rút 40 % nay nằm trong ngân sách (dưới 1 giây khi 100 người cùng lúc); Bộ đề 100 câu đủ còn khoảng 1,1 giây, hơi quá. Còn dư địa: bước "bắt đầu rồi đọc đề" lặp lại cổng vào thi, kiểm thiết bị và đọc Lượt (khoảng 7 truy vấn).
 
 Số đo của kênh đẩy (4/11/2026, máy phát triển, cổng thật qua WebSocket): tin đến Người dự thi sau Cộng giờ 26–38 ms; tin đến Người ra đề sau heartbeat 10–11 ms; phát tán một tin tới 300 kết nối cùng nghe một phòng 25–33 ms. Người dùng thấy (E2E, trình duyệt thật, không tua đồng hồ): từ lúc Người ra đề bấm đến màn hình Người dự thi đổi là Cộng giờ 360–550 ms, Thu hồi 170–300 ms, Buộc nộp 180–350 ms; Người dự thi chọn đáp án đến lúc màn Theo dõi đổi 1,4–2,5 giây (gồm độ trễ lưu 300 ms của Người dự thi và cửa sổ gộp tối đa 2 giây). Trang quản trị `/admin/users` hiện sau 280–460 ms và không mở kết nối Socket.IO.
 

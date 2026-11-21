@@ -15,6 +15,7 @@ import {
   examSections,
   exams,
 } from './exam.schema';
+import { ExamContentCache } from './exam-content-cache';
 
 const toItem = (row: {
   itemId: string;
@@ -28,14 +29,24 @@ const toItem = (row: {
   snapshot: row.snapshot as unknown as ContentSnapshot,
 });
 
+/** Số Bộ đề tối đa giữ trong bộ nhớ (mỗi Bộ đề 100 câu khoảng 70 KB bản chụp). */
+const CONTENT_CACHE_EXAMS = 50;
+
 /** Cài đặt cổng `EXAM_CONTENT` (Q228) cho `attempt`: chỉ đọc bản chụp của Bộ đề đã Phát hành (ADR-0005). */
 @Injectable()
 export class ExamContentService implements ExamContentProvider {
   constructor(@Inject(DB) private readonly db: Database) {}
 
-  async contentOf(
+  /** Nội dung Bộ đề đã Phát hành bất biến (ADR-0005), nên nhớ trong bộ nhớ thay vì đọc 3 truy vấn mỗi yêu cầu. */
+  private readonly cache = new ExamContentCache(CONTENT_CACHE_EXAMS);
+
+  contentOf(examId: string, executor: ContentExecutor = this.db): Promise<ExamContentData | null> {
+    return this.cache.getOrLoad(examId, () => this.loadContent(examId, executor));
+  }
+
+  private async loadContent(
     examId: string,
-    executor: ContentExecutor = this.db,
+    executor: ContentExecutor,
   ): Promise<ExamContentData | null> {
     const [exam] = await executor
       .select({ id: exams.id, title: exams.title, instructions: exams.instructions })
@@ -85,22 +96,14 @@ export class ExamContentService implements ExamContentProvider {
     executor: ContentExecutor = this.db,
   ): Promise<Map<string, ContentItem>> {
     if (itemIds.length === 0) return new Map();
-    const rows = await executor
-      .select({
-        itemId: examItems.id,
-        sectionId: examItems.sectionId,
-        points: examItems.points,
-        snapshot: examItems.snapshot,
-      })
-      .from(examItems)
-      .where(
-        and(
-          eq(examItems.examId, examId),
-          inArray(examItems.id, itemIds),
-          isNotNull(examItems.snapshot),
-        ),
-      );
-    return new Map(rows.map((row) => [row.itemId, toItem(row)]));
+    const wanted = new Set(itemIds);
+    const content = await this.contentOf(examId, executor);
+    return new Map(
+      (content?.sections ?? [])
+        .flatMap((section) => section.items)
+        .filter((item) => wanted.has(item.itemId))
+        .map((item) => [item.itemId, item]),
+    );
   }
 
   async hasIllustration(
