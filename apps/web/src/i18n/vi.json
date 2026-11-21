@@ -335,6 +335,7 @@
     },
     "session": {
       "questionCount": "{{count}} câu",
+      "drawn": "rút ngẫu nhiên",
       "minutes": "{{count}} phút"
     },
     "confirm": {
@@ -356,6 +357,7 @@
       "attempts": "Số lượt làm",
       "attemptsUsed": "Đã dùng {{used}}/{{max}} lượt",
       "closesAt": "Phiên thi đóng lúc",
+      "drawnNotice": "Bài của bạn gồm {{count}} câu, rút ngẫu nhiên từ {{total}} câu của Bộ đề. Mỗi Người dự thi nhận một bộ câu riêng; nếu làm lại, bạn vẫn nhận đúng bộ câu này.",
       "noticeDevice": "Hệ thống ghi nhận Thiết bị dự thi và địa chỉ IP bạn dùng để vào thi. Phiên thi chỉ làm được trên thiết bị này; muốn đổi máy, hãy nhờ Người ra đề.",
       "noticeClock": "Đồng hồ bắt đầu chạy khi bạn bấm “Bắt đầu làm bài” và không dừng khi bạn thoát trang hay mất kết nối.",
       "noticeAutosave": "Mỗi câu trả lời được lưu lên hệ thống ngay khi bạn chọn; chỉ báo “Đã lưu” cho biết đã lưu xong.",
@@ -462,7 +464,8 @@
       "finish": "Kết thúc xem thử",
       "title": "Đang xem thử: {{title}}",
       "body": "Bạn đang đi qua đề đúng như Người dự thi thấy. Không có Lượt làm bài nào được tạo và không có gì được lưu hay chấm; không giới hạn giờ (Phiên thi quy định {{minutes}} phút). Tải lại trang thì đề được trộn lại và câu trả lời mất.",
-      "back": "Về Phiên thi"
+      "back": "Về Phiên thi",
+      "drawn": "Phiên thi này rút câu: đây là một lượt rút mẫu gồm {{count}} câu trong {{total}} câu của Bộ đề. Mỗi Người dự thi nhận bộ câu riêng; tải lại trang để xem một bộ mẫu khác."
     }
   },
   "pagination": {

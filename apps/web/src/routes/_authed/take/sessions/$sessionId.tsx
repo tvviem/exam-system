@@ -88,6 +88,17 @@ function ConfirmPage() {
           <dt className="text-fg-muted">{t('take.confirm.closesAt')}</dt>
           <dd className="font-medium">{formatDateTime(session.closesAt)}</dd>
         </dl>
+        {typeof session.drawnFrom === 'number' && (
+          <p
+            data-testid="drawn-notice"
+            className="rounded-lg border border-border bg-primary-soft p-3 text-sm text-on-primary-soft"
+          >
+            {t('take.confirm.drawnNotice', {
+              count: session.questionCount,
+              total: session.drawnFrom,
+            })}
+          </p>
+        )}
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
           <li>{t('take.confirm.noticeDevice')}</li>
           <li>{t('take.confirm.noticeClock')}</li>
