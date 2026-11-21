@@ -11,6 +11,7 @@ import {
   Save,
   Send,
   Trash2,
+  TriangleAlert,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +22,10 @@ import {
   addSection,
   type DraftItem,
   type DraftSection,
+  type DrawSummary,
   draftFromExam,
+  drawPercentValid,
+  drawSummaryOf,
   type ExamDraft,
   moveItem,
   moveItemToSection,
@@ -30,6 +34,7 @@ import {
   questionIdsOf,
   removeItem,
   removeSection,
+  setDrawPercent,
   setPoints,
   toContent,
   totalsOf,
@@ -107,6 +112,130 @@ function PointsInput({
       }}
       className="h-12 w-24 rounded-lg border border-border-strong bg-surface px-3 text-right text-base tabular-nums outline-none focus:border-primary focus:ring-2 focus:ring-ring/40 aria-invalid:border-danger pointer-fine:h-10"
     />
+  );
+}
+
+/** Ô tỷ lệ rút của Phần: giữ chuỗi đang gõ ("12," chưa thành số), chỉ báo lên bản nháp khi đã là số; để trống là NaN. */
+function DrawPercentInput({
+  id,
+  percent,
+  label,
+  describedBy,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  percent: number;
+  label: string;
+  describedBy: string;
+  disabled: boolean;
+  onChange: (percent: number) => void;
+}) {
+  const [text, setText] = useState(String(percent));
+  useEffect(() => {
+    setText((current) =>
+      Number(current.replace(',', '.')) === percent ? current : String(percent),
+    );
+  }, [percent]);
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode="decimal"
+      aria-label={label}
+      aria-describedby={describedBy}
+      disabled={disabled}
+      aria-invalid={!drawPercentValid(percent)}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(
+          e.target.value.trim() === '' ? Number.NaN : Number(e.target.value.replace(',', '.')),
+        );
+      }}
+      className="h-12 w-24 rounded-lg border border-border-strong bg-surface px-3 text-right text-base tabular-nums outline-none focus:border-primary focus:ring-2 focus:ring-ring/40 aria-invalid:border-danger pointer-fine:h-10"
+    />
+  );
+}
+
+/**
+ * Rút câu của một Phần (Q438): ô tỷ lệ, số câu mỗi người nhận, và cảnh báo lệch điểm (Q441). Bộ đề không dùng Rút câu (100 %) chỉ
+ * thấy một dòng gọn "lấy đủ N câu". Đã Phát hành thì chỉ đọc.
+ */
+function DrawRow({
+  section,
+  summary,
+  readOnly,
+  showAllHint,
+  onChange,
+}: {
+  section: DraftSection;
+  summary: DrawSummary;
+  readOnly: boolean;
+  /** Chú thích "100 % là lấy đủ" chỉ hiện một lần (Phần đầu) khi chưa Phần nào rút, để không lặp chữ ở Bộ đề không dùng Rút câu. */
+  showAllHint: boolean;
+  onChange: (percent: number) => void;
+}) {
+  const { t } = useTranslation();
+  const mine = summary.sections.find((s) => s.key === section.key);
+  if (!mine || (readOnly && section.drawPercent >= 100)) return null;
+  const uneven = summary.problems.some(
+    (p) => p.code === 'draw_points_uneven' && p.sectionId === section.key,
+  );
+  const drawing = mine.valid && section.drawPercent < 100;
+  const hintId = `draw-hint-${section.key}`;
+  const result = drawing
+    ? t('exam.draw.result', { count: mine.count, total: mine.total })
+    : t('exam.draw.all', { total: mine.total });
+  return (
+    <div className="flex flex-col gap-2" data-testid="draw-row">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <label htmlFor={`draw-${section.key}`} className="text-sm font-medium">
+          {t('exam.draw.label')}
+        </label>
+        {readOnly ? (
+          <span className="text-sm tabular-nums">
+            {String(section.drawPercent).replace('.', ',')} %
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <DrawPercentInput
+              id={`draw-${section.key}`}
+              percent={section.drawPercent}
+              label={t('exam.draw.inputLabel')}
+              describedBy={hintId}
+              disabled={readOnly}
+              onChange={onChange}
+            />
+            <span aria-hidden className="text-sm text-fg-muted">
+              %
+            </span>
+          </span>
+        )}
+        <span className="text-sm text-fg-muted tabular-nums" aria-live="polite">
+          {result}
+        </span>
+      </div>
+      <p id={hintId} className="text-xs text-fg-muted">
+        {mine.valid
+          ? drawing
+            ? t('exam.draw.hint')
+            : showAllHint
+              ? t('exam.draw.hintAll')
+              : null
+          : null}
+        {!mine.valid && <span className="text-danger">{t('exam.draw.invalid')}</span>}
+      </p>
+      {uneven && (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-warning bg-warning-soft p-3 text-sm"
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>{t('exam.draw.uneven')}</span>
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -251,9 +380,13 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
 
   const dirty = serialize(draft) !== baseline;
   const totals = totalsOf(draft);
+  const draw = drawSummaryOf(draft);
   const allItems = draft.sections.flatMap((s) => s.items);
   const valid =
-    draft.title.trim() !== '' && allItems.every((item) => pointsValid(item.points)) && !readOnly;
+    draft.title.trim() !== '' &&
+    allItems.every((item) => pointsValid(item.points)) &&
+    draw.sections.every((s) => s.valid) &&
+    !readOnly;
   // Khối Phần chỉ hiện khi đã chia Phần; Phần duy nhất mà đã có tiêu đề hay hướng dẫn thì vẫn hiện để không giấu nội dung.
   const split =
     draft.sections.length > 1 ||
@@ -415,6 +548,31 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                   )}
                 </Card>
 
+                {draw.active && (
+                  <div className="flex flex-col gap-2" data-testid="draw-summary">
+                    <p
+                      className="rounded-lg border border-border bg-surface-raised p-3 text-sm"
+                      aria-live="polite"
+                    >
+                      {draw.maxPoints === null
+                        ? t('exam.draw.summaryCount', { count: draw.count })
+                        : t('exam.draw.summary', {
+                            count: draw.count,
+                            points: String(draw.maxPoints).replace('.', ','),
+                          })}
+                    </p>
+                    {draw.problems.some((p) => p.code === 'draw_all_zero') && (
+                      <p
+                        role="alert"
+                        className="flex items-start gap-2 rounded-lg border border-warning bg-warning-soft p-3 text-sm"
+                      >
+                        <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+                        <span>{t('exam.draw.allZero')}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {draft.sections.map((section, index) => (
                   <Card key={section.key} className="flex flex-col gap-3">
                     {split && (
@@ -503,6 +661,17 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                       </Button>
                     )}
 
+                    {!collapsed.has(section.key) && section.items.length > 0 && (
+                      <DrawRow
+                        section={section}
+                        summary={draw}
+                        readOnly={readOnly}
+                        showAllHint={!draw.active && index === 0}
+                        onChange={(percent) =>
+                          change((d) => setDrawPercent(d, section.key, percent))
+                        }
+                      />
+                    )}
                     {collapsed.has(section.key) ? null : section.items.length === 0 ? (
                       <p className="text-fg-muted">{t('exam.emptySection')}</p>
                     ) : (

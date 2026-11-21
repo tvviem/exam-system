@@ -5,6 +5,9 @@ import {
   addSection,
   applyPoints,
   type DraftQuestion,
+  draftFromExam,
+  drawPercentValid,
+  drawSummaryOf,
   type ExamDraft,
   moveItem,
   moveItemToSection,
@@ -14,6 +17,7 @@ import {
   questionIdsOf,
   removeItem,
   removeSection,
+  setDrawPercent,
   setPoints,
   toContent,
   totalsOf,
@@ -187,5 +191,106 @@ describe('Đặt điểm nhanh trên bản nháp (Q168)', () => {
       ok: false,
       reason: 'empty',
     });
+  });
+});
+
+describe('tỷ lệ rút của Phần (Rút câu, Q435 đến Q441)', () => {
+  /** Phần A: 10 câu × 1 điểm; Phần B: 5 câu × 2 điểm. */
+  function drawSample(): ExamDraft {
+    let draft = addSection(newDraft('Đề'), 'b');
+    const a = draft.sections[0]?.key as string;
+    draft = addItems(
+      draft,
+      a,
+      Array.from({ length: 10 }, (_, i) => q(id(i + 1), 1)),
+    ).draft;
+    draft = addItems(
+      draft,
+      'b',
+      Array.from({ length: 5 }, (_, i) => q(id(i + 101), 2)),
+    ).draft;
+    // Khóa cố định để các bài kiểm lấy lại cùng một Phần qua nhiều lần dựng.
+    return { ...draft, sections: draft.sections.map((s, n) => (n === 0 ? { ...s, key: 'a' } : s)) };
+  }
+  const keyA = () => 'a';
+
+  it('Phần mới và Bộ đề mới lấy đủ (100 %), không đổi gì so với trước khi có Rút câu', () => {
+    expect(newDraft('Đề').sections[0]?.drawPercent).toBe(100);
+    expect(addSection(newDraft('Đề'), 'x').sections[1]?.drawPercent).toBe(100);
+    expect(drawSummaryOf(drawSample())).toMatchObject({
+      active: false,
+      count: 15,
+      maxPoints: 20,
+      problems: [],
+    });
+  });
+
+  it('đặt tỷ lệ chỉ đổi đúng Phần đó', () => {
+    const draft = setDrawPercent(drawSample(), keyA(), 40);
+    expect(draft.sections.map((s) => s.drawPercent)).toEqual([40, 100]);
+  });
+
+  it('drawPercentValid: 0 đến 100, tối đa hai chữ số lẻ; số lạ và để trống không hợp lệ', () => {
+    for (const ok of [0, 0.01, 12.5, 40, 99.99, 100])
+      expect(drawPercentValid(ok), String(ok)).toBe(true);
+    for (const bad of [-0.01, 100.01, 33.333, Number.NaN, Number.POSITIVE_INFINITY])
+      expect(drawPercentValid(bad), String(bad)).toBe(false);
+  });
+
+  it('tóm tắt: 40 % của 10 câu là 4 câu; mỗi người nhận 9 câu, tối đa 14 điểm', () => {
+    const summary = drawSummaryOf(setDrawPercent(drawSample(), keyA(), 40));
+    expect(summary).toMatchObject({ active: true, count: 9, maxPoints: 14, problems: [] });
+    expect(summary.sections.map((s) => [s.count, s.total])).toEqual([
+      [4, 10],
+      [5, 5],
+    ]);
+  });
+
+  it('Phần rút dưới 100 % mà các câu khác điểm: báo đúng Phần (Q441), không báo Phần 100 % hay 0 %', () => {
+    let draft = setDrawPercent(drawSample(), keyA(), 40);
+    draft = setPoints(draft, id(1), 3); // Phần A có câu 3 điểm và 1 điểm
+    expect(drawSummaryOf(draft).problems).toEqual([
+      { code: 'draw_points_uneven', sectionId: keyA() },
+    ]);
+    // Điểm tối đa không xác định khi còn Phần lệch điểm: ẩn (null) thay vì hiện số sai.
+    expect(drawSummaryOf(draft).maxPoints).toBeNull();
+    expect(drawSummaryOf(draft).count).toBe(9);
+    // Phần A lấy đủ: 3 + 9 × 1 = 12; Phần B 5 × 2 = 10.
+    expect(drawSummaryOf(setDrawPercent(draft, keyA(), 100)).maxPoints).toBe(22);
+    expect(drawSummaryOf(setDrawPercent(draft, keyA(), 100)).problems).toEqual([]);
+    expect(drawSummaryOf(setDrawPercent(draft, keyA(), 0)).problems).toEqual([]);
+  });
+
+  it('mọi Phần 0 % là vấn đề (Q440)', () => {
+    let draft = setDrawPercent(drawSample(), keyA(), 0);
+    draft = setDrawPercent(draft, 'b', 0);
+    expect(drawSummaryOf(draft).problems).toEqual([{ code: 'draw_all_zero' }]);
+  });
+
+  it('tỷ lệ đang gõ dở (để trống) tính như 100 % để không nhảy số, và đánh dấu không hợp lệ', () => {
+    const summary = drawSummaryOf(setDrawPercent(drawSample(), keyA(), Number.NaN));
+    expect(summary.count).toBe(15);
+    expect(summary.sections[0]?.valid).toBe(false);
+    expect(summary.sections[1]?.valid).toBe(true);
+  });
+
+  it('gửi lên server: chỉ ghi drawPercent khi dưới 100 %; nội dung vẫn hợp lệ theo schema chung', () => {
+    const draft = setDrawPercent(drawSample(), keyA(), 40);
+    const content = toContent(draft, 3);
+    expect(content.sections.map((s) => s.drawPercent)).toEqual([40, undefined]);
+    expect(examContentSchema.safeParse(content).success).toBe(true);
+    expect(toContent(drawSample(), 3).sections.every((s) => !('drawPercent' in s))).toBe(true);
+  });
+
+  it('nạp từ server: lấy drawPercent của Phần, thiếu thì 100', () => {
+    const saved = {
+      title: 'Đề',
+      instructions: textDoc(''),
+      sections: [
+        { id: 's1', title: null, instructions: textDoc(''), drawPercent: 40, items: [] },
+        { id: 's2', title: null, instructions: textDoc(''), items: [] },
+      ],
+    };
+    expect(draftFromExam(saved).sections.map((s) => s.drawPercent)).toEqual([40, 100]);
   });
 });

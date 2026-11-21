@@ -34,6 +34,8 @@ export interface ExamDetail {
     id: string;
     title: string | null;
     instructions: RichText;
+    /** Tỷ lệ rút mặc định (Rút câu, Q438); 100 là lấy đủ. */
+    drawPercent: number;
     items: { questionId: string; points: number; question: DraftQuestion }[];
   }[];
   totals: { items: number; points: number };
