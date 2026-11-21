@@ -197,7 +197,7 @@ export class ResultsService {
         closesAt: access.info.closesAt,
         durationMinutes: access.info.durationMinutes,
         attemptScoring: access.info.attemptScoring,
-        totalItems: ctx.items.length,
+        totalItems: ctx.drawnItemCount,
         maxScore,
       },
       role: access.role,
@@ -233,6 +233,8 @@ export class ResultsService {
     const seen = blind
       ? new Map<string, Map<string, number>>()
       : await this.source.displayNumbers(attempts.map((attempt) => attempt.attemptId));
+    // Chỉ các câu nằm trong bố cục của từng Lượt (Rút câu): người này không có câu của người khác.
+    const drawn = await this.source.itemIdsOf(attempts.map((attempt) => attempt.attemptId));
 
     return {
       person: {
@@ -250,24 +252,26 @@ export class ResultsService {
           attemptNo: attempt.attemptNo,
           ...(hide ? {} : { attemptId: attempt.attemptId }),
           submittedAt: attempt.submittedAt,
-          items: ctx.items.map((item) => {
-            const row = byItem.get(item.itemId);
-            const hidden = hide && essays.has(item.itemId);
-            return {
-              itemId: item.itemId,
-              no: item.no,
-              // Chỉ khi khác số gốc mới có giá trị (đề không xáo thì không cần ghi chú).
-              seenAs: blind
-                ? null
-                : seenAsOf(seen.get(attempt.attemptId)?.get(item.itemId), item.no),
-              type: item.type,
-              points: item.points,
-              score: hidden || !row || row.scoreCenti === null ? null : fromCenti(row.scoreCenti),
-              verdict: hidden ? ('hidden' as const) : (row?.verdict ?? 'pending'),
-              source: hidden ? null : (row?.source ?? null),
-              feedback: hidden ? null : (row?.feedback ?? null),
-            };
-          }),
+          items: ctx.items
+            .filter((item) => drawn.get(attempt.attemptId)?.has(item.itemId) ?? true)
+            .map((item) => {
+              const row = byItem.get(item.itemId);
+              const hidden = hide && essays.has(item.itemId);
+              return {
+                itemId: item.itemId,
+                no: item.no,
+                // Chỉ khi khác số gốc mới có giá trị (đề không xáo thì không cần ghi chú).
+                seenAs: blind
+                  ? null
+                  : seenAsOf(seen.get(attempt.attemptId)?.get(item.itemId), item.no),
+                type: item.type,
+                points: item.points,
+                score: hidden || !row || row.scoreCenti === null ? null : fromCenti(row.scoreCenti),
+                verdict: hidden ? ('hidden' as const) : (row?.verdict ?? 'pending'),
+                source: hidden ? null : (row?.source ?? null),
+                feedback: hidden ? null : (row?.feedback ?? null),
+              };
+            }),
         };
       }),
       violations: violations

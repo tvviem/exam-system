@@ -87,3 +87,44 @@ export function drawProblemsOf(
   if (drawn === 0) problems.push({ code: 'draw_all_zero' });
   return problems;
 }
+
+/**
+ * Số câu và điểm tối đa (đơn vị 0,01) mỗi Người dự thi nhận (Q388). Phần rút dưới 100 % có các câu cùng điểm (Q441 chặn Phát hành
+ * nếu lệch) nên mỗi người có cùng điểm tối đa: số câu rút nhân điểm mỗi câu; Phần 100 % (hoặc không nêu) lấy đủ mọi câu. Cộng bằng
+ * đơn vị 0,01 để không trôi số thực. Không có tỷ lệ nào thì ra đúng tổng điểm của Bộ đề như trước khi có Rút câu.
+ */
+export function drawTotalsOf(
+  sections: readonly { id: string; points: readonly number[] }[],
+  percents: Readonly<Record<string, number>>,
+): { count: number; maxCenti: number } {
+  let count = 0;
+  let maxCenti = 0;
+  for (const section of sections) {
+    const percent = percents[section.id] ?? 100;
+    const drawn = drawCountOf(percent, section.points.length);
+    count += drawn;
+    if (percent >= 100) {
+      maxCenti += section.points.reduce((sum, points) => sum + Math.round(points * 100), 0);
+    } else if (drawn > 0) {
+      maxCenti += drawn * Math.round((section.points[0] ?? 0) * 100);
+    }
+  }
+  return { count, maxCenti };
+}
+
+/**
+ * Số câu và điểm tối đa mỗi Người dự thi nhận trong một Phiên thi: mặc định của Bộ đề (`drawPercent` của Phần, không nêu là 100 %)
+ * bị ghi đè bởi `overrides` của Phiên thi. Một chỗ duy nhất cho chấm điểm, Kết quả, Phúc khảo và theo dõi, nên không nơi nào tự
+ * dò hai nguồn.
+ */
+export function sessionDrawTotals(
+  sections: readonly { id: string; drawPercent?: number; points: readonly number[] }[],
+  overrides: Readonly<Record<string, number>>,
+): { count: number; maxCenti: number } {
+  const defaults = Object.fromEntries(
+    sections.flatMap((section) =>
+      section.drawPercent === undefined ? [] : [[section.id, section.drawPercent] as const],
+    ),
+  );
+  return drawTotalsOf(sections, effectiveDrawPercents(sections, defaults, overrides));
+}

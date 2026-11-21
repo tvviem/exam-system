@@ -14,7 +14,11 @@ import { v7 as uuidv7 } from 'uuid';
 import { ApiError } from '../../common/api-error';
 import { ATTEMPT_GRADE_GUARD, type AttemptGradeGuard } from '../../common/attempt-grading';
 import { CLOCK, type Clock } from '../../common/clock';
-import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
+import {
+  drawTotalsOfContent,
+  EXAM_CONTENT,
+  type ExamContentProvider,
+} from '../../common/exam-content';
 import { uniqueViolationOf } from '../../common/pg-error';
 import type {
   ExamDeviceSummary,
@@ -29,6 +33,7 @@ import type {
   UndoForceSubmitResult,
   ViolationInput,
 } from '../../common/session-attempts';
+import { SESSION_ENTRY, type SessionEntry } from '../../common/session-entry';
 import type { UserDeactivationHooks } from '../../common/user-deactivation';
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import {
@@ -52,6 +57,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
     @Inject(DB) private readonly db: Database,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
+    @Inject(SESSION_ENTRY) private readonly entry: SessionEntry,
     private readonly presence: AttemptPresence,
     @Inject(ATTEMPT_GRADE_GUARD) private readonly gradeGuard: AttemptGradeGuard,
   ) {}
@@ -348,7 +354,7 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
 
   async monitorAttempts(sessionId: string, examId: string) {
     // Mọi truy vấn độc lập nhau nên chạy song song; số liệu đếm theo cả Phiên thi rồi lấy phần của Lượt mới nhất.
-    const [latest, counts, hidden, warned, lastSeen, summaries] = await Promise.all([
+    const [latest, counts, hidden, warned, lastSeen, content, overrides] = await Promise.all([
       this.db.execute<{
         id: string;
         user_id: string;
@@ -378,7 +384,8 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
         select attempt_id, count(*)::int n from violations
         where session_id = ${sessionId} and action = 'warning' group by attempt_id`),
       this.presence.lastSeenOf(sessionId),
-      this.content.summariesOf([examId]),
+      this.content.contentOf(examId),
+      this.entry.drawOverridesOf(sessionId),
     ]);
     const numbers = (rows: { attempt_id: string; n: number }[]) =>
       new Map(rows.map((row) => [row.attempt_id, row.n]));
@@ -401,7 +408,8 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
         lastSeenAt: lastSeen.get(row.id) ?? null,
       });
     }
-    return { totalItems: summaries.get(examId)?.itemCount ?? 0, byUser };
+    // Số câu mỗi người nhận (Rút câu, Q438), không phải số câu của cả Bộ đề.
+    return { totalItems: content ? drawTotalsOfContent(content, overrides).count : 0, byUser };
   }
 
   async forceSubmit(tx: Transaction, input: ForceSubmitInput): Promise<ForceSubmitResult> {

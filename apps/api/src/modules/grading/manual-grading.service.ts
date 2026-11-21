@@ -170,6 +170,9 @@ export class ManualGradingService {
     const item = this.essayItem(itemsOf(content), itemId);
     // Chỉ chấm Lượt có thể được tính (Q292), như hàng đợi.
     if (!(await this.context.isCountable(info, attemptId))) throw new ApiError('NOT_FOUND');
+    // Rút câu: câu không nằm trong bố cục của Lượt coi như không tồn tại (không tạo điểm cho câu chưa từng hiện).
+    const laid = (await this.source.itemIdsOf([attemptId])).get(attemptId);
+    if (laid && !laid.has(itemId)) throw new ApiError('NOT_FOUND');
     const points = toCenti(item.points);
     const centi = request.score === null ? null : toCenti(request.score);
     if (centi !== null && centi > points) {

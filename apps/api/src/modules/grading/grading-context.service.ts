@@ -2,6 +2,7 @@ import { countableAttempts, toCenti } from '@exam/scoring';
 import { Inject, Injectable } from '@nestjs/common';
 import { inArray } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
+import { drawTotalsOfContent } from '../../common/exam-content';
 import type { GradingSessionInfo } from '../../common/grading-sessions';
 import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
 import { type Database, DB } from '../../db/db.module';
@@ -30,7 +31,10 @@ export interface GradeRow {
 export interface GradingContext {
   info: GradingSessionInfo;
   items: GradingItem[];
+  /** Điểm tối đa MỖI Người dự thi nhận (đơn vị 0,01): theo số câu rút (Q388), không phải tổng điểm cả Bộ đề. */
   maxScoreCenti: number;
+  /** Số câu mỗi Người dự thi nhận (Rút câu, Q438). */
+  drawnItemCount: number;
   submitted: SubmittedAttempt[];
   /** Các Lượt có thể được tính vào Kết quả (Q292). */
   countable: SubmittedAttempt[];
@@ -59,6 +63,7 @@ export class GradingContextService {
     ]);
     if (!content) throw new ApiError('NOT_FOUND');
     const items = itemsOf(content);
+    const totals = drawTotalsOfContent(content, info.drawOverrides);
     const ungradedAttempts = await this.gradeMissing(submitted.map((attempt) => attempt.attemptId));
     const countable = countableAttempts(submitted, info.attemptScoring);
     const rows = new Map<string, GradeRow[]>();
@@ -88,7 +93,8 @@ export class GradingContextService {
     return {
       info,
       items,
-      maxScoreCenti: items.reduce((sum, item) => sum + toCenti(item.points), 0),
+      maxScoreCenti: totals.maxCenti,
+      drawnItemCount: totals.count,
       submitted,
       countable,
       rows,

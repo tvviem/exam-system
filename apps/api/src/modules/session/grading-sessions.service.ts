@@ -7,9 +7,12 @@ import type {
 } from '../../common/grading-sessions';
 import { escapeLike } from '../../common/sql-like';
 import { type Database, DB } from '../../db/db.module';
-import { sessionRoster, sessions } from './session.schema';
+import { sessionRoster, sessionSectionDraws, sessions } from './session.schema';
 
-const toInfo = (row: typeof sessions.$inferSelect): GradingSessionInfo => ({
+const toInfo = (
+  row: typeof sessions.$inferSelect,
+  overrides: Record<string, number> = {},
+): GradingSessionInfo => ({
   sessionId: row.id,
   examId: row.examId,
   title: row.title,
@@ -21,7 +24,36 @@ const toInfo = (row: typeof sessions.$inferSelect): GradingSessionInfo => ({
   entryClosedAt: row.entryClosedAt,
   cancelledAt: row.cancelledAt,
   reviewAfterRelease: row.reviewAfterRelease,
+  drawOverrides: overrides,
 });
+
+/** Ghi đè tỷ lệ rút của các Phiên thi này (một truy vấn): `sessionId` → (`sectionId` → tỷ lệ). */
+async function overridesOf(executor: GradingSessionExecutor, sessionIds: string[]) {
+  const result = new Map<string, Record<string, number>>();
+  if (sessionIds.length === 0) return result;
+  const rows = await executor
+    .select()
+    .from(sessionSectionDraws)
+    .where(inArray(sessionSectionDraws.sessionId, sessionIds));
+  for (const row of rows) {
+    const map = result.get(row.sessionId) ?? {};
+    map[row.sectionId] = Number(row.percent);
+    result.set(row.sessionId, map);
+  }
+  return result;
+}
+
+/** Gắn ghi đè tỷ lệ rút vào từng Phiên thi. */
+async function withOverrides(
+  executor: GradingSessionExecutor,
+  rows: (typeof sessions.$inferSelect)[],
+): Promise<GradingSessionInfo[]> {
+  const overrides = await overridesOf(
+    executor,
+    rows.map((row) => row.id),
+  );
+  return rows.map((row) => toInfo(row, overrides.get(row.id)));
+}
 
 /** Cài đặt cổng `GRADING_SESSIONS` (docs/plan/slice-5.md, PR 5b). */
 @Injectable()
@@ -30,7 +62,7 @@ export class GradingSessionsService implements GradingSessions {
 
   async info(sessionId: string, executor: GradingSessionExecutor = this.db) {
     const [row] = await executor.select().from(sessions).where(eq(sessions.id, sessionId));
-    return row ? toInfo(row) : null;
+    return row ? ((await withOverrides(executor, [row]))[0] ?? null) : null;
   }
 
   async lock(sessionId: string, executor: GradingSessionExecutor) {
@@ -40,7 +72,7 @@ export class GradingSessionsService implements GradingSessions {
       .where(eq(sessions.id, sessionId))
       // NO KEY UPDATE vẫn loại trừ Hoàn tác, Hủy (FOR UPDATE) nhưng không chặn chèn dòng thiết lập chấm (khóa ngoại): tránh bế tắc.
       .for('no key update');
-    return row ? toInfo(row) : null;
+    return row ? ((await withOverrides(executor, [row]))[0] ?? null) : null;
   }
 
   async setReviewAfterRelease(sessionId: string, value: boolean, executor: GradingSessionExecutor) {
@@ -56,7 +88,7 @@ export class GradingSessionsService implements GradingSessions {
       .from(sessions)
       .where(eq(sessions.examId, examId))
       .orderBy(desc(sessions.opensAt));
-    return rows.map(toInfo);
+    return withOverrides(executor, rows);
   }
 
   async infoMany(sessionIds: string[]) {
@@ -66,7 +98,7 @@ export class GradingSessionsService implements GradingSessions {
       .from(sessions)
       .where(inArray(sessions.id, sessionIds))
       .orderBy(desc(sessions.opensAt));
-    return rows.map(toInfo);
+    return withOverrides(this.db, rows);
   }
 
   async roster(sessionId: string, executor: GradingSessionExecutor = this.db) {
@@ -92,6 +124,6 @@ export class GradingSessionsService implements GradingSessions {
       .where(q.trim() ? sql`lower(${sessions.title}) LIKE ${like}` : undefined)
       .orderBy(desc(sessions.opensAt))
       .limit(limit);
-    return rows.map(toInfo);
+    return withOverrides(this.db, rows);
   }
 }

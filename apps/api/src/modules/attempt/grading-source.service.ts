@@ -3,7 +3,13 @@ import { and, count, desc, eq, gte, inArray } from 'drizzle-orm';
 import type { GradableAttempt, GradingExecutor, GradingSource } from '../../common/grading-source';
 import { SESSION_ENTRY, type SessionEntry } from '../../common/session-entry';
 import { type Database, DB } from '../../db/db.module';
-import { attempts, responses } from './attempt.schema';
+import { attempts, responses, type StoredLayout } from './attempt.schema';
+
+/** Các câu trong bố cục của Lượt; `null` nếu không có bố cục hợp lệ. */
+function itemIdsOfLayout(layout: StoredLayout | null | undefined): string[] | null {
+  if (!layout?.sections) return null;
+  return layout.sections.flatMap((section) => section.items.map((item) => item.itemId));
+}
 
 /** Cài đặt cổng `GRADING_SOURCE` (Q285): đưa bài làm đã nộp cho `grading` mà không để nó đọc bảng của `attempt`. */
 @Injectable()
@@ -25,6 +31,7 @@ export class GradingSourceService implements GradingSource {
         sessionId: attempts.sessionId,
         userId: attempts.userId,
         attemptNo: attempts.attemptNo,
+        layout: attempts.layout,
       })
       .from(attempts)
       .where(and(inArray(attempts.id, attemptIds), eq(attempts.status, 'submitted')))
@@ -65,6 +72,7 @@ export class GradingSourceService implements GradingSource {
           examId,
           userId: row.userId,
           attemptNo: row.attemptNo,
+          itemIds: itemIdsOfLayout(row.layout),
           responses: valuesOf.get(row.id) ?? new Map<string, unknown>(),
         },
       ];
@@ -124,6 +132,20 @@ export class GradingSourceService implements GradingSource {
       .from(attempts)
       .where(inArray(attempts.id, attemptIds));
     return new Map(rows.map((row) => [row.id, row.sessionId]));
+  }
+
+  async itemIdsOf(attemptIds: string[], executor: GradingExecutor = this.db) {
+    const result = new Map<string, Set<string>>();
+    if (attemptIds.length === 0) return result;
+    const rows = await executor
+      .select({ id: attempts.id, layout: attempts.layout })
+      .from(attempts)
+      .where(inArray(attempts.id, attemptIds));
+    for (const row of rows) {
+      const ids = itemIdsOfLayout(row.layout);
+      if (ids) result.set(row.id, new Set(ids));
+    }
+    return result;
   }
 
   async displayNumbers(attemptIds: string[]) {

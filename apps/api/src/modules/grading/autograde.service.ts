@@ -110,23 +110,27 @@ export class AutogradeService {
     }
     try {
       const gradedAt = this.clock.now();
+      // Chỉ các câu nằm trong bố cục của Lượt (đã rút): câu chưa từng hiện không có điểm.
+      const drawn = attempt.itemIds ? new Set(attempt.itemIds) : null;
       return content.sections.flatMap((section) =>
-        section.items.map((item) => {
-          const scoring: ScoringItem = {
-            type: item.snapshot.type,
-            points: item.points,
-            payload: item.snapshot.payload,
-          };
-          const { score, verdict } = scoreResponse(scoring, attempt.responses.get(item.itemId));
-          return {
-            attemptId: attempt.attemptId,
-            itemId: item.itemId,
-            score: score === null ? null : score.toFixed(2),
-            verdict,
-            source: 'auto' as const,
-            gradedAt,
-          };
-        }),
+        section.items
+          .filter((item) => !drawn || drawn.has(item.itemId))
+          .map((item) => {
+            const scoring: ScoringItem = {
+              type: item.snapshot.type,
+              points: item.points,
+              payload: item.snapshot.payload,
+            };
+            const { score, verdict } = scoreResponse(scoring, attempt.responses.get(item.itemId));
+            return {
+              attemptId: attempt.attemptId,
+              itemId: item.itemId,
+              score: score === null ? null : score.toFixed(2),
+              verdict,
+              source: 'auto' as const,
+              gradedAt,
+            };
+          }),
       );
     } catch (error) {
       this.logger.error(`Chấm Lượt ${attempt.attemptId} lỗi: ${String(error)}`);

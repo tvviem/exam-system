@@ -4,7 +4,11 @@ import { and, count, eq, sql } from 'drizzle-orm';
 import type { Actor } from '../../common/actor';
 import { ApiError } from '../../common/api-error';
 import { CLOCK, type Clock } from '../../common/clock';
-import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
+import {
+  drawTotalsOfContent,
+  EXAM_CONTENT,
+  type ExamContentProvider,
+} from '../../common/exam-content';
 import { GRADING_SESSIONS, type GradingSessions } from '../../common/grading-sessions';
 import { GRADING_SOURCE, type GradingSource } from '../../common/grading-source';
 import { pgErrorOf } from '../../common/pg-error';
@@ -16,7 +20,6 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CandidateResultService } from './candidate-result.service';
 import { appeals } from './grading.schema';
 import { GradingAccessService } from './grading-access.service';
-import { itemsOf } from './grading-layout';
 import { GradingStatusService } from './grading-status.service';
 
 /** Một Phúc khảo như Người dự thi thấy: không có Đáp án đúng, không lộ ai xử lý. */
@@ -70,8 +73,8 @@ export class CandidateAppealsService {
     if (!counted) throw new ApiError('NOT_FOUND');
     const content = await this.content.contentOf(info.examId);
     if (!content) throw new ApiError('NOT_FOUND');
-    const itemCount = itemsOf(content).length;
-    const limit = appealLimitOf(itemCount);
+    // Hạn mức theo số câu Người dự thi nhận (Rút câu), không phải số câu của cả Bộ đề.
+    const limit = appealLimitOf(drawTotalsOfContent(content, info.drawOverrides).count);
 
     // Đối tượng Phúc khảo: câu theo số Người dự thi đã thấy, hoặc Mức xử lý của chính họ.
     let attemptId = counted.attemptId;
@@ -176,7 +179,9 @@ export class CandidateAppealsService {
         .orderBy(appeals.createdAt, appeals.id),
       this.content.contentOf(info.examId),
     ]);
-    const limit = appealLimitOf(content ? itemsOf(content).length : 0);
+    const limit = appealLimitOf(
+      content ? drawTotalsOfContent(content, info.drawOverrides).count : 0,
+    );
     const numbers = await this.source.displayNumbers([
       ...new Set(rows.map((row) => row.attemptId)),
     ]);
