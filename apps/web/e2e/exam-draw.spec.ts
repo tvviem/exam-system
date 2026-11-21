@@ -99,6 +99,10 @@ const shot = async (page: Page, name: string) => {
 const overflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
+/** Tên Chủ đề không được trùng trong một tài khoản: mỗi lần chạy (kể cả chạy lại khi lỗi, lặp lại) dùng tên riêng. */
+const runId = (testInfo: { retry: number; repeatEachIndex: number }) =>
+  `${testInfo.repeatEachIndex}-${testInfo.retry}`;
+
 const percentInput = (page: Page, n: number) =>
   page.getByRole('textbox', { name: /^Tỷ lệ rút của Phần/ }).nth(n);
 
@@ -107,7 +111,7 @@ test('Rút câu ở Bộ đề: đặt tỷ lệ từng Phần, thấy số câu
 }, testInfo) => {
   const p = testInfo.project.name;
   await signIn(page, `e2e-rc-${p}`);
-  const examId = await seedExam(page, p);
+  const examId = await seedExam(page, `${p}-${runId(testInfo)}`);
   await page.goto(`/examiner/exams/${examId}`);
 
   // Mặc định: lấy đủ, như trước khi có Rút câu; chưa có dòng tổng hợp rút câu.
@@ -148,7 +152,7 @@ test('Rút câu ở Bộ đề: đặt tỷ lệ từng Phần, thấy số câu
   await expect(page.getByText(/tối đa \d/)).toHaveCount(0);
   await shot(page, `canh-bao-${p}`);
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
-  await expect(page.getByText('Đã lưu Bộ đề')).toBeVisible();
+  await expect(page.getByText('Đã lưu Bộ đề').last()).toBeVisible();
 
   // Phát hành bị chặn, nêu đúng Phần lệch.
   await page.getByRole('button', { name: 'Phát hành' }).first().click();
@@ -162,7 +166,7 @@ test('Rút câu ở Bộ đề: đặt tỷ lệ từng Phần, thấy số câu
   await page.getByRole('textbox', { name: 'Điểm câu 1', exact: true }).fill('1');
   await expect(page.getByRole('alert').filter({ hasText: 'đang khác điểm' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
-  await expect(page.getByText('Đã lưu Bộ đề')).toBeVisible();
+  await expect(page.getByText('Đã lưu Bộ đề').last()).toBeVisible();
   await page.reload();
   await expect(percentInput(page, 0)).toHaveValue('40');
   await expect(page.getByText('→ mỗi người nhận 4/10 câu')).toBeVisible();
@@ -188,14 +192,14 @@ test('mọi Phần 0 % bị báo: Người dự thi sẽ không có câu nào, v
 }, testInfo) => {
   const p = testInfo.project.name;
   await signIn(page, `e2e-rc0-${p}`);
-  const examId = await seedExam(page, `${p}-0`);
+  const examId = await seedExam(page, `${p}-0-${runId(testInfo)}`);
   await page.goto(`/examiner/exams/${examId}`);
   await percentInput(page, 0).fill('0');
   await expect(page.getByText('→ mỗi người nhận 0/10 câu')).toBeVisible();
   await percentInput(page, 1).fill('0');
   await expect(page.getByRole('alert').filter({ hasText: 'Mọi Phần đều 0 %' })).toBeVisible();
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
-  await expect(page.getByText('Đã lưu Bộ đề')).toBeVisible();
+  await expect(page.getByText('Đã lưu Bộ đề').last()).toBeVisible();
   await page.getByRole('button', { name: 'Phát hành' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Phát hành Bộ đề' });
   await expect(dialog.getByText(/Mọi Phần đều 0 %/)).toBeVisible();
