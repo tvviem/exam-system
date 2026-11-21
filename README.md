@@ -336,7 +336,7 @@ Giai đoạn 1 chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, ra Int
 | [docs/data-model.md](docs/data-model.md) | Thiết kế bảng PostgreSQL, ràng buộc, công thức tính Kết quả |
 | [docs/plan/](docs/plan) | Kế hoạch, quyết định, ghi chú triển khai và hướng dẫn thử từng lát cắt: slice-0 đến slice-7 (slice-1: Q43–Q99, slice-3: Q159–Q191, slice-4: Q192–Q272, slice-5: Q285–Q322, slice-7: email Q372–Q384), cùng các thiết kế sau bản 0.1: [Xuất Bộ đề](docs/plan/xuat-bo-de-thiet-ke.md) (Q401–Q416), [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md) (Q385–Q395), [tên hệ thống](docs/plan/ten-he-thong.md) (Q396–Q400) |
 | [docs/hieu-nang.md](docs/hieu-nang.md) | Hiệu năng và sức tải đã đo, cách đọc số đo, khuyến nghị cỡ phòng thi |
-| [docs/huong-dan/](docs/huong-dan) | Hướng dẫn sử dụng theo vai (chấm điểm, Công bố, Phúc khảo, Đính chính) |
+| [docs/huong-dan/](docs/huong-dan) | Hướng dẫn sử dụng theo vai (chấm điểm, Công bố, Phúc khảo, Đính chính; Rút câu theo Phần) |
 | [docs/ops/trien-khai.md](docs/ops/trien-khai.md), [khoi-phuc.md](docs/ops/khoi-phuc.md), [checklist-phien-thi.md](docs/ops/checklist-phien-thi.md) | Dựng và vận hành pod production; sao lưu và khôi phục; việc phải làm trước mỗi Phiên thi thật |
 | [docs/ops/phat-hanh.md](docs/ops/phat-hanh.md), [gui-thu.md](docs/ops/gui-thu.md), [tai-khoan-va-mat-khau.md](docs/ops/tai-khoan-va-mat-khau.md) | Tôn chỉ đánh số phiên bản, gắn tag và viết ghi chú Release; cấu hình gửi thư; xử lý tài khoản và mật khẩu |
 | [docs/ops/demo-wsl.md](docs/ops/demo-wsl.md), [chuyen-len-vps.md](docs/ops/chuyen-len-vps.md) | Triển khai demo trên laptop WSL (bản nháp); hướng chuyển sang VPS khi cần |
@@ -358,7 +358,7 @@ Giai đoạn 1 chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, ra Int
 | 6 | **Xong.** Triển khai production lên pod `prod-exam`, workflow "Deploy (bấm tay)", sao lưu và khôi phục, báo ngoài máy |
 | 7 | **Xong.** Tài khoản bằng email: thư kích hoạt, quên mật khẩu, đổi và xác thực email, Lời mời tự gửi thư, theo dõi kích hoạt |
 | 0.2.0 | **Xong.** [Xuất Bộ đề ra Word](docs/plan/xuat-bo-de-thiet-ke.md): tệp Đề thi (Mẫu Trường hoặc Gọn, công thức Word gốc, hình) và tệp Đáp án và thang điểm (đáp án hiệu lực sau Đính chính, có xác nhận); chức năng tùy chọn chưa cần ở mục 16 của tài liệu |
-| Kế tiếp | **Đã duyệt thiết kế, chưa có mã:** [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md) (dự kiến 0.3.0) |
+| 0.3.0 (chờ deploy) | **Xong mã, chờ triển khai và kiểm trên production rồi mới gắn tag:** [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md) (tỷ lệ mặc định ở Bộ đề, ghi đè ở Phiên thi, rút riêng cho từng Người dự thi, chấm và Kết quả theo bộ câu của từng Lượt, Xem thử một lượt rút); hướng dẫn: [rut-cau-theo-phan.md](docs/huong-dan/rut-cau-theo-phan.md) |
 
 Để giai đoạn sau: nhập câu hỏi từ Word, tải ảnh vào Câu tự luận, giao diện tiếng Anh, xác thực hai lớp cho Quản trị viên, chuyển sang VPS (xem [docs/ops/chuyen-len-vps.md](docs/ops/chuyen-len-vps.md)).
 

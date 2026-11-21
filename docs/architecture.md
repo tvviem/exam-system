@@ -98,6 +98,7 @@ Quy tắc: một module chỉ gọi module khác qua service công khai của mo
 0. Trên điện thoại: đăng nhập → nhập **Mã vào thi** do Người ra đề công bố tại lớp → hệ thống tìm Phiên thi tương ứng. Sai mã quá 5 lần trong 10 phút thì bị chặn tạm thời.
 1. Kiểm tra: người dùng có trong Danh sách dự thi, đang trong Khung giờ, còn lượt làm bài.
 2. Tạo `attempt` với `seed` ngẫu nhiên. Sinh thứ tự Câu hỏi trong từng Phần và thứ tự Phương án, lưu vào `attempt.layout`. Thứ tự này **cố định suốt Lượt làm bài**.
+   - **Rút câu theo Phần (Q438):** nếu Phần có tỷ lệ rút dưới 100 %, bước này chọn trước `k` câu của Phần (`k` = tỷ lệ hiệu lực × số câu, làm tròn nửa lên, tối thiểu 1 nếu tỷ lệ lớn hơn 0) rồi mới xáo thứ tự. Tỷ lệ hiệu lực = ghi đè của Phiên thi, rồi mặc định của Bộ đề, rồi 100 % (`effectiveDrawPercents`). Việc chọn dùng luồng ngẫu nhiên **riêng**, hạt giống băm từ mã Phiên thi, mã người và mã Phần (không phải `seed` của Lượt): cùng một người ra cùng một bộ câu ở mọi Lượt, không cần bảng lưu riêng, còn thứ tự xáo vẫn theo `seed` của Lượt. `layout` chỉ chứa các câu đã rút, và `saveResponses` chỉ nhận câu trong `layout`. Không cấu hình hoặc 100 % thì kết quả giống hệt trước khi có Rút câu.
 3. `deadline = min(started_at + duration, window_close_at) + extension`. Server lưu giá trị này; client chỉ hiển thị.
 4. Đặt job BullMQ có độ trễ để tự Nộp bài tại `deadline + grace` (mặc định 30 giây).
 5. Trả về nội dung đã lọc **không có Đáp án đúng**, theo thứ tự trong `layout`, kèm URL ảnh có chữ ký hết hạn sau 2 giờ.
@@ -132,6 +133,8 @@ Mệnh đề thí sinh để trống tính là *không đúng*. Câu trả lời
 Chùm đúng/sai có thêm quy tắc **Bậc thang**: `điểm × ladder[số Mệnh đề nhận định đúng]`. Người ra đề tự nhập bảng khi soạn câu, ví dụ `[0, 0.1, 0.25, 0.5, 1]` cho chùm 4 Mệnh đề.
 
 Mọi hàm chấm nằm trong `packages/scoring` dưới dạng hàm thuần (pure function), được unit test đầy đủ.
+
+Với Phiên thi rút câu, chấm tự động chỉ tạo điểm cho các câu trong `layout` của từng Lượt (cổng `GRADING_SOURCE` trả `itemIds`), nên câu chưa từng hiện không có điểm. Điểm tối đa và số câu mỗi người nhận tính một nơi (`sessionDrawTotals` ở `packages/shared`, `drawTotalsOfContent` ở API) rồi dùng cho bảng Kết quả, thang 10, hạn mức Phúc khảo, tổng số câu ở màn Theo dõi và xuất Excel.
 
 ### 5.6 Kết quả và Phúc khảo
 `Đã nộp → Đã chấm → Đã Công bố → (Thời hạn phúc khảo 1–14 ngày, mặc định 3 ngày, Q298) → Đã Chốt`. "Đã chấm" suy ra từ bảng điểm, không phải một giá trị của `attempts.status` (ADR-0008); Kết quả của một người tính khi đọc (Q295). Chi tiết quyết định ở [plan/slice-5.md](plan/slice-5.md). Kết quả luôn chờ Người ra đề bấm Công bố. Khi xem Kết quả, Người dự thi thấy điểm từng câu và trạng thái *đúng / chưa đúng hoàn toàn / sai*. Không đánh dấu riêng Phương án hay Mệnh đề nào sai; với chùm đúng/sai chỉ hiện tổng, ví dụ "đúng 3/4 Mệnh đề". API **không bao giờ trả về Đáp án đúng**, kể cả sau khi Chốt, để giữ ngân hàng câu hỏi dùng được lâu dài. Nút Công bố chỉ bật khi mọi Câu tự luận đã được chấm. Nếu Phúc khảo cho thấy Đáp án đúng bị nhập sai, Người ra đề thực hiện **Đính chính đáp án**: worker chấm lại câu đó cho mọi Lượt làm bài thuộc các Phiên thi **chưa Chốt** dùng Bộ đề này (Phiên thi đã Chốt giữ nguyên) và ghi `key_corrections` cùng nhật ký thao tác. Người dự thi gửi Phúc khảo cho từng câu kèm lý do. Người ra đề chấm lại một lần; điểm cũ và điểm mới đều được lưu vết. Worker tự Chốt kết quả khi hết hạn và không còn Phúc khảo đang mở.
@@ -296,6 +299,21 @@ Rút câu không làm vào thi chậm hơn (nhẹ hơn vì ít câu hơn). Đo t
 | Đọc đề, 99 người cùng lúc (p50 / p95) | 434–442 / 551 ms | 343–351 / 403–418 ms |
 
 Rút 40 % nay nằm trong ngân sách (dưới 1 giây khi 100 người cùng lúc); Bộ đề 100 câu đủ còn khoảng 1,1 giây, hơi quá. Còn dư địa: bước "bắt đầu rồi đọc đề" lặp lại cổng vào thi, kiểm thiết bị và đọc Lượt (khoảng 7 truy vấn).
+
+Số đo quy mô lớn (22/11/2026, R5, cùng bài đo với `RUT_CAU_N=500`, Bộ đề 100 câu, rút 40 % = 40 câu mỗi người, một tiến trình, PostgreSQL thật, chưa gồm mạng):
+
+| Việc | 100 người | 500 người |
+|---|---|---|
+| Bắt đầu Lượt, p50 / p95, tất cả cùng một lúc (rút 40 %) | 766 / 825 ms | 3756 / 4056 ms |
+| Bắt đầu Lượt, p50 / p95, tất cả cùng một lúc (đủ 100 câu) | 842 / 953 ms | 4251 / 4839 ms |
+| Đọc đề, p50 / p95 (rút 40 %) | 304 / 361 ms | 1527 / 1824 ms |
+| Chấm tự động cả Phiên thi (theo lô 50) | 680 ms (6,8 ms mỗi Lượt) | 2852 ms (5,7 ms mỗi Lượt) |
+| Bảng Kết quả | 49 ms | 119 ms |
+| Xuất Excel | 155 ms (37 KB) | 474 ms (153 KB) |
+
+Cách đọc: 500 người bấm bắt đầu **đúng cùng một lúc** là trường hợp xấu nhất; thông lượng đo được khoảng **125 lượt bắt đầu mỗi giây**, gấp hơn 20 lần giả định ở mục 11 (300 lượt trong 60 giây, khoảng 5 mỗi giây), nên thực tế mỗi người chỉ chờ vài chục mili giây. Chấm (5,7 ms mỗi Lượt, ngân sách 20 ms), bảng Kết quả và Excel (ngân sách 300 ms và 1 giây ở 500 người đã đạt cả hai lần đo trước) đều nằm trong ngân sách với bộ câu riêng của từng người.
+
+Mức trùng bộ câu giữa hai người (Bộ đề 100 câu, rút 40 %, 300 người, 44 850 cặp; `packages/shared/src/draw-overlap.test.ts`): trung bình trùng **16,00 trên 40 câu (40,0 %)**, nhiều nhất 26 trên 40, không có hai người cùng một bộ câu, và mỗi câu được chọn với xác suất như nhau.
 
 Số đo của kênh đẩy (4/11/2026, máy phát triển, cổng thật qua WebSocket): tin đến Người dự thi sau Cộng giờ 26–38 ms; tin đến Người ra đề sau heartbeat 10–11 ms; phát tán một tin tới 300 kết nối cùng nghe một phòng 25–33 ms. Người dùng thấy (E2E, trình duyệt thật, không tua đồng hồ): từ lúc Người ra đề bấm đến màn hình Người dự thi đổi là Cộng giờ 360–550 ms, Thu hồi 170–300 ms, Buộc nộp 180–350 ms; Người dự thi chọn đáp án đến lúc màn Theo dõi đổi 1,4–2,5 giây (gồm độ trễ lưu 300 ms của Người dự thi và cửa sổ gộp tối đa 2 giây). Trang quản trị `/admin/users` hiện sau 280–460 ms và không mở kết nối Socket.IO.
 
