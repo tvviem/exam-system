@@ -117,6 +117,7 @@ function SessionCard({ row }: { row: TakeSession }) {
         {formatDateTime(row.opensAt)} – {formatDateTime(row.closesAt)} ·{' '}
         {t('take.session.minutes', { count: row.durationMinutes })} ·{' '}
         {t('take.session.questionCount', { count: row.questionCount })}
+        {typeof row.drawnFrom === 'number' && ` · ${t('take.session.drawn')}`}
       </p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <ActionNote action={action} row={row} />

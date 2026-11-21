@@ -430,6 +430,15 @@ export class AttemptsService {
           sessionId: gate.sessionId,
           title: gate.title,
           examTitle: summary?.title ?? '',
+          // Bài rút từ bao nhiêu câu của Bộ đề (Rút câu, Q390); null khi lấy đủ mọi câu.
+          drawnFrom: (() => {
+            const content = contents.get(gate.examId);
+            if (!content) return null;
+            const total = content.sections.reduce((n, section) => n + section.items.length, 0);
+            return drawTotalsOfContent(content, overrides.get(gate.sessionId) ?? {}).count < total
+              ? total
+              : null;
+          })(),
           questionCount: (() => {
             const content = contents.get(gate.examId);
             return content
