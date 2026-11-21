@@ -14,7 +14,10 @@ export interface TakeSession extends SessionRow {
   sessionId: string;
   title: string;
   examTitle: string;
+  /** Số câu mỗi người nhận (đã tính Rút câu). */
   questionCount: number;
+  /** Bài rút ngẫu nhiên từ bao nhiêu câu của Bộ đề; `null` khi lấy đủ mọi câu (Q390). */
+  drawnFrom: number | null;
   opensAt: string;
   closesAt: string;
   /** Đã gồm giờ cộng sẵn. */
@@ -99,6 +102,8 @@ export interface PreviewView extends TakeContent {
   status: 'preview';
   session: { id: string; title: string };
   durationMinutes: number;
+  /** Phiên thi rút câu: đây là một lượt rút mẫu gồm `count` câu trong `total` câu; `null` khi lấy đủ. */
+  draw: { count: number; total: number } | null;
 }
 
 /** Không lưu đệm lâu: mỗi lần mở là một lần trộn mới, và đổi tab không được làm đề đổi chỗ giữa chừng. */

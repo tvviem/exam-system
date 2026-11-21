@@ -368,6 +368,11 @@ export function PreviewRunner({ view, onExit }: { view: PreviewView; onExit: () 
               {t('take.preview.title', { title: view.session.title })}
             </strong>
             {t('take.preview.body', { minutes: view.durationMinutes })}
+            {view.draw && (
+              <span data-testid="preview-draw" className="mt-1 block font-medium">
+                {t('take.preview.drawn', { count: view.draw.count, total: view.draw.total })}
+              </span>
+            )}
           </span>
         </p>
       }
