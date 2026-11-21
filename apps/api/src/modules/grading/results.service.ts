@@ -29,6 +29,8 @@ export interface ResultRow {
   essayHidden: boolean;
   rawScore: number | null;
   maxScore: number;
+  /** Điểm thô sau Mức xử lý (trừ phần trăm, hoặc 0 khi Hủy kết quả); điểm quy đổi tính từ số này. */
+  finalScore: number | null;
   scaledScore: number | null;
   penaltyPercent: number;
   voided: boolean;
@@ -167,6 +169,7 @@ export class ResultsService {
           ...base,
           state: 'no_attempt' as const,
           rawScore: null,
+          finalScore: null,
           scaledScore: null,
           penaltyPercent: 0,
           voided: false,
@@ -180,6 +183,7 @@ export class ResultsService {
             ? ('waiting_essay' as const)
             : ('graded' as const),
         rawScore: result.rawScore,
+        finalScore: result.finalScore,
         scaledScore: result.scaledScore,
         penaltyPercent: result.penaltyPercent,
         voided: result.voided,

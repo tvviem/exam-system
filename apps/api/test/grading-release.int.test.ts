@@ -484,6 +484,43 @@ describe('Xuất Excel (Q304)', () => {
     expect(an.slice(2)).toEqual(['1', '1', '1', '0.5']);
   });
 
+  it('trang Tổng hợp: nhãn "Điểm tối đa mỗi người" và cột Điểm thô, Điểm tối đa, Điểm sau Mức xử lý, Điểm quy đổi (thang 10)', async () => {
+    finish();
+    await gradeAll();
+    const violationId = '00000000-0000-4000-8000-0000000000cc';
+    await sql(
+      `insert into violations (id, attempt_id, session_id, user_id, action, reason, recorded_by)
+       values ($1, $2, $3, $4, 'warning', 'Nhìn bài bạn', $5)`,
+      [violationId, live.attemptIds.an, live.sessionId, live.userIds.an, live.userIds.an],
+    );
+    await api('PUT', `${base()}/violations/${violationId}/penalty`, {
+      type: 'percent',
+      percent: 10,
+    });
+    await release();
+    const { workbook } = await download();
+    const summary = cells(workbook.getWorksheet('Tổng hợp') as ExcelJS.Worksheet);
+    expect(summary[4]).toEqual(['Điểm tối đa mỗi người', '4']);
+    expect(summary.flat()).not.toContain('Tổng điểm Bộ đề');
+    const headerAt = summary.findIndex((row) => row[0] === 'Mã định danh');
+    expect(summary[headerAt]).toEqual([
+      'Mã định danh',
+      'Họ và tên',
+      'Lớp',
+      'Số Lượt',
+      'Điểm thô',
+      'Điểm tối đa',
+      'Điểm sau Mức xử lý',
+      'Điểm quy đổi (thang 10)',
+      'Ghi chú',
+    ]);
+    const row = (code: string) => summary.find((r) => r[0] === code) as string[];
+    // An: thô 3,5; trừ 10 % còn 3,15; quy đổi 7,9.
+    expect(row('SV001').slice(4)).toEqual(['3.5', '4', '3.15', '7.9', 'trừ 10 %']);
+    // Dũng không vào thi: không điểm nào, chỉ ghi chú.
+    expect(row('SV004').slice(4)).toEqual(['', '', '', '', 'Chưa làm bài']);
+  });
+
   it('chỉ chủ hoặc người được Ủy quyền tải được: người khác 404, Người dự thi bị chặn', async () => {
     expect(
       (await call(t.app, 'GET', `/api${base()}/results.xlsx`, { cookie: live.other })).statusCode,

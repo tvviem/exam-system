@@ -38,7 +38,8 @@ export class ResultsExportService {
     summary.addRow(['Ngày diễn ra', dateRangeText(session.opensAt, session.closesAt)]);
     summary.addRow(['Thời gian làm bài', `${session.durationMinutes} phút`]);
     summary.addRow(['Tổng số câu', `${session.totalItems} câu`]);
-    summary.addRow(['Tổng điểm Bộ đề', session.maxScore]);
+    // Với Phiên thi rút câu đây là điểm tối đa của bộ câu mỗi người nhận (Q388), không phải tổng điểm cả Bộ đề.
+    summary.addRow(['Điểm tối đa mỗi người', session.maxScore]);
     if (!release.releasedAt) summary.addRow(['Trạng thái', 'Chưa Công bố']);
     if (waiting > 0) summary.addRow(['Lưu ý', `Còn ${waiting} người chờ chấm câu tự luận`]);
     summary.addRow([]);
@@ -48,14 +49,15 @@ export class ResultsExportService {
       'Lớp',
       'Số Lượt',
       'Điểm thô',
-      'Tổng điểm Bộ đề',
-      'Điểm quy đổi',
+      'Điểm tối đa',
+      'Điểm sau Mức xử lý',
+      'Điểm quy đổi (thang 10)',
       'Ghi chú',
     ]);
     header.font = { bold: true };
     for (const person of people) summary.addRow(summaryRow(person, session.maxScore));
     summary.columns.forEach((column, index) => {
-      column.width = [16, 28, 14, 10, 12, 12, 14, 36][index] ?? 14;
+      column.width = [16, 28, 14, 10, 12, 12, 18, 22, 36][index] ?? 14;
     });
 
     const detail = workbook.addWorksheet('Chi tiết');
@@ -100,6 +102,7 @@ function summaryRow(person: ResultRow, maxScore: number) {
     person.attemptCount,
     person.rawScore ?? '',
     person.state === 'no_attempt' ? '' : maxScore,
+    person.finalScore ?? '',
     person.scaledScore ?? '',
     notes.join('; '),
   ];
