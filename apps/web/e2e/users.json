@@ -1622,5 +1622,41 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rcs-desktop",
+    "fullName": "Giảng viên Rút câu Phiên thi desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rcs-sv-desktop",
+    "fullName": "Sinh viên Rút câu desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "RCS-D-001",
+    "classLabel": "LOP-RCS-D"
+  },
+  {
+    "username": "e2e-rcs-mobile",
+    "fullName": "Giảng viên Rút câu Phiên thi mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rcs-sv-mobile",
+    "fullName": "Sinh viên Rút câu mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "RCS-M-001",
+    "classLabel": "LOP-RCS-M"
   }
 ]

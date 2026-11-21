@@ -282,6 +282,8 @@ function Overview({ session }: { session: SessionSummary }) {
   const toast = useToast();
   const yes = (value: boolean) => t(value ? 'session.overview.yes' : 'session.overview.no');
   const onOff = (value: boolean) => t(value ? 'session.overview.on' : 'session.overview.off');
+  // Phần nào được rút dưới 100 % (tỷ lệ hiệu lực: ghi đè của Phiên thi hoặc mặc định của Bộ đề).
+  const drawingRows = (session.sectionDraws ?? []).filter((r) => r.percent < 100);
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(session.accessCode);
@@ -314,6 +316,22 @@ function Overview({ session }: { session: SessionSummary }) {
             options: onOff(session.shuffleOptions),
           })}
         </Row>
+        {drawingRows.length > 0 && (
+          <Row label={t('session.draw.overview')}>
+            <span data-testid="overview-draw">
+              {t('session.draw.overviewValue', {
+                count: (session.sectionDraws ?? []).reduce((n, r) => n + r.drawCount, 0),
+                total: (session.sectionDraws ?? []).reduce((n, r) => n + r.itemCount, 0),
+                list: drawingRows
+                  .map(
+                    (r) =>
+                      `${(session.sectionDraws ?? []).length > 1 ? `${r.title?.trim() || t('exam.untitled', { n: (session.sectionDraws ?? []).indexOf(r) + 1 })} ` : ''}${String(r.percent).replace('.', ',')} %`,
+                  )
+                  .join(', '),
+              })}
+            </span>
+          </Row>
+        )}
         <Row label={t('session.overview.showScoringRules')}>{yes(session.showScoringRules)}</Row>
         <Row label={t('session.overview.accessCode')}>
           <span className="inline-flex flex-wrap items-center gap-3">
@@ -388,7 +406,14 @@ function EditForm({ session, onDone }: { session: SessionSummary; onDone: () => 
           invalid={invalid}
         />
         <SessionFields group="times" draft={draft} patch={patch} rules={rules} invalid={invalid} />
-        <SessionFields group="rules" draft={draft} patch={patch} rules={rules} invalid={invalid} />
+        <SessionFields
+          group="rules"
+          draft={draft}
+          patch={patch}
+          rules={rules}
+          invalid={invalid}
+          drawLocked={session.drawLocked}
+        />
       </Card>
       <ErrorMessage>{save.isError && errorMessage(t, save.error)}</ErrorMessage>
       <StickyActionBar align="end">

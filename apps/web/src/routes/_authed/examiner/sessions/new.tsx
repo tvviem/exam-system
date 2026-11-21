@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
 import { formatDateTime } from '../../../../lib/format';
+import { sessionDrawPlanOf } from '../../../../lib/session-draw';
 import { accessCodeSuggestionQuery, createSession } from '../../../../lib/sessions';
 import { Button, Card, ErrorMessage, PrimaryButton } from '../../../../lib/ui';
 import { Breadcrumb } from '../../../../lib/ui/breadcrumb';
 import { PageHeader } from '../../../../lib/ui/page-header';
+import { drawCountText, useDrawSections } from '../../../../lib/ui/session-draw';
 import {
   emptySessionDraft,
   GROUP_FIELDS,
@@ -148,6 +150,8 @@ function NewSessionPage() {
 /** Tóm tắt những gì đã chọn, hiện bên phải trên màn hình rộng và dưới biểu mẫu trên điện thoại. */
 function Summary({ draft }: { draft: SessionDraft }) {
   const { t } = useTranslation();
+  const sections = useDrawSections(draft.examId);
+  const plan = sections ? sessionDrawPlanOf(sections, draft.drawOverrides) : null;
   const opens = draft.opensAt ? formatDateTime(vnInputToIso(draft.opensAt)) : null;
   const closes = draft.closesAt ? formatDateTime(vnInputToIso(draft.closesAt)) : null;
   return (
@@ -157,6 +161,11 @@ function Summary({ draft }: { draft: SessionDraft }) {
       <p className="text-fg-muted">
         {t('session.overview.durationValue', { minutes: draft.durationMinutes })}
       </p>
+      {plan?.rows.some((row) => row.percent < 100) && (
+        <p className="text-fg-muted" data-testid="summary-draw">
+          {drawCountText(t, plan)}
+        </p>
+      )}
     </Card>
   );
 }
