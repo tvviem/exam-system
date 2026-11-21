@@ -21,6 +21,11 @@ export interface GradingSessionInfo {
   cancelledAt: Date | null;
   /** Cho Người dự thi xem lại đề sau Công bố (Q297). */
   reviewAfterRelease: boolean;
+  /**
+   * Ghi đè tỷ lệ rút của Phiên thi theo mã Phần (Q438); Phần không có thì kế thừa mặc định của Bộ đề (nằm ở nội dung Bộ đề).
+   * Dùng để biết số câu và điểm tối đa mỗi Người dự thi nhận (`drawTotalsOf`).
+   */
+  drawOverrides: Record<string, number>;
 }
 
 export interface GradingSessions {

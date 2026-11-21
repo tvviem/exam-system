@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { type LayoutInput, layoutOf } from './attempt.js';
-import { drawCountOf, drawProblemsOf, drawSeedOf, effectiveDrawPercents } from './draw.js';
+import {
+  drawCountOf,
+  drawProblemsOf,
+  drawSeedOf,
+  drawTotalsOf,
+  effectiveDrawPercents,
+  sessionDrawTotals,
+} from './draw.js';
 
 // Rút câu theo Phần (docs/plan/rut-cau-theo-phan-thiet-ke.md mục 4.3): số câu rút của một Phần theo Tỷ lệ rút.
 describe('drawCountOf: số câu rút của một Phần', () => {
@@ -422,5 +429,64 @@ describe('drawProblemsOf: vấn đề của cấu hình rút (Q388, Q440, Q441)'
 
   it('Phần rỗng không gây lỗi lệch điểm', () => {
     expect(drawProblemsOf([section('A', 40, []), section('B', 100, [1])])).toEqual([]);
+  });
+});
+
+describe('drawTotalsOf: số câu và điểm tối đa mỗi Người dự thi nhận (Q388)', () => {
+  const sec = (id: string, points: number[]) => ({ id, points });
+
+  it('không có tỷ lệ hoặc 100 %: đủ mọi câu, điểm tối đa là tổng điểm Bộ đề (như trước khi có Rút câu)', () => {
+    const sections = [sec('a', [1, 2, 3]), sec('b', [0.5, 0.5])];
+    expect(drawTotalsOf(sections, {})).toEqual({ count: 5, maxCenti: 700 });
+    expect(drawTotalsOf(sections, { a: 100, b: 100 })).toEqual({ count: 5, maxCenti: 700 });
+  });
+
+  it('Phần rút dưới 100 %: số câu rút nhân điểm mỗi câu (các câu cùng điểm)', () => {
+    // Phần A 10 câu × 1 điểm ở 40 % → 4 câu; Phần B 5 câu × 2 điểm đủ → 5 câu: 9 câu, 14 điểm.
+    const sections = [sec('a', Array(10).fill(1)), sec('b', Array(5).fill(2))];
+    expect(drawTotalsOf(sections, { a: 40 })).toEqual({ count: 9, maxCenti: 1400 });
+  });
+
+  it('Phần 0 % không góp câu nào; Phần rỗng không góp gì', () => {
+    const sections = [sec('a', [1, 1, 1]), sec('b', [2, 2]), sec('c', [])];
+    expect(drawTotalsOf(sections, { a: 0 })).toEqual({ count: 2, maxCenti: 400 });
+  });
+
+  it('điểm lẻ cộng bằng đơn vị 0,01 để không trôi số thực (0,1 + 0,2 là 30, không phải 30,000000000000004)', () => {
+    expect(drawTotalsOf([sec('a', [0.1, 0.2])], {})).toEqual({ count: 2, maxCenti: 30 });
+    expect(drawTotalsOf([sec('a', Array(7).fill(0.1))], { a: 50 })).toEqual({
+      count: 4,
+      maxCenti: 40,
+    });
+  });
+
+  it('khớp với số câu thật mà layoutOf rút (cùng drawCountOf)', () => {
+    for (const percent of [1, 33.33, 40, 50, 66.67, 99]) {
+      const sections = [sec('a', Array(25).fill(1))];
+      expect(drawTotalsOf(sections, { a: percent }).count).toBe(drawCountOf(percent, 25));
+    }
+  });
+});
+
+describe('sessionDrawTotals: số câu và điểm tối đa từ mặc định của Bộ đề và ghi đè của Phiên thi', () => {
+  const sections = [
+    { id: 'a', drawPercent: 40, points: Array(10).fill(1) },
+    { id: 'b', drawPercent: 100, points: Array(5).fill(2) },
+  ];
+
+  it('dùng mặc định của Bộ đề khi Phiên thi không ghi đè', () => {
+    expect(sessionDrawTotals(sections, {})).toEqual({ count: 9, maxCenti: 1400 });
+  });
+
+  it('ghi đè của Phiên thi thắng mặc định (kể cả 100 % để lấy đủ, kể cả 0 %)', () => {
+    expect(sessionDrawTotals(sections, { a: 100 })).toEqual({ count: 15, maxCenti: 2000 });
+    expect(sessionDrawTotals(sections, { a: 0 })).toEqual({ count: 5, maxCenti: 1000 });
+  });
+
+  it('Phần không nêu drawPercent là 100 %: Bộ đề cũ vẫn ra đúng tổng điểm', () => {
+    expect(sessionDrawTotals([{ id: 'x', points: [1, 2, 3] }], {})).toEqual({
+      count: 3,
+      maxCenti: 600,
+    });
   });
 });

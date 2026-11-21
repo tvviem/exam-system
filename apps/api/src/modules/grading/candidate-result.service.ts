@@ -3,6 +3,7 @@ import { type CandidateSource, candidateViewOf } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
+import { drawTotalsOfContent } from '../../common/exam-content';
 import {
   GRADING_SESSIONS,
   type GradingSessionInfo,
@@ -93,7 +94,7 @@ export class CandidateResultService {
     ]);
     if (!content) throw new ApiError('NOT_FOUND');
     const items = itemsOf(content);
-    const maxScore = fromCenti(items.reduce((sum, item) => sum + toCenti(item.points), 0));
+    const maxScore = fromCenti(drawTotalsOfContent(content, info.drawOverrides).maxCenti);
 
     const rowsOf = new Map<string, typeof found>();
     for (const row of found) rowsOf.set(row.attemptId, [...(rowsOf.get(row.attemptId) ?? []), row]);
@@ -127,7 +128,12 @@ export class CandidateResultService {
       (rowsOf.get(result.countedAttemptId) ?? []).map((row) => [row.itemId, row]),
     );
 
+    // Chỉ các câu Người dự thi này đã được rút (bố cục của Lượt được tính); câu chưa từng hiện không có trong Kết quả của họ.
+    const laid = (await this.source.itemIdsOf([result.countedAttemptId])).get(
+      result.countedAttemptId,
+    );
     const rows = items
+      .filter((item) => !laid || laid.has(item.itemId))
       .map((item) => {
         const row = byItem.get(item.itemId);
         const value = attempt?.responses.get(item.itemId);

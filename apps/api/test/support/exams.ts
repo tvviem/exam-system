@@ -3,7 +3,7 @@ import { expect } from 'vitest';
 import type { TestApp } from './app';
 import { sql } from './db';
 import { call } from './http';
-import { singleChoice } from './question-bank';
+import { essay, singleChoice } from './question-bank';
 
 export interface ExamRef {
   id: string;
@@ -53,6 +53,8 @@ export interface DrawSectionSpec {
   drawPercent?: number;
   /** Điểm từng câu của Phần (số phần tử là số câu). */
   points: number[];
+  /** Loại câu của cả Phần: mặc định chọn một. */
+  kind?: 'single_choice' | 'essay';
 }
 
 export interface DrawExamRef extends ExamRef {
@@ -77,11 +79,11 @@ export async function publishedDrawExam(
   for (const [index, section] of sections.entries()) {
     const items = [];
     for (const points of section.points) {
-      const question = await api(
-        'POST',
-        '/questions',
-        singleChoice(topic.id, { stem: `Câu ${++n}` }),
-      );
+      const input =
+        section.kind === 'essay'
+          ? { ...essay(topic.id), stem: textDoc(`Câu ${++n}`) }
+          : singleChoice(topic.id, { stem: `Câu ${++n}` });
+      const question = await api('POST', '/questions', input);
       expect(question.statusCode, question.body).toBe(201);
       items.push({ questionId: question.json().id, points });
     }

@@ -19,7 +19,11 @@ import { ApiError } from '../../common/api-error';
 import { ATTEMPT_SUBMITTED_HOOKS, type AttemptSubmittedHooks } from '../../common/attempt-grading';
 import { CANDIDATE_DIRECTORY, type CandidateDirectory } from '../../common/candidate-directory';
 import { CLOCK, type Clock } from '../../common/clock';
-import { EXAM_CONTENT, type ExamContentProvider } from '../../common/exam-content';
+import {
+  drawTotalsOfContent,
+  EXAM_CONTENT,
+  type ExamContentProvider,
+} from '../../common/exam-content';
 import { SESSION_GRADING_STATUS, type SessionGradingStatus } from '../../common/grading-status';
 import { uniqueViolationOf } from '../../common/pg-error';
 import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-notifier';
@@ -394,6 +398,15 @@ export class AttemptsService {
       .from(attempts)
       .where(eq(attempts.userId, userId));
     const summaries = await this.content.summariesOf(gates.map((gate) => gate.examId));
+    // Số câu mỗi người nhận (Rút câu, Q438): theo mặc định của Bộ đề và ghi đè của từng Phiên thi.
+    const overrides = await this.entry.drawOverridesOfMany(gates.map((gate) => gate.sessionId));
+    const contents = new Map(
+      await Promise.all(
+        [...new Set(gates.map((gate) => gate.examId))].map(
+          async (examId) => [examId, await this.content.contentOf(examId)] as const,
+        ),
+      ),
+    );
     const devices = await this.db
       .select({
         sessionId: sessionDevices.sessionId,
@@ -417,7 +430,12 @@ export class AttemptsService {
           sessionId: gate.sessionId,
           title: gate.title,
           examTitle: summary?.title ?? '',
-          questionCount: summary?.itemCount ?? 0,
+          questionCount: (() => {
+            const content = contents.get(gate.examId);
+            return content
+              ? drawTotalsOfContent(content, overrides.get(gate.sessionId) ?? {}).count
+              : (summary?.itemCount ?? 0);
+          })(),
           opensAt: gate.opensAt,
           closesAt: gate.closesAt,
           phase: phaseOf(gate, now),

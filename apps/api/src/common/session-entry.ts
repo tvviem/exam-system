@@ -55,6 +55,11 @@ export interface SessionEntry {
    * đã có Lượt thì không đổi được nên đọc lúc bắt đầu Lượt là ổn định.
    */
   drawOverridesOf(sessionId: string, executor?: EntryExecutor): Promise<Record<string, number>>;
+  /** Như `drawOverridesOf` cho nhiều Phiên thi một lúc: `sessionId` → ghi đè (Phiên thi không ghi đè vắng). */
+  drawOverridesOfMany(
+    sessionIds: string[],
+    executor?: EntryExecutor,
+  ): Promise<Map<string, Record<string, number>>>;
   /** Phiên thi của người này (mới nhất trước, tối đa 100), bỏ những cái đã đóng quá `since`. */
   listFor(userId: string, since: Date, executor?: EntryExecutor): Promise<EntryGate[]>;
 }

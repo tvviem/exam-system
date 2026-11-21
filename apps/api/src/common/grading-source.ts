@@ -14,6 +14,11 @@ export interface GradableAttempt {
   examId: string;
   userId: string;
   attemptNo: number;
+  /**
+   * Các câu nằm trong bố cục của Lượt (đã rút, nếu Phiên thi rút câu): chỉ chấm và tính điểm những câu này. `null` là Lượt không
+   * có bố cục hợp lệ (coi như mọi câu của Bộ đề).
+   */
+  itemIds: string[] | null;
   /** `value` của từng Câu trả lời đã lưu, theo `itemId`; câu không trả lời thì vắng. */
   responses: Map<string, unknown>;
 }
@@ -38,6 +43,8 @@ export interface GradingSource {
    * `attemptId` → `itemId` → số. Lượt không có bố cục hợp lệ vắng trong kết quả.
    */
   displayNumbers(attemptIds: string[]): Promise<Map<string, Map<string, number>>>;
+  /** Các câu nằm trong bố cục của từng Lượt: `attemptId` → tập `itemId`. Lượt không có bố cục hợp lệ vắng trong kết quả. */
+  itemIdsOf(attemptIds: string[], executor?: GradingExecutor): Promise<Map<string, Set<string>>>;
   /** Các Lượt đã nộp của MỘT người trong Phiên thi (Kết quả của tôi không cần tải cả Phiên thi). */
   attemptsOfUser(
     sessionId: string,
