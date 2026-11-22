@@ -409,7 +409,13 @@ export class SessionAttemptsService implements SessionAttempts, UserDeactivation
       });
     }
     // Số câu mỗi người nhận (Rút câu, Q438), không phải số câu của cả Bộ đề.
-    return { totalItems: content ? drawTotalsOfContent(content, overrides).count : 0, byUser };
+    const variantTotals = (await this.entry.variantTotalsOfMany([{ sessionId, examId }])).get(
+      sessionId,
+    );
+    return {
+      totalItems: content ? drawTotalsOfContent(content, overrides, variantTotals).count : 0,
+      byUser,
+    };
   }
 
   async forceSubmit(tx: Transaction, input: ForceSubmitInput): Promise<ForceSubmitResult> {

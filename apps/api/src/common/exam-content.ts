@@ -65,12 +65,15 @@ export interface ExamContentProvider {
 
 /**
  * Số câu và điểm tối đa (đơn vị 0,01) mỗi Người dự thi nhận (Q438): mặc định rút của Phần ở Bộ đề, bị ghi đè bởi `overrides` của
- * Phiên thi. Chấm điểm, Kết quả, Phúc khảo, theo dõi và danh sách Phiên thi đều dùng hàm này.
+ * Phiên thi; Phiên thi dùng chung Mã đề thì lấy `variantTotals`. Chấm điểm, Kết quả, Phúc khảo, theo dõi và danh sách Phiên thi đều dùng hàm này.
  */
 export function drawTotalsOfContent(
   content: ExamContentData,
   overrides: Readonly<Record<string, number>>,
+  /** Phiên thi dùng chung Mã đề: tổng của chính Mã đề (câu trong Phần có thể lệch điểm nên không suy từ tỷ lệ); `null` thì theo tỷ lệ. */
+  variantTotals?: { count: number; maxCenti: number } | null,
 ) {
+  if (variantTotals) return variantTotals;
   return sessionDrawTotals(
     content.sections.map((section) => ({
       id: section.id,

@@ -63,7 +63,7 @@ export class GradingContextService {
     ]);
     if (!content) throw new ApiError('NOT_FOUND');
     const items = itemsOf(content);
-    const totals = drawTotalsOfContent(content, info.drawOverrides);
+    const totals = drawTotalsOfContent(content, info.drawOverrides, info.variantTotals);
     const ungradedAttempts = await this.gradeMissing(submitted.map((attempt) => attempt.attemptId));
     const countable = countableAttempts(submitted, info.attemptScoring);
     const rows = new Map<string, GradeRow[]>();

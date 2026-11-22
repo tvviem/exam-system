@@ -49,6 +49,7 @@ export function ExamPublishDialog({
     return index >= 0 ? sectionName(index) : '';
   };
   const problems = check.data?.problems ?? [];
+  const warnings = check.data?.warnings ?? [];
   const draw = drawRowsOf(draft);
   const blocked =
     publish.error instanceof ApiError && publish.error.details.reason === 'PUBLISH_BLOCKED';
@@ -119,6 +120,23 @@ export function ExamPublishDialog({
                   })}
             </p>
           </div>
+          {warnings.length > 0 && (
+            <div
+              className="flex flex-col gap-1 rounded-lg border border-warning bg-warning-soft p-3 text-sm"
+              data-testid="publish-warnings"
+              role="status"
+            >
+              <p className="font-medium">{t('exam.publish.warningsTitle')}</p>
+              <ul className="flex flex-col gap-1">
+                {warnings.map((warning) => (
+                  <li key={`${warning.code}-${warning.sectionId ?? warning.questionId ?? ''}`}>
+                    <span className="font-medium">{labelOf(warning)}</span>{' '}
+                    {t(`exam.publish.warningCode.${warning.code}`)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p role="alert" className="rounded-lg border border-warning bg-warning-soft p-3 text-sm">
             {t('exam.publish.warning')}
           </p>

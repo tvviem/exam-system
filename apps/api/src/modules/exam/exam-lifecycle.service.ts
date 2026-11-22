@@ -53,8 +53,8 @@ export class ExamLifecycleService {
       .where(and(eq(exams.id, id), eq(exams.ownerId, ownerId)));
     if (!exam) throw new ApiError('NOT_FOUND');
     if (exam.status !== 'draft') throw new ApiError('INVALID_STATE', { reason: 'EXAM_NOT_DRAFT' });
-    const { problems } = await this.inspect(this.db, id);
-    return { problems };
+    const { problems, warnings } = await this.inspect(this.db, id);
+    return { problems, warnings };
   }
 
   async publish(ownerId: string, id: string, version: number) {
@@ -224,6 +224,9 @@ export class ExamLifecycleService {
     );
 
     const problems: PublishProblem[] = [];
+    // Cảnh báo không chặn Phát hành (Q469 a): Phần rút dưới 100 % mà các câu khác điểm. Lúc Phát hành chưa biết Phiên thi dùng kiểu nào
+    // (dùng chung Mã đề thì không cần cùng điểm); Phiên thi mỗi người một bộ câu vẫn bị chặn khi lưu (Q441).
+    const warnings: PublishProblem[] = [];
     const snapshots = new Map<string, ItemSnapshot>();
     if (exam.title.trim() === '') problems.push({ code: 'title_missing' });
     if (items.length === 0) problems.push({ code: 'empty_exam' });
@@ -248,18 +251,19 @@ export class ExamLifecycleService {
             )
         ).map((row) => [row.sectionId, Number(row.percent)]),
       );
-      // Rút câu theo Phần (Q440, Q441): Phần rút dưới 100 % phải cùng điểm; không để Người dự thi không có câu nào.
-      problems.push(
-        ...drawProblemsOf(
-          sections.map((section) => ({
-            id: section.id,
-            percent: draws.get(section.id) ?? 100,
-            points: items
-              .filter((item) => item.sectionId === section.id)
-              .map((item) => Number(item.points)),
-          })),
-        ),
+      // Rút câu theo Phần (Q440, Q469): không để Người dự thi không có câu nào (chặn); câu lệch điểm chỉ cảnh báo.
+      const drawProblems = drawProblemsOf(
+        sections.map((section) => ({
+          id: section.id,
+          percent: draws.get(section.id) ?? 100,
+          points: items
+            .filter((item) => item.sectionId === section.id)
+            .map((item) => Number(item.points)),
+        })),
       );
+      for (const problem of drawProblems) {
+        (problem.code === 'draw_points_uneven' ? warnings : problems).push(problem);
+      }
     }
     for (const { itemId, sectionId, points, question: q } of items) {
       const at = { questionId: q.id, sectionId };
@@ -294,6 +298,6 @@ export class ExamLifecycleService {
         }),
       });
     }
-    return { problems, snapshots };
+    return { problems, warnings, snapshots };
   }
 }

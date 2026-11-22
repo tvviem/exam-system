@@ -123,7 +123,13 @@ describe('Phát hành: quy tắc điểm đồng nhất và chặn mọi Phần 
       sectionId?: string;
     }[];
 
-  it('Phần rút dưới 100 % mà các câu khác điểm là vấn đề chặn Phát hành, kèm Phần lệch; sửa điểm xong thì Phát hành được', async () => {
+  const warnings = async (examId: string) =>
+    (await api('GET', `/exams/${examId}/publish-check`)).json().warnings as {
+      code: string;
+      sectionId?: string;
+    }[];
+
+  it('Phần rút dưới 100 % mà các câu khác điểm chỉ là cảnh báo, không chặn Phát hành (Q469 a); sửa điểm thì hết cảnh báo', async () => {
     const ctx = await setup();
     await save(ctx, [
       { drawPercent: 40, points: [1, 2] },
@@ -131,21 +137,15 @@ describe('Phát hành: quy tắc điểm đồng nhất và chặn mọi Phần 
     ]);
     const [a, b] = await sectionsOf(ctx.examId);
 
-    expect(await check(ctx.examId)).toEqual([{ code: 'draw_points_uneven', sectionId: a?.id }]);
-    const blocked = await api('POST', `/exams/${ctx.examId}/publish`, {
-      version: (await api('GET', `/exams/${ctx.examId}`)).json().version,
-    });
-    expect(blocked.statusCode).toBe(409);
-    expect(blocked.json()).toMatchObject({
-      reason: 'PUBLISH_BLOCKED',
-      problems: [{ code: 'draw_points_uneven', sectionId: a?.id }],
-    });
+    expect(await check(ctx.examId)).toEqual([]);
+    expect(await warnings(ctx.examId)).toEqual([{ code: 'draw_points_uneven', sectionId: a?.id }]);
     expect(b?.id).toBeTruthy(); // Phần B khác điểm nhưng đủ 100 % nên không bị báo
 
     await save(ctx, [
       { drawPercent: 40, points: [2, 2] },
       { drawPercent: 100, points: [1, 3] },
     ]);
+    expect(await warnings(ctx.examId)).toEqual([]);
     expect(await check(ctx.examId)).toEqual([]);
     const published = await api('POST', `/exams/${ctx.examId}/publish`, {
       version: (await api('GET', `/exams/${ctx.examId}`)).json().version,

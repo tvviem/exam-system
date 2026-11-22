@@ -141,6 +141,15 @@ const sectionDraws = z
     message: 'duplicate_section',
   })
   .optional();
+/**
+ * Cách ra đề của Phiên thi và số Mã đề (docs/plan/ma-de-phien-thi-thiet-ke.md): `shared` là cả Phiên thi dùng chung 1 đến 10 Mã đề,
+ * `per_candidate` là mỗi người một bộ câu. Nằm ngoài `settingsShape` như `sectionDraws`: khóa riêng khi đã có Lượt làm bài. Không
+ * nêu thì tạo mới là `per_candidate` (tương thích), sửa là giữ nguyên.
+ */
+export const DRAW_SCOPES = ['shared', 'per_candidate'] as const;
+export const VARIANT_COUNT_MAX = 10;
+const drawScope = z.enum(DRAW_SCOPES).optional();
+const variantCount = z.number().int().min(1).max(VARIANT_COUNT_MAX).optional();
 const closesAfterOpens = {
   path: ['closesAt'],
   message: 'closes_not_after_opens',
@@ -148,13 +157,20 @@ const closesAfterOpens = {
 
 /** Thiết lập một Phiên thi (Q199–Q202, Q208). Không có `accessCode` thì server gợi ý khi tạo. */
 export const sessionSettingsSchema = z
-  .strictObject({ ...settingsShape, sectionDraws })
+  .strictObject({ ...settingsShape, sectionDraws, drawScope, variantCount })
   .refine((value) => value.closesAt > value.opensAt, closesAfterOpens);
 
 /** Sửa Phiên thi: thiết lập đầy đủ kèm `version` (khóa lạc quan). Không có `accessCode` là giữ mã cũ. */
 export const sessionUpdateSchema = z
-  .strictObject({ ...settingsShape, sectionDraws, version: z.number().int().min(1) })
+  .strictObject({
+    ...settingsShape,
+    sectionDraws,
+    drawScope,
+    variantCount,
+    version: z.number().int().min(1),
+  })
   .refine((value) => value.closesAt > value.opensAt, closesAfterOpens);
+export type DrawScope = (typeof DRAW_SCOPES)[number];
 export type SessionSettings = z.output<typeof sessionSettingsSchema>;
 export type SessionUpdate = z.output<typeof sessionUpdateSchema>;
 

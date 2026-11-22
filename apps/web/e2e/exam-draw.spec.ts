@@ -160,12 +160,15 @@ test('Rút câu ở Bộ đề: đặt tỷ lệ từng Phần, thấy số câu
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await expect(page.getByText('Đã lưu Bộ đề').last()).toBeVisible();
 
-  // Phát hành bị chặn, nêu đúng Phần lệch.
+  // Phát hành không bị chặn (Q469 a): chỉ cảnh báo, nêu đúng Phần lệch.
   await page.getByRole('button', { name: 'Phát hành' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Phát hành Bộ đề' });
-  await expect(dialog.getByText(/Phần rút dưới 100 % có các câu khác điểm/)).toBeVisible();
-  await expect(dialog.getByText('Phần I')).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Phát hành', exact: true })).toBeDisabled();
+  const warnings = dialog.getByTestId('publish-warnings');
+  await expect(
+    warnings.getByText(/Phiên thi mỗi người một bộ câu sẽ không lưu được/),
+  ).toBeVisible();
+  await expect(warnings.getByText('Phần I')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Phát hành', exact: true })).toBeEnabled();
   await page.keyboard.press('Escape');
 
   // Sửa điểm cho đồng đều thì hết cảnh báo; mở lại trang vẫn giữ 40 %.

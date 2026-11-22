@@ -1,5 +1,10 @@
 import { randomInt, randomUUID } from 'node:crypto';
-import { effectiveDrawPercents, layoutOf } from '@exam/shared';
+import {
+  effectiveDrawPercents,
+  itemIdsBySectionOf,
+  layoutInputForVariant,
+  layoutOf,
+} from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { ApiError } from '../../common/api-error';
 import {
@@ -33,13 +38,22 @@ export class SessionPreviewService {
       Object.fromEntries(content.sections.map((section) => [section.id, section.drawPercent])),
       overrides,
     );
-    const layout = layoutOf(randomInt(0, 2 ** 48 - 1), layoutInputOf(content), gate, {
-      sessionId,
-      userId: randomUUID(),
-      percents,
-    });
+    // Dùng chung Mã đề: Xem thử đúng bộ câu của Mã đề đầu (chọn Mã đề để xem là việc của lát sau); mỗi người một bộ: một lượt rút mẫu.
+    const variant = gate.drawScope === 'shared' ? await this.entry.previewVariant(sessionId) : null;
+    const input = layoutInputOf(content);
+    const seed = randomInt(0, 2 ** 48 - 1);
+    const layout = variant
+      ? layoutOf(
+          seed,
+          layoutInputForVariant(input, itemIdsBySectionOf(input, new Set(variant.itemIds))),
+          gate,
+        )
+      : layoutOf(seed, input, gate, { sessionId, userId: randomUUID(), percents });
     const total = content.sections.reduce((n, section) => n + section.items.length, 0);
-    const { count } = drawTotalsOfContent(content, overrides);
+    const variantTotals = variant
+      ? (await this.entry.variantTotalsOfMany([{ sessionId, examId: gate.examId }])).get(sessionId)
+      : null;
+    const { count } = drawTotalsOfContent(content, overrides, variantTotals);
     return {
       status: 'preview' as const,
       session: { id: gate.sessionId, title: gate.title },

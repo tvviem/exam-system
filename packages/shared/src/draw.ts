@@ -15,7 +15,7 @@ export function drawCountOf(percent: number, total: number): number {
 }
 
 /** Băm chuỗi 53 bit (cyrb53): đủ phân tán cho hạt giống, không cần mật mã học và chạy được cả ở trình duyệt. */
-function hash53(text: string): number {
+export function hash53(text: string): number {
   let h1 = 0xdeadbeef;
   let h2 = 0x41c6ce57;
   for (let i = 0; i < text.length; i++) {

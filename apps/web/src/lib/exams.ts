@@ -99,7 +99,10 @@ export const examPreviewQuery = (id: string, showScoringRules: boolean) =>
 export const publishCheckQuery = (id: string) =>
   queryOptions({
     queryKey: ['exams', 'publish-check', id],
-    queryFn: () => apiFetch<{ problems: PublishProblem[] }>(`/exams/${id}/publish-check`),
+    queryFn: () =>
+      apiFetch<{ problems: PublishProblem[]; warnings?: PublishProblem[] }>(
+        `/exams/${id}/publish-check`,
+      ),
   });
 
 export const publishExam = (id: string, version: number) =>

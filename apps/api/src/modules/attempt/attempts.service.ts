@@ -7,6 +7,8 @@ import {
   type HeartbeatRequest,
   isDisconnected,
   isPastGrace,
+  itemIdsBySectionOf,
+  layoutInputForVariant,
   layoutOf,
   normalizeAccessCode,
   phaseOf,
@@ -400,6 +402,12 @@ export class AttemptsService {
     const summaries = await this.content.summariesOf(gates.map((gate) => gate.examId));
     // Số câu mỗi người nhận (Rút câu, Q438): theo mặc định của Bộ đề và ghi đè của từng Phiên thi.
     const overrides = await this.entry.drawOverridesOfMany(gates.map((gate) => gate.sessionId));
+    // Phiên thi dùng chung Mã đề: số câu theo chính Mã đề (câu trong Phần có thể lệch điểm nên không suy từ tỷ lệ).
+    const variantTotals = await this.entry.variantTotalsOfMany(
+      gates
+        .filter((gate) => gate.drawScope === 'shared')
+        .map((gate) => ({ sessionId: gate.sessionId, examId: gate.examId })),
+    );
     const contents = new Map(
       await Promise.all(
         [...new Set(gates.map((gate) => gate.examId))].map(
@@ -435,14 +443,22 @@ export class AttemptsService {
             const content = contents.get(gate.examId);
             if (!content) return null;
             const total = content.sections.reduce((n, section) => n + section.items.length, 0);
-            return drawTotalsOfContent(content, overrides.get(gate.sessionId) ?? {}).count < total
+            return drawTotalsOfContent(
+              content,
+              overrides.get(gate.sessionId) ?? {},
+              variantTotals.get(gate.sessionId),
+            ).count < total
               ? total
               : null;
           })(),
           questionCount: (() => {
             const content = contents.get(gate.examId);
             return content
-              ? drawTotalsOfContent(content, overrides.get(gate.sessionId) ?? {}).count
+              ? drawTotalsOfContent(
+                  content,
+                  overrides.get(gate.sessionId) ?? {},
+                  variantTotals.get(gate.sessionId),
+                ).count
               : (summary?.itemCount ?? 0);
           })(),
           opensAt: gate.opensAt,
@@ -522,6 +538,19 @@ export class AttemptsService {
         Object.fromEntries(content.sections.map((s) => [s.id, s.drawPercent])),
         await this.entry.drawOverridesOf(sessionId, tx),
       );
+      // Dùng chung Mã đề (docs/plan/ma-de-phien-thi-thiet-ke.md): bố cục chỉ xáo trên bộ câu đã lưu của Mã đề, không rút thêm.
+      const variant =
+        gate.drawScope === 'shared' ? await this.entry.variantFor(sessionId, userId, tx) : null;
+      const layout = variant
+        ? layoutOf(
+            seed,
+            layoutInputForVariant(
+              layoutInput,
+              itemIdsBySectionOf(layoutInput, new Set(variant.itemIds)),
+            ),
+            gate,
+          )
+        : layoutOf(seed, layoutInput, gate, { sessionId, userId, percents });
       try {
         // Điểm lưu (savepoint): vi phạm chỉ mục duy nhất chỉ hủy lần chèn này, không hủy cả giao dịch.
         return await tx.transaction(async (inner) => {
@@ -532,11 +561,8 @@ export class AttemptsService {
               userId,
               attemptNo: used + 1,
               seed,
-              layout: layoutOf(seed, layoutInput, gate, {
-                sessionId,
-                userId,
-                percents,
-              }),
+              layout,
+              variantId: variant?.variantId ?? null,
               startedAt: now,
               deadline: deadlineOf({
                 startedAt: now,
