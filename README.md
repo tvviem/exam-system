@@ -2,7 +2,7 @@
 
 BLUni Exam, hệ thống thi trực tuyến của Trường Đại học Bạc Liêu, ưu tiên làm bài trên điện thoại. Người ra đề xây dựng Bộ đề từ ngân hàng Câu hỏi của mình và tổ chức Phiên thi tại lớp hoặc phòng máy. Người dự thi đăng nhập, nhập Mã vào thi và làm bài ngay trên điện thoại hoặc máy tính.
 
-> **Trạng thái (20/11/2026):** **phiên bản 0.2.0 đang chạy thật** (tag `v0.1.0` ngày 18/11, `v0.1.1` ngày 19/11, `v0.2.0` ngày 20/11) trên Podman pod `prod-exam` tại `https://exam.plotrackerbluni.site`. Đã xong các lát cắt 0 đến 7: khung dự án; Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản; Ngân hàng câu hỏi; Bộ đề; Phiên thi (làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp); chấm, Công bố kết quả, Phúc khảo, Đính chính; triển khai production kèm sao lưu và khôi phục; **tài khoản bằng email** (thư kích hoạt, quên mật khẩu, đổi và xác thực email, Lời mời tự gửi thư). Bản 0.2.0 thêm [Xuất Bộ đề ra Word](docs/plan/xuat-bo-de-thiet-ke.md) (tệp Đề thi và tệp Đáp án và thang điểm; các chức năng tùy chọn chưa cần ghi ở mục 16 của tài liệu đó). Việc kế tiếp đã duyệt thiết kế: [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md) (dự kiến 0.3.0). Muốn tự dùng thử thì xem các mục "Dùng thử lát cắt" bên dưới, mới nhất là [Dùng thử lát cắt 5](#dùng-thử-lát-cắt-5); hiệu năng đã đo ở [docs/hieu-nang.md](docs/hieu-nang.md).
+> **Trạng thái (22/11/2026):** **phiên bản 0.3.0 đang chạy thật** (tag `v0.1.0` ngày 18/11, `v0.1.1` ngày 19/11, `v0.2.0` ngày 20/11, `v0.3.0` ngày 22/11; mỗi tag có một [Release trên GitHub](https://github.com/tvviem/exam-system/releases) ghi mã commit và điểm lùi) trên Podman pod `prod-exam` tại `https://exam.plotrackerbluni.site`. Đã xong các lát cắt 0 đến 7: khung dự án; Người dùng, đăng nhập, Lời mời, Yêu cầu cấp tài khoản; Ngân hàng câu hỏi; Bộ đề; Phiên thi (làm bài trên điện thoại kể cả khi mất mạng, theo dõi phòng thi trực tiếp); chấm, Công bố kết quả, Phúc khảo, Đính chính; triển khai production kèm sao lưu và khôi phục; **tài khoản bằng email** (thư kích hoạt, quên mật khẩu, đổi và xác thực email, Lời mời tự gửi thư). Bản 0.2.0 thêm [Xuất Bộ đề ra Word](docs/plan/xuat-bo-de-thiet-ke.md) (tệp Đề thi và tệp Đáp án và thang điểm; các chức năng tùy chọn chưa cần ghi ở mục 16 của tài liệu đó). **Bản 0.3.0 thêm [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md):** một Bộ đề lớn (ví dụ 100 câu chia 4 Phần) dùng cho nhiều Phiên thi mà mỗi Người dự thi chỉ nhận một bộ câu rút riêng (ví dụ 40 câu); hướng dẫn ở [docs/huong-dan/rut-cau-theo-phan.md](docs/huong-dan/rut-cau-theo-phan.md). Việc làm sau (định hướng mở, chưa lên lịch): [nguồn tham khảo của Câu hỏi và gợi ý ôn tập](docs/plan/mang-kien-thuc-va-on-tap-thiet-ke.md). Muốn tự dùng thử thì xem các mục "Dùng thử" bên dưới, mới nhất là [Dùng thử Rút câu theo Phần](#dùng-thử-rút-câu-theo-phần-bản-030); hiệu năng đã đo ở [docs/hieu-nang.md](docs/hieu-nang.md).
 
 ## Tính năng giai đoạn 1
 
@@ -26,18 +26,23 @@ BLUni Exam, hệ thống thi trực tuyến của Trường Đại học Bạc L
 - Soạn Bộ đề: chia Phần, dùng lại Câu hỏi giữa nhiều Bộ đề, Đặt điểm nhanh, Xem thử, Phát hành, Nhân bản, Lưu trữ.
   - Phát hành chụp lại nội dung từng câu (bản chụp) và khóa Bộ đề; không có thao tác thu hồi.
   - Câu hỏi đã nằm trong Bộ đề không xóa được, chỉ Lưu trữ rồi Khôi phục.
+  - **Rút câu theo Phần:** mỗi Phần có Tỷ lệ rút mặc định (ví dụ Bộ đề 100 câu chia 4 Phần, rút 40 % mỗi Phần thì mỗi người nhận 40 câu); báo ngay số câu mỗi người nhận và điểm tối đa; Phần rút dưới 100 % phải có các câu cùng điểm (chặn Phát hành nếu lệch); tỷ lệ đóng băng khi Phát hành. Không đặt tỷ lệ thì làm đủ mọi câu, như trước.
+  - **Xuất Bộ đề ra Word** (.docx) theo Mẫu Trường: tệp Đề thi (công thức Word gốc, hình minh họa) và tệp Đáp án và thang điểm.
 - Tổ chức Phiên thi.
   - Thiết lập: Khung giờ, Thời lượng, Mã vào thi, số lượt làm bài, xáo trộn câu và phương án.
   - Lập Danh sách dự thi: tìm theo Lớp hoặc từng người.
+  - **Rút câu:** Phiên thi kế thừa Tỷ lệ rút của Bộ đề và ghi đè từng Phần (đến khi có Lượt làm bài đầu tiên), nên một Bộ đề dùng được cho nhiều Phiên thi với tỷ lệ khác nhau; mỗi Người dự thi được rút bộ câu riêng khi vào thi lần đầu và giữ nguyên bộ đó ở mọi Lượt; **Xem thử** cho thấy một lượt rút mẫu.
 - Theo dõi phòng thi trực tiếp (đã xong, lát cắt 4): Cộng giờ, Buộc nộp, Thu hồi thiết bị cho đổi máy, Cảnh cáo, Đình chỉ, Đóng cửa vào thi; số liệu cập nhật qua Socket.IO. Buộc nộp phải gõ lại Mã định danh (một người) hay số người (nhóm, cả phòng) mới bấm được; bấm nhầm thì **Hoàn tác Buộc nộp** trong 10 phút, Người dự thi tự về đề với các câu đã lưu còn nguyên.
 - Chấm và Kết quả (lát cắt 5): Lượt vừa nộp được **chấm tự động** (ba Loại câu trắc nghiệm) trong vài giây; Người ra đề **chấm Câu tự luận** theo từng câu (ẩn tên, bằng bàn phím hoặc ngón tay, tự lưu), quyết **Mức xử lý** cho Vi phạm, xem **bảng Kết quả** và **Thống kê câu**, **Công bố kết quả** với Thời hạn phúc khảo 0–14 ngày, **xuất Excel**; có thể **Ủy quyền chấm** cho Người ra đề khác khi có sự cố.
+- **Chấm theo bộ câu của từng người:** với Phiên thi rút câu, chấm điểm, điểm tối đa (ví dụ 40 điểm), thang 10, Phúc khảo, Theo dõi và Excel đều tính theo bộ câu mà người đó nhận; Excel có cột Điểm thô, Điểm tối đa, Điểm sau Mức xử lý và Điểm quy đổi (thang 10).
 - **Phúc khảo** và **Đính chính đáp án** (lát cắt 5): xử lý Phúc khảo từng cái một (phím J/K), gia hạn Thời hạn phúc khảo, hệ thống nhắc khi quá hạn và tự **Chốt** khi hết hạn mà không còn Phúc khảo; phát hiện nhập sai đáp án thì đổi đáp án, xem trước bao nhiêu người đổi điểm rồi chấm lại cả phòng ở nền chỉ trong vài giây.
 
 **Người dự thi**
 - Vào thi bằng Mã vào thi; mỗi Phiên thi gắn với một thiết bị (Người ra đề cho đổi máy khi có sự cố).
+- Phiên thi rút câu báo rõ trước khi bắt đầu "bài gồm N câu, rút ngẫu nhiên"; màn làm bài đánh số "Câu x/N" theo bộ câu của mình.
 - Làm bài trên điện thoại với hai chế độ xem chuyển qua lại được: **Từng câu** và **Cả đề**; cài như ứng dụng (PWA).
 - Bài tự lưu, chịu được mạng chập chờn và tải lại trang khi mất mạng, đồng hồ do server quyết định, cảnh báo khi còn 5 phút và 1 phút; nhận ngay thông báo Cộng giờ, Cảnh cáo, Buộc nộp từ Người ra đề.
-- Xem **Kết quả của tôi** sau khi Công bố (bản đồ câu ✓ ◐ ✗, lọc câu sai, xem từng câu một, không bao giờ thấy Đáp án đúng) và gửi **Phúc khảo** trong Thời hạn phúc khảo (tối đa 10 % số câu, ít nhất 3); nhận thông báo khi được xử lý hoặc khi điểm đổi vì Đính chính.
+- Xem **Kết quả của tôi** sau khi Công bố (bản đồ câu ✓ ◐ ✗, lọc câu sai, xem từng câu một, không bao giờ thấy Đáp án đúng) và gửi **Phúc khảo** trong Thời hạn phúc khảo (tối đa 10 % số câu của bài mình, ít nhất 3); nhận thông báo khi được xử lý hoặc khi điểm đổi vì Đính chính.
 
 Định nghĩa đầy đủ của mọi thuật ngữ in hoa nằm trong [GLOSSARY.md](GLOSSARY.md).
 
@@ -84,11 +89,11 @@ Backend chia module theo nghiệp vụ: `identity`, `audit`, `notifications`, `m
 exam-system/
   apps/
     api/          NestJS (HTTP + WebSocket); worker BullMQ ở src/worker, cùng mã và cùng image
-      drizzle/    migration SQL (0000–0027)
+      drizzle/    migration SQL (0000–0029)
       scripts/    load-exam (đo tải), demo-room (phòng thi thử), demo-data (file Excel mẫu)
     web/          React PWA: /admin, /examiner, /take; e2e/ là Playwright
   packages/
-    shared/       schema Zod và luật thuần dùng chung (Câu hỏi, Phiên thi, Lượt, theo dõi, tin đẩy)
+    shared/       schema Zod và luật thuần dùng chung (Câu hỏi, Phiên thi, Lượt, Rút câu, theo dõi, tin đẩy)
     scoring/      hàm chấm điểm thuần (pure functions)
   infra/
     Makefile      dev-up, dev-down, ci-up, ci-down (Podman pod)
@@ -277,6 +282,18 @@ Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Ngư�
 
 **Đo tải sau giờ thi:** `LOAD_USERS=100 nice -n 19 pnpm -C apps/api load:exam` (khoảng 4 phút; Bộ đề 40 câu, cả phòng bị Buộc nộp cùng lúc rồi chấm, Công bố, Phúc khảo, Đính chính). Số đo và cách đọc ở [docs/hieu-nang.md](docs/hieu-nang.md).
 
+## Dùng thử Rút câu theo Phần (bản 0.3.0)
+
+Cần như lát cắt 5 và `pnpm db:migrate` (migration `0028`, `0029`: tỷ lệ rút mặc định ở Bộ đề và ghi đè ở Phiên thi, đều chỉ thêm bảng và trigger khóa). Cách thử nhanh bằng giao diện:
+
+1. Soạn một Bộ đề, **Chia Phần**, thêm câu vào từng Phần (Phần rút dưới 100 % cần các câu cùng điểm: dùng **Đặt điểm nhanh**), rồi nhập **Rút câu từ Phần này** (ví dụ 40 cho Phần có 10 câu). Dòng tóm tắt cho biết mỗi người nhận bao nhiêu câu và điểm tối đa.
+2. Phát hành, tạo Phiên thi: ở bước *Thiết lập làm bài* có khối **Rút câu theo Phần** (kế thừa Bộ đề, **Thay đổi cho Phiên thi này** để ghi đè). **Xem thử** cho một lượt rút mẫu.
+3. Hai Người dự thi vào thi trên hai thiết bị: bộ câu của họ khác nhau, "Câu x/N" đúng số câu rút; sau khi chấm và Công bố, Kết quả và Excel tính theo bộ câu riêng (điểm tối đa mỗi người, thang 10).
+
+Từng bước chi tiết cho người dùng: [docs/huong-dan/rut-cau-theo-phan.md](docs/huong-dan/rut-cau-theo-phan.md). Kiểm tra trọn luồng bằng test: `test/rut-cau-toan-luong.int.test.ts` (trong `pnpm test:integration`).
+
+**Đo tải Rút câu:** `RUT_CAU_BENCH=1 pnpm --filter @exam/api exec vitest run --project integration test/rut-cau-bench.int.test.ts` (Bộ đề 100 câu, rút 40 %, 100 người; đặt thêm `RUT_CAU_N=500` cho 500 người). In thời gian bắt đầu Lượt, đọc đề, chấm cả Phiên thi, bảng Kết quả và xuất Excel; số đo ở [docs/architecture.md](docs/architecture.md) mục "Ngân sách phản hồi".
+
 ## Vận hành
 
 **Các tiến trình**
@@ -319,7 +336,7 @@ Bộ đề thử 20 câu đủ bốn Loại. Người ra đề `demo-gv`, Ngư�
 - **Nhánh và PR:** tạo nhánh từ `main`, mở pull request theo mẫu Summary / Evidence / Merge Danger. CI có 4 check phải xanh (Lint·typecheck·unit; Integration·e2e·migration drift; Image web; Image api) trước khi merge squash; chỉ merge khi chủ dự án ra lệnh. Quy trình mỗi lát cắt: thiết kế được duyệt, test đỏ rồi xanh theo từng đường cắt, review hai trục (Standards, Spec).
 - **Commit:** thông điệp ngắn bằng tiếng Việt nêu việc đã làm (tiêu đề PR kèm số, ví dụ "4e: … (#51)").
 - **Prototype:** đặt trên nhánh `prototype/*`, không merge vào `main`. Sổ các bản thử đã làm, kết luận của từng bản và cách xem lại: [docs/ban-thu.md](docs/ban-thu.md).
-- **Phát hành:** tag và Release chỉ gắn trên commit đã chạy thật ở production và đã kiểm tra, khi chủ dự án đồng ý ([docs/ops/phat-hanh.md](docs/ops/phat-hanh.md)).
+- **Phát hành:** tag và Release chỉ gắn trên commit đã chạy thật ở production và đã kiểm tra, khi chủ dự án đồng ý. Mỗi tag có một [Release trên GitHub](https://github.com/tvviem/exam-system/releases) ghi mã commit đầy đủ, ảnh và **điểm lùi** (bản trước); bảng các bản đã phát hành và cách lùi nằm ở [docs/ops/phat-hanh.md](docs/ops/phat-hanh.md) mục 8.
 - **Kiểm tra cục bộ:** `pnpm lint` coi cảnh báo của Biome là lỗi; hook pre-commit (`.githooks`, bật qua `pnpm install`) chạy Biome trên các tệp sắp commit.
 - **Agent:** Claude Code, Codex và Copilot cùng đọc [AGENTS.md](AGENTS.md); [CLAUDE.md](CLAUDE.md) nạp file này.
 
@@ -341,6 +358,7 @@ Giai đoạn 1 chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, ra Int
 | [docs/ops/phat-hanh.md](docs/ops/phat-hanh.md), [gui-thu.md](docs/ops/gui-thu.md), [tai-khoan-va-mat-khau.md](docs/ops/tai-khoan-va-mat-khau.md) | Tôn chỉ đánh số phiên bản, gắn tag và viết ghi chú Release; cấu hình gửi thư; xử lý tài khoản và mật khẩu |
 | [docs/ops/demo-wsl.md](docs/ops/demo-wsl.md), [chuyen-len-vps.md](docs/ops/chuyen-len-vps.md) | Triển khai demo trên laptop WSL (bản nháp); hướng chuyển sang VPS khi cần |
 | [docs/ui-design.md](docs/ui-design.md), [docs/ui-review.md](docs/ui-review.md) | Thiết kế giao diện và kết quả rà soát giao diện |
+| [docs/ban-thu.md](docs/ban-thu.md) | Sổ các bản thử (nhánh `prototype/*`): mỗi bản trả lời câu hỏi gì, kết luận, đã vào mã ở đâu |
 | [demo-data/README.md](demo-data/README.md) | File Excel dữ liệu demo và kịch bản dùng |
 | [docs/adr](docs/adr) | Các quyết định kiến trúc đã duyệt |
 | [AGENTS.md](AGENTS.md) | Hướng dẫn cho AI agent làm việc trên repo |
@@ -358,7 +376,8 @@ Giai đoạn 1 chạy trên Podman pod `prod-exam` trên máy WSL Ubuntu, ra Int
 | 6 | **Xong.** Triển khai production lên pod `prod-exam`, workflow "Deploy (bấm tay)", sao lưu và khôi phục, báo ngoài máy |
 | 7 | **Xong.** Tài khoản bằng email: thư kích hoạt, quên mật khẩu, đổi và xác thực email, Lời mời tự gửi thư, theo dõi kích hoạt |
 | 0.2.0 | **Xong.** [Xuất Bộ đề ra Word](docs/plan/xuat-bo-de-thiet-ke.md): tệp Đề thi (Mẫu Trường hoặc Gọn, công thức Word gốc, hình) và tệp Đáp án và thang điểm (đáp án hiệu lực sau Đính chính, có xác nhận); chức năng tùy chọn chưa cần ở mục 16 của tài liệu |
-| 0.3.0 (chờ deploy) | **Xong mã, chờ triển khai và kiểm trên production rồi mới gắn tag:** [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md) (tỷ lệ mặc định ở Bộ đề, ghi đè ở Phiên thi, rút riêng cho từng Người dự thi, chấm và Kết quả theo bộ câu của từng Lượt, Xem thử một lượt rút); hướng dẫn: [rut-cau-theo-phan.md](docs/huong-dan/rut-cau-theo-phan.md) |
+| 0.3.0 | **Xong** (22/11/2026). [Rút câu theo Phần](docs/plan/rut-cau-theo-phan-thiet-ke.md): tỷ lệ mặc định ở Bộ đề (đóng băng khi Phát hành), ghi đè ở Phiên thi, rút riêng cho từng Người dự thi (cùng bộ câu ở mọi Lượt), chấm, điểm tối đa, Phúc khảo, Theo dõi và Excel theo bộ câu của từng Lượt, Xem thử một lượt rút; Excel thêm cột Điểm sau Mức xử lý; nhớ nội dung Bộ đề đã Phát hành để vào thi nhanh hơn. Đo 500 người bấm bắt đầu cùng lúc: mỗi người chờ vài giây ở trường hợp xấu nhất, chấm 5,7 ms mỗi Lượt ([số đo](docs/architecture.md), mục Ngân sách phản hồi); hướng dẫn: [rut-cau-theo-phan.md](docs/huong-dan/rut-cau-theo-phan.md) |
+| Sau 0.3.0 | **Định hướng mở, chưa lên lịch:** [nguồn tham khảo của Câu hỏi và gợi ý ôn tập sau khi làm bài](docs/plan/mang-kien-thuc-va-on-tap-thiet-ke.md) (cần khóa AI nên tạm hoãn; bước không cần AI làm được trước) |
 
 Để giai đoạn sau: nhập câu hỏi từ Word, tải ảnh vào Câu tự luận, giao diện tiếng Anh, xác thực hai lớp cho Quản trị viên, chuyển sang VPS (xem [docs/ops/chuyen-len-vps.md](docs/ops/chuyen-len-vps.md)).
 
