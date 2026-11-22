@@ -258,12 +258,16 @@ Hành động Người ra đề tải một tệp Word (.docx) của Bộ đề 
 _Avoid_: in đề, tải đề, export đề thi
 
 **Rút câu** (`Draw`):
-Cách một Phiên thi chọn ngẫu nhiên một số câu của mỗi Phần cho từng Người dự thi, khi Người dự thi vào phòng thi lần đầu. Bộ câu đã rút là cố định cho người đó ở mọi Lượt làm bài của Phiên thi, và khác nhau giữa người với người. Phiên thi không đặt Tỷ lệ rút (hoặc đặt 100 %) thì mọi người làm đủ mọi câu của Bộ đề, đúng như trước khi có tính năng này.
+Cách một Phiên thi chọn ngẫu nhiên một số câu của mỗi Phần cho từng Người dự thi, khi Người dự thi vào phòng thi lần đầu. Bộ câu đã rút là cố định cho người đó ở mọi Lượt làm bài của Phiên thi, và khác nhau giữa người với người. Điểm tối đa và số câu mỗi người nhận như nhau, nên Kết quả, Phúc khảo và Excel tính theo bộ câu rút chứ không theo cả Bộ đề. Bộ đề và Phiên thi không đặt Tỷ lệ rút (hoặc đặt 100 %) thì mọi người làm đủ mọi câu của Bộ đề, đúng như trước khi có tính năng này.
 _Avoid_: ngẫu nhiên hóa, random, bốc câu
 
 **Tỷ lệ rút** (`Draw ratio`):
-Phần trăm số câu của một Phần được rút cho mỗi Người dự thi, do Người ra đề đặt ở Phiên thi (không đặt ở Bộ đề). Mặc định 100 % (lấy đủ). Số câu rút làm tròn nửa lên, tối thiểu 1 câu nếu tỷ lệ lớn hơn 0.
+Phần trăm số câu của một Phần được rút cho mỗi Người dự thi. Người ra đề đặt tỷ lệ mặc định của từng Phần khi soạn Bộ đề (đóng băng khi Phát hành); Phiên thi kế thừa và có thể ghi đè cho riêng mình cho đến khi có Lượt làm bài đầu tiên. Mặc định 100 % (lấy đủ). Số câu rút làm tròn nửa lên, tối thiểu 1 câu nếu tỷ lệ lớn hơn 0. Phần rút dưới 100 % cần các câu cùng điểm.
 _Avoid_: tỷ lệ lấy câu, phần trăm đề
+
+**Lượt rút mẫu** (`Draw sample`):
+Bộ câu rút thử của một người ngẫu nhiên mà Người ra đề thấy khi Xem thử Phiên thi có Rút câu; mỗi lần mở ra một bộ khác. Không tạo Lượt làm bài và không ghi gì.
+_Avoid_: rút thử, bốc thử
 
 **Lượt làm bài** (`Attempt`):
 Một lần Người dự thi làm bài trong Phiên thi, có thứ tự Câu hỏi và Phương án cố định sau khi bắt đầu.

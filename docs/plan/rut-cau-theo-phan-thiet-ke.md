@@ -1,6 +1,6 @@
 # Rút câu theo Phần cho từng Lượt làm bài (thiết kế đề xuất)
 
-Trạng thái: **accepted** (chủ dự án đã chốt cả 11 câu Q385–Q395 ngày 18/11/2026: **Q388 (a), Q389 (a)**, các câu còn lại theo đề xuất; chưa có mã). Ngày đề xuất: 18/11/2026. Câu hỏi quyết định đánh số từ Q385.
+Trạng thái: **accepted và đã làm xong về mã** (chủ dự án đã chốt cả 11 câu Q385–Q395 ngày 18/11/2026: **Q388 (a), Q389 (a)**, các câu còn lại theo đề xuất; điều chỉnh Q438 đến Q441 ngày 20/11/2026; R1 đến R5 vào `main` ngày 21 đến 22/11/2026, chờ deploy và gắn `0.3.0`). Ngày đề xuất: 18/11/2026. Câu hỏi quyết định đánh số từ Q385.
 
 **Mốc nền:** nâng cấp sau **phiên bản 0.1** (chủ dự án đánh dấu bản đã deploy và kiểm tra ngày 18/11/2026: nhánh `main` tại commit `3a1f971`, lần deploy run 44247392726). Thiết kế đã được duyệt; **chưa có mã** và **thứ tự làm do chủ dự án quyết** (cạnh tranh với [Xuất Bộ đề](xuat-bo-de-thiet-ke.md)). Bắt đầu làm thì nạp skill `tdd`, chốt các điểm kiểm thử (seam) với chủ dự án rồi mới viết bài kiểm thử đầu tiên.
 
@@ -125,7 +125,7 @@ Màu và cảnh báo theo skill UX/UI (không chỉ dùng màu, có chữ và bi
 
 Mỗi PR có kiểm đột biến. Tính năng này **không đổi hành vi** của Phiên thi cũ (không có dòng rút nghĩa là 100 %).
 
-**Tiến độ (21/11/2026):** R1 (#127), R2a (#130, Bộ đề), R2b (#131, Phiên thi và vào thi rút thật) và R3 (chấm điểm, điểm tối đa, Phúc khảo, theo dõi, Excel theo bộ câu của từng Lượt) đã xong. R4a (form Bộ đề) và R4b (form Phiên thi: kế thừa tỷ lệ của Bộ đề, ghi đè từng Phần, khóa khi đã có Lượt, hiện ở Tổng quan) đã xong. R4c (phía Người dự thi: danh sách và màn xác nhận nói rõ bài rút ngẫu nhiên, "Câu x/N" đúng số câu rút; Người ra đề Xem thử một lượt rút mẫu) đã xong, tức giao diện R4 hoàn tất. Còn R5 (E2E toàn luồng, đo tải, tài liệu). **Chưa có giao diện nhập tỷ lệ nên chưa dùng được từ trình duyệt**; Bộ đề và Phiên thi không cấu hình (hoặc 100 %) chạy y như trước. Thẻ phiên bản `0.3.0` đặt sau R4 (hoặc R5, tùy chủ dự án).
+**Tiến độ (21/11/2026):** R1 (#127), R2a (#130, Bộ đề), R2b (#131, Phiên thi và vào thi rút thật) và R3 (chấm điểm, điểm tối đa, Phúc khảo, theo dõi, Excel theo bộ câu của từng Lượt) đã xong. R4a (form Bộ đề) và R4b (form Phiên thi: kế thừa tỷ lệ của Bộ đề, ghi đè từng Phần, khóa khi đã có Lượt, hiện ở Tổng quan) đã xong. R4c (phía Người dự thi: danh sách và màn xác nhận nói rõ bài rút ngẫu nhiên, "Câu x/N" đúng số câu rút; Người ra đề Xem thử một lượt rút mẫu) đã xong, tức giao diện R4 hoàn tất. R5 (bài kiểm toàn luồng liền mạch, đo 500 người và mức trùng bộ câu, GLOSSARY, data-model, architecture, hướng dẫn) cũng đã xong: **toàn bộ Rút câu theo Phần xong về mã**; còn deploy lên production, kiểm tra, rồi gắn `0.3.0`. Bộ đề và Phiên thi không cấu hình (hoặc 100 %) chạy y như trước. Thẻ `0.3.0` đặt sau khi bản này chạy thật ở production và đã kiểm tra (theo [phat-hanh.md](../ops/phat-hanh.md)). Hướng dẫn cho người dùng: [rut-cau-theo-phan.md](../huong-dan/rut-cau-theo-phan.md).
 
 ## 6. Quyết định của chủ dự án (Q385–Q395, chốt 18/11/2026)
 

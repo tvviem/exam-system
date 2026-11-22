@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { AutogradeService } from '../src/modules/grading/autograde.service';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
 import { publishedDrawExam } from './support/exams';
@@ -12,7 +13,8 @@ import { DEFAULT_PASSWORD, seedUser } from './support/users';
 //   RUT_CAU_BENCH=1 pnpm --filter @exam/api exec vitest run --project integration test/rut-cau-bench.int.test.ts
 // Bộ đề 100 câu (5 Phần × 20 câu). Phiên thi "đủ" lấy 100 câu (như trước khi có Rút câu), Phiên thi "rút" lấy 40 câu (40 %).
 
-const N = 100;
+/** Số Người dự thi; đặt RUT_CAU_N=500 để đo quy mô lớn. */
+const N = Number(process.env.RUT_CAU_N ?? 100);
 let t: TestApp;
 beforeAll(async () => {
   t = await createTestApp();
@@ -149,6 +151,36 @@ describe.skipIf(!process.env.RUT_CAU_BENCH)('đo vào thi khi rút câu', () => 
     expect(b.items).toBe(40);
     // Ngân sách (docs/architecture.md): rút câu không làm vào thi chậm hơn đáng kể, và bắt đầu Lượt một người dưới 200 ms.
     expect(b.single).toBeLessThan(200);
-    expect(b.p95).toBeLessThan(a.p95 * 1.5 + 100);
-  }, 300000);
+    // So sánh p95 chỉ có nghĩa ở quy mô 100 người (ngân sách 100 người cùng lúc); quy mô lớn hơn chỉ đo và in ra.
+    if (N <= 100) expect(b.p95).toBeLessThan(a.p95 * 1.5 + 100);
+
+    // Chấm và Kết quả của Phiên thi rút câu: nộp hết bằng SQL, chấm theo lô 50 như job `grading.autograde`, rồi đọc bảng Kết quả
+    // và xuất Excel (mỗi người 40 câu của bộ câu riêng).
+    await sql(
+      `update attempts set status = 'submitted', submitted_at = now(), submit_reason = 'candidate'
+        where session_id = $1 and status = 'in_progress'`,
+      [drawn.id],
+    );
+    const attemptIds = (
+      await sql<{ id: string }>(`select id from attempts where session_id = $1`, [drawn.id])
+    ).map((row) => row.id);
+    const grader = t.app.get(AutogradeService, { strict: false });
+    const gradeStart = performance.now();
+    for (let i = 0; i < attemptIds.length; i += 50)
+      await grader.gradeAttempts(attemptIds.slice(i, i + 50));
+    const gradeMs = performance.now() - gradeStart;
+    const resultsStart = performance.now();
+    const results = await call(t.app, 'GET', `/api/sessions/${drawn.id}/results`, { cookie });
+    const resultsMs = performance.now() - resultsStart;
+    expect(results.statusCode, results.body).toBe(200);
+    const exportStart = performance.now();
+    const xlsx = await call(t.app, 'GET', `/api/sessions/${drawn.id}/results.xlsx`, { cookie });
+    const exportMs = performance.now() - exportStart;
+    expect(xlsx.statusCode).toBe(200);
+    process.stderr.write(
+      `[chấm và Kết quả, ${N} người × 40 câu] chấm ${gradeMs.toFixed(0)} ms (${(gradeMs / N).toFixed(1)} ms mỗi Lượt); ` +
+        `bảng Kết quả ${resultsMs.toFixed(0)} ms; xuất Excel ${exportMs.toFixed(0)} ms (${(((xlsx.rawPayload as Buffer | undefined)?.length ?? 0) / 1024) | 0} KB)\n`,
+    );
+    expect(results.json().session).toMatchObject({ totalItems: 40, maxScore: 40 });
+  }, 1_800_000);
 });

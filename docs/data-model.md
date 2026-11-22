@@ -273,6 +273,13 @@ exam_item_illustrations (                 -- ảnh nằm trong bản chụp củ
   PRIMARY KEY (exam_item_id, illustration_id)
 )
 
+exam_section_draws (                     -- Rút câu (Q438): tỷ lệ rút MẶC ĐỊNH của Phần; không có dòng = 100 % (lấy đủ)
+  section_id PRIMARY KEY → exam_sections ON DELETE CASCADE,
+  percent numeric(5,2) CHECK (percent BETWEEN 0 AND 100)
+)
+-- Trigger exam_section_draws_guard (migration 0028, Q439): Bộ đề không còn 'draft' thì chặn INSERT/UPDATE/DELETE dòng này
+-- (đóng băng cùng Bộ đề). Chỉ Phần dưới 100 % có dòng; xóa Phần hoặc Bộ đề nháp thì dòng đi theo (ON DELETE CASCADE).
+
 -- Trigger (migration 0011, Q172): exams.status khác 'draft' thì
 --   exam_items, exam_sections: chặn INSERT/UPDATE/DELETE;
 --   exams: chỉ cho đổi status published <-> archived, archived_at, owner_id, updated_at; chặn DELETE và quay về 'draft'.
@@ -309,6 +316,18 @@ session_roster (                          -- Danh sách dự thi: người mang 
   PK (session_id, user_id)
 )
 -- Trigger: INSERT thì user_id <> sessions.owner_id (Q144, owner_cannot_sit). Cấm bớt người đã có Lượt: thêm ở migration 0013.
+
+session_section_draws (                   -- Rút câu (Q438): GHI ĐÈ tỷ lệ rút của một Phần ở Phiên thi; không có dòng = kế thừa exam_section_draws
+  session_id → sessions ON DELETE CASCADE,
+  section_id → exam_sections,             -- trigger: Phần phải thuộc Bộ đề của Phiên thi
+  percent numeric(5,2) CHECK (percent BETWEEN 0 AND 100),
+  PRIMARY KEY (session_id, section_id)
+)
+-- Trigger session_section_draws_guard (migration 0029, Q392): Phiên thi đã có Lượt làm bài thì chặn INSERT/UPDATE/DELETE dòng này.
+-- Chỉ lưu ghi đè KHÁC mặc định của Bộ đề. Tỷ lệ hiệu lực = ghi đè của Phiên thi, rồi mặc định của Bộ đề, rồi 100 % (hàm thuần
+-- effectiveDrawPercents ở packages/shared, một nơi duy nhất). `attempts` KHÔNG đổi cột: `layout` chỉ chứa các câu đã rút
+-- (trigger attempts_guard cố định nó), nên bộ câu của một Lượt là nguồn sự thật cho chấm điểm; điểm tối đa mỗi người tính từ
+-- cấu hình (sessionDrawTotals) và khớp với tổng điểm của bố cục vì Phần rút dưới 100 % có các câu cùng điểm (kiểm lúc Phát hành).
 ```
 
 Trạng thái hiện cho Người ra đề (Sắp mở, Đang mở, Đóng cửa vào thi, Đã đóng, Đã hủy) **không lưu**: suy ra từ giờ và hai cột `entry_closed_at`, `cancelled_at` bằng hàm `phaseOf` ở `@exam/shared`.
