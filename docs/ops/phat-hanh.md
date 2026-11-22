@@ -1,6 +1,6 @@
 # Gắn tag và ghi chú phát hành (GitHub Release)
 
-> **Trạng thái: đề xuất, chờ chủ dự án duyệt.** Viết ngày 18/11/2026, sau khi bản 0.1 chạy thật.
+> **Trạng thái: đang áp dụng.** Viết ngày 18/11/2026 sau khi bản 0.1 chạy thật; chủ dự án đã duyệt tôn chỉ và ngày 22/11/2026 chốt tạo Release cho cả bốn tag (mục 7); bảng các bản và cách lùi ở mục 8.
 
 Hệ thống đang vận hành, có người dùng thật. Tag và ghi chú phát hành là cách để mọi người, kể cả chính chủ dự án sau vài tháng, trả lời nhanh bốn câu hỏi: **prod đang chạy bản nào, bản đó khác bản trước ở đâu, khi có sự cố thì lùi về đâu, và cần làm gì tay khi nâng cấp.**
 
@@ -116,7 +116,18 @@ gh release create v0.1.1 --verify-tag --title "BLUni Exam 0.1.1" --notes-file gh
 - **Báo thay đổi cho người dùng và Quản trị viên** mà không bắt họ đọc lịch sử commit.
 - **Việc làm tay khi nâng cấp** (migration, biến môi trường) nằm ở một chỗ cố định, khỏi sót.
 
-## 7. Việc còn bỏ ngỏ (chờ chủ dự án)
+## 7. Các quyết định đã chốt (từng là việc bỏ ngỏ)
 
-- Có tạo Release cho `v0.1.0` (hiện mới có tag, chưa có Release) không. Nếu có, dùng đúng mẫu ở mục 4, ghi "không có bản trước".
-- Thay đổi nào cụ thể đã đủ "lớn" để lên `1.0.0` khi nó được triển khai (ví dụ tính năng "Rút câu theo Phần" đụng mô hình dữ liệu): xét lúc có ADR hoặc tài liệu thiết kế tương ứng, theo cách nhận biết ở mục 2.
+- **Release cho mọi tag** (chủ dự án chốt 22/11/2026): `v0.1.0`, `v0.1.1`, `v0.2.0`, `v0.3.0` đều có Release, viết theo mẫu mục 4; bản đầu tiên ghi "không có bản trước". Mục đích chính là **điểm lùi**: mỗi Release nêu mã commit đầy đủ của bản trước để deploy lại khi bản mới lỗi.
+- **"Rút câu theo Phần" là `0.3.0` (MINOR), không phải `1.0.0`:** chỉ thêm hai bảng và hai trigger, không đổi cột nào của bảng đang có dữ liệu, không đổi kiến trúc; bản `0.2.0` vẫn chạy được trên cơ sở dữ liệu của `0.3.0`. `1.0.0` vẫn dành cho thay đổi lớn về kiến trúc hoặc mô hình dữ liệu (cách nhận biết ở mục 2).
+
+## 8. Các bản đã phát hành và cách lùi
+
+| Tag | Ngày | Mã commit đầy đủ | Bản trước (điểm lùi) | Ghi chú khi lùi về |
+|---|---|---|---|---|
+| `v0.1.0` | 18/11/2026 | `3a1f9715c874b4eda1a45895ba12f8f57f081c30` | không có | bản đầu tiên chạy thật |
+| `v0.1.1` | 19/11/2026 | `54c5bae68bee49268b6eb86a93d47f9150fbeb62` | `v0.1.0` | không migration; lùi an toàn |
+| `v0.2.0` | 20/11/2026 | `8c482207a8a3569210140f390a7959bc39af3102` | `v0.1.1` | không migration; lùi an toàn (mất nút Xuất Bộ đề ra Word) |
+| `v0.3.0` | 22/11/2026 | `508493709c993dc9b35066dc59c5197e877cab4f` | `v0.2.0` | migration `0028`, `0029` chỉ thêm bảng nên bản cũ vẫn chạy, **nhưng Phiên thi đã cấu hình Rút câu sẽ làm đủ mọi câu**: chỉ lùi khi chưa có Phiên thi thật dùng Rút câu |
+
+**Cách lùi:** Actions → **Deploy (bấm tay)** → Run workflow, điền **mã commit đầy đủ** của bản muốn lùi vào ô *Mã commit* (workflow từ chối nếu mã không thuộc `main` hoặc ảnh không còn trên máy; ảnh của 3 bản gần nhất được giữ sẵn), duyệt **Approve and deploy**. Chỉ lùi mã ứng dụng, không lùi dữ liệu. Chi tiết và bảng đọc Summary: [trien-khai.md](./trien-khai.md) mục "Deploy bằng GitHub". Tag không bao giờ bị dời hay xóa; tên ảnh luôn là `ghcr.io/tvviem/exam-api:<mã commit>` và `ghcr.io/tvviem/exam-web:<mã commit>`.

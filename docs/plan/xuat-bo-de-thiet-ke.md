@@ -1,6 +1,6 @@
 # Xuất Bộ đề theo mẫu văn bản hành chính (thiết kế đề xuất)
 
-Trạng thái: **accepted** (chủ dự án đồng ý Q401–Q416 ngày 18/11/2026, gồm cả đối chiếu đề thi mẫu của Trường ở mục 3; **chưa có mã**). Ngày đề xuất: 18/11/2026. Câu quyết định đánh số tiếp từ **Q401** (Q396–Q400 là chốt tên hệ thống; Q385–Q395 của "Rút câu theo Phần" đang tạm gác).
+Trạng thái: **accepted** (chủ dự án đồng ý Q401–Q416 ngày 18/11/2026, gồm cả đối chiếu đề thi mẫu của Trường ở mục 3; **đã làm xong về mã**: X1 đến X5 vào `main` ngày 19–20/11/2026 và chạy thật trong bản `0.2.0`; các chức năng tùy chọn ở mục 16 chưa làm). Ngày đề xuất: 18/11/2026. Câu quyết định đánh số tiếp từ **Q401** (Q396–Q400 là chốt tên hệ thống; Q385–Q395 của "Rút câu theo Phần" làm sau bản này, nay đã xong ở bản `0.3.0`).
 
 ## 1. Yêu cầu của chủ dự án
 

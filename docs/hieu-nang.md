@@ -129,3 +129,21 @@ Thao tác thường ngày (p99, ngưỡng của dự án), lần 1 và lần 2:
 - Chạy lại bài **100 người một api** trên máy chạy thật để có cơ sở cho quy mô thật của bản MVP: `LOAD_USERS=100 nice -n 19 pnpm -C apps/api load:exam` (khoảng 4 phút).
 - Chưa kiểm: **Socket.IO qua hai bản api bằng trình duyệt thật** và qua Cloudflare Tunnel; đường truyền mạng thật của phòng học. Bài `make -C infra scale-drill-test` chỉ kiểm chức năng (nginx chia yêu cầu, kênh Redis có đủ hai bên nghe).
 
+## Rút câu theo Phần (đo 22/11/2026, bản 0.3.0)
+
+Phiên thi rút câu (mỗi người nhận một bộ câu riêng) không làm hệ thống chậm đi: bộ câu nhỏ hơn nên bài nhẹ hơn. Đo trên Bộ đề **100 câu**, mỗi người rút **40 câu**, một tiến trình api, PostgreSQL thật, bằng `RUT_CAU_BENCH=1` (cách chạy ở [README](../README.md), mục "Dùng thử Rút câu theo Phần"):
+
+| Việc | 100 người | 500 người |
+|---|---|---|
+| Bắt đầu Lượt, tất cả cùng một lúc (p50 / p95) | 766 / 825 ms | 3756 / 4056 ms |
+| Đọc đề (p50 / p95) | 304 / 361 ms | 1527 / 1824 ms |
+| Chấm tự động cả Phiên thi | 680 ms (6,8 ms mỗi Lượt) | 2852 ms (5,7 ms mỗi Lượt) |
+| Bảng Kết quả | 49 ms | 119 ms |
+| Xuất Excel | 155 ms | 474 ms |
+
+- **Cách đọc:** 500 người bấm bắt đầu đúng cùng một giây là trường hợp xấu nhất; thông lượng đo được khoảng 125 lượt mỗi giây, gấp hơn 20 lần giả định thực tế (300 người trong 60 giây), nên người dự thi thật chờ vài chục mili giây.
+- **Một người** bắt đầu Lượt khoảng 30 đến 45 ms, dữ liệu gửi về nhỏ hơn hơn một nửa (25 KB so với 60 KB khi lấy đủ 100 câu).
+- **Nhớ nội dung Bộ đề đã Phát hành trong bộ nhớ** (nội dung này bất biến) cắt p95 bắt đầu Lượt 99 người cùng lúc từ 1,5 giây xuống dưới 1 giây.
+- **Mức trùng bộ câu:** hai người trùng trung bình 16 trên 40 câu (40 %), nhiều nhất 26 trên 40; không có hai người cùng một bộ câu; mỗi câu được chọn với xác suất như nhau.
+
+Chi tiết từng bước đo, ngân sách và mức trùng: [architecture.md](architecture.md), mục "Ngân sách phản hồi".
