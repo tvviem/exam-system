@@ -133,3 +133,106 @@ test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang
     ),
   ).toBe(0);
 });
+
+const LONG =
+  'Chọn các phương án phù hợp cho các câu hỏi dưới đây, mỗi câu có thể có nhiều đáp án đúng trong cùng một Phần';
+
+/** Bộ đề nháp hai Phần dựng qua API (Phần 2 có tên rất dài), cùng ba câu trong ngân hàng. Trả mã Bộ đề. */
+async function seedTwoSections(page: Page, tag: string) {
+  const blank = { type: 'doc', content: [{ type: 'paragraph' }] };
+  const headers = { origin: ORIGIN };
+  const topic = await page.request.post('/api/topics', { headers, data: { name: `Đích ${tag}` } });
+  expect(topic.ok(), await topic.text()).toBe(true);
+  const topicId = (await topic.json()).id;
+  for (const n of [1, 2, 3]) {
+    const res = await page.request.post('/api/questions', {
+      headers,
+      data: {
+        type: 'single_choice',
+        topicId,
+        stem: rich(`Câu đích ${n}`),
+        defaultPoints: 1,
+        tags: [],
+        payload: {
+          options: [
+            { id: 'o1', content: rich('a') },
+            { id: 'o2', content: rich('b') },
+          ],
+          key: ['o1'],
+          shuffleOptions: true,
+        },
+      },
+    });
+    expect(res.ok(), await res.text()).toBe(true);
+  }
+  const created = await page.request.post('/api/exams', {
+    headers,
+    data: { title: `Đề đích ${tag}` },
+  });
+  const exam = await created.json();
+  const saved = await page.request.put(`/api/exams/${exam.id}`, {
+    headers,
+    data: {
+      title: `Đề đích ${tag}`,
+      instructions: blank,
+      version: exam.version,
+      sections: [
+        { id: exam.sections[0].id, title: 'Phần 1: Chương 4', instructions: blank, items: [] },
+        { title: LONG, instructions: blank, items: [] },
+      ],
+    },
+  });
+  expect(saved.ok(), await saved.text()).toBe(true);
+  return exam.id as string;
+}
+
+test('hộp thêm câu cho biết đang thêm vào Phần nào; nút ngắn gọn dù tên Phần dài; đổi Phần ngay trong hộp', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-ptd-${p}`);
+  const tag = `${p}-${testInfo.repeatEachIndex}-${testInfo.retry}`;
+  const examId = await seedTwoSections(page, tag);
+  await page.goto(`/examiner/exams/${examId}`);
+
+  // Mở từ nút của Phần 2 (tên rất dài).
+  await page.getByRole('button', { name: 'Thêm câu hỏi' }).nth(1).click();
+  const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
+  await dialog.getByLabel('Chủ đề').selectOption({ label: `Đích ${tag}` });
+
+  // Ngay đầu hộp: ô "Thêm vào Phần" đang chọn đúng Phần 2.
+  const target = dialog.getByLabel('Thêm vào Phần');
+  await expect(target).toBeVisible();
+  await expect(target.locator('option:checked')).toContainText('Chọn các phương án phù hợp');
+
+  await dialog.getByRole('checkbox', { name: 'Chọn câu: Câu đích 1' }).check();
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/hop-them-cau-${p}.png` });
+  // Nút chính ngắn gọn, cố định; tên đầy đủ nằm ở dòng đích cạnh nút và ở tên truy cập của nút.
+  const add = dialog.getByRole('button', { name: /^Thêm 1 câu/ });
+  await expect(add).toHaveText('Thêm 1 câu');
+  const box = await add.boundingBox();
+  // Máy tính: nút gọn theo chữ; điện thoại: nút rộng hết hàng cho dễ chạm. Cả hai đều một dòng, không bị kéo cao.
+  if (p === 'desktop') expect(box?.width ?? 999, 'bề rộng nút Thêm').toBeLessThan(220);
+  expect(box?.height ?? 999, 'chiều cao nút Thêm').toBeLessThan(64);
+  await expect(add).toHaveAccessibleName(/vào Chọn các phương án phù hợp/);
+  await expect(dialog.getByTestId('picker-destination')).toContainText(
+    'Chọn các phương án phù hợp',
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    ),
+    'tràn ngang',
+  ).toBe(0);
+
+  // Đổi đích sang Phần 1 ngay trong hộp: lựa chọn giữ nguyên, câu vào Phần 1.
+  await target.selectOption({ label: 'Phần 1: Chương 4 (0 câu)' });
+  await expect(dialog.getByTestId('picker-destination')).toContainText('Phần 1: Chương 4');
+  await expect(dialog.getByRole('checkbox', { name: 'Chọn câu: Câu đích 1' })).toBeChecked();
+  await dialog.getByRole('button', { name: /^Thêm 1 câu/ }).click();
+  await expect(dialog).toBeHidden();
+  const cards = page.locator('[data-testid="draw-row"]');
+  await expect(cards).toHaveCount(1); // chỉ Phần có câu mới có dòng Rút câu: Phần 1
+  await expect(page.getByText('Phần này chưa có câu hỏi.')).toHaveCount(1); // Phần 2 vẫn trống
+});

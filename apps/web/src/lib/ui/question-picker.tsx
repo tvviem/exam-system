@@ -11,23 +11,31 @@ import { EmptyState, ListSkeleton, Pagination } from './admin';
 
 /**
  * Chọn Câu hỏi từ ngân hàng để thêm vào một Phần của Bộ đề (Q186): dùng cùng bộ lọc với danh sách Câu hỏi, tick nhiều
- * (giữ lựa chọn qua các trang), câu đã có trong Bộ đề hiện "Đã có" và không tick được.
+ * (giữ lựa chọn qua các trang), câu đã có trong Bộ đề hiện "Đã có" và không tick được. Đầu hộp nói rõ đang thêm vào Phần nào
+ * (đổi Phần được ngay trong hộp, lựa chọn giữ nguyên); chân hộp dính đáy, nút chính luôn ngắn dù tên Phần dài.
  */
 export function QuestionPicker({
   open,
-  sectionName,
+  sections,
+  sectionKey,
+  onSectionChange,
   existing,
   onClose,
   onAdd,
 }: {
   open: boolean;
-  sectionName: string;
+  /** Các Phần của Bộ đề, theo thứ tự, kèm số câu hiện có. */
+  sections: { key: string; name: string; count: number }[];
+  /** Phần đang được thêm câu vào. */
+  sectionKey: string | null;
+  onSectionChange: (key: string) => void;
   /** Id các câu đã có trong Bộ đề. */
   existing: ReadonlySet<string>;
   onClose: () => void;
   onAdd: (picked: PickedQuestion[]) => void;
 }) {
   const { t } = useTranslation();
+  const sectionName = sections.find((s) => s.key === sectionKey)?.name ?? '';
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
   const [topicId, setTopicId] = useState('');
@@ -133,6 +141,31 @@ export function QuestionPicker({
   return (
     <Dialog open={open} onClose={close} title={t('exam.picker.title')} size="xl">
       <div className="flex flex-col gap-4">
+        <div
+          className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-3"
+          data-testid="picker-target"
+        >
+          {sections.length > 1 ? (
+            <SelectField
+              id="picker-section"
+              label={t('exam.picker.into')}
+              value={sectionKey ?? ''}
+              title={sectionName}
+              onChange={(e) => onSectionChange(e.target.value)}
+            >
+              {sections.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {t('exam.picker.sectionOption', { name: s.name, count: s.count })}
+                </option>
+              ))}
+            </SelectField>
+          ) : (
+            <p className="text-sm">
+              <span className="text-fg-muted">{t('exam.picker.into')}: </span>
+              <span className="font-medium wrap-anywhere">{sectionName}</span>
+            </p>
+          )}
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SearchField
             id="picker-search"
@@ -276,13 +309,32 @@ export function QuestionPicker({
           />
         )}
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button onClick={close}>{t('common.cancel')}</Button>
-          <Button variant="primary" disabled={chosen.size === 0} onClick={add}>
-            {chosen.size === 0
-              ? t('exam.picker.addNone')
-              : t('exam.picker.add', { count: chosen.size, section: sectionName })}
-          </Button>
+        <div className="sticky bottom-0 -mx-5 flex flex-col gap-3 border-t border-border bg-surface-raised px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between">
+          <p
+            className="min-w-0 text-sm text-fg-muted"
+            data-testid="picker-destination"
+            title={sectionName}
+          >
+            {t('exam.picker.willAdd')}{' '}
+            <span className="line-clamp-2 font-medium text-fg wrap-anywhere">{sectionName}</span>
+          </p>
+          <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row">
+            <Button onClick={close}>{t('common.cancel')}</Button>
+            <Button
+              variant="primary"
+              disabled={chosen.size === 0}
+              aria-label={
+                chosen.size === 0
+                  ? undefined
+                  : t('exam.picker.add', { count: chosen.size, section: sectionName })
+              }
+              onClick={add}
+            >
+              {chosen.size === 0
+                ? t('exam.picker.addNone')
+                : t('exam.picker.addShort', { count: chosen.size })}
+            </Button>
+          </div>
         </div>
       </div>
     </Dialog>

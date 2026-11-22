@@ -469,7 +469,6 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   });
 
   const conflict = save.error instanceof ApiError && save.error.code === 'CONFLICT';
-  const picking = draft.sections.findIndex((s) => s.key === pickerFor);
 
   return (
     <div className="flex flex-col gap-4">
@@ -785,9 +784,13 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
 
       <QuestionPicker
         open={pickerFor !== null}
-        sectionName={
-          picking >= 0 ? sectionName(draft.sections[picking] as DraftSection, picking) : ''
-        }
+        sections={draft.sections.map((s, i) => ({
+          key: s.key,
+          name: sectionName(s, i),
+          count: s.items.length,
+        }))}
+        sectionKey={pickerFor}
+        onSectionChange={setPickerFor}
         existing={questionIdsOf(draft)}
         onClose={() => setPickerFor(null)}
         onAdd={(picked) => {
