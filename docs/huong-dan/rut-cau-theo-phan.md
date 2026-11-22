@@ -19,10 +19,13 @@ Không muốn rút thì **không cần làm gì**: mặc định mọi Phần l�
 - Không được để **mọi Phần đều 0 %** (Người dự thi sẽ không có câu nào).
 - Ô tỷ lệ chỉ nhận số từ 0 đến 100. Để trống hoặc nhập số sai thì ô báo lỗi ngay cạnh và nút **Lưu** bị khóa cho tới khi sửa.
 - **Phần đặt 0 %** không lấy câu nào: Người dự thi **không thấy Phần đó** (không hiện tên Phần rỗng) trong bài làm. Dòng Rút câu của Phần có ghi chú nhắc điều này.
+- Bộ đề có từ hai Phần trở lên: thanh dính cạnh nút **Lưu** có bộ **chuyển nhanh giữa các Phần**: nút ‹ › sang Phần trước/sau, nhãn "Phần 2/3" cho biết đang xem Phần nào (đổi theo vị trí cuộn trang) và bấm nhãn để mở danh sách Phần (tên, số câu) rồi nhảy thẳng tới Phần đó.
 - Dòng **Rút câu từ Phần này** luôn hiện trong thẻ của Phần, kể cả khi bấm **Thu gọn Phần** (chỉ danh sách câu bị ẩn), nên vẫn thấy tỷ lệ và "mỗi người nhận N/M câu".
 - Thanh cạnh nút **Lưu** có hai dòng: tổng của cả Bộ đề ("15 câu · 20 điểm") và, khi có Phần rút dưới 100 %, số **mỗi người nhận** ("Mỗi người nhận 9 câu · 14 điểm"; chỉ nêu số câu khi còn Phần lệch điểm).
 
 ### 2. Phát hành
+
+Hộp **Phát hành** liệt kê từng Phần: số câu có sẵn, tỷ lệ rút và số câu mỗi Người dự thi nhận (ví dụ "3/6 câu · rút 50 %", hoặc "6/6 câu · lấy đủ"), kèm dòng tổng: "Cả Bộ đề có 15 câu; mỗi Người dự thi nhận 12 câu, tối đa 12 điểm." Xem kỹ bảng này trước khi bấm Phát hành, vì sau đó không sửa được.
 
 Tỷ lệ ở Bộ đề **đóng băng** khi Phát hành, như mọi nội dung khác. Muốn đổi tỷ lệ mặc định thì **Nhân bản** Bộ đề, sửa rồi Phát hành bản mới (Nhân bản mang theo tỷ lệ).
 

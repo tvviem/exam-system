@@ -331,3 +331,52 @@ export function drawSummaryOf(draft: ExamDraft): DrawSummary {
     problems,
   };
 }
+
+export interface DrawRows {
+  /** Từng Phần theo thứ tự: số câu có sẵn, số câu mỗi Người dự thi nhận và tỷ lệ rút (tỷ lệ không hợp lệ tạm tính 100 %). */
+  rows: { key: string; total: number; count: number; percent: number }[];
+  /** Số câu của cả Bộ đề. */
+  total: number;
+  /** Số câu và điểm tối đa mỗi Người dự thi nhận (`maxPoints` null khi còn Phần lệch điểm). */
+  count: number;
+  maxPoints: number | null;
+}
+
+/** Bảng "mỗi Người dự thi nhận bao nhiêu câu" cho hộp Phát hành: cùng phép tính với server qua `drawSummaryOf`. */
+export function drawRowsOf(draft: ExamDraft): DrawRows {
+  const summary = drawSummaryOf(draft);
+  const rows = summary.sections.map((s, i) => {
+    const percent = draft.sections[i]?.drawPercent ?? 100;
+    return {
+      key: s.key,
+      total: s.total,
+      count: s.count,
+      percent: drawPercentValid(percent) ? percent : 100,
+    };
+  });
+  return {
+    rows,
+    total: rows.reduce((n, r) => n + r.total, 0),
+    count: summary.count,
+    maxPoints: summary.maxPoints,
+  };
+}
+
+/**
+ * Phần đang xem khi cuộn trang. `tops` là vị trí đầu từng Phần so với đỉnh khung nhìn (getBoundingClientRect().top), theo thứ
+ * tự; `offset` là mốc dưới thanh đầu trang. Là Phần cuối cùng có đầu đã lên tới mốc; cuộn tới đáy trang thì là Phần cuối
+ * (Phần cuối ngắn có thể không bao giờ lên tới mốc).
+ */
+export function currentSectionIndex(
+  tops: readonly number[],
+  offset: number,
+  atBottom = false,
+): number {
+  if (tops.length === 0) return 0;
+  if (atBottom) return tops.length - 1;
+  let index = 0;
+  tops.forEach((top, i) => {
+    if (top <= offset) index = i;
+  });
+  return index;
+}

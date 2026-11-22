@@ -4,9 +4,11 @@ import {
   addItems,
   addSection,
   applyPoints,
+  currentSectionIndex,
   type DraftQuestion,
   draftFromExam,
   drawPercentValid,
+  drawRowsOf,
   drawSummaryOf,
   type ExamDraft,
   moveItem,
@@ -295,6 +297,31 @@ describe('tỷ lệ rút của Phần (Rút câu, Q435 đến Q441)', () => {
     };
     expect(draftFromExam(saved).sections.map((s) => s.drawPercent)).toEqual([40, 100]);
   });
+
+  describe('drawRowsOf: số câu từng Phần và cả Bộ đề cho hộp Phát hành', () => {
+    it('Bộ đề không rút: mỗi Phần lấy đủ, tổng bằng số câu của Bộ đề', () => {
+      const r = drawRowsOf(drawSample());
+      expect(r.rows.map((x) => [x.total, x.count, x.percent])).toEqual([
+        [10, 10, 100],
+        [5, 5, 100],
+      ]);
+      expect(r).toMatchObject({ total: 15, count: 15, maxPoints: 20 });
+    });
+    it('rút 40 % Phần A: 4/10 và 5/5; mỗi người nhận 9 câu, tối đa 14 điểm', () => {
+      const r = drawRowsOf(setDrawPercent(drawSample(), keyA(), 40));
+      expect(r.rows.map((x) => [x.total, x.count, x.percent])).toEqual([
+        [10, 4, 40],
+        [5, 5, 100],
+      ]);
+      expect(r).toMatchObject({ total: 15, count: 9, maxPoints: 14 });
+    });
+    it('Phần 0 % không lấy câu nào; tỷ lệ nhỏ vẫn lấy ít nhất 1 câu', () => {
+      const zero = drawRowsOf(setDrawPercent(drawSample(), keyA(), 0));
+      expect(zero.rows[0]).toMatchObject({ total: 10, count: 0, percent: 0 });
+      const tiny = drawRowsOf(setDrawPercent(drawSample(), keyA(), 1));
+      expect(tiny.rows[0]).toMatchObject({ total: 10, count: 1, percent: 1 });
+    });
+  });
 });
 
 describe('ô số: chữ đang gõ và số trong bản nháp', () => {
@@ -319,5 +346,21 @@ describe('ô số: chữ đang gõ và số trong bản nháp', () => {
     expect(textForNumber('1', 3)).toBe('3');
     expect(textForNumber('', 5)).toBe('5');
     expect(textForNumber('abc', 7)).toBe('7');
+  });
+});
+
+describe('currentSectionIndex: Phần đang xem khi cuộn trang', () => {
+  it('là Phần cuối cùng có đầu đã lên tới mốc (dưới thanh đầu trang)', () => {
+    expect(currentSectionIndex([100, 900, 1800], 96)).toBe(0); // chưa Phần nào chạm mốc: Phần đầu
+    expect(currentSectionIndex([-300, 500, 1400], 96)).toBe(0);
+    expect(currentSectionIndex([-1200, -100, 700], 96)).toBe(1);
+    expect(currentSectionIndex([-2500, -1600, 40], 96)).toBe(2);
+  });
+  it('cuộn tới đáy trang thì là Phần cuối dù đầu Phần đó chưa lên tới mốc (Phần cuối ngắn)', () => {
+    expect(currentSectionIndex([-1200, -300, 600], 96, true)).toBe(2);
+    expect(currentSectionIndex([-1200, -300, 600], 96, false)).toBe(1);
+  });
+  it('không có Phần nào thì là 0', () => {
+    expect(currentSectionIndex([], 96)).toBe(0);
   });
 });
