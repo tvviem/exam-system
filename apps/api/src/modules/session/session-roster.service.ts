@@ -18,6 +18,7 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { sessionRoster } from './session.schema';
 import { findOwnedSession, lockOwnedSession, requireNotOver } from './session-access';
+import { SessionVariantsService } from './session-variants.service';
 
 const SEARCH_USERS = 20;
 const SEARCH_CLASSES = 10;
@@ -45,6 +46,7 @@ export class SessionRosterService {
     private readonly audit: AuditService,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     private readonly notifications: NotificationsService,
+    private readonly variants: SessionVariantsService,
   ) {}
 
   async list(
@@ -205,6 +207,8 @@ export class SessionRosterService {
           classLabel: person.classLabel,
         })),
       );
+      // Q479: người mới vào Phiên thi nhiều Mã đề nhận ngay Mã đề đang ít người nhất.
+      await this.variants.assignRoster(tx, sessionId, { only: fresh.map((person) => person.id) });
       await this.notifications.notify(
         {
           userIds: fresh.map((person) => person.id),

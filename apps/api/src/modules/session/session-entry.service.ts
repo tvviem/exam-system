@@ -5,6 +5,7 @@ import type {
   EntryExecutor,
   EntryGate,
   EntryVariant,
+  EntryVariantInfo,
   SessionEntry,
 } from '../../common/session-entry';
 import { type Database, DB } from '../../db/db.module';
@@ -106,22 +107,35 @@ export class SessionEntryService implements SessionEntry {
     return result;
   }
 
-  async previewVariant(
+  async variantsOf(
     sessionId: string,
     executor: EntryExecutor = this.db,
-  ): Promise<EntryVariant | null> {
-    const [first] = await executor
-      .select({ id: sessionVariants.id })
+  ): Promise<EntryVariantInfo[]> {
+    const variants = await executor
+      .select({
+        id: sessionVariants.id,
+        number: sessionVariants.number,
+        label: sessionVariants.label,
+      })
       .from(sessionVariants)
       .where(eq(sessionVariants.sessionId, sessionId))
-      .orderBy(asc(sessionVariants.number))
-      .limit(1);
-    if (!first) return null;
+      .orderBy(asc(sessionVariants.number));
+    if (variants.length === 0) return [];
     const items = await executor
-      .select({ itemId: sessionVariantItems.itemId })
+      .select({ variantId: sessionVariantItems.variantId, itemId: sessionVariantItems.itemId })
       .from(sessionVariantItems)
-      .where(eq(sessionVariantItems.variantId, first.id));
-    return { variantId: first.id, itemIds: items.map((item) => item.itemId) };
+      .where(
+        inArray(
+          sessionVariantItems.variantId,
+          variants.map((variant) => variant.id),
+        ),
+      );
+    return variants.map((variant) => ({
+      variantId: variant.id,
+      number: variant.number,
+      label: variant.label,
+      itemIds: items.filter((item) => item.variantId === variant.id).map((item) => item.itemId),
+    }));
   }
 
   async variantFor(

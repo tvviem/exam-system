@@ -13,7 +13,16 @@ export interface SessionPaperInfo {
   durationMinutes: number;
 }
 
+/** Một Mã đề của Phiên thi dùng chung Mã đề kèm bộ câu đã lưu. */
+export interface SessionPaperVariant {
+  number: number;
+  label: string;
+  itemIds: string[];
+}
+
 export interface SessionInfoProvider {
   /** Phiên thi này (của bất kỳ chủ nào), hoặc `null` nếu không có. */
   info(sessionId: string): Promise<SessionPaperInfo | null>;
+  /** Các Mã đề của Phiên thi theo số thứ tự; rỗng nếu Phiên thi mỗi người một đề. */
+  variantsOf(sessionId: string): Promise<SessionPaperVariant[]>;
 }

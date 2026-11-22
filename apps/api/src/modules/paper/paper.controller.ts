@@ -23,8 +23,8 @@ export class PaperController {
     @CurrentActor() actor: Actor,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const { sessionId, examId, ...request } = paperExportRequestSchema.parse(body);
-    const source = sessionId ? { sessionId } : { examId: examId as string };
+    const { sessionId, examId, variant, ...request } = paperExportRequestSchema.parse(body);
+    const source = sessionId ? { sessionId, variant } : { examId: examId as string };
     return send(reply, await this.paper.exportExam(actor, source, request));
   }
 
@@ -39,10 +39,11 @@ export class PaperController {
     const {
       sessionId,
       examId,
+      variant,
       confirm: _confirm,
       ...request
     } = paperAnswersRequestSchema.parse(body);
-    const source = sessionId ? { sessionId } : { examId: examId as string };
+    const source = sessionId ? { sessionId, variant } : { examId: examId as string };
     return send(reply, await this.paper.exportAnswers(actor, source, request));
   }
 }
