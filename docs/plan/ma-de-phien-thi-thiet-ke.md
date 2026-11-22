@@ -1,6 +1,6 @@
 # Mã đề của Phiên thi: cả Phiên thi dùng chung một hay nhiều bộ câu (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt ngày 23/11/2026, gồm cả bốn điểm diễn giải ở mục 12; chưa viết mã, bắt đầu từ lát V1). Ngày đề xuất: 23/11/2026. Mọi câu hỏi nghiệp vụ **Q462–Q477** đã được chủ dự án trả lời từng câu trong phiên làm việc ngày 23/11/2026 (mục 2). Câu quyết định đánh số tiếp từ **Q478**.
+**Trạng thái: `accepted`** (chủ dự án duyệt ngày 23/11/2026, gồm cả bốn điểm diễn giải ở mục 12). **Tiến độ:** V1 xong về mã (PR #145); V2 đến V5 chưa làm. Ngày đề xuất: 23/11/2026. Mọi câu hỏi nghiệp vụ **Q462–Q477** đã được chủ dự án trả lời từng câu trong phiên làm việc ngày 23/11/2026 (mục 2). Câu quyết định đánh số tiếp từ **Q478**.
 
 ## 1. Yêu cầu của chủ dự án
 
@@ -59,7 +59,8 @@ CREATE TYPE session_draw_scope AS ENUM ('shared', 'per_candidate');
 
 ALTER TABLE sessions
   ADD COLUMN draw_scope session_draw_scope NOT NULL DEFAULT 'per_candidate';  -- hàng cũ: hành vi cũ
--- API tạo Phiên thi mới đặt 'shared' (mặc định của giao diện), kèm 1 Mã đề.
+-- API: không nêu drawScope thì tạo 'per_candidate' (tương thích với mọi ứng dụng gọi API cũ, và V1 chưa đổi gì nhìn thấy);
+-- giao diện Phiên thi (từ V2) đặt mặc định 'shared' với 1 Mã đề (Q463). [Điều chỉnh khi làm V1, 23/11/2026]
 
 session_variants (                         -- Mã đề của Phiên thi (chỉ có khi draw_scope = 'shared')
   id uuid PK,
@@ -122,6 +123,8 @@ Phiên thi `shared` với 1 mã đề: không cần kiểm gì thêm.
 
 ### 4.7 Tương thích và lùi bản
 
+- **Phiên thi do API tạo mà không nêu `drawScope`** là `per_candidate` (như Phiên thi cũ). Chỉ giao diện (từ V2) mặc định `shared`.
+
 - Phiên thi đã có: `draw_scope = 'per_candidate'` tự động nhờ giá trị mặc định cột; không dòng nào trong `session_variants`.
 - **Nhân bản Phiên thi:** sao chép Cách ra đề, số Mã đề, nhãn; **rút mới** (hạt giống mới), không sao chép danh sách chia người.
 - Lùi bản: migration chỉ thêm cột, bảng; mã cũ bỏ qua các cột thừa. Phiên thi `shared` đã có người thi mà lùi về bản cũ thì sẽ bị mã cũ hiểu như `per_candidate` (kết quả đã nộp không đổi vì `attempts.layout` giữ nguyên), nên **không lùi về `0.3.x` sau khi đã có Phiên thi `shared` đang chạy**; ghi vào `docs/ops/phat-hanh.md` khi phát hành.
@@ -144,7 +147,7 @@ Mỗi lát một PR nhỏ có kiểm thử, kèm ảnh chụp thật; chủ dự
 
 | Lát | Nội dung | Kết quả nhìn thấy |
 |---|---|---|
-| **V1** | Migration `0030`, hàm thuần (rút, chia cân bằng, ít người nhất), tạo Phiên thi `shared` với 1 mã đề, quy tắc điểm (4.6), vào thi dùng mã đề | Phiên thi rút một lần, mọi người dùng chung bộ câu; Phát hành Bộ đề có tự luận 2 điểm qua được |
+| **V1** (**đã làm xong về mã**, PR #145) | Migration `0030`, hàm thuần (rút, chia cân bằng, ít người nhất), API tạo/sửa Phiên thi `shared` (1 đến 10 Mã đề), quy tắc điểm (4.6), vào thi dùng Mã đề, số câu và điểm tối đa theo Mã đề (Kết quả, Phúc khảo, Theo dõi, danh sách), Xem thử theo Mã đề đầu, Nhân bản | Gọi API tạo Phiên thi `shared`: mọi người dùng chung bộ câu; Phát hành Bộ đề có tự luận 2 điểm qua được. **Chưa có giao diện**: Phiên thi tạo từ giao diện vẫn `per_candidate` cho tới V2 |
 | **V2** | Tab Đề: xem danh sách câu, Rút lại; Xem thử theo mã đề; **xuất Word đúng đề của Phiên thi (1 mã đề)** | Trả lời xong câu hỏi "xuất bộ đề đã rút" |
 | **V3** | Nhiều mã đề (2 đến 10), Chia mã đề, cột và đổi tay trong Danh sách dự thi, người thêm sau | Đề A/B/C |
 | **V4** | Người dự thi thấy mã đề; Excel Kết quả, Theo dõi: cột và lọc | Đối chiếu, khiếu nại |
