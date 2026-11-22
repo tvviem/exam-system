@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api';
 import { errorMessage } from '../errors';
-import type { ExamDraft } from '../exam-draft';
+import { drawRowsOf, type ExamDraft } from '../exam-draft';
 import { type ExamDetail, publishCheckQuery, publishExam } from '../exams';
 import { Button, Dialog, ErrorMessage, PrimaryButton } from '.';
 import { ListSkeleton } from './admin';
@@ -49,6 +49,7 @@ export function ExamPublishDialog({
     return index >= 0 ? sectionName(index) : '';
   };
   const problems = check.data?.problems ?? [];
+  const draw = drawRowsOf(draft);
   const blocked =
     publish.error instanceof ApiError && publish.error.details.reason === 'PUBLISH_BLOCKED';
 
@@ -84,6 +85,40 @@ export function ExamPublishDialog({
               points: String(exam.totals.points).replace('.', ','),
             })}
           </p>
+          <div className="flex flex-col gap-2" data-testid="publish-draw">
+            <h3 className="text-sm font-semibold">{t('exam.publish.drawTitle')}</h3>
+            <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
+              {draw.rows.map((row, index) => (
+                <li key={row.key} className="flex items-start justify-between gap-3 p-3">
+                  <span className="min-w-0 wrap-anywhere">{sectionName(index)}</span>
+                  <span className="flex shrink-0 flex-col items-end text-right tabular-nums">
+                    <span className="font-semibold">
+                      {t('exam.publish.drawCount', { count: row.count, total: row.total })}
+                    </span>
+                    <span className="text-xs text-fg-muted">
+                      {row.percent < 100
+                        ? t('exam.publish.drawPercent', {
+                            percent: String(row.percent).replace('.', ','),
+                          })
+                        : t('exam.publish.drawAll')}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p
+              className="rounded-lg border border-border bg-surface-raised p-3 text-sm"
+              data-testid="publish-draw-total"
+            >
+              {draw.maxPoints === null
+                ? t('exam.publish.drawTotalCount', { total: draw.total, count: draw.count })
+                : t('exam.publish.drawTotal', {
+                    total: draw.total,
+                    count: draw.count,
+                    points: String(draw.maxPoints).replace('.', ','),
+                  })}
+            </p>
+          </div>
           <p role="alert" className="rounded-lg border border-warning bg-warning-soft p-3 text-sm">
             {t('exam.publish.warning')}
           </p>

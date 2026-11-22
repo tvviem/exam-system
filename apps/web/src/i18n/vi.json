@@ -1460,6 +1460,12 @@
     "readOnlyNote": "Bộ đề này đã Phát hành nên không sửa được. Muốn đổi, hãy Nhân bản thành bản nháp mới.",
     "publish": {
       "title": "Phát hành Bộ đề",
+      "drawTitle": "Số câu mỗi Người dự thi nhận, theo từng Phần",
+      "drawCount": "{{count}}/{{total}} câu",
+      "drawPercent": "rút {{percent}} %",
+      "drawAll": "lấy đủ",
+      "drawTotal": "Cả Bộ đề có {{total}} câu; mỗi Người dự thi nhận {{count}} câu, tối đa {{points}} điểm.",
+      "drawTotalCount": "Cả Bộ đề có {{total}} câu; mỗi Người dự thi nhận {{count}} câu.",
       "problems": "Chưa thể Phát hành. Hãy sửa các vấn đề sau rồi Lưu và thử lại:",
       "problem": {
         "title_missing": "Bộ đề chưa có tên.",
@@ -1510,6 +1516,14 @@
       "keepHint": "Các câu đã chọn được giữ khi đổi trang hoặc bộ lọc.",
       "shiftHint": "Mẹo: tick một câu rồi giữ Shift và tick câu khác để chọn cả dải ở giữa.",
       "tag": "Tag"
+    },
+    "nav": {
+      "label": "Chuyển nhanh giữa các Phần",
+      "prev": "Phần trước",
+      "next": "Phần sau",
+      "current": "Phần {{n}}/{{total}}",
+      "openList": "Phần {{n}}/{{total}}: mở danh sách Phần",
+      "count": "{{count}} câu"
     },
     "collapse": "Thu gọn Phần",
     "expand": "Mở rộng Phần",
