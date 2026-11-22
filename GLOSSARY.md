@@ -269,6 +269,18 @@ _Avoid_: tỷ lệ lấy câu, phần trăm đề
 Bộ câu rút thử của một người ngẫu nhiên mà Người ra đề thấy khi Xem thử Phiên thi có Rút câu; mỗi lần mở ra một bộ khác. Không tạo Lượt làm bài và không ghi gì.
 _Avoid_: rút thử, bốc thử
 
+**Mã đề** (`Variant`):
+Một bộ câu cố định của Phiên thi, rút theo Tỷ lệ rút của từng Phần ngay khi lưu Phiên thi. Phiên thi có từ 1 đến 10 Mã đề (nhãn mặc định "Đề 1", "Đề 2", Người ra đề sửa được); mỗi Người dự thi được chia vào đúng một Mã đề và giữ nguyên ở mọi Lượt làm bài. Mọi Mã đề của một Phiên thi dùng cùng Tỷ lệ rút và phải cùng tổng điểm. Số Mã đề, Tỷ lệ rút, "Rút lại" và việc chia hàng loạt chỉnh được cho đến khi có Lượt làm bài đầu tiên. _(Đã duyệt thiết kế, chưa có mã: docs/plan/ma-de-phien-thi-thiet-ke.md.)_
+_Avoid_: phiên bản đề, đề A/B, bộ câu
+
+**Đề của Phiên thi** (`Session paper`):
+Tập các Mã đề của một Phiên thi. Khác **Bộ đề** (bản gốc đã Phát hành, đủ mọi câu và Phần) ở chỗ chỉ gồm các câu đã rút theo Tỷ lệ rút. Xuất Word một Phiên thi dùng chung các Mã đề cho ra từng Mã đề. _(Đã duyệt thiết kế, chưa có mã.)_
+_Avoid_: đề gốc, đề thi
+
+**Cách ra đề** (`Draw scope`):
+Thiết lập của Phiên thi: **dùng chung các Mã đề** (mọi người cùng một hay vài bộ câu cố định) hay **mỗi người một đề** (mỗi Người dự thi một bộ câu riêng, như Rút câu hiện có). Phiên thi đã tạo trước đây là mỗi người một đề. _(Đã duyệt thiết kế, chưa có mã.)_
+_Avoid_: chế độ rút
+
 **Lượt làm bài** (`Attempt`):
 Một lần Người dự thi làm bài trong Phiên thi, có thứ tự Câu hỏi và Phương án cố định sau khi bắt đầu.
 _Avoid_: bài thi, lần thi, submission
