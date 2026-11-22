@@ -74,7 +74,9 @@ export class CandidateAppealsService {
     const content = await this.content.contentOf(info.examId);
     if (!content) throw new ApiError('NOT_FOUND');
     // Hạn mức theo số câu Người dự thi nhận (Rút câu), không phải số câu của cả Bộ đề.
-    const limit = appealLimitOf(drawTotalsOfContent(content, info.drawOverrides).count);
+    const limit = appealLimitOf(
+      drawTotalsOfContent(content, info.drawOverrides, info.variantTotals).count,
+    );
 
     // Đối tượng Phúc khảo: câu theo số Người dự thi đã thấy, hoặc Mức xử lý của chính họ.
     let attemptId = counted.attemptId;
@@ -180,7 +182,7 @@ export class CandidateAppealsService {
       this.content.contentOf(info.examId),
     ]);
     const limit = appealLimitOf(
-      content ? drawTotalsOfContent(content, info.drawOverrides).count : 0,
+      content ? drawTotalsOfContent(content, info.drawOverrides, info.variantTotals).count : 0,
     );
     const numbers = await this.source.displayNumbers([
       ...new Set(rows.map((row) => row.attemptId)),

@@ -10,7 +10,7 @@ import { REALTIME_NOTIFIER, type RealtimeNotifier } from '../../common/realtime-
 import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-attempts';
 import { type Database, DB } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
-import { sessionRoster, sessionSectionDraws, sessions } from './session.schema';
+import { sessionRoster, sessionSectionDraws, sessions, sessionVariants } from './session.schema';
 import { lockOwnedSession, notifyRoster } from './session-access';
 import { SessionsService } from './sessions.service';
 
@@ -110,6 +110,17 @@ export class SessionLifecycleService {
         shuffleOptions: source.shuffleOptions,
         showScoringRules: source.showScoringRules,
         reviewAfterRelease: source.reviewAfterRelease,
+        // Mang theo Cách ra đề và số Mã đề; Mã đề được rút mới (hạt giống mới), không sao chép danh sách chia người.
+        drawScope: source.drawScope,
+        variantCount: Math.max(
+          1,
+          (
+            await tx
+              .select({ id: sessionVariants.id })
+              .from(sessionVariants)
+              .where(eq(sessionVariants.sessionId, id))
+          ).length,
+        ),
         // Mang theo các ghi đè tỷ lệ rút (Q438); Bộ đề giữ nguyên nên vẫn hợp lệ.
         sectionDraws: (
           await tx

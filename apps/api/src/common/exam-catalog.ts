@@ -16,6 +16,8 @@ export interface CatalogDrawSection {
   defaultPercent: number;
   /** Điểm từng câu của Phần, theo thứ tự. */
   points: number[];
+  /** Mã câu trong Bộ đề (`exam_items.id`) của Phần, cùng thứ tự với `points`. */
+  itemIds: string[];
 }
 
 export interface ExamCatalog {

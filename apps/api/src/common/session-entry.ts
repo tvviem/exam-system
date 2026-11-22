@@ -21,6 +21,8 @@ export interface EntryGate {
   durationMinutes: number;
   hardClose: boolean;
   maxAttempts: number;
+  /** Cách ra đề: `shared` là dùng chung Mã đề, `per_candidate` là mỗi người một bộ câu (docs/plan/ma-de-phien-thi-thiet-ke.md). */
+  drawScope: 'shared' | 'per_candidate';
   shuffleItems: boolean;
   shuffleOptions: boolean;
   showScoringRules: boolean;
@@ -28,7 +30,30 @@ export interface EntryGate {
   extraMinutes: number;
 }
 
+/** Mã đề của một Người dự thi và bộ câu của Mã đề đó (mã câu trong Bộ đề). */
+export interface EntryVariant {
+  variantId: string;
+  itemIds: string[];
+}
+
 export interface SessionEntry {
+  /**
+   * Mã đề của người này ở Phiên thi `shared`: đã chia thì trả Mã đề đó; chưa thì gán Mã đề **đang có ít người nhất** (Q466) và
+   * ghi vào Danh sách dự thi ngay trong giao dịch của bên gọi (khóa cố vấn theo Phiên thi để nhiều người vào cùng lúc vẫn chia
+   * đều). `null` nếu Phiên thi không có Mã đề (`per_candidate`).
+   */
+  /** Số câu và điểm tối đa mỗi người nhận của các Phiên thi dùng chung Mã đề (`sessionId` → tổng; Phiên thi khác vắng). */
+  variantTotalsOfMany(
+    sessions: { sessionId: string; examId: string }[],
+    executor?: EntryExecutor,
+  ): Promise<Map<string, { count: number; maxCenti: number }>>;
+  /** Mã đề đầu tiên của Phiên thi và bộ câu của nó, để Xem thử; không gán cho ai. `null` nếu không có Mã đề. */
+  previewVariant(sessionId: string, executor?: EntryExecutor): Promise<EntryVariant | null>;
+  variantFor(
+    sessionId: string,
+    userId: string,
+    executor: EntryExecutor,
+  ): Promise<EntryVariant | null>;
   /** Các Phiên thi (mới nhất trước, tối đa 20) có Mã vào thi này mà người này có trong Danh sách. `code` đã chuẩn hóa. */
   findByCode(userId: string, code: string, executor?: EntryExecutor): Promise<EntryGate[]>;
   /**

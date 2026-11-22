@@ -14,6 +14,7 @@ import { SessionRosterController } from './session-roster.controller';
 import { SessionRosterService } from './session-roster.service';
 import { SessionRosterScopeService } from './session-roster-scope.service';
 import { SessionUsageService } from './session-usage.service';
+import { SessionVariantsService } from './session-variants.service';
 import { SessionsController } from './sessions.controller';
 import { SessionsService } from './sessions.service';
 
@@ -33,6 +34,7 @@ import { SessionsService } from './sessions.service';
     SessionRosterScopeService,
     GradingSessionsService,
     SessionInfoService,
+    SessionVariantsService,
   ],
   exports: [
     SessionUsageService,
@@ -43,6 +45,7 @@ import { SessionsService } from './sessions.service';
     SessionRosterScopeService,
     GradingSessionsService,
     SessionInfoService,
+    SessionVariantsService,
   ],
 })
 export class SessionModule {}

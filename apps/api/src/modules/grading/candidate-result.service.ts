@@ -94,7 +94,9 @@ export class CandidateResultService {
     ]);
     if (!content) throw new ApiError('NOT_FOUND');
     const items = itemsOf(content);
-    const maxScore = fromCenti(drawTotalsOfContent(content, info.drawOverrides).maxCenti);
+    const maxScore = fromCenti(
+      drawTotalsOfContent(content, info.drawOverrides, info.variantTotals).maxCenti,
+    );
 
     const rowsOf = new Map<string, typeof found>();
     for (const row of found) rowsOf.set(row.attemptId, [...(rowsOf.get(row.attemptId) ?? []), row]);

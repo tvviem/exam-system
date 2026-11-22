@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   check,
   index,
@@ -8,15 +9,23 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { idColumn, timestamps } from '../../db/columns';
-import { examSections, exams } from '../exam/exam.schema';
+import { examItems, examSections, exams } from '../exam/exam.schema';
 import { users } from '../identity/identity.schema';
 
 export const attemptScoringEnum = pgEnum('attempt_scoring', ['highest', 'latest']);
+
+/**
+ * Cách ra đề của Phiên thi (docs/plan/ma-de-phien-thi-thiet-ke.md): `shared` là cả Phiên thi dùng chung các Mã đề (bộ câu rút
+ * một lần, lưu ở `session_variant_items`); `per_candidate` là mỗi Người dự thi một bộ câu riêng (Rút câu theo Phần của bản 0.3.0).
+ */
+export const drawScopeEnum = pgEnum('session_draw_scope', ['shared', 'per_candidate']);
 
 /**
  * Phiên thi (Q192–Q222, docs/plan/slice-4.md). Trạng thái hiện cho Người ra đề không lưu mà suy ra từ giờ và hai cột
@@ -39,6 +48,8 @@ export const sessions = pgTable(
     durationMinutes: integer('duration_minutes').notNull(),
     /** Cắt cứng (Q208): Lượt kết thúc đúng lúc đóng Khung giờ. */
     hardClose: boolean('hard_close').notNull().default(false),
+    /** Hàng có sẵn là `per_candidate` (hành vi cũ); API tạo mới không nêu thì cũng `per_candidate`, giao diện về sau đặt `shared`. */
+    drawScope: drawScopeEnum('draw_scope').notNull().default('per_candidate'),
     maxAttempts: integer('max_attempts').notNull().default(1),
     attemptScoring: attemptScoringEnum('attempt_scoring').notNull().default('highest'),
     shuffleItems: boolean('shuffle_items').notNull().default(false),
@@ -82,6 +93,8 @@ export const sessionRoster = pgTable(
     classLabel: text('class_label'),
     /** Phút cộng sẵn cho riêng người này (ví dụ hỗ trợ đặc biệt). */
     extraMinutes: integer('extra_minutes').notNull().default(0),
+    /** Mã đề đã chia (chỉ Phiên thi `shared`); trigger bảo đảm cùng Phiên thi. Gỡ Mã đề thì về null. */
+    variantId: uuid('variant_id').references(() => sessionVariants.id, { onDelete: 'set null' }),
   },
   (t) => [
     primaryKey({ columns: [t.sessionId, t.userId] }),
@@ -110,4 +123,41 @@ export const sessionSectionDraws = pgTable(
     primaryKey({ columns: [t.sessionId, t.sectionId] }),
     check('session_section_draws_percent_range', sql`${t.percent} >= 0 AND ${t.percent} <= 100`),
   ],
+);
+
+/**
+ * Mã đề của Phiên thi `shared` (docs/plan/ma-de-phien-thi-thiet-ke.md mục 4.2): 1 đến 10 Mã đề, mỗi Mã đề là một bộ câu rút một
+ * lần theo Tỷ lệ rút. `draw_seed` là hạt giống rút lúc tạo (không tính lại: bộ câu nằm ở `session_variant_items`). Trigger
+ * (migration 0030): Phiên thi đã có Lượt làm bài thì không thêm, sửa, xóa Mã đề.
+ */
+export const sessionVariants = pgTable(
+  'session_variants',
+  {
+    id: idColumn(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    number: smallint('number').notNull(),
+    label: text('label').notNull(),
+    drawSeed: bigint('draw_seed', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    unique('session_variants_session_number_unique').on(t.sessionId, t.number),
+    check('session_variants_number_check', sql`${t.number} BETWEEN 1 AND 10`),
+    check('session_variants_label_check', sql`char_length(${t.label}) BETWEEN 1 AND 40`),
+  ],
+);
+
+/** Bộ câu đã rút của một Mã đề: mọi nơi (xem thử, xuất, vào thi) đọc cùng danh sách này. Câu phải thuộc Bộ đề của Phiên thi. */
+export const sessionVariantItems = pgTable(
+  'session_variant_items',
+  {
+    variantId: uuid('variant_id')
+      .notNull()
+      .references(() => sessionVariants.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => examItems.id),
+  },
+  (t) => [primaryKey({ columns: [t.variantId, t.itemId] })],
 );

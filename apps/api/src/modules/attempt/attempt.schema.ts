@@ -22,7 +22,7 @@ import {
 import { idColumn } from '../../db/columns';
 import { examItems } from '../exam/exam.schema';
 import { users } from '../identity/identity.schema';
-import { sessionRoster, sessions } from '../session/session.schema';
+import { sessionRoster, sessions, sessionVariants } from '../session/session.schema';
 
 export const deviceStatusEnum = pgEnum('device_status', ['active', 'revoked']);
 export const attemptStatusEnum = pgEnum('attempt_status', ['in_progress', 'submitted']);
@@ -95,6 +95,8 @@ export const attempts = pgTable(
     /** Hạt giống 48 bit của `layoutOf`. */
     seed: bigint('seed', { mode: 'number' }).notNull(),
     layout: jsonb('layout').$type<StoredLayout>().notNull(),
+    /** Mã đề của Lượt (Phiên thi `shared`), chụp lúc tạo Lượt và không đổi; null ở Phiên thi `per_candidate`. */
+    variantId: uuid('variant_id').references(() => sessionVariants.id),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
     deadline: timestamp('deadline', { withTimezone: true }).notNull(),
     submittedAt: timestamp('submitted_at', { withTimezone: true }),

@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import {
+  type DrawScope,
   drawCountOf,
   drawProblemsOf,
   effectiveDrawPercents,
@@ -25,6 +26,7 @@ import { type Database, DB, type Transaction } from '../../db/db.module';
 import { NotificationsService } from '../notifications/notifications.service';
 import { sessionSectionDraws, sessions } from './session.schema';
 import { lockOwnedSession, notifyRoster } from './session-access';
+import { SessionVariantsService } from './session-variants.service';
 
 const SUGGEST_ATTEMPTS = 10;
 
@@ -76,6 +78,7 @@ export class SessionsService {
     private readonly notifications: NotificationsService,
     @Inject(SESSION_GRADING_STATUS) private readonly gradingStatus: SessionGradingStatus,
     @Inject(SESSION_ATTEMPTS) private readonly attempts: SessionAttempts,
+    private readonly variants: SessionVariantsService,
   ) {}
 
   async create(ownerId: string, input: SessionSettings) {
@@ -86,11 +89,21 @@ export class SessionsService {
   /** Tạo trong giao dịch của bên gọi (Nhân bản); trả id Phiên thi mới. */
   async createWithin(tx: Transaction, ownerId: string, input: SessionSettings): Promise<string> {
     await this.requireUsableExam(ownerId, input.examId);
-    const { sectionDraws, ...settings } = input;
-    const id = await this.insert(tx, ownerId, settings);
-    if (sectionDraws !== undefined) {
-      await this.replaceDraws(tx, id, await this.normalizeDraws(tx, input.examId, sectionDraws));
-    }
+    const { sectionDraws, drawScope, variantCount, ...settings } = input;
+    const scope: DrawScope = drawScope ?? 'per_candidate';
+    const id = await this.insert(tx, ownerId, { ...settings, drawScope: scope });
+    const overrides =
+      sectionDraws === undefined
+        ? new Map<string, number>()
+        : await this.normalizeDraws(tx, input.examId, sectionDraws, scope);
+    if (sectionDraws !== undefined) await this.replaceDraws(tx, id, overrides);
+    await this.variants.sync(tx, {
+      sessionId: id,
+      examId: input.examId,
+      scope,
+      variantCount: variantCount ?? 1,
+      overrides,
+    });
     return id;
   }
 
@@ -103,7 +116,7 @@ export class SessionsService {
       const current = await lockOwnedSession(tx, ownerId, id);
       if (current.version !== input.version) throw new ApiError('CONFLICT', { field: 'version' });
 
-      const { version: _version, sectionDraws, ...settings } = input;
+      const { version: _version, sectionDraws, drawScope, variantCount, ...settings } = input;
       const next = { ...settings, accessCode: settings.accessCode ?? current.accessCode };
       const problems = sessionChangeProblems(phaseOf(current, this.clock.now()), current, next);
       if (problems.length > 0)
@@ -121,21 +134,42 @@ export class SessionsService {
       // Ghi đè tỷ lệ rút (Q438): đổi Bộ đề thì ghi đè của Bộ đề cũ không còn nghĩa nên bị xóa; có `sectionDraws` thì thay toàn bộ.
       const examChanged = next.examId !== current.examId;
       const requested = sectionDraws ?? (examChanged ? [] : undefined);
+      // Cách ra đề và Mã đề (docs/plan/ma-de-phien-thi-thiet-ke.md): không nêu thì giữ nguyên; đổi chỉ khi chưa có Lượt.
+      const scope: DrawScope = drawScope ?? current.drawScope;
+      const currentVariants = await this.variants.listOf(tx, id);
+      const count = variantCount ?? Math.max(currentVariants.length, 1);
+      const scopeChanged =
+        scope !== current.drawScope || (scope === 'shared' && count !== currentVariants.length);
+      let overrides = await this.overridesOf(tx, id);
+      let drawsChanged = false;
       if (requested !== undefined) {
-        const wanted = await this.normalizeDraws(tx, next.examId, requested);
-        const existing = await this.overridesOf(tx, id);
-        if (!sameDraws(existing, wanted)) {
+        const wanted = await this.normalizeDraws(tx, next.examId, requested, scope);
+        if (!sameDraws(overrides, wanted)) {
           if (await this.attempts.hasAttempts(id, tx)) {
             throw new ApiError('INVALID_STATE', { reason: 'HAS_ATTEMPTS' });
           }
           await this.replaceDraws(tx, id, wanted);
+          overrides = wanted;
+          drawsChanged = true;
         }
+      }
+      if (scopeChanged || drawsChanged || examChanged) {
+        if (await this.attempts.hasAttempts(id, tx)) {
+          throw new ApiError('INVALID_STATE', { reason: 'HAS_ATTEMPTS' });
+        }
+        await this.variants.sync(tx, {
+          sessionId: id,
+          examId: next.examId,
+          scope,
+          variantCount: count,
+          overrides,
+        });
       }
 
       try {
         await tx
           .update(sessions)
-          .set({ ...next, version: sql`${sessions.version} + 1` })
+          .set({ ...next, drawScope: scope, version: sql`${sessions.version} + 1` })
           .where(eq(sessions.id, id));
       } catch (error) {
         if (exclusionViolationOf(error)) throw new ApiError('CONFLICT', { field: 'accessCode' });
@@ -215,6 +249,7 @@ export class SessionsService {
       hardClose: sessions.hardClose,
       maxAttempts: sessions.maxAttempts,
       attemptScoring: sessions.attemptScoring,
+      drawScope: sessions.drawScope,
       shuffleItems: sessions.shuffleItems,
       shuffleOptions: sessions.shuffleOptions,
       showScoringRules: sessions.showScoringRules,
@@ -252,6 +287,7 @@ export class SessionsService {
       ...this.present(row, await this.exams.titlesOf([row.examId]), this.clock.now()),
       ...releaseFlags(states, row.id),
       sectionDraws: await this.drawRowsOf(db, row.id, row.examId),
+      variants: await this.variants.listOf(db, row.id),
       /** Đã có Lượt làm bài: không đổi được ghi đè tỷ lệ rút nữa (giao diện khóa ô). */
       drawLocked: await this.attempts.hasAttempts(row.id),
     };
@@ -298,6 +334,7 @@ export class SessionsService {
     tx: Transaction,
     examId: string,
     requested: { sectionId: string; percent: number }[],
+    scope: DrawScope,
   ): Promise<Map<string, number>> {
     const sections = await this.exams.drawSectionsOf(examId, tx);
     const defaults = Object.fromEntries(
@@ -311,13 +348,14 @@ export class SessionsService {
       defaults,
       Object.fromEntries(requested.map((entry) => [entry.sectionId, entry.percent])),
     );
+    // Q469: cùng điểm trong Phần chỉ cần khi mỗi người một bộ câu; dùng chung Mã đề thì kiểm tổng điểm giữa các Mã đề (variants.sync).
     const problems = drawProblemsOf(
       sections.map((section) => ({
         id: section.id,
         percent: effective[section.id] as number,
         points: section.points,
       })),
-    );
+    ).filter((problem) => scope === 'per_candidate' || problem.code !== 'draw_points_uneven');
     if (problems.length > 0) {
       throw new ApiError('VALIDATION_FAILED', {
         issues: problems.map((problem) => ({
@@ -371,7 +409,13 @@ export class SessionsService {
   }
 
   /** Mã người dùng đặt trùng thì CONFLICT ở `accessCode`; mã tự sinh trùng (hiếm) thì thử mã khác. */
-  private async insert(tx: Transaction, ownerId: string, input: SessionSettings) {
+  private async insert(
+    tx: Transaction,
+    ownerId: string,
+    input: Omit<SessionSettings, 'sectionDraws' | 'drawScope' | 'variantCount'> & {
+      drawScope: DrawScope;
+    },
+  ) {
     const { accessCode, ...rest } = input;
     for (let attempt = 0; ; attempt++) {
       const code =

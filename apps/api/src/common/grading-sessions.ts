@@ -26,6 +26,8 @@ export interface GradingSessionInfo {
    * Dùng để biết số câu và điểm tối đa mỗi Người dự thi nhận (`drawTotalsOf`).
    */
   drawOverrides: Record<string, number>;
+  /** Phiên thi dùng chung Mã đề: số câu và điểm tối đa (0,01) mỗi người nhận, lấy từ chính Mã đề; `null` nếu mỗi người một bộ câu. */
+  variantTotals: { count: number; maxCenti: number } | null;
 }
 
 export interface GradingSessions {

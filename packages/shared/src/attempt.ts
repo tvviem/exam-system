@@ -48,7 +48,7 @@ export interface Layout {
 }
 
 /** Bộ sinh số giả ngẫu nhiên có hạt giống (mulberry32); hạt giống 48 bit được trộn xuống 32 bit. */
-function prng(seed: number): () => number {
+export function prng(seed: number): () => number {
   let state = ((seed % 2 ** 32) ^ (Math.floor(seed / 2 ** 32) * 0x9e3779b1)) >>> 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -80,7 +80,7 @@ export interface DrawInput {
  * Chọn `count` câu trong `list` bằng luồng ngẫu nhiên riêng của hạt giống rút (Fisher–Yates từng phần), rồi trả theo **thứ tự
  * gốc**. Mọi câu có cùng xác suất `count / list.length`.
  */
-function drawn<T>(list: readonly T[], count: number, seed: number): T[] {
+export function drawn<T>(list: readonly T[], count: number, seed: number): T[] {
   const random = prng(seed);
   const indices = list.map((_, index) => index);
   for (let i = 0; i < count; i++) {

@@ -42,7 +42,7 @@ export class ExamCatalogService implements ExamCatalog {
       .orderBy(asc(examSections.sort));
     if (sections.length === 0) return [];
     const items = await executor
-      .select({ sectionId: examItems.sectionId, points: examItems.points })
+      .select({ id: examItems.id, sectionId: examItems.sectionId, points: examItems.points })
       .from(examItems)
       .where(eq(examItems.examId, examId))
       .orderBy(asc(examItems.sort));
@@ -53,6 +53,7 @@ export class ExamCatalogService implements ExamCatalog {
       points: items
         .filter((item) => item.sectionId === section.id)
         .map((item) => Number(item.points)),
+      itemIds: items.filter((item) => item.sectionId === section.id).map((item) => item.id),
     }));
   }
 }

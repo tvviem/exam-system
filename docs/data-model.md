@@ -327,8 +327,37 @@ session_section_draws (                   -- Rút câu (Q438): GHI ĐÈ tỷ l�
 -- Chỉ lưu ghi đè KHÁC mặc định của Bộ đề. Tỷ lệ hiệu lực = ghi đè của Phiên thi, rồi mặc định của Bộ đề, rồi 100 % (hàm thuần
 -- effectiveDrawPercents ở packages/shared, một nơi duy nhất). `attempts` KHÔNG đổi cột: `layout` chỉ chứa các câu đã rút
 -- (trigger attempts_guard cố định nó), nên bộ câu của một Lượt là nguồn sự thật cho chấm điểm; điểm tối đa mỗi người tính từ
--- cấu hình (sessionDrawTotals) và khớp với tổng điểm của bố cục vì Phần rút dưới 100 % có các câu cùng điểm (kiểm lúc Phát hành).
+-- cấu hình (sessionDrawTotals) và khớp với tổng điểm của bố cục vì Phần rút dưới 100 % có các câu cùng điểm (kiểm lúc lưu Phiên thi
+-- `per_candidate`; từ Q469, Phát hành Bộ đề chỉ cảnh báo).
 ```
+
+**Mã đề của Phiên thi** (migration `0030`, docs/plan/ma-de-phien-thi-thiet-ke.md; Q462–Q477):
+
+```text
+sessions.draw_scope  session_draw_scope NOT NULL DEFAULT 'per_candidate'   -- 'shared' = dùng chung Mã đề; hàng cũ: per_candidate
+
+session_variants (                        -- Mã đề của Phiên thi 'shared' (1 đến 10)
+  id uuid PK,
+  session_id → sessions ON DELETE CASCADE,
+  number smallint CHECK (1..10), label text CHECK (1..40 ký tự),
+  draw_seed bigint,                       -- hạt giống rút lúc tạo; "Rút lại" đổi hạt giống
+  UNIQUE (session_id, number)
+)
+session_variant_items (                   -- Bộ câu đã rút của Mã đề: mọi nơi đọc cùng danh sách, không tính lại từ hạt giống
+  variant_id → session_variants ON DELETE CASCADE,
+  item_id → exam_items,                   -- trigger: câu phải thuộc Bộ đề của Phiên thi
+  PRIMARY KEY (variant_id, item_id)
+)
+session_roster.variant_id → session_variants ON DELETE SET NULL   -- Mã đề đã chia; trigger: cùng Phiên thi; người đã có Lượt không đổi
+attempts.variant_id → session_variants    -- chụp lúc tạo Lượt; attempts_guard cố định (như layout)
+```
+
+- **Khóa:** Phiên thi đã có Lượt làm bài thì trigger `session_variants_guard` và `session_variant_items_guard` chặn thêm, sửa, xóa
+  Mã đề và bộ câu của Mã đề (cùng tinh thần `session_section_draws_guard`). Gán Mã đề cho từng người chưa có Lượt vẫn được.
+- **Điểm tối đa:** Phiên thi `shared` có thể có câu lệch điểm trong một Phần (Q469), nên số câu và điểm tối đa mỗi người nhận lấy từ
+  chính bộ câu của Mã đề (`variantTotals`), không suy từ tỷ lệ; các Mã đề phải cùng tổng điểm (kiểm khi rút, lỗi `variant_points_uneven`).
+- Phiên thi `per_candidate` không có dòng nào trong hai bảng trên và chạy y như trước.
+
 
 Trạng thái hiện cho Người ra đề (Sắp mở, Đang mở, Đóng cửa vào thi, Đã đóng, Đã hủy) **không lưu**: suy ra từ giờ và hai cột `entry_closed_at`, `cancelled_at` bằng hàm `phaseOf` ở `@exam/shared`.
 
