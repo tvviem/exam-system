@@ -21,6 +21,7 @@ import { errorMessage } from '../errors';
 import {
   addItems,
   addSection,
+  currentSectionIndex,
   type DraftItem,
   type DraftSection,
   type DrawSummary,
@@ -62,9 +63,13 @@ import { PaperExportDialog } from './paper-export-dialog';
 import { Rich } from './question-editor-fields';
 import { QuestionPicker } from './question-picker';
 import { QuickPointsDialog } from './quick-points-dialog';
+import { SectionNav } from './section-nav';
 import { StickyActionBar } from './sticky-action-bar';
 import { Tabs } from './tabs';
 import { useToast } from './toast';
+
+/** Mốc dưới thanh đầu trang để biết Phần nào đang được xem, và để cuộn tới đầu Phần không bị thanh che. */
+const SECTION_NAV_OFFSET = 96;
 
 /** Mốc "đã lưu": bỏ id Phần vì server cấp id cho Phần mới sau khi lưu, không phải là người dùng sửa. */
 const serialize = (draft: ExamDraft) => {
@@ -412,6 +417,45 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
     section.title.trim() || t('exam.untitled', { n: index + 1 });
   const sectionList = draft.sections.map((s, i) => ({ key: s.key, name: sectionName(s, i) }));
 
+  // Phần đang xem: theo vị trí cuộn trang (chỉ cần khi Bộ đề có từ hai Phần trở lên).
+  const [viewingSection, setViewingSection] = useState(0);
+  const sectionKeys = draft.sections.map((s) => s.key).join('|');
+  useEffect(() => {
+    const keys = sectionKeys.split('|');
+    if (keys.length < 2) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const tops = keys.map(
+        (key) =>
+          document.getElementById(`section-${key}`)?.getBoundingClientRect().top ??
+          Number.POSITIVE_INFINITY,
+      );
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      setViewingSection(currentSectionIndex(tops, SECTION_NAV_OFFSET, atBottom));
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [sectionKeys]);
+  const jumpToSection = (key: string) => {
+    const element = document.getElementById(`section-${key}`);
+    if (!element) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    element.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    element.focus({ preventScroll: true });
+    setViewingSection(draft.sections.findIndex((s) => s.key === key));
+  };
+
   useBlocker({
     shouldBlockFn: () => dirty && !skipBlock.current && !window.confirm(t('exam.leaveConfirm')),
     enableBeforeUnload: () => dirty && !skipBlock.current,
@@ -590,7 +634,12 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                 )}
 
                 {draft.sections.map((section, index) => (
-                  <Card key={section.key} className="flex flex-col gap-3">
+                  <Card
+                    key={section.key}
+                    id={`section-${section.key}`}
+                    tabIndex={-1}
+                    className="flex scroll-mt-24 flex-col gap-3 outline-none"
+                  >
                     {split && (
                       <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -728,6 +777,17 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                         (conflict ? t('exam.conflict') : errorMessage(t, save.error))}
                     </ErrorMessage>
                     <div className="flex flex-wrap items-center justify-between gap-3">
+                      {draft.sections.length > 1 && (
+                        <SectionNav
+                          sections={draft.sections.map((s, i) => ({
+                            key: s.key,
+                            name: sectionName(s, i),
+                            count: s.items.length,
+                          }))}
+                          current={viewingSection}
+                          onJump={jumpToSection}
+                        />
+                      )}
                       <div className="flex min-w-0 flex-col gap-0.5 text-sm" aria-live="polite">
                         <span className="text-fg-muted">
                           {t('exam.totals', { items: totals.items, points: totals.points })}

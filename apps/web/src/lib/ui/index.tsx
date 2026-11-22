@@ -208,9 +208,16 @@ export function ErrorMessage({ children }: { children: ReactNode }) {
   );
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = '',
+  ...div
+}: { children: ReactNode; className?: string } & ComponentProps<'div'>) {
   return (
-    <div className={`rounded-xl border border-border bg-surface p-5 shadow-sm ${className}`}>
+    <div
+      className={`rounded-xl border border-border bg-surface p-5 shadow-sm ${className}`}
+      {...div}
+    >
       {children}
     </div>
   );
