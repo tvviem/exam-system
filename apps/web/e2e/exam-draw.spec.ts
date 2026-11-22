@@ -23,10 +23,14 @@ const rich = (text: string) => ({
 });
 
 /** Bộ đề nháp hai Phần dựng qua API: Phần I 10 câu × 1 điểm, Phần II 5 câu × 2 điểm. Trả mã Bộ đề. */
-async function seedExam(page: Page, tag: string) {
+async function seedExam(page: Page, tag: string, longNames = false) {
   const topic = await page.request.post('/api/topics', {
     headers,
-    data: { name: `Rút câu ${tag}` },
+    data: {
+      name: longNames
+        ? `NLS và Ứng dụng AI - Chương 4: Năng lực số trong học tập ${tag}`
+        : `Rút câu ${tag}`,
+    },
   });
   expect(topic.ok(), await topic.text()).toBe(true);
   const topicId = (await topic.json()).id;
@@ -74,7 +78,9 @@ async function seedExam(page: Page, tag: string) {
           items: ids.slice(0, 10).map((questionId) => ({ questionId, points: 1 })),
         },
         {
-          title: 'Phần II',
+          title: longNames
+            ? 'Phần 2: Chương 5 và Chương 6 - Ứng dụng AI, an toàn và đạo đức AI trong học tập'
+            : 'Phần II',
           instructions: rich(''),
           items: ids.slice(10).map((questionId) => ({ questionId, points: 2 })),
         },
@@ -204,4 +210,101 @@ test('mọi Phần 0 % bị báo: Người dự thi sẽ không có câu nào, v
   const dialog = page.getByRole('dialog', { name: 'Phát hành Bộ đề' });
   await expect(dialog.getByText(/Mọi Phần đều 0 %/)).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Phát hành', exact: true })).toBeDisabled();
+});
+
+test('ô tỷ lệ và ô điểm để trống không hiện chữ NaN', async ({ page }, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-rcn-${p}`);
+  const examId = await seedExam(page, `${p}-n-${runId(testInfo)}`);
+  await page.goto(`/examiner/exams/${examId}`);
+  await percentInput(page, 0).fill('');
+  await expect(percentInput(page, 0)).toHaveValue('');
+  await expect(page.getByText('Nhập số từ 0 đến 100, tối đa hai chữ số lẻ.')).toBeVisible();
+  const points = page.getByRole('textbox', { name: 'Điểm câu 1', exact: true });
+  await points.fill('');
+  await expect(points).toHaveValue('');
+  // Gõ lại số thì ra số, không dính "NaN".
+  await percentInput(page, 0).fill('25');
+  await expect(percentInput(page, 0)).toHaveValue('25');
+});
+
+test('Rút câu: dòng tỷ lệ vẫn thấy khi thu gọn Phần; tổng số câu mỗi người nhận nằm ở thanh gần nút Lưu; 0 % có chú thích', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-rcb-${p}`);
+  const examId = await seedExam(page, `${p}-b-${runId(testInfo)}`);
+  await page.goto(`/examiner/exams/${examId}`);
+  const bar = page.getByTestId('draw-bar');
+  // Chưa rút: thanh chỉ có tổng của Bộ đề, không có dòng "mỗi người nhận".
+  await expect(page.getByText('15 câu · 20 điểm')).toBeVisible();
+  await expect(bar).toHaveCount(0);
+
+  await percentInput(page, 0).fill('40');
+  await expect(bar).toHaveText('Mỗi người nhận 9 câu · 14 điểm');
+  // Câu lệch điểm: chỉ nêu số câu, không nêu điểm sai.
+  await page.getByRole('textbox', { name: 'Điểm câu 1', exact: true }).fill('3');
+  await expect(bar).toHaveText('Mỗi người nhận 9 câu');
+  await page.getByRole('textbox', { name: 'Điểm câu 1', exact: true }).fill('1');
+  await expect(bar).toHaveText('Mỗi người nhận 9 câu · 14 điểm');
+
+  // Thu gọn Phần I: danh sách câu ẩn, nhưng dòng "Rút câu từ Phần này", tỷ lệ và số câu vẫn thấy và vẫn sửa được.
+  await page.getByRole('button', { name: 'Thu gọn Phần: Phần I', exact: true }).click();
+  await expect(page.getByText('Câu hỏi 1', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Rút câu từ Phần này').first()).toBeVisible();
+  await expect(percentInput(page, 0)).toBeVisible();
+  await expect(percentInput(page, 0)).toHaveValue('40');
+  await expect(page.getByText('→ mỗi người nhận 4/10 câu')).toBeVisible();
+  await percentInput(page, 0).fill('50');
+  await expect(page.getByText('→ mỗi người nhận 5/10 câu')).toBeVisible();
+  await expect(bar).toHaveText('Mỗi người nhận 10 câu · 15 điểm');
+
+  // 0 %: Phần không lấy câu nào; nói rõ Người dự thi sẽ không thấy Phần này.
+  await percentInput(page, 0).fill('0');
+  await expect(page.getByText('→ mỗi người nhận 0/10 câu')).toBeVisible();
+  await expect(
+    page.getByText(
+      'Phần này không lấy câu nào: Người dự thi sẽ không thấy Phần này trong bài làm.',
+    ),
+  ).toBeVisible();
+  expect(await overflow(page), 'thu gọn và 0 %').toBe(0);
+  await shot(page, `thu-gon-0-${p}`);
+});
+
+test('tên Phần và Chủ đề dài không làm vỡ dòng câu hỏi trong Bộ đề', async ({ page }, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-rcl-${p}`);
+  const examId = await seedExam(page, `${p}-l-${runId(testInfo)}`, true);
+  await page.goto(`/examiner/exams/${examId}`);
+  const row = page
+    .locator('li')
+    .filter({ has: page.getByRole('textbox', { name: 'Điểm câu 1', exact: true }) });
+  await expect(row).toBeVisible();
+  const box = async (locator: ReturnType<Page['locator']>) => {
+    const b = await locator.boundingBox();
+    expect(b).not.toBeNull();
+    return b as { x: number; y: number; width: number; height: number };
+  };
+  const preview = await box(row.getByText('Câu hỏi 1', { exact: true }));
+  const meta = await box(row.getByText(/NLS và Ứng dụng AI/));
+  const points = await box(row.getByRole('textbox', { name: 'Điểm câu 1', exact: true }));
+  const move = await box(row.getByRole('combobox'));
+  const rowBox = await box(row);
+  // Nội dung câu hỏi không bị ép hẹp.
+  expect(preview.width, 'bề rộng nội dung câu').toBeGreaterThan(150);
+  expect(meta.width, 'bề rộng dòng Loại và Chủ đề').toBeGreaterThan(150);
+  // Các điều khiển không chồng lên chữ.
+  const overlaps = (a: typeof preview, b: typeof preview) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  expect(overlaps(preview, points), 'nội dung câu chồng ô điểm').toBe(false);
+  expect(overlaps(meta, points), 'dòng Chủ đề chồng ô điểm').toBe(false);
+  expect(overlaps(meta, move), 'dòng Chủ đề chồng ô Chuyển sang').toBe(false);
+  expect(overlaps(preview, move), 'nội dung câu chồng ô Chuyển sang').toBe(false);
+  // Ô "Chuyển sang…" không phình theo tên Phần dài, và mọi thứ nằm trong khung dòng.
+  expect(move.width, 'bề rộng ô Chuyển sang').toBeLessThanOrEqual(260);
+  expect(move.x + move.width, 'ô Chuyển sang nằm trong dòng').toBeLessThanOrEqual(
+    rowBox.x + rowBox.width,
+  );
+  expect(await overflow(page), 'tên dài').toBe(0);
+  await shot(page, `ten-dai-${p}`);
 });

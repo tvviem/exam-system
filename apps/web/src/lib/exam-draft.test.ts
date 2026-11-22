@@ -13,12 +13,14 @@ import {
   moveItemToSection,
   moveSection,
   newDraft,
+  numberFromText,
   numberOf,
   questionIdsOf,
   removeItem,
   removeSection,
   setDrawPercent,
   setPoints,
+  textForNumber,
   toContent,
   totalsOf,
 } from './exam-draft';
@@ -292,5 +294,30 @@ describe('tỷ lệ rút của Phần (Rút câu, Q435 đến Q441)', () => {
       ],
     };
     expect(draftFromExam(saved).sections.map((s) => s.drawPercent)).toEqual([40, 100]);
+  });
+});
+
+describe('ô số: chữ đang gõ và số trong bản nháp', () => {
+  it('numberFromText: dấu phẩy hoặc chấm đều được; để trống là NaN, không phải 0', () => {
+    expect(numberFromText('12,5')).toBe(12.5);
+    expect(numberFromText('12.5')).toBe(12.5);
+    expect(numberFromText('0')).toBe(0);
+    expect(numberFromText('')).toBeNaN();
+    expect(numberFromText('   ')).toBeNaN();
+    expect(numberFromText('abc')).toBeNaN();
+  });
+
+  it('textForNumber: giữ chữ đang gõ khi vẫn ứng với số đó, kể cả để trống hoặc chưa gõ xong', () => {
+    expect(textForNumber('', Number.NaN)).toBe(''); // lỗi cũ: hiện chữ "NaN"
+    expect(textForNumber('abc', Number.NaN)).toBe('abc');
+    expect(textForNumber('12,', 12)).toBe('12,');
+    expect(textForNumber('12,50', 12.5)).toBe('12,50');
+    expect(textForNumber('0', 0)).toBe('0');
+  });
+
+  it('textForNumber: số đổi từ bên ngoài (ví dụ Đặt điểm nhanh) thì chữ đổi theo', () => {
+    expect(textForNumber('1', 3)).toBe('3');
+    expect(textForNumber('', 5)).toBe('5');
+    expect(textForNumber('abc', 7)).toBe('7');
   });
 });

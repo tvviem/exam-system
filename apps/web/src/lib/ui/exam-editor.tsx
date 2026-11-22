@@ -6,6 +6,7 @@ import {
   ChevronUp,
   Copy,
   Download,
+  Info,
   ListChecks,
   Plus,
   Save,
@@ -30,12 +31,14 @@ import {
   moveItem,
   moveItemToSection,
   moveSection,
+  numberFromText,
   numberOf,
   questionIdsOf,
   removeItem,
   removeSection,
   setDrawPercent,
   setPoints,
+  textForNumber,
   toContent,
   totalsOf,
   updateSection,
@@ -94,7 +97,7 @@ function PointsInput({
 }) {
   const [text, setText] = useState(String(points));
   useEffect(() => {
-    setText((current) => (Number(current.replace(',', '.')) === points ? current : String(points)));
+    setText((current) => textForNumber(current, points));
   }, [points]);
   return (
     <input
@@ -107,8 +110,7 @@ function PointsInput({
       value={text}
       onChange={(e) => {
         setText(e.target.value);
-        const value = Number(e.target.value.replace(',', '.'));
-        onChange(e.target.value.trim() === '' ? Number.NaN : value);
+        onChange(numberFromText(e.target.value));
       }}
       className="h-12 w-24 rounded-lg border border-border-strong bg-surface px-3 text-right text-base tabular-nums outline-none focus:border-primary focus:ring-2 focus:ring-ring/40 aria-invalid:border-danger pointer-fine:h-10"
     />
@@ -133,9 +135,7 @@ function DrawPercentInput({
 }) {
   const [text, setText] = useState(String(percent));
   useEffect(() => {
-    setText((current) =>
-      Number(current.replace(',', '.')) === percent ? current : String(percent),
-    );
+    setText((current) => textForNumber(current, percent));
   }, [percent]);
   return (
     <input
@@ -149,9 +149,7 @@ function DrawPercentInput({
       value={text}
       onChange={(e) => {
         setText(e.target.value);
-        onChange(
-          e.target.value.trim() === '' ? Number.NaN : Number(e.target.value.replace(',', '.')),
-        );
+        onChange(numberFromText(e.target.value));
       }}
       className="h-12 w-24 rounded-lg border border-border-strong bg-surface px-3 text-right text-base tabular-nums outline-none focus:border-primary focus:ring-2 focus:ring-ring/40 aria-invalid:border-danger pointer-fine:h-10"
     />
@@ -188,9 +186,12 @@ function DrawRow({
     ? t('exam.draw.result', { count: mine.count, total: mine.total })
     : t('exam.draw.all', { total: mine.total });
   return (
-    <div className="flex flex-col gap-2" data-testid="draw-row">
+    <div
+      className="flex flex-col gap-2 rounded-lg border border-border bg-surface-raised p-3"
+      data-testid="draw-row"
+    >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <label htmlFor={`draw-${section.key}`} className="text-sm font-medium">
+        <label htmlFor={`draw-${section.key}`} className="text-sm font-semibold">
           {t('exam.draw.label')}
         </label>
         {readOnly ? (
@@ -212,10 +213,16 @@ function DrawRow({
             </span>
           </span>
         )}
-        <span className="text-sm text-fg-muted tabular-nums" aria-live="polite">
+        <span className="text-sm font-medium tabular-nums" aria-live="polite">
           {result}
         </span>
       </div>
+      {mine.valid && section.drawPercent === 0 && (
+        <p className="flex items-start gap-2 text-sm text-fg-muted">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>{t('exam.draw.zeroNote')}</span>
+        </p>
+      )}
       <p id={hintId} className="text-xs text-fg-muted">
         {mine.valid
           ? drawing
@@ -224,7 +231,11 @@ function DrawRow({
               ? t('exam.draw.hintAll')
               : null
           : null}
-        {!mine.valid && <span className="text-danger">{t('exam.draw.invalid')}</span>}
+        {!mine.valid && (
+          <span role="alert" className="text-danger">
+            {t('exam.draw.invalid')}
+          </span>
+        )}
       </p>
       {uneven && (
         <p
@@ -257,76 +268,82 @@ function ItemRow({
   const { t } = useTranslation();
   const id = item.questionId;
   return (
-    <li className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 sm:flex-row sm:items-center">
-      <div className="flex min-w-0 flex-1 gap-3">
-        <span className="w-14 shrink-0 text-sm font-semibold text-fg-muted">
-          {t('exam.numberN', { n: number })}
-        </span>
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="line-clamp-2 break-words">{item.question.preview}</span>
-          <span className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
-            {t(`questionType.${item.question.type}`)} · {item.question.topicName}
-            {item.question.archived && <Badge tone="warning">{t('exam.archivedBadge')}</Badge>}
+    <li className="@container rounded-xl border border-border bg-surface">
+      <div className="flex flex-col gap-3 p-3 @2xl:flex-row @2xl:items-center">
+        <div className="flex min-w-0 flex-1 gap-3">
+          <span className="w-14 shrink-0 text-sm font-semibold text-fg-muted">
+            {t('exam.numberN', { n: number })}
           </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="line-clamp-2 wrap-anywhere">{item.question.preview}</span>
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
+              <span className="shrink-0">{t(`questionType.${item.question.type}`)}</span>
+              <span aria-hidden>·</span>
+              <span className="min-w-0 truncate" title={item.question.topicName}>
+                {item.question.topicName}
+              </span>
+              {item.question.archived && <Badge tone="warning">{t('exam.archivedBadge')}</Badge>}
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 text-sm font-medium text-fg-muted">
-          <span aria-hidden>{t('exam.points')}</span>
-          <PointsInput
-            points={item.points}
-            label={t('exam.pointsOf', { n: number })}
-            hint={t('exam.pointsHint')}
-            disabled={readOnly}
-            onChange={(points) => onChange((d) => setPoints(d, id, points))}
-          />
-        </div>
-        {!readOnly && (
-          <>
-            <Button
-              aria-label={t('exam.moveUp', { n: number })}
-              title={t('exam.up')}
-              onClick={() => onChange((d) => moveItem(d, id, -1))}
-            >
-              <ChevronUp aria-hidden className="size-5" />
-            </Button>
-            <Button
-              aria-label={t('exam.moveDown', { n: number })}
-              title={t('exam.down')}
-              onClick={() => onChange((d) => moveItem(d, id, 1))}
-            >
-              <ChevronDown aria-hidden className="size-5" />
-            </Button>
-            {sections.length > 1 && (
-              <select
-                aria-label={t('exam.moveToSection', { n: number })}
-                title={t('exam.moveHint')}
-                value=""
-                onChange={(e) =>
-                  e.target.value && onChange((d) => moveItemToSection(d, id, e.target.value))
-                }
-                className="h-12 rounded-lg border border-border-strong bg-surface px-2 text-sm pointer-fine:h-10"
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3 @2xl:shrink-0 @2xl:justify-end @2xl:border-0 @2xl:pt-0">
+          <div className="flex items-center gap-2 text-sm font-medium text-fg-muted">
+            <span aria-hidden>{t('exam.points')}</span>
+            <PointsInput
+              points={item.points}
+              label={t('exam.pointsOf', { n: number })}
+              hint={t('exam.pointsHint')}
+              disabled={readOnly}
+              onChange={(points) => onChange((d) => setPoints(d, id, points))}
+            />
+          </div>
+          {!readOnly && (
+            <>
+              <Button
+                aria-label={t('exam.moveUp', { n: number })}
+                title={t('exam.up')}
+                onClick={() => onChange((d) => moveItem(d, id, -1))}
               >
-                <option value="">{t('exam.moveHere')}</option>
-                {sections
-                  .filter((s) => s.key !== currentKey)
-                  .map((s) => (
-                    <option key={s.key} value={s.key}>
-                      {s.name}
-                    </option>
-                  ))}
-              </select>
-            )}
-            <Button
-              variant="danger-ghost"
-              aria-label={t('exam.removeItem', { n: number })}
-              title={t('exam.removeItem', { n: number })}
-              onClick={() => onChange((d) => removeItem(d, id))}
-            >
-              <Trash2 aria-hidden className="size-5" />
-            </Button>
-          </>
-        )}
+                <ChevronUp aria-hidden className="size-5" />
+              </Button>
+              <Button
+                aria-label={t('exam.moveDown', { n: number })}
+                title={t('exam.down')}
+                onClick={() => onChange((d) => moveItem(d, id, 1))}
+              >
+                <ChevronDown aria-hidden className="size-5" />
+              </Button>
+              {sections.length > 1 && (
+                <select
+                  aria-label={t('exam.moveToSection', { n: number })}
+                  value=""
+                  onChange={(e) =>
+                    e.target.value && onChange((d) => moveItemToSection(d, id, e.target.value))
+                  }
+                  title={t('exam.moveHint')}
+                  className="h-12 w-44 max-w-full truncate rounded-lg border border-border-strong bg-surface px-2 text-sm pointer-fine:h-10"
+                >
+                  <option value="">{t('exam.moveHere')}</option>
+                  {sections
+                    .filter((s) => s.key !== currentKey)
+                    .map((s) => (
+                      <option key={s.key} value={s.key}>
+                        {s.name}
+                      </option>
+                    ))}
+                </select>
+              )}
+              <Button
+                variant="danger-ghost"
+                aria-label={t('exam.removeItem', { n: number })}
+                title={t('exam.removeItem', { n: number })}
+                onClick={() => onChange((d) => removeItem(d, id))}
+              >
+                <Trash2 aria-hidden className="size-5" />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </li>
   );
@@ -637,6 +654,17 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                       </div>
                     )}
 
+                    {section.items.length > 0 && (
+                      <DrawRow
+                        section={section}
+                        summary={draw}
+                        readOnly={readOnly}
+                        showAllHint={!draw.active && index === 0}
+                        onChange={(percent) =>
+                          change((d) => setDrawPercent(d, section.key, percent))
+                        }
+                      />
+                    )}
                     {split && (
                       <Button
                         className="w-fit"
@@ -661,17 +689,6 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                       </Button>
                     )}
 
-                    {!collapsed.has(section.key) && section.items.length > 0 && (
-                      <DrawRow
-                        section={section}
-                        summary={draw}
-                        readOnly={readOnly}
-                        showAllHint={!draw.active && index === 0}
-                        onChange={(percent) =>
-                          change((d) => setDrawPercent(d, section.key, percent))
-                        }
-                      />
-                    )}
                     {collapsed.has(section.key) ? null : section.items.length === 0 ? (
                       <p className="text-fg-muted">{t('exam.emptySection')}</p>
                     ) : (
@@ -712,9 +729,21 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                         (conflict ? t('exam.conflict') : errorMessage(t, save.error))}
                     </ErrorMessage>
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span className="text-sm text-fg-muted" aria-live="polite">
-                        {t('exam.totals', { items: totals.items, points: totals.points })}
-                      </span>
+                      <div className="flex min-w-0 flex-col gap-0.5 text-sm" aria-live="polite">
+                        <span className="text-fg-muted">
+                          {t('exam.totals', { items: totals.items, points: totals.points })}
+                        </span>
+                        {draw.active && (
+                          <span data-testid="draw-bar" className="font-medium text-fg">
+                            {draw.maxPoints === null
+                              ? t('exam.draw.barCount', { count: draw.count })
+                              : t('exam.draw.bar', {
+                                  count: draw.count,
+                                  points: String(draw.maxPoints).replace('.', ','),
+                                })}
+                          </span>
+                        )}
+                      </div>
                       {allItems.length > 0 && (
                         <Button onClick={() => setQuickOpen(true)}>
                           <ListChecks aria-hidden className="size-5" />

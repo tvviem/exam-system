@@ -268,6 +268,19 @@ export function applyPoints(
 }
 
 /** Tỷ lệ rút hợp lệ: 0 đến 100, tối đa hai chữ số lẻ (cùng quy tắc với server). */
+/** Chữ người dùng gõ trong ô số thành số: dấu phẩy hoặc chấm đều được; để trống là NaN (không hợp lệ), không phải 0. */
+export const numberFromText = (text: string): number =>
+  text.trim() === '' ? Number.NaN : Number(text.replace(',', '.'));
+
+/**
+ * Chữ hiện trong ô số khi số của bản nháp đổi: giữ chữ đang gõ nếu vẫn ứng với số đó ("12," là 12; ô trống ứng với NaN
+ * nên không hiện chữ "NaN"); số đổi từ bên ngoài (Đặt điểm nhanh...) thì hiện số mới.
+ */
+export const textForNumber = (current: string, value: number): string => {
+  const typed = numberFromText(current);
+  return typed === value || (Number.isNaN(typed) && Number.isNaN(value)) ? current : String(value);
+};
+
 export const drawPercentValid = (percent: number): boolean =>
   drawPercentSchema.safeParse(percent).success;
 

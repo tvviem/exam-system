@@ -17,6 +17,10 @@ Không muốn rút thì **không cần làm gì**: mặc định mọi Phần l�
 - Tỷ lệ từ 0 đến 100, tối đa hai chữ số lẻ (gõ dấu phẩy hoặc dấu chấm đều được). Số lẻ được làm tròn **nửa lên**, và nếu tỷ lệ lớn hơn 0 thì mỗi người nhận **ít nhất 1 câu**.
 - **Các câu trong Phần rút dưới 100 % phải cùng điểm**, để mọi người có cùng điểm tối đa. Nếu lệch, hệ thống cảnh báo ở Phần đó (kèm gợi ý dùng **Đặt điểm nhanh**) và **chặn Phát hành**. Phần 100 % hay 0 % thì không cần cùng điểm.
 - Không được để **mọi Phần đều 0 %** (Người dự thi sẽ không có câu nào).
+- Ô tỷ lệ chỉ nhận số từ 0 đến 100. Để trống hoặc nhập số sai thì ô báo lỗi ngay cạnh và nút **Lưu** bị khóa cho tới khi sửa.
+- **Phần đặt 0 %** không lấy câu nào: Người dự thi **không thấy Phần đó** (không hiện tên Phần rỗng) trong bài làm. Dòng Rút câu của Phần có ghi chú nhắc điều này.
+- Dòng **Rút câu từ Phần này** luôn hiện trong thẻ của Phần, kể cả khi bấm **Thu gọn Phần** (chỉ danh sách câu bị ẩn), nên vẫn thấy tỷ lệ và "mỗi người nhận N/M câu".
+- Thanh cạnh nút **Lưu** có hai dòng: tổng của cả Bộ đề ("15 câu · 20 điểm") và, khi có Phần rút dưới 100 %, số **mỗi người nhận** ("Mỗi người nhận 9 câu · 14 điểm"; chỉ nêu số câu khi còn Phần lệch điểm).
 
 ### 2. Phát hành
 

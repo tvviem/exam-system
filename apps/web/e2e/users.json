@@ -1658,5 +1658,53 @@
     "roleTags": ["candidate"],
     "code": "RCS-M-001",
     "classLabel": "LOP-RCS-M"
+  },
+  {
+    "username": "e2e-rcn-desktop",
+    "fullName": "Giảng viên Rút câu ô số trống desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rcn-mobile",
+    "fullName": "Giảng viên Rút câu ô số trống mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rcb-desktop",
+    "fullName": "Giảng viên Rút câu thanh tổng desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rcb-mobile",
+    "fullName": "Giảng viên Rút câu thanh tổng mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rcl-desktop",
+    "fullName": "Giảng viên Rút câu tên dài desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-rcl-mobile",
+    "fullName": "Giảng viên Rút câu tên dài mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]
