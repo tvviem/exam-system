@@ -433,7 +433,7 @@ describe('xuất Word theo Mã đề', () => {
     });
     const bad = await exportDoc('exam', { sessionId: two.json().id });
     expect(bad.statusCode, bad.body).toBe(400);
-    expect(bad.json()).toMatchObject({ issues: [{ path: 'variant', code: 'required' }] });
+    expect(bad.json()).toMatchObject({ issues: [{ path: 'variant', code: 'variant_required' }] });
   });
 
   it('Mã đề không có: 404; Phiên thi mỗi người một đề mà nêu variant: 409; variant khi xuất từ Bộ đề: 400', async () => {

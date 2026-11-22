@@ -121,7 +121,9 @@ export class PaperService {
       return { content, examCode: request.examCode };
     }
     if (source.variant === undefined && variants.length > 1) {
-      throw new ApiError('VALIDATION_FAILED', { issues: [{ path: 'variant', code: 'required' }] });
+      throw new ApiError('VALIDATION_FAILED', {
+        issues: [{ path: 'variant', code: 'variant_required' }],
+      });
     }
     const variant = variants.find((v) => v.number === (source.variant ?? 1));
     if (!variant) throw new ApiError('NOT_FOUND');
