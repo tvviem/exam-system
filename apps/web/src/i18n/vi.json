@@ -1432,7 +1432,10 @@
       "uneven": "Các câu trong Phần này đang khác điểm. Phần rút dưới 100 % cần các câu cùng điểm để mọi Người dự thi có cùng điểm tối đa; dùng “Đặt điểm nhanh” để sửa trước khi Phát hành.",
       "allZero": "Mọi Phần đều 0 %: Người dự thi sẽ không có câu nào. Hãy để ít nhất một Phần lớn hơn 0 %.",
       "summary": "Mỗi Người dự thi nhận {{count}} câu, tối đa {{points}} điểm.",
-      "summaryCount": "Mỗi Người dự thi nhận {{count}} câu."
+      "summaryCount": "Mỗi Người dự thi nhận {{count}} câu.",
+      "bar": "Mỗi người nhận {{count}} câu · {{points}} điểm",
+      "barCount": "Mỗi người nhận {{count}} câu",
+      "zeroNote": "Phần này không lấy câu nào: Người dự thi sẽ không thấy Phần này trong bài làm."
     },
     "save": "Lưu",
     "saving": "Đang lưu…",
