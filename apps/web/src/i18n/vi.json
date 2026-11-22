@@ -1460,6 +1460,10 @@
     "readOnlyNote": "Bộ đề này đã Phát hành nên không sửa được. Muốn đổi, hãy Nhân bản thành bản nháp mới.",
     "publish": {
       "title": "Phát hành Bộ đề",
+      "warningsTitle": "Lưu ý trước khi Phát hành (không chặn)",
+      "warningCode": {
+        "draw_points_uneven": "có các câu khác điểm. Phiên thi mỗi người một bộ câu sẽ không lưu được khi Phần rút dưới 100 %: hãy Đặt điểm nhanh cho cùng điểm, hoặc để Phần lấy đủ."
+      },
       "drawTitle": "Số câu mỗi Người dự thi nhận, theo từng Phần",
       "drawCount": "{{count}}/{{total}} câu",
       "drawPercent": "rút {{percent}} %",
