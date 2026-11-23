@@ -26,7 +26,50 @@ export class SessionPreviewService {
     @Inject(EXAM_CONTENT) private readonly content: ExamContentProvider,
   ) {}
 
-  async preview(userId: string, sessionId: string) {
+  /**
+   * Bộ câu của từng Mã đề cho chủ Phiên thi (tab Đề): câu theo Phần, số câu, tổng điểm. Mỗi câu chỉ gồm mã, loại, điểm và đề bài,
+   * không có phương án hay Đáp án đúng. Phiên thi mỗi người một đề không có Mã đề nên trả danh sách rỗng.
+   */
+  async variants(userId: string, sessionId: string) {
+    const gate = await this.entry.gateForOwner(sessionId, userId);
+    if (!gate) throw new ApiError('NOT_FOUND');
+    const variants = gate.drawScope === 'shared' ? await this.entry.variantsOf(sessionId) : [];
+    if (variants.length === 0) return { variants: [] };
+    const content = await this.content.contentOf(gate.examId);
+    if (!content) throw new ApiError('NOT_FOUND');
+    return {
+      variants: variants.map((variant) => {
+        const chosen = new Set(variant.itemIds);
+        const sections = content.sections.map((section) => ({
+          sectionId: section.id,
+          title: section.title,
+          items: section.items
+            .filter((item) => chosen.has(item.itemId))
+            .map((item) => ({
+              itemId: item.itemId,
+              type: item.snapshot.type,
+              points: item.points,
+              stem: item.snapshot.stem,
+            })),
+        }));
+        const items = sections.flatMap((section) => section.items);
+        return {
+          id: variant.variantId,
+          number: variant.number,
+          label: variant.label,
+          itemCount: items.length,
+          totalPoints: Math.round(items.reduce((sum, item) => sum + item.points * 100, 0)) / 100,
+          sections,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Xem thử một lượt. Phiên thi dùng chung Mã đề: đúng bộ câu của Mã đề `variantNumber` (không nêu thì Mã đề đầu); mỗi người một
+   * đề: một lượt rút mẫu, và nêu `variantNumber` là sai (404).
+   */
+  async preview(userId: string, sessionId: string, variantNumber?: number) {
     const gate = await this.entry.gateForOwner(sessionId, userId);
     if (!gate) throw new ApiError('NOT_FOUND'); // không phải chủ thì không biết Phiên thi có tồn tại
     const content = await this.content.contentOf(gate.examId);
@@ -38,8 +81,13 @@ export class SessionPreviewService {
       Object.fromEntries(content.sections.map((section) => [section.id, section.drawPercent])),
       overrides,
     );
-    // Dùng chung Mã đề: Xem thử đúng bộ câu của Mã đề đầu (chọn Mã đề để xem là việc của lát sau); mỗi người một bộ: một lượt rút mẫu.
-    const variant = gate.drawScope === 'shared' ? await this.entry.previewVariant(sessionId) : null;
+    if (variantNumber !== undefined && gate.drawScope !== 'shared') throw new ApiError('NOT_FOUND');
+    let variant = null;
+    if (gate.drawScope === 'shared') {
+      const variants = await this.entry.variantsOf(sessionId);
+      variant = variants.find((v) => v.number === (variantNumber ?? 1)) ?? null;
+      if (variantNumber !== undefined && !variant) throw new ApiError('NOT_FOUND');
+    }
     const input = layoutInputOf(content);
     const seed = randomInt(0, 2 ** 48 - 1);
     const layout = variant

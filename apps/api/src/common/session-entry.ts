@@ -36,6 +36,12 @@ export interface EntryVariant {
   itemIds: string[];
 }
 
+/** Một Mã đề của Phiên thi `shared` kèm bộ câu đã lưu (mã câu trong Bộ đề). */
+export interface EntryVariantInfo extends EntryVariant {
+  number: number;
+  label: string;
+}
+
 export interface SessionEntry {
   /**
    * Mã đề của người này ở Phiên thi `shared`: đã chia thì trả Mã đề đó; chưa thì gán Mã đề **đang có ít người nhất** (Q466) và
@@ -47,8 +53,8 @@ export interface SessionEntry {
     sessions: { sessionId: string; examId: string }[],
     executor?: EntryExecutor,
   ): Promise<Map<string, { count: number; maxCenti: number }>>;
-  /** Mã đề đầu tiên của Phiên thi và bộ câu của nó, để Xem thử; không gán cho ai. `null` nếu không có Mã đề. */
-  previewVariant(sessionId: string, executor?: EntryExecutor): Promise<EntryVariant | null>;
+  /** Mọi Mã đề của Phiên thi theo số thứ tự, kèm bộ câu; rỗng nếu Phiên thi không có Mã đề. Để xem bộ câu và Xem thử, không gán cho ai. */
+  variantsOf(sessionId: string, executor?: EntryExecutor): Promise<EntryVariantInfo[]>;
   variantFor(
     sessionId: string,
     userId: string,

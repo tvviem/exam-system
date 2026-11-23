@@ -164,6 +164,8 @@ export class SessionsService {
           variantCount: count,
           overrides,
         });
+        // Q479: đổi cách ra đề hay số Mã đề thì chia lại cả Danh sách; đổi Bộ đề hay tỷ lệ thì giữ cách chia, chỉ gán người chưa có.
+        await this.variants.assignRoster(tx, id, { rebalance: scopeChanged });
       }
 
       try {
@@ -188,6 +190,35 @@ export class SessionsService {
           closesAt: next.closesAt,
         });
       }
+    });
+    return this.detail(this.db, ownerId, id);
+  }
+
+  /**
+   * Rút lại bộ câu của Mã đề (một Mã đề theo `number`, hoặc tất cả): đổi hạt giống rồi rút lại theo tỷ lệ hiệu lực. Chỉ Phiên thi
+   * `shared` và chưa có Lượt làm bài. Cách chia Mã đề cho Danh sách giữ nguyên.
+   */
+  async redrawVariants(ownerId: string, id: string, number?: number) {
+    await this.db.transaction(async (tx) => {
+      const current = await lockOwnedSession(tx, ownerId, id);
+      if (current.drawScope !== 'shared') {
+        throw new ApiError('INVALID_STATE', { reason: 'NOT_SHARED' });
+      }
+      if (await this.attempts.hasAttempts(id, tx)) {
+        throw new ApiError('INVALID_STATE', { reason: 'HAS_ATTEMPTS' });
+      }
+      const existing = await this.variants.listOf(tx, id);
+      if (number !== undefined && !existing.some((variant) => variant.number === number)) {
+        throw new ApiError('NOT_FOUND');
+      }
+      await this.variants.reseed(tx, id, number);
+      await this.variants.sync(tx, {
+        sessionId: id,
+        examId: current.examId,
+        scope: 'shared',
+        variantCount: existing.length,
+        overrides: await this.overridesOf(tx, id),
+      });
     });
     return this.detail(this.db, ownerId, id);
   }

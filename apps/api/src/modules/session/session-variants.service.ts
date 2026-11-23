@@ -1,16 +1,18 @@
 import { randomInt } from 'node:crypto';
 import {
+  assignBalanced,
   type DrawScope,
   drawVariantItems,
   effectiveDrawPercents,
+  leastLoadedVariant,
   VARIANT_COUNT_MAX,
 } from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, count, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNull } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { EXAM_CATALOG, type ExamCatalog } from '../../common/exam-catalog';
 import type { Database, Transaction } from '../../db/db.module';
-import { sessionVariantItems, sessionVariants } from './session.schema';
+import { sessionRoster, sessionVariantItems, sessionVariants } from './session.schema';
 
 type Db = Pick<Database, 'select'>;
 
@@ -122,6 +124,86 @@ export class SessionVariantsService {
       throw new ApiError('VALIDATION_FAILED', {
         issues: [{ path: 'sectionDraws', code: 'variant_points_uneven' }],
       });
+    }
+  }
+
+  /** Đổi hạt giống rút của một Mã đề (`number`) hoặc của tất cả; bộ câu rút lại ở `sync`. */
+  async reseed(tx: Transaction, sessionId: string, number?: number): Promise<void> {
+    const rows = await tx
+      .select({ id: sessionVariants.id })
+      .from(sessionVariants)
+      .where(
+        and(
+          eq(sessionVariants.sessionId, sessionId),
+          ...(number === undefined ? [] : [eq(sessionVariants.number, number)]),
+        ),
+      );
+    for (const row of rows) {
+      await tx
+        .update(sessionVariants)
+        .set({ drawSeed: randomInt(0, 2 ** 48 - 1) })
+        .where(eq(sessionVariants.id, row.id));
+    }
+  }
+
+  /**
+   * Gán Mã đề cho Danh sách dự thi (Q479). Chỉ làm khi Phiên thi có từ hai Mã đề (một Mã đề thì mọi người cùng bộ câu, không cần gán).
+   * `rebalance`: chia lại cả Danh sách ngẫu nhiên và cân bằng (khi đổi cách ra đề hay số Mã đề; chỉ gọi lúc chưa có Lượt).
+   * Không có `rebalance`: chỉ gán người **chưa có** Mã đề (thuộc `only` nếu nêu) vào Mã đề đang ít người nhất, người đã có giữ nguyên.
+   */
+  async assignRoster(
+    tx: Transaction,
+    sessionId: string,
+    options: { rebalance?: boolean; only?: readonly string[] } = {},
+  ): Promise<void> {
+    const variants = await tx
+      .select({ id: sessionVariants.id })
+      .from(sessionVariants)
+      .where(eq(sessionVariants.sessionId, sessionId))
+      .orderBy(asc(sessionVariants.number));
+    if (variants.length < 2) return;
+    const members = await tx
+      .select({ userId: sessionRoster.userId, variantId: sessionRoster.variantId })
+      .from(sessionRoster)
+      .where(eq(sessionRoster.sessionId, sessionId));
+
+    const target = new Map<string, string>(); // người -> Mã đề (id)
+    if (options.rebalance) {
+      const chosen = assignBalanced(
+        members.map((member) => member.userId),
+        variants.length,
+        () => randomInt(0, 2 ** 32) / 2 ** 32,
+      );
+      for (const [userId, index] of chosen)
+        target.set(userId, (variants[index] as { id: string }).id);
+    } else {
+      const only = options.only ? new Set(options.only) : null;
+      const loads = variants.map(
+        (variant) => members.filter((member) => member.variantId === variant.id).length,
+      );
+      for (const member of members) {
+        if (member.variantId !== null || (only && !only.has(member.userId))) continue;
+        const index = leastLoadedVariant(loads);
+        loads[index] = (loads[index] as number) + 1;
+        target.set(member.userId, (variants[index] as { id: string }).id);
+      }
+    }
+
+    const byVariant = new Map<string, string[]>();
+    for (const [userId, variantId] of target) {
+      byVariant.set(variantId, [...(byVariant.get(variantId) ?? []), userId]);
+    }
+    for (const [variantId, userIds] of byVariant) {
+      await tx
+        .update(sessionRoster)
+        .set({ variantId })
+        .where(
+          and(
+            eq(sessionRoster.sessionId, sessionId),
+            inArray(sessionRoster.userId, userIds),
+            ...(options.rebalance ? [] : [isNull(sessionRoster.variantId)]),
+          ),
+        );
     }
   }
 

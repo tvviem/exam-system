@@ -1,4 +1,9 @@
-import { SESSION_PHASES, sessionSettingsSchema, sessionUpdateSchema } from '@exam/shared';
+import {
+  SESSION_PHASES,
+  sessionSettingsSchema,
+  sessionUpdateSchema,
+  VARIANT_COUNT_MAX,
+} from '@exam/shared';
 import {
   Body,
   Controller,
@@ -21,6 +26,9 @@ import { SessionsService } from './sessions.service';
 const listSchema = pageSchema.extend({
   phase: z.enum(SESSION_PHASES).optional(),
   q: z.string().trim().max(200).optional(),
+});
+const redrawSchema = z.strictObject({
+  number: z.number().int().min(1).max(VARIANT_COUNT_MAX).optional(),
 });
 const cancelSchema = z.strictObject({ reason: z.string().trim().max(500).optional() });
 const suggestSchema = z
@@ -68,6 +76,17 @@ export class SessionsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.sessions.update(user.id, id, sessionUpdateSchema.parse(body));
+  }
+
+  /** Rút lại bộ câu của một Mã đề (`number`) hoặc của tất cả Mã đề (không nêu `number`). */
+  @Post(':id/variants/redraw')
+  @HttpCode(200)
+  redraw(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: unknown,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.sessions.redrawVariants(user.id, id, redrawSchema.parse(body ?? {}).number);
   }
 
   @Post(':id/duplicate')

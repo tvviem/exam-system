@@ -18,6 +18,7 @@ import { buildAnswerDocument } from './paper-answer-document';
 import { toAnswerSpec } from './paper-answer-spec';
 import { buildPaperDocument, type PaperImage } from './paper-document';
 import { type PaperRequest, type SessionTimes, toPaperSpec } from './paper-spec';
+import { restrictToVariant } from './paper-variant';
 
 /** Cạnh dài mong muốn của biến thể ảnh khi xuất (đủ nét cho in A4; mục 5.3 của thiết kế). */
 const PREFERRED_SIDE = 960;
@@ -27,7 +28,8 @@ const pickVariantSide = (variants: number[]): number | undefined =>
   [...variants].sort((a, b) => a - b).find((side) => side >= PREFERRED_SIDE) ??
   [...variants].sort((a, b) => b - a)[0];
 
-export type ExportSource = { sessionId: string } | { examId: string };
+/** Từ Phiên thi (có thể nêu số thứ tự Mã đề cần xuất) hoặc từ Bộ đề. */
+export type ExportSource = { sessionId: string; variant?: number } | { examId: string };
 export type ExportRequest = PaperRequest & { unit?: string };
 
 export interface ExportedPaper {
@@ -58,11 +60,12 @@ export class PaperService {
     request: ExportRequest,
   ): Promise<ExportedPaper> {
     const { examId, session } = await this.resolve(actor, source);
-    const content = await this.exams.contentOf(examId);
-    if (!content) throw new ApiError('INVALID_STATE', { reason: 'EXAM_NOT_PUBLISHED' });
+    const full = await this.exams.contentOf(examId);
+    if (!full) throw new ApiError('INVALID_STATE', { reason: 'EXAM_NOT_PUBLISHED' });
+    const { content, examCode } = await this.forVariant(full, source, request);
 
     const unitName = await this.unitNameFor(actor, request);
-    const spec = toPaperSpec({ content, session, unitName, request });
+    const spec = toPaperSpec({ content, session, unitName, request: { ...request, examCode } });
     spec.images = await this.imagesOf(content);
 
     const { bytes, warnings } = await buildPaperDocument(spec);
@@ -82,15 +85,51 @@ export class PaperService {
     const { examId, session } = await this.resolve(actor, source);
     const effective = await this.effective.of(examId);
     if (!effective) throw new ApiError('INVALID_STATE', { reason: 'EXAM_NOT_PUBLISHED' });
+    const { content, examCode } = await this.forVariant(effective.content, source, request);
 
     const unitName = await this.unitNameFor(actor, request);
-    const spec = toAnswerSpec({ ...effective, session, unitName, request });
+    const spec = toAnswerSpec({
+      ...effective,
+      content,
+      session,
+      unitName,
+      request: { ...request, examCode },
+    });
     const { bytes, warnings } = await buildAnswerDocument(spec);
     await this.record(actor, 'paper.export.answers', 'answers', examId, source, warnings.length);
     return {
       bytes,
       filename: `dap-an-${fileSlug(effective.content.title, 'bo-de')}.docx`,
       warnings,
+    };
+  }
+
+  /**
+   * Phiên thi dùng chung Mã đề: tệp chỉ gồm câu của Mã đề (và ô Mã đề điền sẵn nhãn của Mã đề, trừ khi Người ra đề nhập tay).
+   * Một Mã đề thì không cần nêu số; nhiều Mã đề mà không nêu thì từ chối. Phiên thi mỗi người một đề hay xuất từ Bộ đề: không đổi.
+   */
+  private async forVariant(
+    content: ExamContentData,
+    source: ExportSource,
+    request: ExportRequest,
+  ): Promise<{ content: ExamContentData; examCode: string | undefined }> {
+    if (!('sessionId' in source)) return { content, examCode: request.examCode };
+    const variants = await this.sessions.variantsOf(source.sessionId);
+    if (variants.length === 0) {
+      if (source.variant !== undefined)
+        throw new ApiError('INVALID_STATE', { reason: 'NOT_SHARED' });
+      return { content, examCode: request.examCode };
+    }
+    if (source.variant === undefined && variants.length > 1) {
+      throw new ApiError('VALIDATION_FAILED', {
+        issues: [{ path: 'variant', code: 'variant_required' }],
+      });
+    }
+    const variant = variants.find((v) => v.number === (source.variant ?? 1));
+    if (!variant) throw new ApiError('NOT_FOUND');
+    return {
+      content: restrictToVariant(content, new Set(variant.itemIds)),
+      examCode: request.examCode ?? variant.label,
     };
   }
 
@@ -112,7 +151,14 @@ export class PaperService {
       action,
       entityType: 'exam',
       entityId: examId,
-      after: { kind, sessionId: 'sessionId' in source ? source.sessionId : null, warnings },
+      after: {
+        kind,
+        sessionId: 'sessionId' in source ? source.sessionId : null,
+        ...('sessionId' in source && source.variant !== undefined
+          ? { variant: source.variant }
+          : {}),
+        warnings,
+      },
     });
   }
 

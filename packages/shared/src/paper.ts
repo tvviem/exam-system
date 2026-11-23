@@ -36,6 +36,10 @@ export const PAPER_COURSE_MAX_CHARS = 150;
 const oneSource = (body: { sessionId?: string; examId?: string }) =>
   (body.sessionId === undefined) !== (body.examId === undefined);
 const ONE_SOURCE_MESSAGE = 'Chọn đúng một trong sessionId hoặc examId';
+/** Mã đề chỉ có ở Phiên thi, nên nêu `variant` thì phải có `sessionId`. */
+const variantNeedsSession = (body: { sessionId?: string; variant?: number }) =>
+  body.variant === undefined || body.sessionId !== undefined;
+const VARIANT_NEEDS_SESSION_MESSAGE = 'Mã đề chỉ chọn được khi xuất từ Phiên thi';
 
 /** Các trường dùng chung của hai yêu cầu: nguồn (Phiên thi hoặc Bộ đề), Học phần và thông tin kỳ thi. */
 const commonFields = {
@@ -45,6 +49,8 @@ const commonFields = {
   title: text(100).optional(),
   examCode: text(50).optional(),
   unit: text(150).optional(),
+  /** Số thứ tự Mã đề của Phiên thi dùng chung Mã đề: tệp chỉ gồm câu của Mã đề này (Q473). */
+  variant: z.number().int().min(1).max(10).optional(),
 };
 
 /** Yêu cầu xuất Đề thi: đúng một trong `sessionId` hoặc `examId`, kèm Học phần (không có trong dữ liệu, nhập mỗi lần xuất). */
@@ -54,7 +60,8 @@ export const paperExportRequestSchema = z
     preset: z.enum(PAPER_PRESETS).optional(),
     blocks: z.strictObject({ nationalHeader: bool, candidateFields: bool, grid: bool }).optional(),
   })
-  .refine(oneSource, { message: ONE_SOURCE_MESSAGE });
+  .refine(oneSource, { message: ONE_SOURCE_MESSAGE })
+  .refine(variantNeedsSession, { message: VARIANT_NEEDS_SESSION_MESSAGE, path: ['variant'] });
 
 export type PaperExportRequest = z.infer<typeof paperExportRequestSchema>;
 
@@ -64,6 +71,7 @@ export type PaperExportRequest = z.infer<typeof paperExportRequestSchema>;
  */
 export const paperAnswersRequestSchema = z
   .strictObject({ ...commonFields, confirm: z.literal(true) })
-  .refine(oneSource, { message: ONE_SOURCE_MESSAGE });
+  .refine(oneSource, { message: ONE_SOURCE_MESSAGE })
+  .refine(variantNeedsSession, { message: VARIANT_NEEDS_SESSION_MESSAGE, path: ['variant'] });
 
 export type PaperAnswersRequest = z.infer<typeof paperAnswersRequestSchema>;
