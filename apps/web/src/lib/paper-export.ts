@@ -5,6 +5,7 @@ import {
   type PaperBlocks,
   type PaperExportRequest,
   type PaperPreset,
+  type PaperVariantsRequest,
 } from '@exam/shared';
 import { ApiError } from './api';
 
@@ -20,7 +21,13 @@ export interface PaperForm {
 }
 
 /** Từ Phiên thi (nêu `variant` khi Phiên thi dùng chung nhiều Mã đề) hoặc từ Bộ đề. */
-export type PaperSource = { sessionId: string; variant?: number } | { examId: string };
+export type PaperSource =
+  | { sessionId: string; variant?: number }
+  | { sessionId: string; variants: 'all' }
+  | { examId: string };
+
+/** Nguồn của một tệp Đề hay Đáp án (không phải xuất tất cả Mã đề). */
+export type SingleSource = Exclude<PaperSource, { variants: 'all' }>;
 
 export const emptyPaperForm = (): PaperForm => ({
   course: '',
@@ -41,7 +48,7 @@ export const selectPreset = (form: PaperForm, preset: PaperPreset): PaperForm =>
 const BLOCK_KEYS = ['nationalHeader', 'candidateFields', 'grid'] as const;
 
 /** Yêu cầu gửi api: cắt khoảng trắng, bỏ ô tùy chọn để trống, chỉ gửi công tắc khác mặc định của Mẫu đang chọn. */
-export function paperRequestOf(source: PaperSource, form: PaperForm): PaperExportRequest {
+export function paperRequestOf(source: SingleSource, form: PaperForm): PaperExportRequest {
   const defaults = PAPER_PRESET_BLOCKS[form.preset];
   const changed: Partial<PaperBlocks> = {};
   for (const key of BLOCK_KEYS) {
@@ -60,9 +67,27 @@ export function paperRequestOf(source: PaperSource, form: PaperForm): PaperExpor
 }
 
 /** Yêu cầu xuất tệp Đáp án: nguồn, Học phần và các ô thông tin (không có Mẫu và công tắc), kèm xác nhận đã hiểu tệp chứa đáp án. */
-export function paperAnswersRequestOf(source: PaperSource, form: PaperForm): PaperAnswersRequest {
+export function paperAnswersRequestOf(source: SingleSource, form: PaperForm): PaperAnswersRequest {
   const { preset: _preset, blocks: _blocks, ...shared } = paperRequestOf(source, form);
   return { ...shared, confirm: true };
+}
+
+/**
+ * Yêu cầu xuất **tất cả Mã đề** của một Phiên thi thành zip (Q473): như tệp Đề nhưng không có Mã đề nhập tay (mỗi Mã đề có nhãn riêng).
+ * Kèm Đáp án (`answers`) thì phải xác nhận (`confirm`), vì tệp chứa Đáp án đúng.
+ */
+export function paperVariantsRequestOf(
+  sessionId: string,
+  form: PaperForm,
+  answers: boolean,
+): PaperVariantsRequest {
+  const {
+    examCode: _examCode,
+    sessionId: _session,
+    examId: _exam,
+    ...rest
+  } = paperRequestOf({ sessionId }, form) as PaperExportRequest & { examId?: string };
+  return { ...rest, sessionId, ...(answers ? { answers: true, confirm: true as const } : {}) };
 }
 
 /** Header `X-Paper-Warnings` (JSON mã hóa URL) thành danh sách; hỏng thì rỗng (tệp vẫn tải được). */
@@ -150,15 +175,16 @@ export interface ExportedPaper {
   warnings: string[];
 }
 
-/** Gọi `POST /api/paper/exam` (hay `/answers` khi có `confirm`); trả tệp và cảnh báo, lỗi thì ném `ApiError` như `apiFetch`. */
-export async function requestPaper(
-  request: PaperExportRequest | PaperAnswersRequest,
+/** Gửi một yêu cầu xuất tệp; trả tệp và cảnh báo, lỗi thì ném `ApiError` như `apiFetch`. */
+async function postForFile(
+  url: string,
+  body: unknown,
+  fallbackName: string,
 ): Promise<ExportedPaper> {
-  // Có `confirm` là tệp Đáp án, không thì tệp Đề.
-  const res = await fetch('confirm' in request ? '/api/paper/answers' : '/api/paper/exam', {
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(request),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const data = res.headers.get('content-type')?.includes('application/json')
@@ -169,10 +195,30 @@ export async function requestPaper(
   }
   return {
     blob: await res.blob(),
-    filename: filenameOfDisposition(res.headers.get('content-disposition')) ?? 'de-thi.docx',
+    filename: filenameOfDisposition(res.headers.get('content-disposition')) ?? fallbackName,
     warnings: parsePaperWarnings(res.headers.get('x-paper-warnings')),
   };
 }
+
+/** Gọi `POST /api/paper/exam` (hay `/answers` khi có `confirm`): tệp Đề hoặc tệp Đáp án .docx. */
+export function requestPaper(
+  request: PaperExportRequest | PaperAnswersRequest,
+): Promise<ExportedPaper> {
+  // Có `confirm` là tệp Đáp án, không thì tệp Đề.
+  return postForFile(
+    'confirm' in request ? '/api/paper/answers' : '/api/paper/exam',
+    request,
+    'de-thi.docx',
+  );
+}
+
+/** Gọi `POST /api/paper/variants`: tệp zip của mọi Mã đề (kèm Excel phân Mã đề). */
+export const requestVariantsZip = (request: PaperVariantsRequest): Promise<ExportedPaper> =>
+  postForFile('/api/paper/variants', request, 'ma-de.zip');
+
+/** Gọi `POST /api/paper/assignment`: Excel phân Mã đề của Phiên thi. */
+export const requestAssignment = (sessionId: string): Promise<ExportedPaper> =>
+  postForFile('/api/paper/assignment', { sessionId }, 'phan-ma-de.xlsx');
 
 /** Cho trình duyệt tải một tệp đã có trong bộ nhớ. */
 export function saveBlob(blob: Blob, filename: string): void {

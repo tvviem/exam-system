@@ -1,11 +1,12 @@
 import { parseCodeList } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Mail, MailPlus, Shuffle, UserMinus } from 'lucide-react';
+import { FileSpreadsheet, Mail, MailPlus, Shuffle, UserMinus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sessionAwaitingQuery, type TrackingRow } from '../account-support';
 import { errorMessage } from '../errors';
+import { requestAssignment, saveBlob } from '../paper-export';
 import { canChangeVariant, type VariantLoad, variantLoadSummary } from '../session-variants';
 import {
   addToRoster,
@@ -312,6 +313,15 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
     onError: (error) => toast(errorMessage(t, error), 'error'),
   });
 
+  // Excel phân Mã đề (Q473): ai nhận Mã đề nào, để in danh sách phòng thi.
+  const assignment = useMutation({
+    mutationFn: () => requestAssignment(session.id),
+    onSuccess: (file) => {
+      saveBlob(file.blob, file.filename);
+      toast(t('session.roster.variants.assignmentDone'));
+    },
+    onError: (error) => toast(errorMessage(t, error), 'error'),
+  });
   const rebalance = useMutation({
     mutationFn: () => rebalanceVariants(session.id),
     onSuccess: async () => {
@@ -360,6 +370,8 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
           canRebalance={!readOnly && session.drawLocked !== true}
           locked={session.drawLocked === true}
           onRebalance={() => setRebalancing(true)}
+          onDownload={() => assignment.mutate()}
+          downloading={assignment.isPending}
         />
       )}
 
@@ -533,11 +545,15 @@ function VariantLoadBar({
   canRebalance,
   locked,
   onRebalance,
+  onDownload,
+  downloading,
 }: {
   loads: VariantLoad[];
   canRebalance: boolean;
   locked: boolean;
   onRebalance: () => void;
+  onDownload: () => void;
+  downloading: boolean;
 }) {
   const { t } = useTranslation();
   const summary = variantLoadSummary(loads);
@@ -556,10 +572,16 @@ function VariantLoadBar({
             </li>
           ))}
         </ul>
-        <Button disabled={!canRebalance} onClick={onRebalance}>
-          <Shuffle aria-hidden className="size-5" />
-          {t('session.roster.variants.rebalance')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button disabled={downloading} onClick={onDownload}>
+            <FileSpreadsheet aria-hidden className="size-5" />
+            {t('session.roster.variants.assignment')}
+          </Button>
+          <Button disabled={!canRebalance} onClick={onRebalance}>
+            <Shuffle aria-hidden className="size-5" />
+            {t('session.roster.variants.rebalance')}
+          </Button>
+        </div>
       </div>
       {/* Chỉ nhắc Chia lại khi còn Chia lại được; đã khóa thì không có việc gì để làm với số lệch. */}
       {summary.uneven && canRebalance && (

@@ -4,7 +4,7 @@ Dành cho **Người ra đề** và **Người dự thi**. Viết bằng lời c
 
 ## Rút câu để làm gì
 
-Bạn có một Bộ đề lớn, ví dụ **100 câu chia 4 Phần**, nhưng mỗi Người dự thi chỉ làm **40 câu**. Hệ thống **rút ngẫu nhiên** 10 câu mỗi Phần cho từng người khi người đó vào thi lần đầu. Hai người ngồi cạnh nhau nhận hai bộ câu khác nhau, nhưng cấu trúc đề giống nhau (cùng số câu mỗi Phần, cùng điểm tối đa).
+Bạn có một Bộ đề lớn, ví dụ **100 câu chia 4 Phần**, nhưng mỗi Người dự thi chỉ làm **40 câu**. Hệ thống **rút ngẫu nhiên** 10 câu mỗi Phần. Phiên thi chọn **Cách ra đề**: **dùng chung các Mã đề** (mặc định; rút một lần khi lưu Phiên thi, người cùng Mã đề nhận cùng bộ câu) hoặc **mỗi người một đề** (rút riêng cho từng người khi vào thi lần đầu; hai người ngồi cạnh nhau nhận hai bộ câu khác nhau, nhưng cấu trúc đề giống nhau). Cách ra đề và Mã đề giải thích ở [ma-de-phien-thi.md](ma-de-phien-thi.md); phần dưới nói chung về tỷ lệ rút và các quy tắc của kiểu **mỗi người một đề**.
 
 Không muốn rút thì **không cần làm gì**: mặc định mọi Phần lấy đủ (100 %), đề chạy y như trước.
 
@@ -15,7 +15,7 @@ Không muốn rút thì **không cần làm gì**: mặc định mọi Phần l�
 Ở trang soạn Bộ đề, mỗi Phần có dòng **Rút câu từ Phần này** với ô tỷ lệ (mặc định 100). Ví dụ Phần có 25 câu, nhập **40** thì bên cạnh hiện "→ mỗi người nhận 10/25 câu". Phía trên các Phần có dòng tóm tắt: "Mỗi Người dự thi nhận 40 câu, tối đa 40 điểm".
 
 - Tỷ lệ từ 0 đến 100, tối đa hai chữ số lẻ (gõ dấu phẩy hoặc dấu chấm đều được). Số lẻ được làm tròn **nửa lên**, và nếu tỷ lệ lớn hơn 0 thì mỗi người nhận **ít nhất 1 câu**.
-- **Các câu trong Phần rút dưới 100 % phải cùng điểm**, để mọi người có cùng điểm tối đa. Nếu lệch, hệ thống cảnh báo ở Phần đó (kèm gợi ý dùng **Đặt điểm nhanh**) và **chặn Phát hành**. Phần 100 % hay 0 % thì không cần cùng điểm.
+- **Các câu trong Phần rút dưới 100 % phải cùng điểm**, để mọi người có cùng điểm tối đa. Nếu lệch, hệ thống cảnh báo ở Phần đó (kèm gợi ý dùng **Đặt điểm nhanh**). Hộp Phát hành chỉ **cảnh báo, không chặn**; nhưng Phiên thi kiểu **mỗi người một đề** sẽ không lưu được khi còn Phần lệch điểm. Phiên thi **dùng chung Mã đề** cho phép câu lệch điểm trong Phần, miễn các Mã đề cùng tổng điểm. Phần 100 % hay 0 % thì không cần cùng điểm.
 - Không được để **mọi Phần đều 0 %** (Người dự thi sẽ không có câu nào).
 - Ô tỷ lệ chỉ nhận số từ 0 đến 100. Để trống hoặc nhập số sai thì ô báo lỗi ngay cạnh và nút **Lưu** bị khóa cho tới khi sửa.
 - **Phần đặt 0 %** không lấy câu nào: Người dự thi **không thấy Phần đó** (không hiện tên Phần rỗng) trong bài làm. Dòng Rút câu của Phần có ghi chú nhắc điều này.
@@ -36,12 +36,12 @@ Tỷ lệ ở Bộ đề **đóng băng** khi Phát hành, như mọi nội dung
 Muốn Phiên thi này khác Bộ đề (ví dụ Bộ đề rút 40 % cho kiểm tra, nhưng Phiên thi ôn tập lấy đủ), bấm **Thay đổi cho Phiên thi này**, sửa tỷ lệ từng Phần. Một Bộ đề dùng được cho nhiều Phiên thi với tỷ lệ khác nhau; **Dùng lại tỷ lệ của Bộ đề** xóa các thay đổi.
 
 - Tỷ lệ của Phiên thi chỉ sửa được **trước khi có người làm bài**. Từ Lượt làm bài đầu tiên, bảng bị khóa và hiện lý do (vì người đã làm bài đã nhận bộ câu rồi).
-- Phần lệch điểm bị ghi đè xuống dưới 100 % cũng bị cảnh báo. Bộ đề đã Phát hành không sửa điểm được; hãy Nhân bản Bộ đề, sửa điểm, tạo Phiên thi mới, hoặc đặt Phần đó 100 % hay 0 %.
+- Phần lệch điểm bị ghi đè xuống dưới 100 % cũng bị cảnh báo ở kiểu **mỗi người một đề**. Bộ đề đã Phát hành không sửa điểm được; hãy Nhân bản Bộ đề, sửa điểm, tạo Phiên thi mới, đặt Phần đó 100 % hay 0 %, hoặc chuyển sang **dùng chung các Mã đề**.
 - Tab **Tổng quan** của Phiên thi có dòng **Rút câu**: "Mỗi người nhận 12/15 câu (Phần I 70 %)".
 
 ### 4. Xem thử một lượt rút
 
-Ở **Xem thử** của Phiên thi rút câu bạn thấy **một lượt rút mẫu** của một người ngẫu nhiên: "gồm 9 câu trong 15 câu của Bộ đề". Tải lại trang thì ra một bộ khác. Muốn xem cả Bộ đề thì dùng tab **Xem thử** của chính Bộ đề.
+Ở **Xem thử** của Phiên thi kiểu **mỗi người một đề** bạn thấy **một lượt rút mẫu** của một người ngẫu nhiên: "gồm 9 câu trong 15 câu của Bộ đề". Tải lại trang thì ra một bộ khác. Phiên thi **dùng chung Mã đề** thì Xem thử cho đúng bộ câu của Mã đề (chọn Mã đề ở tab **Đề**) và không đổi khi tải lại. Muốn xem cả Bộ đề thì dùng tab **Xem thử** của chính Bộ đề.
 
 ### 5. Chấm điểm và Kết quả
 
@@ -60,6 +60,6 @@ Muốn Phiên thi này khác Bộ đề (ví dụ Bộ đề rút 40 % cho kiể
 
 ## Dành cho Người dự thi
 
-- Ở danh sách Phiên thi và màn xác nhận trước khi bắt đầu có dòng "**Bài của bạn gồm 40 câu, rút ngẫu nhiên từ 100 câu của Bộ đề.** Mỗi Người dự thi nhận một bộ câu riêng; nếu làm lại, bạn vẫn nhận đúng bộ câu này."
+- Ở danh sách Phiên thi và màn xác nhận trước khi bắt đầu có dòng "**Bài của bạn gồm 40 câu, rút ngẫu nhiên từ 100 câu của Bộ đề.** Mỗi Người dự thi nhận một bộ câu riêng; nếu làm lại, bạn vẫn nhận đúng bộ câu này." (Phiên thi dùng chung Mã đề: bạn còn thấy "Mã đề của bạn: Đề 2", xem [ma-de-phien-thi.md](ma-de-phien-thi.md).)
 - Trong lúc làm bài bạn chỉ thấy **40 câu của mình**, đánh số "Câu 1/40" đến "Câu 40/40". Bạn không thấy các câu không thuộc bộ của mình.
 - Kết quả hiện **điểm thô trên điểm tối đa** (ví dụ 32/40), **điểm quy đổi thang 10** (8,0) và chỉ các câu của bạn.

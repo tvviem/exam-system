@@ -12,7 +12,10 @@ import {
   type PaperSource,
   paperAnswersRequestOf,
   paperRequestOf,
+  paperVariantsRequestOf,
   requestPaper,
+  requestVariantsZip,
+  type SingleSource,
   saveBlob,
   savePaperPrefs,
   selectPreset,
@@ -48,7 +51,11 @@ export function PaperExportDialog({
 }) {
   const { t } = useTranslation();
   return (
-    <Dialog open={open} onClose={onClose} title={t('paper.title')}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={t('variants' in source ? 'paper.zipTitle' : 'paper.title')}
+    >
       <PaperExportBody source={source} title={title} variants={variants} onClose={onClose} />
     </Dialog>
   );
@@ -71,8 +78,17 @@ function PaperExportBody({
   const [form, setForm] = useState<PaperForm>(() => ({ ...emptyPaperForm(), ...loadPaperPrefs() }));
   // Phiên thi nhiều Mã đề mà nguồn chưa nêu Mã đề: chọn trong hộp (mặc định Mã đề đầu); máy chủ đòi chọn rõ để không xuất nhầm.
   const [variant, setVariant] = useState(variants[0]?.number);
-  const needsPick = 'sessionId' in given && given.variant === undefined && variants.length > 1;
-  const source: PaperSource = needsPick ? { ...given, variant } : given;
+  // Xuất tất cả Mã đề (zip): không chọn Mã đề, không có Mã đề nhập tay; mỗi Mã đề dùng nhãn của nó.
+  const zipSession = 'variants' in given ? given.sessionId : null;
+  const single: SingleSource | null = 'variants' in given ? null : given;
+  const needsPick =
+    single !== null && 'sessionId' in single && single.variant === undefined && variants.length > 1;
+  const source: SingleSource =
+    single === null
+      ? { sessionId: zipSession as string }
+      : needsPick
+        ? { ...single, variant }
+        : single;
   const [warnings, setWarnings] = useState<string[] | null>(null);
   const [confirming, setConfirming] = useState(false);
   const courseField = useRef<HTMLInputElement>(null);
@@ -97,12 +113,18 @@ function PaperExportBody({
   };
 
   const exportPaper = useMutation({
-    mutationFn: () => requestPaper(paperRequestOf(source, form)),
-    onSuccess: finish(t('paper.done')),
+    mutationFn: () =>
+      zipSession !== null
+        ? requestVariantsZip(paperVariantsRequestOf(zipSession, form, false))
+        : requestPaper(paperRequestOf(source, form)),
+    onSuccess: finish(t(zipSession !== null ? 'paper.zipDone' : 'paper.done')),
   });
   const exportAnswers = useMutation({
-    mutationFn: () => requestPaper(paperAnswersRequestOf(source, form)),
-    onSuccess: finish(t('paper.answersDone')),
+    mutationFn: () =>
+      zipSession !== null
+        ? requestVariantsZip(paperVariantsRequestOf(zipSession, form, true))
+        : requestPaper(paperAnswersRequestOf(source, form)),
+    onSuccess: finish(t(zipSession !== null ? 'paper.zipAnswersDone' : 'paper.answersDone')),
   });
 
   if (warnings) {
@@ -157,11 +179,15 @@ function PaperExportBody({
     >
       <div className="flex flex-col gap-1 text-sm">
         <p>
-          {'sessionId' in source
-            ? t('paper.fromSession', { title })
-            : t('paper.fromExam', { title })}
+          {zipSession !== null
+            ? t('paper.zipFrom', { title })
+            : 'sessionId' in source
+              ? t('paper.fromSession', { title })
+              : t('paper.fromExam', { title })}
         </p>
-        <p className="font-medium">{t('paper.noAnswers')}</p>
+        <p className="font-medium">
+          {t(zipSession !== null ? 'paper.zipContents' : 'paper.noAnswers')}
+        </p>
       </div>
 
       {needsPick && (
@@ -236,14 +262,16 @@ function PaperExportBody({
             value={form.title}
             onChange={(event) => set({ title: event.target.value })}
           />
-          <TextField
-            id="paper-exam-code"
-            label={t('paper.examCode')}
-            hint={t('paper.examCodeHint')}
-            maxLength={50}
-            value={form.examCode}
-            onChange={(event) => set({ examCode: event.target.value })}
-          />
+          {zipSession === null && (
+            <TextField
+              id="paper-exam-code"
+              label={t('paper.examCode')}
+              hint={t('paper.examCodeHint')}
+              maxLength={50}
+              value={form.examCode}
+              onChange={(event) => set({ examCode: event.target.value })}
+            />
+          )}
           <TextField
             id="paper-unit"
             label={t('paper.unit')}
@@ -275,11 +303,15 @@ function PaperExportBody({
       </details>
 
       <section className="flex flex-col gap-2 rounded-xl border border-border p-3">
-        <h3 className="text-sm font-medium">{t('paper.answersTitle')}</h3>
-        <p className="text-sm text-fg-muted">{t('paper.answersHint')}</p>
+        <h3 className="text-sm font-medium">
+          {t(zipSession !== null ? 'paper.zipAnswersTitle' : 'paper.answersTitle')}
+        </h3>
+        <p className="text-sm text-fg-muted">
+          {t(zipSession !== null ? 'paper.zipAnswersHint' : 'paper.answersHint')}
+        </p>
         <Button className="w-fit" disabled={!canExport} onClick={() => setConfirming(true)}>
           <KeyRound aria-hidden className="size-5" />
-          {t('paper.answersAction')}
+          {t(zipSession !== null ? 'paper.zipAnswersAction' : 'paper.answersAction')}
         </Button>
       </section>
 
@@ -288,7 +320,9 @@ function PaperExportBody({
       <div className="flex flex-col gap-2 sm:flex-row-reverse">
         <PrimaryButton type="submit" loading={exportPaper.isPending} disabled={!canExport}>
           <Download aria-hidden className="size-5" />
-          {exportPaper.isPending ? t('paper.building') : t('paper.download')}
+          {exportPaper.isPending
+            ? t('paper.building')
+            : t(zipSession !== null ? 'paper.zipDownload' : 'paper.download')}
         </PrimaryButton>
         <Button onClick={onClose} disabled={exportPaper.isPending}>
           {t('common.cancel')}

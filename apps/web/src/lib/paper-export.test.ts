@@ -2,6 +2,7 @@ import {
   PAPER_PRESET_BLOCKS,
   paperAnswersRequestSchema,
   paperExportRequestSchema,
+  paperVariantsRequestSchema,
 } from '@exam/shared';
 import { describe, expect, it } from 'vitest';
 import {
@@ -11,6 +12,7 @@ import {
   type PaperForm,
   paperAnswersRequestOf,
   paperRequestOf,
+  paperVariantsRequestOf,
   parsePaperWarnings,
   savePaperPrefs,
   selectPreset,
@@ -217,5 +219,47 @@ describe('paperAnswersRequestOf: yêu cầu xuất tệp Đáp án', () => {
     });
     // hợp đồng chung: máy chủ nhận đúng hình dạng này (lược đồ strict nên Mẫu và công tắc sẽ bị từ chối)
     expect(() => paperAnswersRequestSchema.parse(request)).not.toThrow();
+  });
+});
+
+describe('paperVariantsRequestOf: yêu cầu xuất tất cả Mã đề thành zip (V5b)', () => {
+  it('chỉ gồm Phiên thi, Học phần và các ô chung; bỏ Mã đề nhập tay (mỗi Mã đề có nhãn riêng); không kèm Đáp án thì không có answers hay confirm', () => {
+    expect(
+      paperVariantsRequestOf(
+        SESSION,
+        form({ course: '  Giải tích 1 ', examCode: '132', title: ' T ', unit: ' U ' }),
+        false,
+      ),
+    ).toEqual({
+      sessionId: SESSION,
+      course: 'Giải tích 1',
+      title: 'T',
+      unit: 'U',
+      preset: 'school',
+    });
+  });
+  it('kèm Đáp án: answers và confirm đi cùng nhau (tệp chứa đáp án đúng)', () => {
+    expect(paperVariantsRequestOf(SESSION, form({ course: 'Toán' }), true)).toEqual({
+      sessionId: SESSION,
+      course: 'Toán',
+      preset: 'school',
+      answers: true,
+      confirm: true,
+    });
+  });
+  it('chỉ gửi công tắc khác mặc định của Mẫu; kết quả luôn qua lược đồ của máy chủ', () => {
+    const request = paperVariantsRequestOf(
+      SESSION,
+      form({ course: 'Toán', blocks: { ...PAPER_PRESET_BLOCKS.school, nationalHeader: true } }),
+      true,
+    );
+    expect(request.blocks).toEqual({ nationalHeader: true });
+    for (const answers of [false, true]) {
+      expect(() =>
+        paperVariantsRequestSchema.parse(
+          paperVariantsRequestOf(SESSION, form({ course: 'Hóa', examCode: '1' }), answers),
+        ),
+      ).not.toThrow();
+    }
   });
 });
