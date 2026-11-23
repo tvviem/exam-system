@@ -426,6 +426,14 @@ export class AttemptsService {
     const hash = deviceKey ? hashDeviceKey(deviceKey) : undefined;
     // Phiên thi đã Công bố: Người dự thi xem được Kết quả (PR 5c).
     const released = await this.gradingStatus.releaseStates(gates.map((gate) => gate.sessionId));
+    const variantOf = new Map(
+      await Promise.all(
+        gates.map(
+          async (gate) =>
+            [gate.sessionId, await this.entry.variantLabelOf(gate.sessionId, userId)] as const,
+        ),
+      ),
+    );
     return {
       items: gates.map((gate) => {
         const own = mine.filter((attempt) => attempt.sessionId === gate.sessionId);
@@ -451,6 +459,8 @@ export class AttemptsService {
               ? total
               : null;
           })(),
+          // Mã đề của chính người này (Q471); chỉ khi Phiên thi có từ hai Mã đề.
+          variant: variantOf.get(gate.sessionId) ?? null,
           questionCount: (() => {
             const content = contents.get(gate.examId);
             return content
@@ -633,6 +643,7 @@ export class AttemptsService {
     );
     return {
       status: 'in_progress' as const,
+      variant: await this.entry.variantLabelOf(attempt.sessionId, userId),
       attempt: {
         id: attempt.id,
         attemptNo: attempt.attemptNo,

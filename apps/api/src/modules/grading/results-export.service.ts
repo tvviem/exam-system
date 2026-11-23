@@ -47,6 +47,7 @@ export class ResultsExportService {
       'Mã định danh',
       'Họ và tên',
       'Lớp',
+      'Mã đề',
       'Số Lượt',
       'Điểm thô',
       'Điểm tối đa',
@@ -57,7 +58,7 @@ export class ResultsExportService {
     header.font = { bold: true };
     for (const person of people) summary.addRow(summaryRow(person, session.maxScore));
     summary.columns.forEach((column, index) => {
-      column.width = [16, 28, 14, 10, 12, 12, 18, 22, 36][index] ?? 14;
+      column.width = [16, 28, 14, 10, 10, 12, 12, 18, 22, 36][index] ?? 14;
     });
 
     const detail = workbook.addWorksheet('Chi tiết');
@@ -99,6 +100,7 @@ function summaryRow(person: ResultRow, maxScore: number) {
     safeCell(person.code ?? ''),
     safeCell(person.fullName),
     safeCell(person.classLabel ?? ''),
+    safeCell(person.variant ?? ''),
     person.attemptCount,
     person.rawScore ?? '',
     person.state === 'no_attempt' ? '' : maxScore,

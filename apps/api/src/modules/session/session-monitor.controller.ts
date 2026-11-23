@@ -1,9 +1,20 @@
-import { extendTimeSchema, forceSubmitSchema, violationSchema } from '@exam/shared';
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  extendTimeSchema,
+  forceSubmitSchema,
+  VARIANT_COUNT_MAX,
+  violationSchema,
+} from '@exam/shared';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { z } from 'zod';
 import type { Actor } from '../../common/actor';
 import { CurrentActor, CurrentUser, RequireTag } from '../identity/auth/auth.decorators';
 import type { AuthenticatedUser } from '../identity/auth/auth.types';
 import { SessionMonitorService } from './session-monitor.service';
+
+const monitorQuerySchema = z.object({
+  /** Chỉ hiện người của Mã đề này (số thứ tự). */
+  variant: z.coerce.number().int().min(1).max(VARIANT_COUNT_MAX).optional(),
+});
 
 /** Theo dõi và thao tác lúc Phiên thi đang diễn ra (PR 4d); chỉ chủ Phiên thi, người khác nhận 404. */
 @RequireTag('examiner')
@@ -14,9 +25,10 @@ export class SessionMonitorController {
   @Get('monitor')
   monitorOf(
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Query() query: unknown,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.monitor.monitor(user.id, sessionId);
+    return this.monitor.monitor(user.id, sessionId, monitorQuerySchema.parse(query).variant);
   }
 
   @Post('extend-time')

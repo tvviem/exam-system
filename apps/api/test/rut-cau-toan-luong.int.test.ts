@@ -233,7 +233,7 @@ describe('luồng liền mạch của Phiên thi rút câu', () => {
     expect(header).toContain('Điểm sau Mức xử lý');
     expect(header).toContain('Điểm quy đổi (thang 10)');
     const an = summary.find((r) => r[0] === 'SV001') as string[];
-    expect(an.slice(4)).toEqual(['40', '40', '40', '10', '']);
+    expect(an.slice(5)).toEqual(['40', '40', '40', '10', '']);
     const detail = workbook.getWorksheet('Chi tiết');
     const row = detail?.getRow(2).values as unknown[];
     expect(row.slice(3)).toHaveLength(34);

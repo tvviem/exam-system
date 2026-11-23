@@ -20,6 +20,8 @@ export interface ResultRow {
   code: string | null;
   fullName: string;
   classLabel: string | null;
+  /** Nhãn Mã đề của người này (Phiên thi có từ hai Mã đề); `null` nếu không có (Q474). */
+  variant: string | null;
   attemptCount: number;
   /** `hidden`: Chấm ẩn tên đang che điểm tự luận nên không nói người này đã được chấm hết hay chưa (Q291). */
   state: 'no_attempt' | 'hidden' | 'waiting_essay' | 'graded';
@@ -107,6 +109,7 @@ export class ResultsService {
     const essays = this.essayIds(ctx);
 
     const classOf = new Map(roster.map((entry) => [entry.userId, entry.classLabel]));
+    const variantOf = new Map(roster.map((entry) => [entry.userId, entry.variantLabel]));
     const userIds = [
       ...new Set([...roster.map((e) => e.userId), ...ctx.submitted.map((a) => a.userId)]),
     ];
@@ -159,6 +162,7 @@ export class ResultsService {
         code: profile.code,
         fullName: profile.fullName,
         classLabel: classOf.get(profile.id) ?? null,
+        variant: variantOf.get(profile.id) ?? null,
         attemptCount: submittedCount.get(profile.id) ?? 0,
         pendingEssays: hide && attempts.length > 0 ? null : pending,
         essayHidden: hide && attempts.length > 0,
