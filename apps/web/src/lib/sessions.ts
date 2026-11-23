@@ -3,6 +3,7 @@ import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
 import { queryString } from './query-string';
+import type { VariantLoad } from './session-variants';
 
 // Phiên thi và Danh sách dự thi (docs/plan/slice-4.md, Q192–Q222).
 
@@ -162,6 +163,10 @@ export interface RosterItem {
   classLabel: string | null;
   extraMinutes: number;
   addedAt: string;
+  /** Số Lượt làm bài của người này; đã có Lượt thì không đổi Mã đề được. */
+  attemptCount: number;
+  /** Mã đề được gán (Phiên thi dùng chung Mã đề); `null` khi mỗi người một đề. */
+  variant: { number: number; label: string } | null;
 }
 
 export interface RosterSearchResult {
@@ -194,10 +199,23 @@ export const rosterQuery = (
   queryOptions({
     queryKey: ['sessions', 'roster', sessionId, params],
     queryFn: () =>
-      apiFetch<PageResult<RosterItem>>(
+      apiFetch<PageResult<RosterItem> & { variants: VariantLoad[] }>(
         `/sessions/${sessionId}/roster${queryString({ ...params, pageSize: 50 })}`,
       ),
     placeholderData: keepPreviousData,
+  });
+
+/** Đổi tay Mã đề của một người (chưa có Lượt). */
+export const setRosterVariant = (sessionId: string, userId: string, number: number) =>
+  apiFetch<{ userId: string; variant: { number: number; label: string } }>(
+    `/sessions/${sessionId}/roster/${userId}/variant`,
+    { method: 'PUT', body: { number } },
+  );
+/** Chia lại cả Danh sách vào các Mã đề (chỉ khi chưa ai làm bài). */
+export const rebalanceVariants = (sessionId: string) =>
+  apiFetch<{ variants: VariantLoad[] }>(`/sessions/${sessionId}/variants/rebalance`, {
+    method: 'POST',
+    body: {},
   });
 
 export const rosterSearchQuery = (sessionId: string, q: string) =>

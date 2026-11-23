@@ -1,22 +1,25 @@
 import { parseCodeList } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Mail, MailPlus, UserMinus } from 'lucide-react';
+import { Mail, MailPlus, Shuffle, UserMinus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sessionAwaitingQuery, type TrackingRow } from '../account-support';
 import { errorMessage } from '../errors';
+import { canChangeVariant, type VariantLoad, variantLoadSummary } from '../session-variants';
 import {
   addToRoster,
   type RosterAddResult,
   type RosterItem,
   type RosterSelector,
   type RosterSort,
+  rebalanceVariants,
   removeFromRoster,
   rosterQuery,
   rosterSearchQuery,
   type SessionSummary,
   setExtraMinutes,
+  setRosterVariant,
 } from '../sessions';
 import {
   Badge,
@@ -284,6 +287,10 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
     rosterQuery(session.id, { q: q || undefined, page, sort: sort === 'name' ? undefined : sort }),
   );
   const items = roster.data?.items ?? [];
+  // Mã đề (Q479): chỉ Phiên thi dùng chung từ hai Mã đề mới có cột Mã đề, số người từng Mã đề và nút Chia lại.
+  const variantLoads = roster.data?.variants ?? [];
+  const showVariants = session.drawScope === 'shared' && variantLoads.length >= 2;
+  const [rebalancing, setRebalancing] = useState(false);
   // Ai còn Chờ kích hoạt (7d-2, E-05): dấu trên dòng và hai việc hỗ trợ trong menu. Lỗi (ví dụ không đủ quyền) thì bỏ qua, danh sách vẫn dùng được.
   const awaiting = useQuery(sessionAwaitingQuery(session.id));
   const awaitingBy = new Map((awaiting.data?.items ?? []).map((row) => [row.userId, row]));
@@ -303,6 +310,15 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
       toast(t('session.roster.removedToast', { count: result.removed }));
     },
     onError: (error) => toast(errorMessage(t, error), 'error'),
+  });
+
+  const rebalance = useMutation({
+    mutationFn: () => rebalanceVariants(session.id),
+    onSuccess: async () => {
+      setRebalancing(false);
+      await refresh();
+      toast(t('session.roster.variants.rebalanced'));
+    },
   });
 
   return (
@@ -337,6 +353,15 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
           </div>
         </div>
       </div>
+
+      {showVariants && (
+        <VariantLoadBar
+          loads={variantLoads}
+          canRebalance={!readOnly && session.drawLocked !== true}
+          locked={session.drawLocked === true}
+          onRebalance={() => setRebalancing(true)}
+        />
+      )}
 
       {roster.isPending ? (
         <ListSkeleton rows={4} />
@@ -373,6 +398,15 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
                     </span>
                   )}
                 </span>
+                {showVariants && (
+                  <VariantSelect
+                    sessionId={session.id}
+                    user={user}
+                    loads={variantLoads}
+                    disabled={readOnly}
+                    onSaved={() => refresh()}
+                  />
+                )}
                 <ExtraMinutes
                   sessionId={session.id}
                   user={user}
@@ -438,6 +472,25 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
         </StickyActionBar>
       )}
 
+      <Dialog
+        open={rebalancing}
+        onClose={() => setRebalancing(false)}
+        title={t('session.roster.variants.rebalanceTitle')}
+      >
+        <p className="text-sm text-fg-muted">{t('session.roster.variants.rebalanceBody')}</p>
+        <ErrorMessage>{rebalance.isError && errorMessage(t, rebalance.error)}</ErrorMessage>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button onClick={() => setRebalancing(false)}>{t('common.cancel')}</Button>
+          <Button
+            variant="danger"
+            disabled={rebalance.isPending}
+            onClick={() => rebalance.mutate()}
+          >
+            {t('session.roster.variants.rebalanceConfirm')}
+          </Button>
+        </div>
+      </Dialog>
+
       {support?.kind === 'email' && (
         <ChangeEmailDialog
           target={{
@@ -471,6 +524,103 @@ function RosterList({ session, readOnly }: { session: SessionSummary; readOnly: 
         />
       )}
     </div>
+  );
+}
+
+/** Số người từng Mã đề, cảnh báo khi lệch và nút Chia lại (Phiên thi dùng chung từ hai Mã đề). */
+function VariantLoadBar({
+  loads,
+  canRebalance,
+  locked,
+  onRebalance,
+}: {
+  loads: VariantLoad[];
+  canRebalance: boolean;
+  locked: boolean;
+  onRebalance: () => void;
+}) {
+  const { t } = useTranslation();
+  const summary = variantLoadSummary(loads);
+  return (
+    <section
+      data-testid="roster-variants"
+      aria-label={t('session.roster.variants.title')}
+      className="flex flex-col gap-2 rounded-xl border border-border bg-surface-raised p-3"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {summary.parts.map((part) => (
+            <li key={part.number} data-testid="variant-load">
+              <span className="font-medium">{part.label}</span>:{' '}
+              {t('session.roster.variants.people', { count: part.count })}
+            </li>
+          ))}
+        </ul>
+        <Button disabled={!canRebalance} onClick={onRebalance}>
+          <Shuffle aria-hidden className="size-5" />
+          {t('session.roster.variants.rebalance')}
+        </Button>
+      </div>
+      {/* Chỉ nhắc Chia lại khi còn Chia lại được; đã khóa thì không có việc gì để làm với số lệch. */}
+      {summary.uneven && canRebalance && (
+        <p
+          role="status"
+          data-testid="variants-uneven"
+          className="rounded-lg border border-warning bg-warning-soft p-2 text-sm"
+        >
+          {t('session.roster.variants.uneven')}
+        </p>
+      )}
+      {locked && (
+        <p data-testid="rebalance-locked" className="text-sm text-fg-muted">
+          {t('session.roster.variants.locked')}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Mã đề của một người: đổi tay bằng hộp chọn; người đã có Lượt thì khóa (Mã đề đã chụp vào Lượt). */
+function VariantSelect({
+  sessionId,
+  user,
+  loads,
+  disabled,
+  onSaved,
+}: {
+  sessionId: string;
+  user: RosterItem;
+  loads: VariantLoad[];
+  disabled: boolean;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const change = useMutation({
+    mutationFn: (number: number) => setRosterVariant(sessionId, user.userId, number),
+    onSuccess: onSaved,
+    onError: (error) => toast(errorMessage(t, error), 'error'),
+  });
+  const editable = !disabled && canChangeVariant(user);
+  return (
+    <label className="flex items-center gap-2 text-sm text-fg-muted">
+      <span>{t('session.roster.variants.column')}</span>
+      <select
+        aria-label={t('session.roster.variants.aria', { name: user.fullName })}
+        title={editable ? undefined : t('session.roster.variants.rowLocked')}
+        value={user.variant?.number ?? ''}
+        disabled={!editable || change.isPending}
+        className="h-12 rounded-lg border border-border-strong bg-surface px-2 text-base text-fg pointer-fine:h-10"
+        onChange={(e) => change.mutate(Number(e.target.value))}
+      >
+        {user.variant === null && <option value="">—</option>}
+        {loads.map((load) => (
+          <option key={load.number} value={load.number}>
+            {load.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

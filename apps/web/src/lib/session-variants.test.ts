@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { sessionDrawPlanOf } from './session-draw';
 import {
+  canChangeVariant,
   variantCountOf,
   variantFieldsInput,
   variantFieldsOfSession,
+  variantLoadSummary,
   variantNumbersOf,
 } from './session-variants';
 
@@ -95,5 +97,38 @@ describe('kế hoạch rút khi dùng chung Mã đề (Q469)', () => {
     expect(sessionDrawPlanOf(sections, { a: '0', b: '0' }, 'shared').problems).toEqual([
       { code: 'draw_all_zero' },
     ]);
+  });
+});
+
+describe('variantLoadSummary: số người mỗi Mã đề trong Danh sách dự thi (V3b)', () => {
+  const loads = (...counts: number[]) =>
+    counts.map((count, i) => ({ number: i + 1, label: `Đề ${i + 1}`, count }));
+  it('chia đều (lệch tối đa 1): không cảnh báo', () => {
+    expect(variantLoadSummary(loads(3, 3, 3))).toMatchObject({ total: 9, uneven: false });
+    expect(variantLoadSummary(loads(3, 3, 2))).toMatchObject({ total: 8, uneven: false });
+    expect(variantLoadSummary(loads(0, 0))).toMatchObject({ total: 0, uneven: false });
+  });
+  it('lệch hơn 1 người: cảnh báo (sau khi đổi tay)', () => {
+    expect(variantLoadSummary(loads(9, 0, 0))).toMatchObject({ total: 9, uneven: true });
+    expect(variantLoadSummary(loads(4, 2))).toMatchObject({ uneven: true });
+  });
+  it('giữ thứ tự và nhãn của từng Mã đề', () => {
+    expect(variantLoadSummary(loads(2, 1)).parts).toEqual([
+      { number: 1, label: 'Đề 1', count: 2 },
+      { number: 2, label: 'Đề 2', count: 1 },
+    ]);
+  });
+  it('một Mã đề hay không có Mã đề: không bao giờ cảnh báo lệch', () => {
+    expect(variantLoadSummary(loads(5)).uneven).toBe(false);
+    expect(variantLoadSummary([])).toEqual({ parts: [], total: 0, uneven: false });
+    expect(variantLoadSummary(undefined)).toEqual({ parts: [], total: 0, uneven: false });
+  });
+});
+
+describe('canChangeVariant: ô đổi Mã đề của một người', () => {
+  it('người chưa có Lượt đổi được; đã có Lượt thì khóa (Mã đề đã chụp vào Lượt)', () => {
+    expect(canChangeVariant({ attemptCount: 0 })).toBe(true);
+    expect(canChangeVariant({ attemptCount: 1 })).toBe(false);
+    expect(canChangeVariant({ attemptCount: 3 })).toBe(false);
   });
 });
