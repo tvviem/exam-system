@@ -223,6 +223,27 @@ export class SessionsService {
     return this.detail(this.db, ownerId, id);
   }
 
+  /**
+   * Chia lại cả Danh sách vào các Mã đề (ngẫu nhiên cân bằng, ghi đè các lần đổi tay). Chỉ Phiên thi dùng chung từ hai Mã đề và chưa
+   * có Lượt làm bài (Q479). Trả số người mỗi Mã đề sau khi chia.
+   */
+  async rebalanceVariants(ownerId: string, id: string) {
+    return this.db.transaction(async (tx) => {
+      const current = await lockOwnedSession(tx, ownerId, id);
+      if (current.drawScope !== 'shared') {
+        throw new ApiError('INVALID_STATE', { reason: 'NOT_SHARED' });
+      }
+      if ((await this.variants.listOf(tx, id)).length < 2) {
+        throw new ApiError('INVALID_STATE', { reason: 'ONE_VARIANT' });
+      }
+      if (await this.attempts.hasAttempts(id, tx)) {
+        throw new ApiError('INVALID_STATE', { reason: 'HAS_ATTEMPTS' });
+      }
+      await this.variants.assignRoster(tx, id, { rebalance: true });
+      return { variants: await this.variants.loadsOf(tx, id) };
+    });
+  }
+
   /** Mã chưa dùng trong Khung giờ này, để giao diện gợi ý ở bước Thiết lập. */
   async suggestAccessCode(opensAt: Date, closesAt: Date): Promise<{ accessCode: string }> {
     for (let i = 0; i < SUGGEST_ATTEMPTS; i++) {

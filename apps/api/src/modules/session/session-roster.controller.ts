@@ -1,3 +1,4 @@
+import { VARIANT_COUNT_MAX } from '@exam/shared';
 import {
   Body,
   Controller,
@@ -8,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { z } from 'zod';
@@ -35,6 +37,7 @@ const removeSchema = z.strictObject({ userIds: z.array(z.uuid()).min(1).max(500)
 const revokeSchema = z.strictObject({ reason: z.string().trim().max(500).optional() });
 const pardonSchema = z.strictObject({ deviceId: z.uuid() });
 const extraSchema = z.strictObject({ extraMinutes: z.number().int().min(0).max(600) });
+const variantSchema = z.strictObject({ number: z.number().int().min(1).max(VARIANT_COUNT_MAX) });
 
 @RequireTag('examiner')
 @Controller('sessions/:sessionId/roster')
@@ -92,6 +95,22 @@ export class SessionRosterController {
       sessionId,
       userId,
       extraSchema.parse(body ?? {}).extraMinutes,
+    );
+  }
+
+  /** Đổi tay Mã đề của một người (Phiên thi dùng chung Mã đề). */
+  @Put(':userId/variant')
+  setVariant(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: unknown,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.roster.setVariant(
+      user.id,
+      sessionId,
+      userId,
+      variantSchema.parse(body ?? {}).number,
     );
   }
 
