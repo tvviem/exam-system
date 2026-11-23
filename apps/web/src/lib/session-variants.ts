@@ -48,3 +48,31 @@ export function variantNumbersOf(
 ): { number: number; label: string }[] {
   return (variants ?? []).map(({ number, label }) => ({ number, label }));
 }
+
+/** Số người của một Mã đề trong Danh sách dự thi (từ máy chủ). */
+export interface VariantLoad {
+  number: number;
+  label: string;
+  count: number;
+}
+
+/**
+ * Tóm tắt số người từng Mã đề và có lệch không (Q479): lệch khi Mã đề nhiều người nhất hơn Mã đề ít người nhất quá 1 người, thường
+ * sau khi Người ra đề đổi tay. Một Mã đề hay không có Mã đề thì không có gì để cân bằng.
+ */
+export function variantLoadSummary(loads: readonly VariantLoad[] | undefined): {
+  parts: VariantLoad[];
+  total: number;
+  uneven: boolean;
+} {
+  const parts = (loads ?? []).map(({ number, label, count }) => ({ number, label, count }));
+  const counts = parts.map((part) => part.count);
+  return {
+    parts,
+    total: counts.reduce((sum, n) => sum + n, 0),
+    uneven: parts.length >= 2 && Math.max(...counts) - Math.min(...counts) > 1,
+  };
+}
+
+/** Người đã có Lượt làm bài thì Mã đề đã chụp vào Lượt, không đổi được; người chưa làm vẫn đổi được. */
+export const canChangeVariant = (row: { attemptCount: number }): boolean => row.attemptCount === 0;

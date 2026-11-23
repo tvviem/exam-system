@@ -1806,5 +1806,101 @@
     "roleTags": ["candidate"],
     "code": "MDV-M-001",
     "classLabel": "LOP-MDV-M"
+  },
+  {
+    "username": "e2e-mdw-desktop",
+    "fullName": "Giảng viên Chia Mã đề desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-mdw-sv1-desktop",
+    "fullName": "Sinh viên Chia 1 desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDW-D-001",
+    "classLabel": "LOP-MDW-D"
+  },
+  {
+    "username": "e2e-mdw-sv2-desktop",
+    "fullName": "Sinh viên Chia 2 desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDW-D-002",
+    "classLabel": "LOP-MDW-D"
+  },
+  {
+    "username": "e2e-mdw-sv3-desktop",
+    "fullName": "Sinh viên Chia 3 desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDW-D-003",
+    "classLabel": "LOP-MDW-D"
+  },
+  {
+    "username": "e2e-mdw-sv4-desktop",
+    "fullName": "Sinh viên Chia 4 desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDW-D-004",
+    "classLabel": "LOP-MDW-D"
+  },
+  {
+    "username": "e2e-mdw-mobile",
+    "fullName": "Giảng viên Chia Mã đề mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-mdw-sv1-mobile",
+    "fullName": "Sinh viên Chia 1 mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDW-M-001",
+    "classLabel": "LOP-MDW-M"
+  },
+  {
+    "username": "e2e-mdw-sv2-mobile",
+    "fullName": "Sinh viên Chia 2 mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDW-M-002",
+    "classLabel": "LOP-MDW-M"
+  },
+  {
+    "username": "e2e-mdw-sv3-mobile",
+    "fullName": "Sinh viên Chia 3 mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDW-M-003",
+    "classLabel": "LOP-MDW-M"
+  },
+  {
+    "username": "e2e-mdw-sv4-mobile",
+    "fullName": "Sinh viên Chia 4 mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDW-M-004",
+    "classLabel": "LOP-MDW-M"
   }
 ]
