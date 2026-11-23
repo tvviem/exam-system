@@ -109,6 +109,8 @@ export class SessionPreviewService {
       durationMinutes: gate.durationMinutes,
       /** Có rút câu thì cho biết bộ mẫu gồm bao nhiêu câu trong tổng số; không thì `null`. */
       draw: count < total ? { count, total } : null,
+      /** Dùng chung Mã đề: Mã đề đang xem thử; mỗi người một đề thì `null`. */
+      variant: variant ? { number: variant.number, label: variant.label } : null,
       mediaBase: `/api/sessions/${gate.sessionId}/try-media`,
       sections: buildAttemptSections({
         content,

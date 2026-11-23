@@ -17,7 +17,7 @@ import {
   savePaperPrefs,
   selectPreset,
 } from '../paper-export';
-import { Button, Dialog, ErrorMessage, PrimaryButton, TextField } from '.';
+import { Button, Dialog, ErrorMessage, PrimaryButton, SelectField, TextField } from '.';
 import { useToast } from './toast';
 
 const BLOCKS: { key: keyof PaperBlocks; label: string }[] = [
@@ -36,34 +36,43 @@ export function PaperExportDialog({
   onClose,
   source,
   title,
+  variants = [],
 }: {
   open: boolean;
   onClose: () => void;
   source: PaperSource;
   /** Tên Phiên thi hoặc Bộ đề, hiện ở dòng giới thiệu. */
   title: string;
+  /** Mã đề của Phiên thi dùng chung nhiều Mã đề: hiện hộp chọn Mã đề cần xuất (nguồn chưa nêu Mã đề). */
+  variants?: { number: number; label: string }[];
 }) {
   const { t } = useTranslation();
   return (
     <Dialog open={open} onClose={onClose} title={t('paper.title')}>
-      <PaperExportBody source={source} title={title} onClose={onClose} />
+      <PaperExportBody source={source} title={title} variants={variants} onClose={onClose} />
     </Dialog>
   );
 }
 
 /** Dựng lại mỗi lần mở hộp thoại (Dialog chỉ dựng nội dung khi mở), nên biểu mẫu luôn bắt đầu từ lần nhập gần nhất. */
 function PaperExportBody({
-  source,
+  source: given,
   title,
+  variants,
   onClose,
 }: {
   source: PaperSource;
   title: string;
+  variants: { number: number; label: string }[];
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const toast = useToast();
   const [form, setForm] = useState<PaperForm>(() => ({ ...emptyPaperForm(), ...loadPaperPrefs() }));
+  // Phiên thi nhiều Mã đề mà nguồn chưa nêu Mã đề: chọn trong hộp (mặc định Mã đề đầu); máy chủ đòi chọn rõ để không xuất nhầm.
+  const [variant, setVariant] = useState(variants[0]?.number);
+  const needsPick = 'sessionId' in given && given.variant === undefined && variants.length > 1;
+  const source: PaperSource = needsPick ? { ...given, variant } : given;
   const [warnings, setWarnings] = useState<string[] | null>(null);
   const [confirming, setConfirming] = useState(false);
   const courseField = useRef<HTMLInputElement>(null);
@@ -154,6 +163,21 @@ function PaperExportBody({
         </p>
         <p className="font-medium">{t('paper.noAnswers')}</p>
       </div>
+
+      {needsPick && (
+        <SelectField
+          id="paper-variant"
+          label={t('session.variants.exportPick')}
+          value={String(variant)}
+          onChange={(event) => setVariant(Number(event.target.value))}
+        >
+          {variants.map((item) => (
+            <option key={item.number} value={item.number}>
+              {item.label}
+            </option>
+          ))}
+        </SelectField>
+      )}
 
       <TextField
         id="paper-course"

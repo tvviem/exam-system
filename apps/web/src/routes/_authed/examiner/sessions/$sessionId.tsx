@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
 import { formatDateTime } from '../../../../lib/format';
 import { PHASE_TONE, releaseLabelKey } from '../../../../lib/session-phase';
+import { variantNumbersOf } from '../../../../lib/session-variants';
 import {
   cancelSession,
   deleteSession,
@@ -40,16 +41,20 @@ import {
   SessionFields,
 } from '../../../../lib/ui/session-fields';
 import { SessionRoster } from '../../../../lib/ui/session-roster';
+import { SessionVariantsTab } from '../../../../lib/ui/session-variants-tab';
 import { StickyActionBar } from '../../../../lib/ui/sticky-action-bar';
 import { Tabs } from '../../../../lib/ui/tabs';
 import { useToast } from '../../../../lib/ui/toast';
 
-type Tab = 'overview' | 'roster' | 'monitor' | 'results';
+type Tab = 'overview' | 'variants' | 'roster' | 'monitor' | 'results';
 
 export const Route = createFileRoute('/_authed/examiner/sessions/$sessionId')({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } => ({
     tab:
-      search.tab === 'roster' || search.tab === 'monitor' || search.tab === 'results'
+      search.tab === 'variants' ||
+      search.tab === 'roster' ||
+      search.tab === 'monitor' ||
+      search.tab === 'results'
         ? search.tab
         : undefined,
   }),
@@ -188,6 +193,7 @@ function SessionDetail({ session }: { session: SessionSummary }) {
         onClose={() => setExporting(false)}
         source={{ sessionId: session.id }}
         title={session.title}
+        variants={variantNumbersOf(session.variants)}
       />
 
       <Tabs
@@ -195,7 +201,10 @@ function SessionDetail({ session }: { session: SessionSummary }) {
         value={tab}
         onChange={(id) =>
           navigate({
-            search: id === 'roster' || id === 'monitor' || id === 'results' ? { tab: id } : {},
+            search:
+              id === 'variants' || id === 'roster' || id === 'monitor' || id === 'results'
+                ? { tab: id }
+                : {},
           })
         }
         items={[
@@ -208,6 +217,16 @@ function SessionDetail({ session }: { session: SessionSummary }) {
               <Overview session={session} />
             ),
           },
+          ...(session.drawScope === 'shared'
+            ? [
+                {
+                  id: 'variants',
+                  label: t('session.tabs.variants'),
+                  // Chỉ dựng khi đang xem: mở tab là nạp đề bài của từng Mã đề.
+                  content: tab === 'variants' ? <SessionVariantsTab session={session} /> : null,
+                },
+              ]
+            : []),
           {
             id: 'roster',
             label: t('session.tabs.roster'),
@@ -309,6 +328,15 @@ function Overview({ session }: { session: SessionSummary }) {
         <Row label={t('session.overview.attempts')}>
           {session.maxAttempts}
           {session.maxAttempts > 1 && ` · ${t(`session.field.${session.attemptScoring}`)}`}
+        </Row>
+        <Row label={t('session.variants.overview')}>
+          <span data-testid="overview-scope">
+            {session.drawScope === 'shared'
+              ? (session.variants?.length ?? 1) > 1
+                ? t('session.variants.overviewShared', { count: session.variants?.length })
+                : t('session.variants.overviewSharedOne')
+              : t('session.variants.overviewPerCandidate')}
+          </span>
         </Row>
         <Row label={t('session.overview.shuffle')}>
           {t('session.overview.shuffleValue', {

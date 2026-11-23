@@ -129,6 +129,9 @@
     "INVALID_STATE": "Trạng thái hiện tại không cho phép thao tác này. Hãy tải lại trang.",
     "NOT_FOUND": "Không tìm thấy dữ liệu.",
     "VALIDATION_FAILED": "Dữ liệu chưa hợp lệ. Hãy kiểm tra lại.",
+    "VALIDATION_variant_points_uneven": "Các Mã đề có tổng điểm khác nhau vì Phần rút dưới 100 % có câu khác điểm. Hãy cho các câu trong Phần cùng điểm, để Phần lấy đủ 100 %, hoặc dùng một Mã đề.",
+    "VALIDATION_variant_required": "Phiên thi có nhiều Mã đề: hãy chọn Mã đề cần xuất.",
+    "INVALID_STATE_NOT_SHARED": "Phiên thi này mỗi người một đề nên không có Mã đề riêng để chọn.",
     "VALIDATION_math_invalid": "Có công thức chưa đúng. Hãy mở công thức đó và sửa lại.",
     "VALIDATION_math_forbidden": "Có công thức chứa lệnh không được phép (liên kết, ảnh hoặc nhúng file).",
     "CONFLICT": "Giá trị này đã được dùng.",
@@ -465,7 +468,9 @@
       "title": "Đang xem thử: {{title}}",
       "body": "Bạn đang đi qua đề đúng như Người dự thi thấy. Không có Lượt làm bài nào được tạo và không có gì được lưu hay chấm; không giới hạn giờ (Phiên thi quy định {{minutes}} phút). Tải lại trang thì đề được trộn lại và câu trả lời mất.",
       "back": "Về Phiên thi",
-      "drawn": "Phiên thi này rút câu: đây là một lượt rút mẫu gồm {{count}} câu trong {{total}} câu của Bộ đề. Mỗi Người dự thi nhận bộ câu riêng; tải lại trang để xem một bộ mẫu khác."
+      "drawn": "Phiên thi này rút câu: đây là một lượt rút mẫu gồm {{count}} câu trong {{total}} câu của Bộ đề. Mỗi Người dự thi nhận bộ câu riêng; tải lại trang để xem một bộ mẫu khác.",
+      "variant": "Đang xem {{label}}: đúng bộ câu của Mã đề này ({{count}} câu trong {{total}} câu của Bộ đề); mọi Người dự thi được chia vào Mã đề này nhận đúng bộ câu này.",
+      "variantFull": "Đang xem {{label}}: Mã đề này lấy đủ mọi câu của Bộ đề."
     }
   },
   "pagination": {
@@ -1426,7 +1431,7 @@
       "inputLabel": "Tỷ lệ rút của Phần (phần trăm số câu mỗi Người dự thi nhận)",
       "result": "→ mỗi người nhận {{count}}/{{total}} câu",
       "all": "→ lấy đủ {{total}} câu",
-      "hint": "Mỗi Người dự thi được rút ngẫu nhiên riêng, theo tỷ lệ này (làm tròn; còn ít nhất 1 câu nếu tỷ lệ lớn hơn 0). Phiên thi có thể đổi tỷ lệ cho riêng mình.",
+      "hint": "Phiên thi rút ngẫu nhiên theo tỷ lệ này (làm tròn; còn ít nhất 1 câu nếu tỷ lệ lớn hơn 0): một lần cho cả Phiên thi (các Mã đề) hoặc riêng từng Người dự thi, tùy cách ra đề của Phiên thi. Phiên thi có thể đổi tỷ lệ cho riêng mình.",
       "hintAll": "100 % là lấy đủ mọi câu của Phần, như trước đây. Nhập số nhỏ hơn để mỗi Người dự thi chỉ nhận một phần số câu.",
       "invalid": "Nhập số từ 0 đến 100, tối đa hai chữ số lẻ.",
       "uneven": "Các câu trong Phần này đang khác điểm. Phần rút dưới 100 % cần các câu cùng điểm để mọi Người dự thi có cùng điểm tối đa; dùng “Đặt điểm nhanh” để sửa trước khi Phát hành.",
@@ -1604,6 +1609,7 @@
     "tabs": {
       "label": "Phiên thi",
       "overview": "Tổng quan",
+      "variants": "Đề",
       "roster": "Danh sách dự thi",
       "monitor": "Theo dõi",
       "results": "Kết quả"
@@ -1645,6 +1651,44 @@
       "title": "Xóa Phiên thi này?",
       "body": "Phiên thi và Danh sách dự thi bị xóa hẳn. Chỉ xóa được khi chưa có ai làm bài. Người đã được thêm vào Danh sách sẽ nhận thông báo Phiên thi bị Hủy.",
       "confirm": "Xóa Phiên thi"
+    },
+    "variants": {
+      "title": "Cách ra đề",
+      "scope": {
+        "shared": "Dùng chung các Mã đề",
+        "per_candidate": "Mỗi người một đề"
+      },
+      "scopeHint": {
+        "shared": "Rút bộ câu một lần khi lưu Phiên thi (theo tỷ lệ rút của từng Phần). Một Mã đề: cả Phiên thi cùng một bộ câu. Nhiều Mã đề: hệ thống tự chia Người dự thi vào các Mã đề.",
+        "per_candidate": "Mỗi Người dự thi được rút bộ câu riêng khi vào thi, như trước đây. Không xuất được một đề giấy chung."
+      },
+      "count": "Số Mã đề",
+      "countHint": "Từ 1 đến {{max}}. Hệ thống chia đều Người dự thi cho các Mã đề.",
+      "codeNote": "Mã đề do hệ thống tự gán cho từng người trong Danh sách dự thi, Người dự thi không phải nhập. Họ vẫn chỉ nhập Mã vào thi như trước.",
+      "locked": "Đã có người làm bài nên không đổi được cách ra đề của Phiên thi này.",
+      "overview": "Cách ra đề",
+      "overviewShared": "Dùng chung, {{count}} Mã đề",
+      "overviewSharedOne": "Dùng chung, 1 Mã đề (cả Phiên thi cùng một bộ câu)",
+      "overviewPerCandidate": "Mỗi người một đề",
+      "loading": "Đang nạp các Mã đề…",
+      "none": "Phiên thi này chưa có Mã đề.",
+      "intro": "Bộ câu của từng Mã đề, đã rút khi lưu Phiên thi. Chỉ có đề bài, không có đáp án. Hệ thống tự chia Người dự thi vào các Mã đề.",
+      "pick": "Chọn Mã đề",
+      "summary": "{{count}} câu, tổng {{points}} điểm",
+      "points": "{{points}} điểm",
+      "sectionCount": "({{count}} câu)",
+      "sectionEmpty": "Mã đề này không lấy câu nào ở Phần này.",
+      "preview": "Xem thử Mã đề này",
+      "export": "Xuất Word Mã đề này",
+      "redraw": "Rút lại Mã đề này",
+      "redrawAll": "Rút lại tất cả Mã đề",
+      "redrawLocked": "Đã có người làm bài nên không rút lại được.",
+      "redrawTitle": "Rút lại {{label}}?",
+      "redrawAllTitle": "Rút lại tất cả Mã đề?",
+      "redrawBody": "Bộ câu được rút lại ngẫu nhiên theo tỷ lệ rút hiện tại. Cách chia Người dự thi vào các Mã đề giữ nguyên. Chỉ làm được khi chưa có ai làm bài.",
+      "redrawConfirm": "Rút lại",
+      "redrawDone": "Đã rút lại bộ câu.",
+      "exportPick": "Mã đề cần xuất"
     },
     "draw": {
       "title": "Rút câu theo Phần",
@@ -1742,7 +1786,8 @@
     },
     "invalid": {
       "closesAt": "Giờ đóng phải sau giờ mở.",
-      "accessCode": "Mã gồm 4 đến 12 ký tự chữ và số."
+      "accessCode": "Mã gồm 4 đến 12 ký tự chữ và số.",
+      "variantCount": "Nhập số nguyên từ 1 đến {{max}}."
     }
   },
   "monitor": {

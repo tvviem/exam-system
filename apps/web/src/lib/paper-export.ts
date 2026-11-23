@@ -19,7 +19,8 @@ export interface PaperForm {
   blocks: PaperBlocks;
 }
 
-export type PaperSource = { sessionId: string } | { examId: string };
+/** Từ Phiên thi (nêu `variant` khi Phiên thi dùng chung nhiều Mã đề) hoặc từ Bộ đề. */
+export type PaperSource = { sessionId: string; variant?: number } | { examId: string };
 
 export const emptyPaperForm = (): PaperForm => ({
   course: '',

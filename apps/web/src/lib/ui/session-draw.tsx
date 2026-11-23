@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { examQuery } from '../exams';
 import { type DrawPlan, type DrawSection, sessionDrawPlanOf } from '../session-draw';
+import type { DrawScope } from '../session-variants';
 import { Button } from '.';
 
 const fmt = (n: number) => String(n).replace('.', ',');
@@ -37,11 +38,14 @@ export function drawCountText(
 export function SessionDrawBlock({
   examId,
   overrides,
+  scope,
   locked,
   onChange,
 }: {
   examId: string;
   overrides: Record<string, string>;
+  /** Cách ra đề của Phiên thi: quyết định luật lệch điểm (Q469). */
+  scope: DrawScope;
   locked: boolean;
   onChange: (overrides: Record<string, string>) => void;
 }) {
@@ -56,7 +60,7 @@ export function SessionDrawBlock({
       </p>
     );
   }
-  const plan = sessionDrawPlanOf(sections, overrides);
+  const plan = sessionDrawPlanOf(sections, overrides, scope);
   const drawing = plan.rows.filter((row) => row.percent < 100);
   const touched = Object.keys(overrides).length > 0;
   const split = sections.length > 1;

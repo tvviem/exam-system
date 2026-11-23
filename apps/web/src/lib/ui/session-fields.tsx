@@ -8,10 +8,17 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { examsQuery } from '../exams';
 import { overridesInputOf } from '../session-draw';
+import {
+  DEFAULT_DRAW_SCOPE,
+  type DrawScope,
+  variantFieldsInput,
+  variantFieldsOfSession,
+} from '../session-variants';
 import type { SessionInput, SessionSummary } from '../sessions';
 import { isoToVnInput, vnInputToIso } from '../vn-time';
 import { Button, SelectField, TextField } from '.';
 import { SessionDrawBlock } from './session-draw';
+import { SessionVariantsBlock } from './session-variants';
 
 /** Bản nháp trên màn hình: giờ là giá trị ô nhập (giờ Việt Nam), số là chuỗi để gõ dở không mất. */
 export interface SessionDraft {
@@ -30,6 +37,10 @@ export interface SessionDraft {
   accessCode: string;
   /** Ghi đè tỷ lệ rút theo Phần (Q438): mã Phần → chuỗi đang gõ; vắng là kế thừa mặc định của Bộ đề. */
   drawOverrides: Record<string, string>;
+  /** Cách ra đề (Q463): dùng chung các Mã đề (mặc định) hay mỗi người một đề. */
+  drawScope: DrawScope;
+  /** Số Mã đề (1 đến 10) là chuỗi đang gõ; chỉ có nghĩa khi dùng chung. */
+  variantCount: string;
 }
 
 export const emptySessionDraft: SessionDraft = {
@@ -47,6 +58,8 @@ export const emptySessionDraft: SessionDraft = {
   reviewAfterRelease: false,
   accessCode: '',
   drawOverrides: {},
+  drawScope: DEFAULT_DRAW_SCOPE,
+  variantCount: '1',
 };
 
 export const draftOf = (session: SessionSummary): SessionDraft => ({
@@ -68,6 +81,7 @@ export const draftOf = (session: SessionSummary): SessionDraft => ({
       .filter((row) => row.overridePercent !== null)
       .map((row) => [row.sectionId, String(row.overridePercent)]),
   ),
+  ...variantFieldsOfSession(session),
 });
 
 export const inputOf = (draft: SessionDraft): SessionInput => ({
@@ -86,6 +100,7 @@ export const inputOf = (draft: SessionDraft): SessionInput => ({
   ...(draft.accessCode.trim() ? { accessCode: draft.accessCode } : {}),
   // Luôn gửi đủ bộ ghi đè hiện tại (rỗng nếu không có): sửa Phiên thi thay toàn bộ, nên không còn ghi đè cũ sót lại.
   sectionDraws: overridesInputOf(draft.drawOverrides),
+  ...variantFieldsInput(draft),
 });
 
 export type SessionFieldName = keyof SessionSettings;
@@ -104,6 +119,8 @@ export const GROUP_FIELDS: Record<SessionGroup, SessionFieldName[]> = {
     'reviewAfterRelease',
     'accessCode',
     'sectionDraws',
+    'drawScope',
+    'variantCount',
   ],
 };
 
@@ -291,9 +308,16 @@ export function SessionFields({
   const multiple = Number(draft.maxAttempts) > 1;
   return (
     <div className="flex flex-col gap-4">
+      <SessionVariantsBlock
+        scope={draft.drawScope}
+        count={draft.variantCount}
+        locked={drawLocked}
+        onChange={patch}
+      />
       <SessionDrawBlock
         examId={draft.examId}
         overrides={draft.drawOverrides}
+        scope={draft.drawScope}
         locked={drawLocked}
         onChange={(drawOverrides) => patch({ drawOverrides })}
       />
