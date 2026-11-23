@@ -1,6 +1,6 @@
 # Mã đề của Phiên thi: cả Phiên thi dùng chung một hay nhiều bộ câu (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt ngày 23/11/2026, gồm cả bốn điểm diễn giải ở mục 12). **Tiến độ:** V1 xong về mã (PR #145); V2 đến V5 chưa làm. Ngày đề xuất: 23/11/2026. Mọi câu hỏi nghiệp vụ **Q462–Q477** đã được chủ dự án trả lời từng câu trong phiên làm việc ngày 23/11/2026 (mục 2). Câu quyết định đánh số tiếp từ **Q478**.
+**Trạng thái: `accepted`** (chủ dự án duyệt ngày 23/11/2026, gồm cả bốn điểm diễn giải ở mục 12). **Tiến độ: đã làm xong V1 đến V5 (23/11/2026)**: V1 (#145), V2 (#147, #148), V3 (#149, #150), V4 (#151, #152), V5 (#153 và PR giao diện, tài liệu). Hướng dẫn cho người dùng ở [../huong-dan/ma-de-phien-thi.md](../huong-dan/ma-de-phien-thi.md). Các điều chỉnh khi triển khai ở mục 13. Ngày đề xuất: 23/11/2026. Mọi câu hỏi nghiệp vụ **Q462–Q477** đã được chủ dự án trả lời từng câu trong phiên làm việc ngày 23/11/2026 (mục 2). Câu quyết định đánh số tiếp từ **Q478**.
 
 ## 1. Yêu cầu của chủ dự án
 
@@ -149,11 +149,11 @@ Mỗi lát một PR nhỏ có kiểm thử, kèm ảnh chụp thật; chủ dự
 
 | Lát | Nội dung | Kết quả nhìn thấy |
 |---|---|---|
-| **V1** (**đã làm xong về mã**, PR #145) | Migration `0030`, hàm thuần (rút, chia cân bằng, ít người nhất), API tạo/sửa Phiên thi `shared` (1 đến 10 Mã đề), quy tắc điểm (4.6), vào thi dùng Mã đề, số câu và điểm tối đa theo Mã đề (Kết quả, Phúc khảo, Theo dõi, danh sách), Xem thử theo Mã đề đầu, Nhân bản | Gọi API tạo Phiên thi `shared`: mọi người dùng chung bộ câu; Phát hành Bộ đề có tự luận 2 điểm qua được. **Chưa có giao diện**: Phiên thi tạo từ giao diện vẫn `per_candidate` cho tới V2 |
-| **V2** | Form Phiên thi có **Cách ra đề** (mặc định dùng chung) và **Số Mã đề (1 đến 10)**; gán tự động cho Danh sách dự thi khi lưu (Q479); tab Đề: xem danh sách câu, Rút lại; Xem thử theo Mã đề; **xuất Word đúng đề của từng Mã đề** | Trả lời xong câu hỏi "xuất bộ đề đã rút"; dùng được 1 hay nhiều Mã đề trọn flow |
-| **V3** | Nút Chia lại, cột Mã đề và đổi tay từng người trong Danh sách dự thi, người thêm sau, báo số người mỗi Mã đề | Đề A/B/C chỉnh được |
-| **V4** | Người dự thi thấy mã đề; Excel Kết quả, Theo dõi: cột và lọc | Đối chiếu, khiếu nại |
-| **V5** | Xuất tất cả mã đề (zip) và Excel phân mã đề; tài liệu, đo, tag `0.5.0` | Hoàn tất |
+| **V1** (**đã làm**, PR #145) | Migration `0030`, hàm thuần (rút, chia cân bằng, ít người nhất), API tạo/sửa Phiên thi `shared` (1 đến 10 Mã đề), quy tắc điểm (4.6), vào thi dùng Mã đề, số câu và điểm tối đa theo Mã đề (Kết quả, Phúc khảo, Theo dõi, danh sách), Xem thử theo Mã đề đầu, Nhân bản | Gọi API tạo Phiên thi `shared`: mọi người dùng chung bộ câu; Phát hành Bộ đề có tự luận 2 điểm qua được. **Chưa có giao diện**: Phiên thi tạo từ giao diện vẫn `per_candidate` cho tới V2 |
+| **V2** (**đã làm**) | Form Phiên thi có **Cách ra đề** (mặc định dùng chung) và **Số Mã đề (1 đến 10)**; gán tự động cho Danh sách dự thi khi lưu (Q479); tab Đề: xem danh sách câu, Rút lại; Xem thử theo Mã đề; **xuất Word đúng đề của từng Mã đề** | Trả lời xong câu hỏi "xuất bộ đề đã rút"; dùng được 1 hay nhiều Mã đề trọn flow |
+| **V3** (**đã làm**) | Nút Chia lại, cột Mã đề và đổi tay từng người trong Danh sách dự thi, người thêm sau, báo số người mỗi Mã đề | Đề A/B/C chỉnh được |
+| **V4** (**đã làm**) | Người dự thi thấy mã đề; Excel Kết quả, Theo dõi: cột và lọc | Đối chiếu, khiếu nại |
+| **V5** (**đã làm**) | Xuất tất cả mã đề (zip) và Excel phân mã đề; tài liệu, đo, tag `0.5.0` | Hoàn tất |
 
 Bộ đề `per_candidate` không đổi ở mọi lát. Phiên bản dự kiến: **`0.5.0` (MINOR)** (thêm bảng và cột), sau `0.4.0` của PR #143.
 
@@ -199,3 +199,19 @@ Tính lại cho gọn dữ liệu nhưng có ba rủi ro: đổi thuật toán s
 3. **Nhân bản Phiên thi** rút mới, không sao chép danh sách chia người.
 4. **Không lùi `0.3.x`** sau khi có Phiên thi `shared` đang chạy (mục 4.7).
 5. **Gán Mã đề cho Danh sách (Q478, Q479):** gán sẵn khi lưu Phiên thi `shared` có từ hai Mã đề; một Mã đề thì mọi người cùng Mã đề, không cần gán. Phiên thi `shared` có Danh sách dự thi đã lưu từ trước (V1, hoặc thêm người sau khi đã có Mã đề) cũng được gán khi lưu lại. Người chưa có Mã đề lúc bắt đầu làm bài (hiếm: thêm bằng đường khác) vẫn nhận Mã đề ít người nhất như V1.
+
+## 13. Điều chỉnh khi triển khai (ghi lại 23/11/2026)
+
+Những điểm khác hoặc cụ thể hơn so với bản thiết kế được duyệt, đều do chủ dự án duyệt trong lúc làm hoặc là chi tiết triển khai:
+
+1. **Mã vào thi và Mã đề tách hẳn (Q478).** Người dự thi vẫn chỉ nhập Mã vào thi; Mã đề do hệ thống gán.
+2. **Gán sẵn cho Danh sách (Q479).** Phiên thi có từ hai Mã đề: gán ngay khi thêm người (Mã đề ít người nhất) và chia lại cả Danh sách khi đổi số Mã đề hay Cách ra đề; sửa việc khác không xáo lại. Nút **Chia lại** (trước Lượt đầu) ghi đè mọi lần đổi tay.
+3. **API mặc định `per_candidate`** khi không nêu `drawScope` (tương thích ứng dụng gọi API cũ); giao diện tạo Phiên thi mặc định `shared` một Mã đề.
+4. **Mã đề chỉ hiện khi Phiên thi có từ hai Mã đề** ở mọi nơi (Người dự thi, Theo dõi, Danh sách, Excel Kết quả); một Mã đề thì ẩn (Excel để ô trống).
+5. **Excel Kết quả:** cột **Mã đề** đặt ngay sau *Lớp*, nên các cột sau dịch một ô.
+6. **Theo dõi:** ô lọc Mã đề chạy phía giao diện (cùng cách với Lớp); máy chủ vẫn nhận `?variant=N`, chỉ lọc danh sách người, còn tóm tắt luôn của cả phòng.
+7. **Quy tắc điểm (Q469):** Phát hành Bộ đề chỉ cảnh báo `draw_points_uneven`; Phiên thi `shared` từ hai Mã đề chặn khi các Mã đề khác tổng điểm (`variant_points_uneven`).
+8. **Xuất:** `POST /paper/variants` (zip: tệp Đề mỗi Mã đề, Excel phân Mã đề, kèm Đáp án nếu `answers` và `confirm`), `POST /paper/assignment` (Excel). Hai API cũ `POST /paper/exam` và `/answers` nhận thêm `variant`; nhiều Mã đề mà không nêu `variant` thì 400 `variant_required`.
+9. **Đổi tay:** `PUT /sessions/:id/roster/:userId/variant` (người đã có Lượt 409; người chưa làm vẫn đổi được sau Lượt đầu của người khác). Chia lại: `POST /sessions/:id/variants/rebalance`. Rút lại: `POST /sessions/:id/variants/redraw`. Xem bộ câu: `GET /sessions/:id/variants`; Xem thử: `GET /sessions/:id/try?variant=N`.
+10. **Số đo** ghi ở [../architecture.md](../architecture.md), "Ngân sách phản hồi": 10 Mã đề, Bộ đề 100 câu, 500 người; mọi thao tác dưới ngân sách (xuất zip 352 ms).
+

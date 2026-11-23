@@ -152,8 +152,11 @@ test('Phiên thi một Mã đề hay mỗi người một đề: không có dòn
   const tag = `${p}-${testInfo.repeatEachIndex}-${testInfo.retry}`;
   const owner = await browser.newPage({ baseURL: ORIGIN });
   await signIn(owner, `e2e-mdw-${p}`);
-  const one = await seedSession(owner, p, `Một Mã đề ${tag}`, { shared: true, variantCount: 1 });
-  const per = await seedSession(owner, p, `Mỗi người ${tag}`, { shared: false });
+  const one = await seedSession(owner, p, `Dự thi một Mã đề ${tag}`, {
+    shared: true,
+    variantCount: 1,
+  });
+  const per = await seedSession(owner, p, `Dự thi mỗi người ${tag}`, { shared: false });
   await owner.context().close();
 
   for (const [index, session] of [one, per].entries()) {

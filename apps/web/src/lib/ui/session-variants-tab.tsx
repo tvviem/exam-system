@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Dices, Download, Eye } from 'lucide-react';
+import { Archive, Dices, Download, Eye } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
@@ -29,6 +29,7 @@ export function SessionVariantsTab({ session }: { session: SessionSummary }) {
   const [picked, setPicked] = useState(1);
   const [confirm, setConfirm] = useState<'one' | 'all' | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportingAll, setExportingAll] = useState(false);
 
   const redraw = useMutation({
     mutationFn: (number?: number) => redrawVariants(session.id, number),
@@ -111,6 +112,12 @@ export function SessionVariantsTab({ session }: { session: SessionSummary }) {
             {t('session.variants.redraw')}
           </Button>
           {many && (
+            <Button onClick={() => setExportingAll(true)}>
+              <Archive aria-hidden className="size-5" />
+              {t('session.variants.exportAll')}
+            </Button>
+          )}
+          {many && (
             <Button disabled={locked} onClick={() => setConfirm('all')}>
               {t('session.variants.redrawAll')}
             </Button>
@@ -183,6 +190,13 @@ export function SessionVariantsTab({ session }: { session: SessionSummary }) {
           </Button>
         </div>
       </Dialog>
+
+      <PaperExportDialog
+        open={exportingAll}
+        onClose={() => setExportingAll(false)}
+        source={{ sessionId: session.id, variants: 'all' }}
+        title={session.title}
+      />
 
       <PaperExportDialog
         open={exporting}

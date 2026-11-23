@@ -270,15 +270,15 @@ Bộ câu rút thử của một người ngẫu nhiên mà Người ra đề th
 _Avoid_: rút thử, bốc thử
 
 **Mã đề** (`Variant`):
-Một bộ câu cố định của Phiên thi, rút theo Tỷ lệ rút của từng Phần ngay khi lưu Phiên thi. Phiên thi có từ 1 đến 10 Mã đề (nhãn mặc định "Đề 1", "Đề 2", Người ra đề sửa được); mỗi Người dự thi được chia vào đúng một Mã đề và giữ nguyên ở mọi Lượt làm bài. Mọi Mã đề của một Phiên thi dùng cùng Tỷ lệ rút và phải cùng tổng điểm. Số Mã đề, Tỷ lệ rút, "Rút lại" và việc chia hàng loạt chỉnh được cho đến khi có Lượt làm bài đầu tiên. _(Đã duyệt thiết kế, chưa có mã: docs/plan/ma-de-phien-thi-thiet-ke.md.)_
+Một bộ câu cố định của Phiên thi, rút theo Tỷ lệ rút của từng Phần ngay khi lưu Phiên thi. Phiên thi có từ 1 đến 10 Mã đề (nhãn mặc định "Đề 1", "Đề 2", Người ra đề sửa được); mỗi Người dự thi được chia vào đúng một Mã đề và giữ nguyên ở mọi Lượt làm bài. Mọi Mã đề của một Phiên thi dùng cùng Tỷ lệ rút và phải cùng tổng điểm. Số Mã đề, Tỷ lệ rút, "Rút lại" và "Chia lại" cả Danh sách chỉnh được cho đến khi có Lượt làm bài đầu tiên; đổi tay Mã đề của người chưa làm bài thì vẫn được. Mã đề **khác Mã vào thi**: Người dự thi chỉ nhập Mã vào thi, còn Mã đề do hệ thống gán. Phiên thi có từ hai Mã đề thì Người dự thi, Theo dõi, Danh sách và Excel Kết quả mới hiện Mã đề. _(Hướng dẫn: docs/huong-dan/ma-de-phien-thi.md.)_
 _Avoid_: phiên bản đề, đề A/B, bộ câu
 
 **Đề của Phiên thi** (`Session paper`):
-Tập các Mã đề của một Phiên thi. Khác **Bộ đề** (bản gốc đã Phát hành, đủ mọi câu và Phần) ở chỗ chỉ gồm các câu đã rút theo Tỷ lệ rút. Xuất Word một Phiên thi dùng chung các Mã đề cho ra từng Mã đề. _(Đã duyệt thiết kế, chưa có mã.)_
+Tập các Mã đề của một Phiên thi. Khác **Bộ đề** (bản gốc đã Phát hành, đủ mọi câu và Phần) ở chỗ chỉ gồm các câu đã rút theo Tỷ lệ rút. Xuất Word một Phiên thi dùng chung các Mã đề cho ra từng Mã đề, hoặc tất cả Mã đề trong một tệp zip kèm Excel phân Mã đề.
 _Avoid_: đề gốc, đề thi
 
 **Cách ra đề** (`Draw scope`):
-Thiết lập của Phiên thi: **dùng chung các Mã đề** (mọi người cùng một hay vài bộ câu cố định) hay **mỗi người một đề** (mỗi Người dự thi một bộ câu riêng, như Rút câu hiện có). Phiên thi đã tạo trước đây là mỗi người một đề. _(Đã duyệt thiết kế, chưa có mã.)_
+Thiết lập của Phiên thi: **dùng chung các Mã đề** (mọi người cùng một hay vài bộ câu cố định) hay **mỗi người một đề** (mỗi Người dự thi một bộ câu riêng, như Rút câu hiện có). Phiên thi đã tạo trước đây là mỗi người một đề; giao diện tạo Phiên thi mới mặc định dùng chung một Mã đề.
 _Avoid_: chế độ rút
 
 **Lượt làm bài** (`Attempt`):
