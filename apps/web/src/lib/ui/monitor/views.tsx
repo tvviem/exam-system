@@ -49,7 +49,9 @@ function Check({
 }
 
 const classOf = (p: MonitorPerson) => p.classLabel ?? '';
-const identity = (p: MonitorPerson) => [p.code, p.classLabel].filter(Boolean).join(' · ');
+/** Dòng định danh: Mã định danh · Lớp · Mã đề (khi Phiên thi có từ hai Mã đề). `withVariant: false` khi Mã đề đã có cột riêng. */
+const identity = (p: MonitorPerson, withVariant = true) =>
+  [p.code, p.classLabel, withVariant ? p.variant?.label : null].filter(Boolean).join(' · ');
 
 // ---------------------------------------------------------------- Thẻ
 export function CardsView({
@@ -124,7 +126,8 @@ export function TableView({
   onToggleAll,
 }: ViewProps) {
   const { t } = useTranslation();
-  const nameCell = (p: MonitorPerson) => (
+  // Ở bảng, Mã đề có cột riêng; ở dạng thẻ (điện thoại) thì nằm trong dòng định danh.
+  const nameCell = (p: MonitorPerson, withVariant = false) => (
     <button
       type="button"
       onClick={() => onPress(p.userId)}
@@ -133,7 +136,7 @@ export function TableView({
       }`}
     >
       <span>{p.fullName}</span>
-      <span className="text-[13px] text-fg-muted">{identity(p)}</span>
+      <span className="text-[13px] text-fg-muted">{identity(p, withVariant)}</span>
     </button>
   );
   const allSelected = people.length > 0 && people.every((p) => selected.has(p.userId));
@@ -158,7 +161,18 @@ export function TableView({
           : undefined
       }
       columns={[
-        { key: 'name', header: t('monitor.col.name'), cell: nameCell },
+        { key: 'name', header: t('monitor.col.name'), cell: (p) => nameCell(p) },
+        ...(people.some((p) => p.variant)
+          ? [
+              {
+                key: 'variant',
+                header: t('monitor.col.variant'),
+                cell: (p: MonitorPerson) => (
+                  <span data-testid="monitor-variant">{p.variant?.label ?? '—'}</span>
+                ),
+              },
+            ]
+          : []),
         {
           key: 'state',
           header: t('monitor.col.state'),
@@ -196,7 +210,7 @@ export function TableView({
           )}
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
-              {nameCell(p)}
+              {nameCell(p, true)}
               <StateBadge state={p.state} waiting={p.waiting} />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 pb-1 text-sm">

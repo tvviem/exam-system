@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
 import { formatDateTime } from '../../../../lib/format';
+import { candidateVariantLabel } from '../../../../lib/session-variants';
 import { attemptQueryKey, startAttempt, takeSessionsQuery } from '../../../../lib/take';
 import { formatCountdown } from '../../../../lib/take/countdown';
 import { useWaitingRoom } from '../../../../lib/take/use-waiting-room';
@@ -74,6 +75,14 @@ function ConfirmPage() {
           <dd className="font-medium">
             {t('take.session.questionCount', { count: session.questionCount })}
           </dd>
+          {candidateVariantLabel(session.variant) && (
+            <>
+              <dt className="text-fg-muted">{t('take.confirm.variant')}</dt>
+              <dd className="font-medium" data-testid="my-variant">
+                {candidateVariantLabel(session.variant)}
+              </dd>
+            </>
+          )}
           <dt className="text-fg-muted">{t('take.confirm.duration')}</dt>
           <dd className="font-medium">
             {t('take.session.minutes', { count: session.durationMinutes })}

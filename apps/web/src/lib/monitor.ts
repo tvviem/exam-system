@@ -17,6 +17,8 @@ export interface MonitorPerson {
   code: string | null;
   fullName: string;
   classLabel: string | null;
+  /** Mã đề của người này (Phiên thi có từ hai Mã đề); `null` nếu không có (Q474). */
+  variant: { number: number; label: string } | null;
   state: MonitorState;
   attemptId: string | null;
   attemptNo: number | null;
@@ -55,6 +57,8 @@ export interface MonitorSnapshot {
     joined: number;
     waitingOnline: number;
   };
+  /** Số người từng Mã đề; rỗng khi Phiên thi không có từ hai Mã đề. */
+  variants: { number: number; label: string; count: number }[];
   people: MonitorPerson[];
 }
 

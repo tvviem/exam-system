@@ -76,3 +76,31 @@ export function variantLoadSummary(loads: readonly VariantLoad[] | undefined): {
 
 /** Người đã có Lượt làm bài thì Mã đề đã chụp vào Lượt, không đổi được; người chưa làm vẫn đổi được. */
 export const canChangeVariant = (row: { attemptCount: number }): boolean => row.attemptCount === 0;
+
+/** Mã đề của chính Người dự thi (Q471): nhãn nếu có, ngược lại ẩn (một Mã đề hay mỗi người một đề thì máy chủ không gửi). */
+export const candidateVariantLabel = (
+  variant: { number?: number; label: string } | null | undefined,
+): string | null => variant?.label ?? null;
+
+/** Số câu của bài (cộng mọi Phần): "bài gồm N câu" ở đầu màn làm bài. */
+export const attemptItemCount = (sections: readonly { items: readonly unknown[] }[]): number =>
+  sections.reduce((sum, section) => sum + section.items.length, 0);
+
+/** Các Mã đề có trong Theo dõi để chọn lọc: không trùng, theo số thứ tự; người không có Mã đề bị bỏ. */
+export function monitorVariantOptions<
+  T extends { variant: { number: number; label: string } | null },
+>(people: readonly T[]): { number: number; label: string }[] {
+  const byNumber = new Map<number, string>();
+  for (const person of people) {
+    if (person.variant) byNumber.set(person.variant.number, person.variant.label);
+  }
+  return [...byNumber]
+    .map(([number, label]) => ({ number, label }))
+    .sort((a, b) => a.number - b.number);
+}
+
+/** Bộ lọc Mã đề ở Theo dõi: `selected` rỗng là tất cả; ngược lại chỉ người có đúng số Mã đề đó. */
+export const matchesVariant = (
+  person: { variant: { number: number } | null },
+  selected: string,
+): boolean => selected === '' || person.variant?.number === Number(selected);

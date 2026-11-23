@@ -16,6 +16,7 @@ import {
   matchesFilter,
 } from '../../monitor-view';
 import { realtime } from '../../realtime';
+import { matchesVariant, monitorVariantOptions } from '../../session-variants';
 import { Button, Dialog, ErrorMessage, SearchField, SelectField } from '..';
 import { ListSkeleton } from '../admin';
 import { Chip } from '../chips';
@@ -100,6 +101,7 @@ function MonitorBody({
   const [view, setView] = useState<MonitorView>(() => defaultViewFor(people.length));
   const [filter, setFilter] = useState<FilterKey | null>(null);
   const [cls, setCls] = useState('');
+  const [variantNo, setVariantNo] = useState('');
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selectMode, setSelectMode] = useState(false);
@@ -125,18 +127,20 @@ function MonitorBody({
       ),
     [people],
   );
+  const variantOptions = useMemo(() => monitorVariantOptions(people), [people]);
   const shown = useMemo(() => {
     const q = foldText(query.trim());
     return people.filter(
       (p) =>
         (!filter || matchesFilter(p, filter)) &&
         (!cls || p.classLabel === cls) &&
+        matchesVariant(p, variantNo) &&
         (!q || foldText(`${p.fullName} ${p.code ?? ''}`).includes(q)),
     );
-  }, [people, filter, cls, query]);
+  }, [people, filter, cls, variantNo, query]);
   // Đổi bộ lọc thì quay về đợt đầu.
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy khi bộ lọc đổi
-  useEffect(() => setLimit(PAGE_SIZE), [filter, cls, query, view]);
+  useEffect(() => setLimit(PAGE_SIZE), [filter, cls, variantNo, query, view]);
   const visible = view === 'grid' ? shown : shown.slice(0, limit);
   const byId = useMemo(() => new Map(people.map((p) => [p.userId, p])), [people]);
 
@@ -188,7 +192,7 @@ function MonitorBody({
   };
   const person = openId ? byId.get(openId) : undefined;
   const selectedIds = [...selected];
-  const hasFilters = !!(filter || cls || query);
+  const hasFilters = !!(filter || cls || variantNo || query);
 
   const searchField = (
     <SearchField
@@ -213,6 +217,24 @@ function MonitorBody({
       ))}
     </SelectField>
   );
+
+  // Chỉ có ô lọc Mã đề khi Phiên thi có từ hai Mã đề (Q474).
+  const variantField =
+    variantOptions.length >= 2 ? (
+      <SelectField
+        id="monitor-variant"
+        label={t('monitor.variantFilter')}
+        value={variantNo}
+        onChange={(e) => setVariantNo(e.target.value)}
+      >
+        <option value="">{t('monitor.allVariants')}</option>
+        {variantOptions.map((v) => (
+          <option key={v.number} value={v.number}>
+            {v.label}
+          </option>
+        ))}
+      </SelectField>
+    ) : null;
 
   return (
     <SnapshotClock.Provider value={clock}>
@@ -293,6 +315,7 @@ function MonitorBody({
             <>
               <div className="basis-full sm:min-w-56 sm:flex-1 sm:basis-0">{searchField}</div>
               <div className="w-40">{classField}</div>
+              {variantField && <div className="w-36">{variantField}</div>}
             </>
           ) : (
             <Button onClick={() => setFiltersOpen(true)} aria-label={t('monitor.filters')}>
@@ -359,6 +382,7 @@ function MonitorBody({
               onClick={() => {
                 setFilter(null);
                 setCls('');
+                setVariantNo('');
                 setQuery('');
               }}
             >
@@ -461,6 +485,7 @@ function MonitorBody({
         >
           {searchField}
           {classField}
+          {variantField}
           <Button variant="primary" onClick={() => setFiltersOpen(false)}>
             {t('common.done')}
           </Button>
