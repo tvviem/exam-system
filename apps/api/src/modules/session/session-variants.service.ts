@@ -156,6 +156,33 @@ export class SessionVariantsService {
     }));
   }
 
+  /**
+   * Mã đề của từng người trong Danh sách và số người từng Mã đề, **chỉ khi Phiên thi có từ hai Mã đề** (một Mã đề thì không có gì để
+   * phân biệt, nên không hiện cho ai: Q471). Phiên thi mỗi người một đề hay một Mã đề trả rỗng.
+   */
+  async rosterVariantsOf(db: Db, sessionId: string) {
+    const loads = await this.loadsOf(db, sessionId);
+    if (loads.length < 2) {
+      return {
+        loads: [] as typeof loads,
+        byUser: new Map<string, { number: number; label: string }>(),
+      };
+    }
+    const rows = await db
+      .select({
+        userId: sessionRoster.userId,
+        number: sessionVariants.number,
+        label: sessionVariants.label,
+      })
+      .from(sessionRoster)
+      .innerJoin(sessionVariants, eq(sessionVariants.id, sessionRoster.variantId))
+      .where(eq(sessionRoster.sessionId, sessionId));
+    return {
+      loads,
+      byUser: new Map(rows.map((row) => [row.userId, { number: row.number, label: row.label }])),
+    };
+  }
+
   /** Đổi hạt giống rút của một Mã đề (`number`) hoặc của tất cả; bộ câu rút lại ở `sync`. */
   async reseed(tx: Transaction, sessionId: string, number?: number): Promise<void> {
     const rows = await tx

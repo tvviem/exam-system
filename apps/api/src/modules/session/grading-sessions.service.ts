@@ -117,10 +117,15 @@ export class GradingSessionsService implements GradingSessions {
   }
 
   async roster(sessionId: string, executor: GradingSessionExecutor = this.db) {
-    return executor
+    const members = await executor
       .select({ userId: sessionRoster.userId, classLabel: sessionRoster.classLabel })
       .from(sessionRoster)
       .where(eq(sessionRoster.sessionId, sessionId));
+    const { byUser } = await this.variants.rosterVariantsOf(executor, sessionId);
+    return members.map((member) => ({
+      ...member,
+      variantLabel: byUser.get(member.userId)?.label ?? null,
+    }));
   }
 
   async isInRoster(sessionId: string, userId: string, executor: GradingSessionExecutor = this.db) {

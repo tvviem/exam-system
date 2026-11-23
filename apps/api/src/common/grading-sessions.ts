@@ -45,11 +45,11 @@ export interface GradingSessions {
   byExam(examId: string, executor?: GradingSessionExecutor): Promise<GradingSessionInfo[]>;
   /** Các Phiên thi có trong `sessionIds` (mới mở trước). */
   infoMany(sessionIds: string[]): Promise<GradingSessionInfo[]>;
-  /** Mọi người trong Danh sách dự thi, kèm Lớp chụp lúc thêm. */
+  /** Mọi người trong Danh sách dự thi, kèm Lớp chụp lúc thêm và nhãn Mã đề (chỉ khi Phiên thi có từ hai Mã đề, Q474). */
   roster(
     sessionId: string,
     executor?: GradingSessionExecutor,
-  ): Promise<{ userId: string; classLabel: string | null }[]>;
+  ): Promise<{ userId: string; classLabel: string | null; variantLabel: string | null }[]>;
   isInRoster(
     sessionId: string,
     userId: string,

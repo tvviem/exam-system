@@ -24,6 +24,7 @@ import { type Database, DB, type Transaction } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
 import { sessionRoster, sessions } from './session.schema';
 import { findOwnedSession, lockOwnedSession, requireNotOver } from './session-access';
+import { SessionVariantsService } from './session-variants.service';
 
 /** Thao tác của Người ra đề lúc Phiên thi đang diễn ra (PR 4d): Cộng giờ, Buộc nộp, Vi phạm, Đóng cửa vào thi. */
 @Injectable()
@@ -36,6 +37,7 @@ export class SessionMonitorService {
     private readonly audit: AuditService,
     @Inject(REALTIME_NOTIFIER) private readonly realtime: RealtimeNotifier,
     @Inject(ATTEMPT_SUBMITTED_HOOKS) private readonly submitted: AttemptSubmittedHooks,
+    private readonly variants: SessionVariantsService,
   ) {}
 
   /** Người này là chủ của Phiên thi (được vào phòng Theo dõi của kênh đẩy). */
@@ -52,7 +54,11 @@ export class SessionMonitorService {
    * Ảnh chụp cả phòng cho màn Theo dõi (Q252, Q253): trạng thái từng người, tiến độ, thiết bị và dấu hiệu Cần chú ý.
    * Mở lại màn hình trên thiết bị khác hay sau khi mất mạng đều gọi lại hàm này để có đủ trạng thái. Không mang đáp án.
    */
-  async monitor(ownerId: string, sessionId: string) {
+  /**
+   * Theo dõi: mỗi người kèm Mã đề (Phiên thi có từ hai Mã đề) và `variants` là số người từng Mã đề. `variant` chỉ lọc danh sách
+   * người; tóm tắt luôn là của cả phòng vì các thao tác "cả phòng" (Cộng giờ, Buộc nộp) cũng áp cho cả phòng.
+   */
+  async monitor(ownerId: string, sessionId: string, variant?: number) {
     const session = await findOwnedSession(this.db, ownerId, sessionId);
     const members = await this.db
       .select({ userId: sessionRoster.userId, classLabel: sessionRoster.classLabel })
@@ -72,6 +78,7 @@ export class SessionMonitorService {
       this.attempts.devicesOf(sessionId),
     ]);
     const waitingSeen = await this.attempts.waitingLastSeen(sessionId);
+    const { loads, byUser: variantOf } = await this.variants.rosterVariantsOf(this.db, sessionId);
     const summary = {
       total: 0,
       notStarted: 0,
@@ -153,6 +160,7 @@ export class SessionMonitorService {
         code: profile.code,
         fullName: profile.fullName,
         classLabel: classOf.get(profile.id) ?? null,
+        variant: variantOf.get(profile.id) ?? null,
         state,
         attemptId: attempt?.attemptId ?? null,
         attemptNo: attempt?.attemptNo ?? null,
@@ -175,7 +183,8 @@ export class SessionMonitorService {
       entryClosed: session.entryClosedAt !== null && session.entryClosedAt <= now,
       totalItems: live.totalItems,
       summary,
-      people,
+      variants: loads,
+      people: variant === undefined ? people : people.filter((p) => p.variant?.number === variant),
     };
   }
 

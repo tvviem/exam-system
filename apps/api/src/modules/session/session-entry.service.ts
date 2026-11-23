@@ -107,6 +107,24 @@ export class SessionEntryService implements SessionEntry {
     return result;
   }
 
+  async variantLabelOf(sessionId: string, userId: string, executor: EntryExecutor = this.db) {
+    const variants = await executor
+      .select({
+        id: sessionVariants.id,
+        number: sessionVariants.number,
+        label: sessionVariants.label,
+      })
+      .from(sessionVariants)
+      .where(eq(sessionVariants.sessionId, sessionId));
+    if (variants.length < 2) return null;
+    const [member] = await executor
+      .select({ variantId: sessionRoster.variantId })
+      .from(sessionRoster)
+      .where(and(eq(sessionRoster.sessionId, sessionId), eq(sessionRoster.userId, userId)));
+    const found = variants.find((variant) => variant.id === member?.variantId);
+    return found ? { number: found.number, label: found.label } : null;
+  }
+
   async variantsOf(
     sessionId: string,
     executor: EntryExecutor = this.db,

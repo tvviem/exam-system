@@ -507,6 +507,7 @@ describe('Xuất Excel (Q304)', () => {
       'Mã định danh',
       'Họ và tên',
       'Lớp',
+      'Mã đề',
       'Số Lượt',
       'Điểm thô',
       'Điểm tối đa',
@@ -516,9 +517,9 @@ describe('Xuất Excel (Q304)', () => {
     ]);
     const row = (code: string) => summary.find((r) => r[0] === code) as string[];
     // An: thô 3,5; trừ 10 % còn 3,15; quy đổi 7,9.
-    expect(row('SV001').slice(4)).toEqual(['3.5', '4', '3.15', '7.9', 'trừ 10 %']);
+    expect(row('SV001').slice(5)).toEqual(['3.5', '4', '3.15', '7.9', 'trừ 10 %']);
     // Dũng không vào thi: không điểm nào, chỉ ghi chú.
-    expect(row('SV004').slice(4)).toEqual(['', '', '', '', 'Chưa làm bài']);
+    expect(row('SV004').slice(5)).toEqual(['', '', '', '', 'Chưa làm bài']);
   });
 
   it('chỉ chủ hoặc người được Ủy quyền tải được: người khác 404, Người dự thi bị chặn', async () => {

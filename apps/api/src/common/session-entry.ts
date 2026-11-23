@@ -53,6 +53,12 @@ export interface SessionEntry {
     sessions: { sessionId: string; examId: string }[],
     executor?: EntryExecutor,
   ): Promise<Map<string, { count: number; maxCenti: number }>>;
+  /** Mã đề của chính người này (số và nhãn), chỉ khi Phiên thi có từ hai Mã đề; ngược lại `null` (Q471). */
+  variantLabelOf(
+    sessionId: string,
+    userId: string,
+    executor?: EntryExecutor,
+  ): Promise<{ number: number; label: string } | null>;
   /** Mọi Mã đề của Phiên thi theo số thứ tự, kèm bộ câu; rỗng nếu Phiên thi không có Mã đề. Để xem bộ câu và Xem thử, không gán cho ai. */
   variantsOf(sessionId: string, executor?: EntryExecutor): Promise<EntryVariantInfo[]>;
   variantFor(
