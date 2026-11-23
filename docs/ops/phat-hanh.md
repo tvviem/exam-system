@@ -18,7 +18,7 @@ Nhãn "bản" ở đây không thay cách deploy. Deploy vẫn dùng **mã commi
 
 | Tăng | Khi nào | Ví dụ |
 |---|---|---|
-| **MAJOR** (`1.0.0`) | **thay đổi lớn về kiến trúc hệ thống hoặc mô hình cơ sở dữ liệu** (chủ dự án quyết, 18/11/2026). Bản `0.x` đầu tiên có thay đổi như vậy lên `1.0.0`; từ đó mỗi thay đổi lớn như vậy nâng MAJOR kế tiếp | |
+| **MAJOR** (`1.0.0`) | **thay đổi lớn về kiến trúc hệ thống hoặc mô hình cơ sở dữ liệu** (chủ dự án quyết, 18/11/2026). Bản `0.x` đầu tiên có thay đổi như vậy lên `1.0.0`; từ đó mỗi thay đổi lớn như vậy nâng MAJOR kế tiếp. **Quyết định 24/11/2026:** Mã đề (`0030`, thêm cột vào bảng đang có dữ liệu) vẫn gắn `0.5.0`; `1.0.0` để dành cho khi hệ thống đã vận hành ổn định, ít đổi chức năng và chủ yếu điều chỉnh UX/UI, nâng cấp chức năng hoàn chỉnh (chủ dự án) | |
 | **MINOR** (`0.2.0`) | thêm tính năng, đổi hành vi người dùng thấy, có migration cơ sở dữ liệu nhỏ, có việc phải làm tay khi nâng cấp | |
 | **PATCH** (`0.1.1`) | sửa lỗi, không thêm tính năng, không migration, không việc làm tay | họ tên đầu trang đổi ngay sau khi lưu |
 
@@ -129,5 +129,8 @@ gh release create v0.1.1 --verify-tag --title "BLUni Exam 0.1.1" --notes-file gh
 | `v0.1.1` | 19/11/2026 | `54c5bae68bee49268b6eb86a93d47f9150fbeb62` | `v0.1.0` | không migration; lùi an toàn |
 | `v0.2.0` | 20/11/2026 | `8c482207a8a3569210140f390a7959bc39af3102` | `v0.1.1` | không migration; lùi an toàn (mất nút Xuất Bộ đề ra Word) |
 | `v0.3.0` | 22/11/2026 | `508493709c993dc9b35066dc59c5197e877cab4f` | `v0.2.0` | migration `0028`, `0029` chỉ thêm bảng nên bản cũ vẫn chạy, **nhưng Phiên thi đã cấu hình Rút câu sẽ làm đủ mọi câu**: chỉ lùi khi chưa có Phiên thi thật dùng Rút câu |
+| `v0.3.1` | 22/11/2026 (deploy), tag gắn bù 24/11/2026 | `f92e027cca5c967a6556c4a2b1f07ffffcdbae24` | `v0.3.0` | chỉ giao diện, không migration; lùi an toàn |
+| `v0.4.0` | tag gắn bù 24/11/2026 | `e9a19f22610aa096c56452d25af66f6d87a19084` | `v0.3.1` | chỉ giao diện, không migration; lùi an toàn. Commit này **chưa từng deploy riêng** (chạy ở prod cùng `7c8ac07`, 23/11/2026), nên ảnh của đúng commit này có thể không còn trên máy |
+| `v0.5.0` | 24/11/2026 | `a44182cd02ef2e9a3f7a86a2252ed740c4efe7da` | `v0.4.0` | migration `0030` chỉ thêm (bảng, cột, trigger) nên bản cũ vẫn chạy, **nhưng bản cũ không biết Mã đề: Phiên thi dùng chung Mã đề sẽ bị rút riêng từng người**: chỉ lùi khi chưa có Phiên thi thật dùng chung Mã đề. Tag gắn khi prod còn chạy `7c8ac07`; chủ dự án deploy `a44182c` để chạy thử với dữ liệu |
 
 **Cách lùi:** Actions → **Deploy (bấm tay)** → Run workflow, điền **mã commit đầy đủ** của bản muốn lùi vào ô *Mã commit* (workflow từ chối nếu mã không thuộc `main` hoặc ảnh không còn trên máy; ảnh của 3 bản gần nhất được giữ sẵn), duyệt **Approve and deploy**. Chỉ lùi mã ứng dụng, không lùi dữ liệu. Chi tiết và bảng đọc Summary: [trien-khai.md](./trien-khai.md) mục "Deploy bằng GitHub". Tag không bao giờ bị dời hay xóa; tên ảnh luôn là `ghcr.io/tvviem/exam-api:<mã commit>` và `ghcr.io/tvviem/exam-web:<mã commit>`.
