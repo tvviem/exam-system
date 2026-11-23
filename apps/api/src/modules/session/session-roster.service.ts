@@ -16,7 +16,7 @@ import { SESSION_ATTEMPTS, type SessionAttempts } from '../../common/session-att
 import { type Database, DB, type Transaction } from '../../db/db.module';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { sessionRoster } from './session.schema';
+import { sessionRoster, sessionVariants } from './session.schema';
 import { findOwnedSession, lockOwnedSession, requireNotOver } from './session-access';
 import { SessionVariantsService } from './session-variants.service';
 
@@ -63,9 +63,19 @@ export class SessionRosterService {
         classLabel: sessionRoster.classLabel,
         extraMinutes: sessionRoster.extraMinutes,
         addedAt: sessionRoster.addedAt,
+        variantId: sessionRoster.variantId,
       })
       .from(sessionRoster)
       .where(eq(sessionRoster.sessionId, sessionId));
+    // Mã đề (Q479): Phiên thi dùng chung có từ hai Mã đề thì mỗi người có Mã đề được gán; một Mã đề thì mọi người cùng Mã đề đó.
+    const variantRows = await this.variants.listOf(this.db, sessionId);
+    const variantOf = (variantId: string | null) => {
+      const found =
+        variantRows.length === 1
+          ? variantRows[0]
+          : variantRows.find((variant) => variant.id === variantId);
+      return found ? { number: found.number, label: found.label } : null;
+    };
     const byUser = new Map(members.map((member) => [member.userId, member]));
     const { total, items } = await this.directory.page([...byUser.keys()], {
       q: filter.q,
@@ -82,6 +92,7 @@ export class SessionRosterService {
       total,
       page: page.page,
       pageSize: page.pageSize,
+      variants: await this.variants.loadsOf(this.db, sessionId),
       items: items.map((person) => {
         const member = byUser.get(person.id);
         if (!member) throw new Error(`Danh bạ trả người ngoài Danh sách: ${person.id}`);
@@ -102,6 +113,7 @@ export class SessionRosterService {
           classLabel: member.classLabel,
           extraMinutes: member.extraMinutes,
           addedAt: member.addedAt,
+          variant: variantOf(member.variantId),
           attemptCount: counts.get(person.id) ?? 0,
           device: active ? present(active) : null,
           revokedDevices: own.filter((device) => device.status === 'revoked').map(present),
@@ -246,6 +258,38 @@ export class SessionRosterService {
   }
 
   /** Phút cộng sẵn cho riêng một người (ví dụ hỗ trợ đặc biệt). */
+  /**
+   * Đổi tay Mã đề của một người (Q479). Chỉ Phiên thi dùng chung Mã đề; người đã có Lượt không đổi được (Mã đề đã chụp vào Lượt), còn
+   * người chưa làm thì vẫn đổi được khi Phiên thi đã có người khác làm bài. Khóa dòng Phiên thi nên không chồng với lúc vào thi.
+   */
+  async setVariant(ownerId: string, sessionId: string, userId: string, number: number) {
+    return this.db.transaction(async (tx) => {
+      const session = await lockOwnedSession(tx, ownerId, sessionId);
+      if (session.drawScope !== 'shared') {
+        throw new ApiError('INVALID_STATE', { reason: 'NOT_SHARED' });
+      }
+      const variants = await tx
+        .select({
+          id: sessionVariants.id,
+          number: sessionVariants.number,
+          label: sessionVariants.label,
+        })
+        .from(sessionVariants)
+        .where(eq(sessionVariants.sessionId, sessionId));
+      const variant = variants.find((v) => v.number === number);
+      if (!variant) throw new ApiError('NOT_FOUND');
+      await this.requireMember(tx, sessionId, userId);
+      if (((await this.attempts.attemptCounts(sessionId)).get(userId) ?? 0) > 0) {
+        throw new ApiError('INVALID_STATE', { reason: 'HAS_ATTEMPTS' });
+      }
+      await tx
+        .update(sessionRoster)
+        .set({ variantId: variant.id })
+        .where(and(eq(sessionRoster.sessionId, sessionId), eq(sessionRoster.userId, userId)));
+      return { userId, variant: { number: variant.number, label: variant.label } };
+    });
+  }
+
   async setExtraMinutes(ownerId: string, sessionId: string, userId: string, extraMinutes: number) {
     return this.db.transaction(async (tx) => {
       const session = await lockOwnedSession(tx, ownerId, sessionId);

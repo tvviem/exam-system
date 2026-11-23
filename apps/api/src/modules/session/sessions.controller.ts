@@ -89,6 +89,13 @@ export class SessionsController {
     return this.sessions.redrawVariants(user.id, id, redrawSchema.parse(body ?? {}).number);
   }
 
+  /** Chia lại cả Danh sách vào các Mã đề (chỉ khi chưa có người làm bài). */
+  @Post(':id/variants/rebalance')
+  @HttpCode(200)
+  rebalance(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.sessions.rebalanceVariants(user.id, id);
+  }
+
   @Post(':id/duplicate')
   duplicate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.lifecycle.duplicate(user.id, id);

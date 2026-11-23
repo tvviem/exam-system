@@ -127,6 +127,35 @@ export class SessionVariantsService {
     }
   }
 
+  /**
+   * Số người của mỗi Mã đề trong Danh sách dự thi. Phiên thi một Mã đề thì mọi người cùng Mã đề đó (kể cả khi chưa ai được gán
+   * sẵn); Phiên thi mỗi người một đề không có Mã đề nên rỗng.
+   */
+  async loadsOf(db: Db, sessionId: string) {
+    const variants = await db
+      .select({
+        id: sessionVariants.id,
+        number: sessionVariants.number,
+        label: sessionVariants.label,
+      })
+      .from(sessionVariants)
+      .where(eq(sessionVariants.sessionId, sessionId))
+      .orderBy(asc(sessionVariants.number));
+    if (variants.length === 0) return [];
+    const rows = await db
+      .select({ variantId: sessionRoster.variantId, n: count() })
+      .from(sessionRoster)
+      .where(eq(sessionRoster.sessionId, sessionId))
+      .groupBy(sessionRoster.variantId);
+    const total = rows.reduce((sum, row) => sum + row.n, 0);
+    return variants.map((variant) => ({
+      number: variant.number,
+      label: variant.label,
+      count:
+        variants.length === 1 ? total : (rows.find((row) => row.variantId === variant.id)?.n ?? 0),
+    }));
+  }
+
   /** Đổi hạt giống rút của một Mã đề (`number`) hoặc của tất cả; bộ câu rút lại ở `sync`. */
   async reseed(tx: Transaction, sessionId: string, number?: number): Promise<void> {
     const rows = await tx
