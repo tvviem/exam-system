@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import JSZip from 'jszip';
 import sharp from 'sharp';
 import type { Actor } from '../../common/actor';
 import { ApiError } from '../../common/api-error';
@@ -16,6 +17,7 @@ import { SESSION_INFO, type SessionInfoProvider } from '../../common/session-inf
 import { AuditService } from '../audit/audit.service';
 import { buildAnswerDocument } from './paper-answer-document';
 import { toAnswerSpec } from './paper-answer-spec';
+import { buildAssignmentWorkbook } from './paper-assignment';
 import { buildPaperDocument, type PaperImage } from './paper-document';
 import { type PaperRequest, type SessionTimes, toPaperSpec } from './paper-spec';
 import { restrictToVariant } from './paper-variant';
@@ -36,6 +38,8 @@ export interface ExportedPaper {
   bytes: Uint8Array;
   filename: string;
   warnings: string[];
+  /** Loại nội dung của tệp; vắng là .docx. */
+  contentType?: string;
 }
 
 @Injectable()
@@ -59,6 +63,17 @@ export class PaperService {
     source: ExportSource,
     request: ExportRequest,
   ): Promise<ExportedPaper> {
+    const { file, examId } = await this.composeExam(actor, source, request);
+    await this.record(actor, 'paper.export', 'exam', examId, source, file.warnings.length);
+    return file;
+  }
+
+  /** Dựng tệp Đề (không ghi nhật ký): dùng chung cho xuất một tệp và xuất zip nhiều Mã đề. */
+  private async composeExam(
+    actor: Actor,
+    source: ExportSource,
+    request: ExportRequest,
+  ): Promise<{ file: ExportedPaper; examId: string }> {
     const { examId, session } = await this.resolve(actor, source);
     const full = await this.exams.contentOf(examId);
     if (!full) throw new ApiError('INVALID_STATE', { reason: 'EXAM_NOT_PUBLISHED' });
@@ -69,8 +84,10 @@ export class PaperService {
     spec.images = await this.imagesOf(content);
 
     const { bytes, warnings } = await buildPaperDocument(spec);
-    await this.record(actor, 'paper.export', 'exam', examId, source, warnings.length);
-    return { bytes, filename: `de-thi-${fileSlug(content.title, 'bo-de')}.docx`, warnings };
+    return {
+      examId,
+      file: { bytes, filename: `de-thi-${fileSlug(content.title, 'bo-de')}.docx`, warnings },
+    };
   }
 
   /**
@@ -82,6 +99,24 @@ export class PaperService {
     source: ExportSource,
     request: ExportRequest,
   ): Promise<ExportedPaper> {
+    const { file, examId } = await this.composeAnswers(actor, source, request);
+    await this.record(
+      actor,
+      'paper.export.answers',
+      'answers',
+      examId,
+      source,
+      file.warnings.length,
+    );
+    return file;
+  }
+
+  /** Dựng tệp Đáp án (không ghi nhật ký). */
+  private async composeAnswers(
+    actor: Actor,
+    source: ExportSource,
+    request: ExportRequest,
+  ): Promise<{ file: ExportedPaper; examId: string }> {
     const { examId, session } = await this.resolve(actor, source);
     const effective = await this.effective.of(examId);
     if (!effective) throw new ApiError('INVALID_STATE', { reason: 'EXAM_NOT_PUBLISHED' });
@@ -96,12 +131,100 @@ export class PaperService {
       request: { ...request, examCode },
     });
     const { bytes, warnings } = await buildAnswerDocument(spec);
-    await this.record(actor, 'paper.export.answers', 'answers', examId, source, warnings.length);
+    return {
+      examId,
+      file: {
+        bytes,
+        filename: `dap-an-${fileSlug(effective.content.title, 'bo-de')}.docx`,
+        warnings,
+      },
+    };
+  }
+
+  /**
+   * Xuất **tất cả Mã đề** thành một tệp zip (Q473): mỗi Mã đề một tệp Đề (và tệp Đáp án nếu xin), cùng Excel phân Mã đề. Chỉ chủ Phiên
+   * thi (người khác nhận NOT_FOUND). Phiên thi mỗi người một đề hay chỉ một Mã đề thì từ chối. Tệp .docx và .xlsx vốn đã nén nên
+   * zip chỉ gói (không nén lại), cho nhanh.
+   */
+  async exportVariantsZip(
+    actor: Actor,
+    sessionId: string,
+    request: ExportRequest & { answers?: boolean },
+  ): Promise<ExportedPaper> {
+    const { variants } = await this.ownedVariants(actor, sessionId);
+    const { answers, ...base } = request;
+    const zip = new JSZip();
+    const warnings: string[] = [];
+    let slug = 'bo-de';
+    let examId = '';
+    for (const variant of variants) {
+      const source = { sessionId, variant: variant.number };
+      const exam = await this.composeExam(actor, source, base);
+      examId = exam.examId;
+      slug = exam.file.filename.replace(/^de-thi-/, '').replace(/\.docx$/, '');
+      zip.file(`de-thi-${slug}-de-${variant.number}.docx`, exam.file.bytes, { binary: true });
+      warnings.push(...exam.file.warnings.map((warning) => `${variant.label}: ${warning}`));
+      if (answers) {
+        const key = await this.composeAnswers(actor, source, base);
+        zip.file(`dap-an-${slug}-de-${variant.number}.docx`, key.file.bytes, { binary: true });
+        warnings.push(...key.file.warnings.map((warning) => `${variant.label}: ${warning}`));
+      }
+    }
+    const assignment = await this.assignmentFile(sessionId, slug);
+    zip.file(assignment.filename, assignment.bytes, { binary: true });
+    const bytes = await zip.generateAsync({ type: 'uint8array', compression: 'STORE' });
+    await this.audit.record({
+      actor,
+      action: 'paper.export.variants',
+      entityType: 'exam',
+      entityId: examId,
+      after: {
+        kind: 'zip',
+        sessionId,
+        variants: variants.length,
+        answers: answers === true,
+        warnings: warnings.length,
+      },
+    });
+    return { bytes, filename: `ma-de-${slug}.zip`, warnings, contentType: 'application/zip' };
+  }
+
+  /** Excel phân Mã đề (Q473): Mã định danh, Họ và tên, Lớp, Mã đề của từng người trong Danh sách dự thi. */
+  async exportAssignment(actor: Actor, sessionId: string): Promise<ExportedPaper> {
+    const { examId } = await this.ownedVariants(actor, sessionId);
+    const content = await this.exams.contentOf(examId);
+    const file = await this.assignmentFile(sessionId, fileSlug(content?.title ?? '', 'bo-de'));
+    await this.audit.record({
+      actor,
+      action: 'paper.export.assignment',
+      entityType: 'exam',
+      entityId: examId,
+      after: { kind: 'assignment', sessionId },
+    });
+    return file;
+  }
+
+  private async assignmentFile(sessionId: string, slug: string): Promise<ExportedPaper> {
+    const [people, info] = await Promise.all([
+      this.sessions.peopleOf(sessionId),
+      this.sessions.info(sessionId),
+    ]);
+    const bytes = await buildAssignmentWorkbook({ title: info?.title ?? '', people });
     return {
       bytes,
-      filename: `dap-an-${fileSlug(effective.content.title, 'bo-de')}.docx`,
-      warnings,
+      filename: `phan-ma-de-${slug}.xlsx`,
+      warnings: [],
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     };
+  }
+
+  /** Các Mã đề của Phiên thi của chính người này; không phải chủ thì NOT_FOUND, không có từ hai Mã đề thì INVALID_STATE. */
+  private async ownedVariants(actor: Actor, sessionId: string) {
+    const { examId } = await this.resolve(actor, { sessionId });
+    const variants = await this.sessions.variantsOf(sessionId);
+    if (variants.length === 0) throw new ApiError('INVALID_STATE', { reason: 'NOT_SHARED' });
+    if (variants.length === 1) throw new ApiError('INVALID_STATE', { reason: 'ONE_VARIANT' });
+    return { examId, variants };
   }
 
   /**

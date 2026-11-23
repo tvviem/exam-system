@@ -1,4 +1,9 @@
-import { paperAnswersRequestSchema, paperExportRequestSchema } from '@exam/shared';
+import {
+  paperAnswersRequestSchema,
+  paperAssignmentRequestSchema,
+  paperExportRequestSchema,
+  paperVariantsRequestSchema,
+} from '@exam/shared';
 import { Body, Controller, HttpCode, HttpStatus, Post, Res } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import type { Actor } from '../../common/actor';
@@ -46,6 +51,30 @@ export class PaperController {
     const source = sessionId ? { sessionId, variant } : { examId: examId as string };
     return send(reply, await this.paper.exportAnswers(actor, source, request));
   }
+
+  /** Xuất tất cả Mã đề của một Phiên thi dùng chung Mã đề thành zip; xin tệp Đáp án thì bắt buộc `confirm: true`. */
+  @Post('variants')
+  @HttpCode(HttpStatus.OK)
+  async exportVariants(
+    @Body() body: unknown,
+    @CurrentActor() actor: Actor,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const { sessionId, confirm: _confirm, ...request } = paperVariantsRequestSchema.parse(body);
+    return send(reply, await this.paper.exportVariantsZip(actor, sessionId, request));
+  }
+
+  /** Excel phân Mã đề: ai nhận Mã đề nào. */
+  @Post('assignment')
+  @HttpCode(HttpStatus.OK)
+  async exportAssignment(
+    @Body() body: unknown,
+    @CurrentActor() actor: Actor,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const { sessionId } = paperAssignmentRequestSchema.parse(body);
+    return send(reply, await this.paper.exportAssignment(actor, sessionId));
+  }
 }
 
 /** Đặt header tải tệp và cảnh báo (tối đa 20 mục), trả byte của tệp. */
@@ -55,7 +84,7 @@ function send(reply: FastifyReply, file: ExportedPaper): Buffer {
     shown.push(`và ${file.warnings.length - shown.length} cảnh báo khác`);
   }
   reply
-    .header('content-type', DOCX_CONTENT_TYPE)
+    .header('content-type', file.contentType ?? DOCX_CONTENT_TYPE)
     .header('content-disposition', `attachment; filename="${file.filename}"`)
     .header('x-paper-warnings', encodeURIComponent(JSON.stringify(shown)))
     .header('cache-control', 'no-store');

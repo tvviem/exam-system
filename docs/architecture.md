@@ -280,6 +280,19 @@ Số đo chấm tự động (6/11/2026, PR 5a, một tiến trình, PostgreSQL 
 
 Số đo chấm tay và Kết quả (6/11/2026, PR 5b-1, 500 Lượt đã chấm tự động, PostgreSQL thật): bảng Kết quả 500 người 48 ms, hàng đợi chấm 500 bài 30 ms, mở một bài tự luận 33 ms, lưu điểm một bài 32 ms, Thống kê câu 24 ms.
 
+Số đo Mã đề của Phiên thi (23/11/2026, V5a, một tiến trình, PostgreSQL thật, bộ đo `apps/api/test/ma-de-bench.int.test.ts`, chạy khi đặt `MA_DE_BENCH=1`): Phiên thi 10 Mã đề từ Bộ đề 100 câu (rút 50 %), Danh sách 500 người.
+
+| Việc | Số đo | Ngân sách |
+|---|---|---|
+| Lưu Phiên thi 10 Mã đề (rút và lưu bộ câu) | 88 ms | 1 giây |
+| Thêm 500 người vào Danh sách (kèm chia Mã đề cân bằng) | 146 ms | 1 giây |
+| Xem một trang Danh sách (50 người, có Mã đề) | 26 ms | 300 ms |
+| Chia lại 500 người | 56 ms | 1 giây |
+| Mở Theo dõi 500 người | 46 ms | 1 giây |
+| Xuất zip 10 Mã đề (10 tệp Đề, 10 tệp Đáp án, Excel phân Mã đề; 108 KB) | 352 ms | 3 giây |
+
+Mọi việc đều dưới ngân sách; việc chậm nhất là xuất zip (khoảng 17 ms mỗi tệp Word), nên chưa cần tối ưu.
+
 Số đo Công bố và Kết quả (7/11/2026, PR 5c, 500 người, PostgreSQL thật): Công bố 98 ms, Kết quả của một Người dự thi 14 ms, xuất Excel 145 ms (32 KB) (ngân sách 1 giây, 300 ms, 1 giây).
 
 Số đo vào thi khi Rút câu (21/11/2026, R2b, Bộ đề 100 câu gồm 5 Phần, một tiến trình, PostgreSQL thật, đo trong bộ test tích hợp nên chưa gồm mạng; chạy bằng `RUT_CAU_BENCH=1`, tệp `apps/api/test/rut-cau-bench.int.test.ts`; hai lần chạy):

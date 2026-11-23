@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
 import { fileSlug } from '../../common/file-slug';
+import { safeCell } from '../../common/safe-cell';
 import { type ResultRow, ResultsService } from './results.service';
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 export const XLSX_CONTENT_TYPE = XLSX_TYPE;
-
-/** Ô bắt đầu bằng `= + - @` được thêm dấu nháy để Excel không hiểu thành công thức (Q304). */
-export const safeCell = (text: string): string => (/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
 
 const dayText = (date: Date) =>
   date.toLocaleDateString('vi-VN', {

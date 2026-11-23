@@ -75,3 +75,29 @@ export const paperAnswersRequestSchema = z
   .refine(variantNeedsSession, { message: VARIANT_NEEDS_SESSION_MESSAGE, path: ['variant'] });
 
 export type PaperAnswersRequest = z.infer<typeof paperAnswersRequestSchema>;
+
+/**
+ * Yêu cầu xuất **tất cả Mã đề** của một Phiên thi dùng chung Mã đề thành một tệp zip (Q473): mỗi Mã đề một tệp Đề, kèm tệp Đáp án nếu
+ * `answers` (bắt buộc `confirm: true` vì tệp chứa Đáp án đúng) và Excel phân Mã đề. Chỉ từ Phiên thi; Mã đề ô "Mã đề" lấy theo nhãn
+ * của từng Mã đề nên không có `examCode` hay `variant`.
+ */
+export const paperVariantsRequestSchema = z
+  .strictObject({
+    sessionId: z.uuid(),
+    course: text(PAPER_COURSE_MAX_CHARS),
+    title: text(100).optional(),
+    unit: text(150).optional(),
+    preset: z.enum(PAPER_PRESETS).optional(),
+    blocks: z.strictObject({ nationalHeader: bool, candidateFields: bool, grid: bool }).optional(),
+    answers: z.boolean().optional(),
+    confirm: z.literal(true).optional(),
+  })
+  .refine((body) => !body.answers || body.confirm === true, {
+    message: 'Xin tệp Đáp án thì phải xác nhận (confirm: true)',
+    path: ['confirm'],
+  });
+
+export type PaperVariantsRequest = z.infer<typeof paperVariantsRequestSchema>;
+
+/** Yêu cầu tải Excel phân Mã đề của một Phiên thi dùng chung Mã đề. */
+export const paperAssignmentRequestSchema = z.strictObject({ sessionId: z.uuid() });
