@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { sessionDrawPlanOf } from './session-draw';
 import {
+  attemptItemCount,
   canChangeVariant,
+  candidateVariantLabel,
+  matchesVariant,
+  monitorVariantOptions,
   variantCountOf,
   variantFieldsInput,
   variantFieldsOfSession,
@@ -130,5 +134,47 @@ describe('canChangeVariant: ô đổi Mã đề của một người', () => {
     expect(canChangeVariant({ attemptCount: 0 })).toBe(true);
     expect(canChangeVariant({ attemptCount: 1 })).toBe(false);
     expect(canChangeVariant({ attemptCount: 3 })).toBe(false);
+  });
+});
+
+describe('candidateVariantLabel: Mã đề của bạn (Q471)', () => {
+  it('có Mã đề thì trả nhãn; không có (một Mã đề hay mỗi người một đề, máy chủ trả null hay vắng) thì ẩn', () => {
+    expect(candidateVariantLabel({ number: 2, label: 'Đề 2' })).toBe('Đề 2');
+    expect(candidateVariantLabel(null)).toBeNull();
+    expect(candidateVariantLabel(undefined)).toBeNull();
+  });
+});
+
+describe('attemptItemCount: bài gồm N câu', () => {
+  it('cộng số câu của mọi Phần', () => {
+    expect(attemptItemCount([{ items: [1, 2, 3] }, { items: [] }, { items: [4, 5] }])).toBe(5);
+    expect(attemptItemCount([])).toBe(0);
+  });
+});
+
+describe('Theo dõi: lọc theo Mã đề (Q474)', () => {
+  const people = [
+    { userId: 'a', variant: { number: 2, label: 'Đề 2' } },
+    { userId: 'b', variant: { number: 1, label: 'Đề 1' } },
+    { userId: 'c', variant: { number: 2, label: 'Đề 2' } },
+    { userId: 'd', variant: null },
+  ];
+  it('danh sách Mã đề để chọn: không trùng, theo số thứ tự, bỏ người không có Mã đề', () => {
+    expect(monitorVariantOptions(people)).toEqual([
+      { number: 1, label: 'Đề 1' },
+      { number: 2, label: 'Đề 2' },
+    ]);
+    expect(monitorVariantOptions([{ userId: 'x', variant: null }])).toEqual([]);
+  });
+  it('lọc: để trống là tất cả; chọn Mã đề thì chỉ người của Mã đề đó', () => {
+    expect(people.filter((p) => matchesVariant(p, '')).map((p) => p.userId)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ]);
+    expect(people.filter((p) => matchesVariant(p, '2')).map((p) => p.userId)).toEqual(['a', 'c']);
+    expect(people.filter((p) => matchesVariant(p, '1')).map((p) => p.userId)).toEqual(['b']);
+    expect(people.filter((p) => matchesVariant(p, '9'))).toEqual([]);
   });
 });

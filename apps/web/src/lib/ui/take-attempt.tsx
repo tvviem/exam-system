@@ -20,6 +20,7 @@ import {
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
+import { attemptItemCount, candidateVariantLabel } from '../session-variants';
 import {
   type AttemptView,
   attemptQueryKey,
@@ -326,11 +327,30 @@ function useAttemptSession(view: AttemptView): RunnerSession {
 }
 
 export function AttemptRunner({ view }: { view: AttemptView }) {
+  const { t } = useTranslation();
   const session = useAttemptSession(view);
   if (session.stop === 'DEVICE_REVOKED' || session.stop === 'NOT_FOUND') {
     return <StopScreen reason={session.stop} />;
   }
-  return <AttemptScreen content={view} session={session} />;
+  const variant = candidateVariantLabel(view.variant);
+  return (
+    <AttemptScreen
+      content={view}
+      session={session}
+      banner={
+        variant ? (
+          <p
+            data-testid="attempt-variant"
+            className="rounded-lg border border-border bg-primary-soft p-3 font-sans text-sm font-medium text-on-primary-soft"
+          >
+            {t('take.variant.yours', { label: variant })}
+            {' · '}
+            {t('take.variant.itemCount', { count: attemptItemCount(view.sections) })}
+          </p>
+        ) : undefined
+      }
+    />
+  );
 }
 
 /** Xem thử qua Phiên thi (Q220, Q245): cùng màn hình, nhưng không có giờ, không lưu, không nộp. Câu trả lời chỉ ở trang. */

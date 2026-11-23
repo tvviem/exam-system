@@ -18,6 +18,8 @@ export interface TakeSession extends SessionRow {
   questionCount: number;
   /** Bài rút ngẫu nhiên từ bao nhiêu câu của Bộ đề; `null` khi lấy đủ mọi câu (Q390). */
   drawnFrom: number | null;
+  /** Mã đề của chính người này (Phiên thi có từ hai Mã đề); `null` hoặc vắng thì không hiện (Q471). */
+  variant?: { number: number; label: string } | null;
   opensAt: string;
   closesAt: string;
   /** Đã gồm giờ cộng sẵn. */
@@ -84,6 +86,8 @@ export interface AttemptView {
     serverNow: string;
   };
   session: { id: string; title: string };
+  /** Mã đề của chính người này (Phiên thi có từ hai Mã đề); `null` hoặc vắng thì không hiện (Q471). */
+  variant?: { number: number; label: string } | null;
   exam: { title: string; instructions: RichText | null };
   /** Gốc đường dẫn ảnh của Lượt này: `<mediaBase>/<illustrationId>/<cỡ>`. */
   mediaBase: string;

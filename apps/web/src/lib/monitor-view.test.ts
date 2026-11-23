@@ -13,6 +13,7 @@ const person = (over: Partial<MonitorPerson> = {}): MonitorPerson => ({
   code: 'SV001',
   fullName: 'Nguyễn Văn An',
   classLabel: 'K65-A',
+  variant: null,
   state: 'working',
   attemptId: 'a1',
   attemptNo: 1,

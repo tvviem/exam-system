@@ -96,7 +96,7 @@ function PanelBody({
       <div className="flex flex-col gap-1 pr-10">
         {!hideTitle && <h2 className="text-lg font-semibold">{person.fullName}</h2>}
         <p className="text-sm text-fg-muted">
-          {[person.code, person.classLabel].filter(Boolean).join(' · ')}
+          {[person.code, person.classLabel, person.variant?.label].filter(Boolean).join(' · ')}
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
           <StateBadge state={person.state} waiting={person.waiting} />

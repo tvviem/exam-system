@@ -356,6 +356,7 @@
       "notFound": "Không tìm thấy Phiên thi này trong danh sách của bạn.",
       "exam": "Bộ đề",
       "questions": "Số câu",
+      "variant": "Mã đề của bạn",
       "duration": "Thời lượng",
       "attempts": "Số lượt làm",
       "attemptsUsed": "Đã dùng {{used}}/{{max}} lượt",
@@ -461,6 +462,10 @@
     "offline": {
       "title": "Đang mở đề đã lưu trên máy",
       "body": "Không kết nối được hệ thống. Bạn vẫn làm bài được; câu trả lời được giữ trên máy và tự gửi khi có mạng trở lại. Giờ còn lại lúc này chỉ là ước tính, sẽ chỉnh theo hệ thống khi có mạng; câu trả lời gửi sau giờ làm bài không được nhận."
+    },
+    "variant": {
+      "yours": "Mã đề của bạn: {{label}}",
+      "itemCount": "Bài gồm {{count}} câu"
     },
     "preview": {
       "badge": "Xem thử",
@@ -1843,6 +1848,8 @@
     "attention": "Cần chú ý",
     "search": "Tìm người dự thi",
     "class": "Lớp",
+    "variantFilter": "Mã đề",
+    "allVariants": "Mọi Mã đề",
     "allClasses": "Tất cả lớp",
     "noClass": "Chưa có lớp",
     "classSection": "Lớp {{name}}",
@@ -1862,6 +1869,7 @@
       "name": "Họ tên",
       "state": "Trạng thái",
       "answered": "Đã trả lời",
+      "variant": "Mã đề",
       "remaining": "Còn lại",
       "signs": "Dấu hiệu"
     },
