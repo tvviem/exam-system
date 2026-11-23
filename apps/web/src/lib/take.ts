@@ -104,13 +104,18 @@ export interface PreviewView extends TakeContent {
   durationMinutes: number;
   /** Phiên thi rút câu: đây là một lượt rút mẫu gồm `count` câu trong `total` câu; `null` khi lấy đủ. */
   draw: { count: number; total: number } | null;
+  /** Phiên thi dùng chung Mã đề: Mã đề đang xem thử; mỗi người một đề thì `null`. */
+  variant: { number: number; label: string } | null;
 }
 
 /** Không lưu đệm lâu: mỗi lần mở là một lần trộn mới, và đổi tab không được làm đề đổi chỗ giữa chừng. */
-export const previewQuery = (sessionId: string) =>
+export const previewQuery = (sessionId: string, variant?: number) =>
   queryOptions({
-    queryKey: ['preview', sessionId],
-    queryFn: () => apiFetch<PreviewView>(`/sessions/${sessionId}/try`),
+    queryKey: ['preview', sessionId, variant ?? null],
+    queryFn: () =>
+      apiFetch<PreviewView>(
+        `/sessions/${sessionId}/try${variant === undefined ? '' : `?variant=${variant}`}`,
+      ),
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 0,
     refetchOnWindowFocus: false,

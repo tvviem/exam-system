@@ -292,6 +292,7 @@ describe('Rút lại bộ câu của Mã đề', () => {
 describe('Xem thử theo Mã đề', () => {
   interface Preview {
     draw: { count: number; total: number } | null;
+    variant: { number: number; label: string } | null;
     sections: { items: { itemId: string }[] }[];
   }
   const tryVariant = (id: string, query = '', who = cookie) =>
@@ -320,6 +321,7 @@ describe('Xem thử theo Mã đề', () => {
         const view = res.json() as Preview;
         expect(itemsIn(view).sort()).toEqual(expected);
         expect(view.draw).toEqual({ count: 10, total: 20 });
+        expect(view.variant).toEqual({ number, label: `Đề ${number}` });
       }
     }
   });
@@ -338,7 +340,9 @@ describe('Xem thử theo Mã đề', () => {
     const exam = await drawExam();
     const created = await createSession(exam.id);
     const id = created.json().id;
-    expect((await tryVariant(id)).statusCode).toBe(200);
+    const view = await tryVariant(id);
+    expect(view.statusCode).toBe(200);
+    expect((view.json() as Preview).variant).toBeNull();
     expect((await tryVariant(id, '?variant=1')).statusCode).toBe(404);
   });
 });

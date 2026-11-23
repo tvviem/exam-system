@@ -1,4 +1,4 @@
-import type { SessionPhase } from '@exam/shared';
+import type { RichText, SessionPhase } from '@exam/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
@@ -18,6 +18,28 @@ export interface SessionDrawRow {
   overridePercent: number | null;
   percent: number;
   drawCount: number;
+}
+
+/** Một Mã đề của Phiên thi dùng chung Mã đề (docs/plan/ma-de-phien-thi-thiet-ke.md). */
+export interface SessionVariant {
+  id: string;
+  number: number;
+  label: string;
+  itemCount: number;
+}
+
+/** Bộ câu của một Mã đề cho chủ Phiên thi (tab Đề): câu theo Phần, không có phương án hay đáp án. */
+export interface SessionVariantView {
+  id: string;
+  number: number;
+  label: string;
+  itemCount: number;
+  totalPoints: number;
+  sections: {
+    sectionId: string;
+    title: string | null;
+    items: { itemId: string; type: string; points: number; stem: RichText }[];
+  }[];
 }
 
 export interface SessionSummary {
@@ -49,6 +71,9 @@ export interface SessionSummary {
   sectionDraws?: SessionDrawRow[];
   /** Đã có Lượt làm bài: không đổi được tỷ lệ rút nữa. Chỉ có ở chi tiết. */
   drawLocked?: boolean;
+  /** Cách ra đề: dùng chung các Mã đề hay mỗi người một đề. Chỉ có ở chi tiết; thiếu là mỗi người một đề. */
+  drawScope?: 'shared' | 'per_candidate';
+  variants?: SessionVariant[];
 }
 
 /** Thiết lập gửi lên khi tạo; sửa thêm `version`. Giờ là ISO có múi giờ. */
@@ -68,6 +93,10 @@ export interface SessionInput {
   accessCode?: string;
   /** Ghi đè tỷ lệ rút theo Phần; vắng là giữ nguyên khi sửa, mảng rỗng là xóa hết ghi đè. */
   sectionDraws?: { sectionId: string; percent: number }[];
+  /** Cách ra đề; không nêu khi sửa là giữ nguyên. */
+  drawScope?: 'shared' | 'per_candidate';
+  /** Số Mã đề (1 đến 10), chỉ khi dùng chung Mã đề. */
+  variantCount?: number;
 }
 
 export interface SessionListParams {
@@ -98,6 +127,19 @@ export const accessCodeSuggestionQuery = (opensAt: string, closesAt: string, non
       ),
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 0,
+  });
+
+/** Bộ câu của từng Mã đề (tab Đề); Phiên thi mỗi người một đề thì rỗng. */
+export const sessionVariantsQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['sessions', 'variants', id],
+    queryFn: () => apiFetch<{ variants: SessionVariantView[] }>(`/sessions/${id}/variants`),
+  });
+/** Rút lại bộ câu của một Mã đề (`number`) hoặc của tất cả. */
+export const redrawVariants = (id: string, number?: number) =>
+  apiFetch<SessionSummary>(`/sessions/${id}/variants/redraw`, {
+    method: 'POST',
+    body: number === undefined ? {} : { number },
   });
 
 export const createSession = (input: SessionInput) =>

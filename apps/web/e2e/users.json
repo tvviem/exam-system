@@ -1770,5 +1770,41 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-mdv-desktop",
+    "fullName": "Giảng viên Mã đề desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-mdv-sv-desktop",
+    "fullName": "Sinh viên Mã đề desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDV-D-001",
+    "classLabel": "LOP-MDV-D"
+  },
+  {
+    "username": "e2e-mdv-mobile",
+    "fullName": "Giảng viên Mã đề mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-mdv-sv-mobile",
+    "fullName": "Sinh viên Mã đề mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "MDV-M-001",
+    "classLabel": "LOP-MDV-M"
   }
 ]

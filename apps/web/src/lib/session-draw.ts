@@ -60,6 +60,11 @@ export const parseOverride = (text: string): number => {
 export function sessionDrawPlanOf(
   sections: readonly DrawSection[],
   overrides: Readonly<Record<string, string>>,
+  /**
+   * Cách ra đề của Phiên thi. Dùng chung Mã đề (Q469): câu lệch điểm trong Phần rút dưới 100 % không còn là lỗi (máy chủ kiểm tổng
+   * điểm giữa các Mã đề khi lưu); mỗi người một đề thì giữ luật cùng điểm.
+   */
+  scope: 'shared' | 'per_candidate' = 'per_candidate',
 ): DrawPlan {
   const parsed = new Map<string, { number: number; valid: boolean }>();
   for (const section of sections) {
@@ -73,9 +78,12 @@ export function sessionDrawPlanOf(
     [...parsed].filter(([, p]) => p.valid).map(([id, p]) => [id, p.number]),
   );
   const percents = effectiveDrawPercents(sections, defaults, usable);
-  const problems = drawProblemsOf(
+  const found = drawProblemsOf(
     sections.map((s) => ({ id: s.id, percent: percents[s.id] as number, points: s.points })),
   );
+  const unevenPoints = found.some((p) => p.code === 'draw_points_uneven'); // điểm tối đa không xác định khi còn Phần lệch điểm
+  const problems =
+    scope === 'shared' ? found.filter((p) => p.code !== 'draw_points_uneven') : found;
   const totals = drawTotalsOf(
     sections.map((s) => ({ id: s.id, points: s.points })),
     percents,
@@ -99,7 +107,7 @@ export function sessionDrawPlanOf(
   return {
     rows,
     count: totals.count,
-    maxPoints: problems.some((p) => p.code === 'draw_points_uneven') ? null : totals.maxCenti / 100,
+    maxPoints: unevenPoints ? null : totals.maxCenti / 100,
     problems,
     hasOverrides: rows.some((r) => r.changed),
     valid: rows.every((r) => r.valid),

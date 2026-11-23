@@ -10,6 +10,10 @@ import { PreviewRunner } from '../../../../lib/ui/take-attempt';
 // /take chỉ dành cho Người dự thi.
 export const Route = createFileRoute('/_authed/examiner/sessions/$sessionId_/try')({
   staticData: { bare: true },
+  validateSearch: (search: Record<string, unknown>): { variant?: number } => {
+    const variant = Number(search.variant);
+    return Number.isInteger(variant) && variant >= 1 ? { variant } : {};
+  },
   component: PreviewPage,
 });
 
@@ -17,7 +21,8 @@ function PreviewPage() {
   const { t } = useTranslation();
   const { sessionId } = Route.useParams();
   const navigate = useNavigate();
-  const preview = useQuery(previewQuery(sessionId));
+  const { variant } = Route.useSearch();
+  const preview = useQuery(previewQuery(sessionId, variant));
 
   if (preview.isPending) {
     return (
