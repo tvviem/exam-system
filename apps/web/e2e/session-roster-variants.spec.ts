@@ -178,13 +178,13 @@ test('Phiên thi mỗi người một đề hay một Mã đề: không có cộ
   const tag = `${p}-${testInfo.repeatEachIndex}-${testInfo.retry}`;
   const per = await seedSession(page, p, `Mỗi người ${tag}`, { shared: false });
   await page.goto(`/examiner/sessions/${per.id}?tab=roster`);
-  await expect(page.getByText('Sinh viên Chia 1 ' + p)).toBeVisible();
+  await expect(page.getByText(`Sinh viên Chia 1 ${p}`)).toBeVisible();
   await expect(page.getByTestId('roster-variants')).toHaveCount(0);
   await expect(page.getByLabel(/^Mã đề của /)).toHaveCount(0);
 
   const one = await seedSession(page, p, `Một Mã đề ${tag}`, { shared: true, variantCount: 1 });
   await page.goto(`/examiner/sessions/${one.id}?tab=roster`);
-  await expect(page.getByText('Sinh viên Chia 1 ' + p)).toBeVisible();
+  await expect(page.getByText(`Sinh viên Chia 1 ${p}`)).toBeVisible();
   await expect(page.getByTestId('roster-variants')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Chia lại' })).toHaveCount(0);
 });
