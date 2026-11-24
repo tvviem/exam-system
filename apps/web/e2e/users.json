@@ -1902,5 +1902,21 @@
     "roleTags": ["candidate"],
     "code": "MDW-M-004",
     "classLabel": "LOP-MDW-M"
+  },
+  {
+    "username": "e2e-pcd-desktop",
+    "fullName": "Giảng viên Chi tiết câu desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-pcd-mobile",
+    "fullName": "Giảng viên Chi tiết câu mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]
