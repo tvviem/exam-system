@@ -2,7 +2,7 @@
 
 Trạng thái: **định hướng mở, làm sau** (ghi nhận 21/11/2026; chưa lên lịch, chưa có mã). Chủ dự án quyết định tạm chưa tạo khóa Claude API, và tập trung vào [Rút câu theo Phần](rut-cau-theo-phan-thiet-ke.md) trước. Tài liệu này giữ **đặc tả đã chốt** (Q451 đến Q460) để khi bắt đầu thì làm ngay, không phải hỏi lại; Q461 (khóa API, hạn mức, xác nhận với Trường) là điều kiện riêng của bước K3. Ngày đề xuất: 20/11/2026; viết lại ngày 21/11/2026 sau vòng trao đổi đặc tả Q451 đến Q459 (chủ dự án đã trả lời từng câu). Câu hỏi quyết định đánh số từ Q442.
 
-**Phiên bản dự kiến khi bắt đầu:** `0.4.0` (MINOR) cho K1 đến K3, đặt sau "Rút câu theo Phần" (`0.3.0`). Chỉ thêm bảng mới và hai cột có giá trị mặc định (`exams.review_hints`, `sessions.review_hints`), không đổi cột nào đang có dữ liệu; quy tắc đánh số: [docs/ops/phat-hanh.md](../ops/phat-hanh.md).
+**Phiên bản dự kiến khi bắt đầu:** một bản MINOR mới cho K1 đến K3 (dự kiến `0.6.0`; số `0.4.0` đã dùng cho đợt chỉnh giao diện soạn Bộ đề ngày 23/11/2026 và `0.5.0` cho Mã đề của Phiên thi, xem [phat-hanh.md](../ops/phat-hanh.md) mục 8). Chỉ thêm bảng mới và hai cột có giá trị mặc định (`exams.review_hints`, `sessions.review_hints`), không đổi cột nào đang có dữ liệu; quy tắc đánh số: [docs/ops/phat-hanh.md](../ops/phat-hanh.md).
 
 > **Bản 1 (20/11) đề xuất cây mảng kiến thức, hồ sơ nhiều Lượt và AI tùy chọn. Bản 2 thu hẹp theo đúng yêu cầu của chủ dự án:** ghi nguồn tham khảo ở từng câu, và **sau khi làm bài xong** tổng hợp các câu chưa đạt thành gợi ý đọc lại tài liệu, có AI viết lời gợi mở. Những phần của bản 1 chưa cần cho yêu cầu này được chuyển sang mục "Làm sau" (cuối mục 9).
 
@@ -135,7 +135,7 @@ Câu mẫu khi không có AI:
 | K2 | Công tắc `exams.review_hints` (mặc định) và `sessions.review_hints` (ghi đè), hàm giá trị hiệu lực; hàm thuần gom nhóm và xếp; API gợi ý theo Lượt; mục trên trang kết quả (câu mẫu) | Hàm thuần: chỉ câu chưa đạt trọn điểm, đúng một phần có tính, câu chưa chấm không tính, câu không nguồn đếm riêng, thứ tự; tích hợp: chỉ chủ Lượt, chỉ sau Công bố, tắt công tắc (ở Bộ đề hoặc ghi đè ở Phiên thi) thì 404, Phiên thi ghi đè thắng Bộ đề, Bộ đề đã Phát hành không đổi được mặc định, Đính chính đổi danh sách, **không lộ nội dung câu, đáp án** (bài quét); E2E desktop và mobile |
 | K3 | Cổng `ReviewAdvisor` + bộ cài Claude API, lưu đệm `attempt_review_advice`, hạn mức ngày, thời gian chờ, dự phòng câu mẫu | Bộ cài giả lập: lỗi, hết giờ, hết hạn mức đều ra câu mẫu; bấm lại không gọi lần hai (lưu đệm); nội dung gửi đi **chỉ** các trường đã duyệt (kiểm chuỗi yêu cầu); lời AI hiển thị chữ thuần; tắt AI thì chạy đủ |
 
-Mỗi PR có kiểm đột biến. K1 đến K3 cùng thuộc `0.4.0`; tag đặt khi dùng được thật và đã kiểm trên production.
+Mỗi PR có kiểm đột biến. K1 đến K3 cùng thuộc một bản MINOR (dự kiến `0.6.0`); tag đặt khi dùng được thật và đã kiểm trên production.
 
 ### Làm sau (đã bàn, chưa làm)
 

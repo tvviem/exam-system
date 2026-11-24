@@ -1,6 +1,6 @@
-# Kiến trúc hệ thống (bản đề xuất để duyệt)
+# Kiến trúc hệ thống
 
-> Trạng thái: **công nghệ đã duyệt**; phần triển khai và các luồng đang chờ duyệt lần cuối. Thuật ngữ theo [GLOSSARY.md](../GLOSSARY.md). Các quyết định khó đảo ngược nằm trong [docs/adr](./adr).
+> Trạng thái: **đã duyệt và đang chạy thật** (bản 0.5.2, 24/11/2026); phần phát triển sau bản 0.1 (Xuất Bộ đề, Rút câu theo Phần, Mã đề của Phiên thi) có thiết kế riêng ở [plan/](plan) và được tóm tắt ở mục 5. Thuật ngữ theo [GLOSSARY.md](../GLOSSARY.md). Các quyết định khó đảo ngược nằm trong [docs/adr](./adr).
 
 ## 1. Yêu cầu định hướng thiết kế
 
@@ -351,8 +351,8 @@ Số đo sau giờ thi (8/11/2026, PR 5e, `pnpm -C apps/api load:exam`, 100 ngư
 **Giai đoạn 1** gồm các nghiệp vụ đã chốt trong [GLOSSARY.md](../GLOSSARY.md):
 - Người dùng: Quản trị viên, Nhãn vai trò, Lời mời, Yêu cầu cấp tài khoản (kèm bảng theo dõi kích hoạt), Khóa đăng nhập, Xóa người dùng, Chuyển giao.
 - Ngân hàng câu hỏi: 4 Loại câu hỏi, Hình minh họa, soạn công thức trực quan, nhập Excel cả bốn Loại (mỗi Loại một sheet).
-- Bộ đề: danh sách câu cố định, Phần, đặt điểm nhanh, Phát hành, Xem thử.
-- Phiên thi: Mã vào thi, Khung giờ, nhiều lượt làm bài, theo dõi trực tiếp, cộng giờ, Cho phép đổi thiết bị, Vi phạm và Đình chỉ.
+- Bộ đề: danh sách câu cố định, Phần, đặt điểm nhanh, Phát hành, Xem thử, Nhân bản, Lưu trữ, Xuất ra Word; **Rút câu theo Phần** (Tỷ lệ rút ở Bộ đề và Phiên thi, bản 0.3.0).
+- Phiên thi: Mã vào thi, Khung giờ, nhiều lượt làm bài, theo dõi trực tiếp, cộng giờ, Cho phép đổi thiết bị, Vi phạm và Đình chỉ; **Mã đề** (cả Phiên thi dùng chung 1 đến 10 bộ câu hoặc mỗi người một đề, bản 0.5.0).
 - Kết quả: chấm tự động, chấm Câu tự luận theo câu (có thể ẩn tên), Công bố kết quả, Phúc khảo, Đính chính đáp án, Chốt kết quả, xuất Excel, thông báo trong ứng dụng.
 
 **Backlog (giai đoạn sau):**

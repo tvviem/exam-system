@@ -30,7 +30,7 @@ Hộp **Phát hành** Bộ đề chỉ **cảnh báo** (không chặn) khi Phầ
 
 ### 2. Danh sách dự thi: ai thuộc Mã đề nào
 
-Thêm người vào Danh sách thì họ **được gán Mã đề ngay**, vào Mã đề đang ít người nhất, nên số người các Mã đề luôn lệch nhau không quá 1. Tab **Danh sách dự thi** (Phiên thi có từ hai Mã đề) có:
+Thêm người vào Danh sách thì họ **được gán Mã đề ngay**, vào Mã đề đang ít người nhất, nên số người các Mã đề luôn lệch nhau không quá 1. Tab **Danh sách** của Phiên thi (có từ hai Mã đề) có:
 
 - **Dòng số người từng Mã đề** ("Đề 1: 3 người · Đề 2: 3 người") và cảnh báo khi lệch quá 1 người.
 - **Hộp chọn Mã đề trên từng dòng** để đổi tay một người. Người **đã làm bài** thì khóa (Mã đề đã ghi vào Lượt làm bài); người chưa làm vẫn đổi được kể cả khi đã có người khác làm bài.

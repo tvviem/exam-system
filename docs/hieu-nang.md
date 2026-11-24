@@ -147,3 +147,18 @@ Phiên thi rút câu (mỗi người nhận một bộ câu riêng) không làm 
 - **Mức trùng bộ câu:** hai người trùng trung bình 16 trên 40 câu (40 %), nhiều nhất 26 trên 40; không có hai người cùng một bộ câu; mỗi câu được chọn với xác suất như nhau.
 
 Chi tiết từng bước đo, ngân sách và mức trùng: [architecture.md](architecture.md), mục "Ngân sách phản hồi".
+
+## Mã đề của Phiên thi (đo 23/11/2026, bản 0.5.0)
+
+Phiên thi dùng chung Mã đề rút bộ câu **một lần khi lưu Phiên thi** rồi lưu lại, nên lúc vào thi chỉ đọc bộ câu đã lưu (không chậm hơn rút tại chỗ). Đo trên Bộ đề **100 câu** (rút 50 %), Phiên thi **10 Mã đề**, Danh sách **500 người**, một tiến trình api, PostgreSQL thật (bộ đo `apps/api/test/ma-de-bench.int.test.ts`, chạy khi đặt `MA_DE_BENCH=1`):
+
+| Việc | Số đo |
+|---|---|
+| Lưu Phiên thi 10 Mã đề (rút và lưu bộ câu) | 88 ms |
+| Thêm 500 người vào Danh sách (kèm chia Mã đề cân bằng) | 146 ms |
+| Xem một trang Danh sách (50 người, có Mã đề) | 26 ms |
+| Chia lại 500 người | 56 ms |
+| Mở Theo dõi 500 người | 46 ms |
+| Xuất zip 10 Mã đề (10 tệp Đề, 10 tệp Đáp án, Excel phân Mã đề; 108 KB) | 352 ms |
+
+Mọi số đều dưới ngân sách phản hồi (1 giây, xuất zip 3 giây). Chi tiết và ngân sách từng việc: [architecture.md](architecture.md), mục "Ngân sách phản hồi".

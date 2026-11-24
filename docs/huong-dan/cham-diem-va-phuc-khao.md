@@ -16,9 +16,11 @@ Nộp bài ─► Chấm tự động (vài giây) ─► Chấm Tự luận ─
 
 ## Dành cho Người ra đề
 
+**Trang Kết quả của Phiên thi** (mở Phiên thi → tab **Kết quả**) là nơi làm mọi việc dưới đây. Đầu trang có các nút: **Chấm tự luận**, **Chấm ẩn tên**, **Ủy quyền chấm**, **Công bố kết quả**, **Xuất Excel**; mỗi lúc **một nút được nhấn mạnh** là việc nên làm tiếp (còn bài tự luận chờ chấm thì là Chấm tự luận; hết bài chờ thì là Công bố kết quả; đã Công bố mà còn Phúc khảo chưa xử lý thì là Xử lý Phúc khảo). Trên điện thoại nút chính rộng trọn hàng, các nút còn lại xếp hai cột. Bên dưới là các tab **Người dự thi**, **Thống kê câu**, **Phúc khảo** (sau Công bố) và **Vi phạm**; hai tab Phúc khảo và Vi phạm chỉ kèm số khi có việc cần xử lý. Chạm vào một người trong danh sách để xem bài của họ.
+
 **1. Chấm tự động.** Bài trắc nghiệm (Chọn một, Chọn nhiều, Chùm đúng/sai) được chấm trong vài giây sau khi nộp, kể cả hết giờ hay bị Buộc nộp. Người dự thi chưa thấy điểm cho đến khi bạn **Công bố**. Cả phòng 100 người xong trong chưa tới một giây.
 
-**2. Chấm Câu tự luận** (mở Phiên thi → tab **Kết quả** → **Chấm câu Tự luận**).
+**2. Chấm Câu tự luận** (trang Kết quả → **Chấm tự luận**).
 - Chấm theo từng câu trên mọi bài (câu 1 của mọi người dự thi, rồi câu 2…). Mặc định **ẩn tên**: bạn chỉ thấy "Bài 17", không thấy tên, Mã định danh, Lớp.
 - Nhập điểm từ 0 đến điểm của câu (bước 0,01) hoặc bấm nút nhanh 0 / một nửa / tối đa; nhận xét không bắt buộc và Người dự thi đọc được sau Công bố. Điểm tự lưu khi sang bài kế.
 - Máy tính: **J** bài kế, **K** bài trước, gõ điểm rồi **Enter**. Điện thoại: mỗi màn một bài, nút Trước/Sau. Mặc định chỉ hiện bài chưa chấm.
@@ -27,7 +29,7 @@ Nộp bài ─► Chấm tự động (vài giây) ─► Chấm Tự luận ─
 **3. Kiểm tra trước khi Công bố.**
 - Tab **Thống kê câu**: câu có tỷ lệ đúng bất thường thấp là dấu hiệu nghi Đáp án đúng bị nhập sai; sửa bằng **Đính chính** (mục 6).
 - Tab **Vi phạm**: với mỗi Vi phạm đã ghi lúc theo dõi, chọn **Không xử lý** (mặc định), **Trừ x %** (nhiều Vi phạm cộng dồn tối đa 100 %) hay **Hủy kết quả**. Đổi tự do đến lúc Công bố.
-- Công tắc **"Cho xem lại đề sau Công bố"** (mặc định tắt): bật thì Người dự thi xem thêm nội dung câu và lựa chọn của chính họ. Dù bật hay tắt, họ **không bao giờ** thấy Đáp án đúng.
+- Ô **"Cho xem lại đề sau Công bố"** (mặc định tắt; bấm **Xem giải thích** để đọc chi tiết): bật thì Người dự thi xem thêm nội dung câu và lựa chọn của chính họ. Dù bật hay tắt, họ **không bao giờ** thấy Đáp án đúng.
 
 **4. Công bố kết quả.** Chọn **Thời hạn phúc khảo** từ 0 đến 14 ngày (0 = không nhận Phúc khảo, Chốt ngay) rồi xác nhận. Công bố không thu hồi được. Nút bị khóa kèm lý do nếu còn bài tự luận chưa chấm, còn Lượt chưa nộp, hoặc đang chấm lại sau Đính chính. Sau Công bố không Hủy Phiên thi và không sửa trực tiếp điểm; mọi thay đổi đi qua Phúc khảo hoặc Đính chính và đều có vết. **Xuất Excel** được bất cứ lúc nào (hai trang *Tổng hợp* và *Chi tiết*).
 
