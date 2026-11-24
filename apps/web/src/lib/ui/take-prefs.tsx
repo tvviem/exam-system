@@ -8,12 +8,15 @@ export function TakePrefsDialog({
   open,
   onClose,
   prefs,
+  mode,
   onChange,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   prefs: Prefs;
+  /** Chế độ xem đang áp dụng (khi lựa chọn là "tự chọn" thì theo cỡ màn hình). */
+  mode: 'one' | 'all';
   onChange: (change: Partial<Prefs>) => void;
   /** Công tắc giao diện sáng/tối của cả ứng dụng. */
   children: ReactNode;
@@ -24,6 +27,23 @@ export function TakePrefsDialog({
   return (
     <Dialog open={open} onClose={onClose} title={t('take.prefs.title')}>
       <div className="flex flex-col gap-4">
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">{t('take.prefs.view')}</legend>
+          <div className="flex rounded-lg border border-border p-0.5">
+            {(['one', 'all'] as const).map((value) => (
+              <label key={value} className={choice}>
+                <input
+                  type="radio"
+                  name="view-mode"
+                  className="sr-only"
+                  checked={mode === value}
+                  onChange={() => onChange({ viewMode: value })}
+                />
+                {t(`take.mode.${value}`)}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">{t('take.prefs.fontSize')}</legend>
           <div className="flex rounded-lg border border-border p-0.5">

@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { examinerPage, ORIGIN, overflow, seedOpenSession, signIn } from './take-support';
+import {
+  examinerPage,
+  ORIGIN,
+  overflow,
+  seedOpenSession,
+  setViewMode,
+  signIn,
+} from './take-support';
 
 test('Làm bài: nhập mã, xác nhận, làm bốn Loại câu ở hai chế độ, lưới, đánh dấu, lưu, Nộp bài', async ({
   page,
@@ -45,7 +52,7 @@ test('Làm bài: nhập mã, xác nhận, làm bốn Loại câu ở hai chế �
   await expect(page.getByRole('timer')).toContainText(/^(29|30):\d\d$/);
 
   // Chế độ "Từng câu": mỗi lần một câu
-  await page.getByRole('button', { name: 'Từng câu' }).click();
+  await setViewMode(page, 'Từng câu');
   await expect(page.getByText(`Thủ đô của Việt Nam ${p}?`)).toBeVisible();
   await expect(page.getByText(`Chọn các số nguyên tố ${p}`)).toBeHidden();
   await page.getByRole('radio', { name: 'Hà Nội' }).check();
@@ -77,7 +84,7 @@ test('Làm bài: nhập mã, xác nhận, làm bốn Loại câu ở hai chế �
   await expect(page.getByRole('status', { name: 'Trạng thái lưu' })).toContainText('Đã lưu');
 
   // Chế độ "Cả đề": thấy mọi câu
-  await page.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(page, 'Cả đề');
   await expect(page.getByText(`Thủ đô của Việt Nam ${p}?`)).toBeVisible();
   await expect(page.getByText(`Chọn các số nguyên tố ${p}`)).toBeVisible();
   expect(await overflow(page), 'chế độ Cả đề').toBe(0);
@@ -155,7 +162,7 @@ test('Mất kết nối: câu trả lời chờ trong hàng đợi, có mạng l
   await page.getByRole('button', { name: 'Vào thi' }).click();
   await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
   await page.waitForURL(/\/take\/attempts\//);
-  await page.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(page, 'Cả đề');
 
   const status = page.getByRole('status', { name: 'Trạng thái lưu' });
   await page.context().setOffline(true);

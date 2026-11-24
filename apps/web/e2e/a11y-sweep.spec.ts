@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { examinerPage, seedOpenSession, signIn } from './take-support';
+import { examinerPage, seedOpenSession, setViewMode, signIn } from './take-support';
 
 // Bài rà trợ năng và bố cục chạy trên các trang chính (docs/plan/ux-ra-soat-sau-0-5-1-thiet-ke.md, U6), để các lần chỉnh sau không làm
 // giao diện xấu đi mà không ai biết. Mỗi trang phải: có đúng một h1; không nút hay liên kết nào thiếu tên; không tràn ngang; mọi thứ bấm
@@ -119,7 +119,7 @@ test('Rà trợ năng và bố cục: các màn của Người dự thi', async 
   violations.push(...(await check(page, 'Xác nhận vào thi', minSide)));
   await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
   await page.waitForURL(/\/take\/attempts\//);
-  await page.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(page, 'Cả đề');
   violations.push(...(await check(page, 'Làm bài', minSide)));
   expect(violations, JSON.stringify(violations, null, 1)).toEqual([]);
 });

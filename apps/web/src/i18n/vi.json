@@ -290,6 +290,11 @@
     "navLabel": "Điều hướng câu hỏi",
     "instructions": "Hướng dẫn làm bài",
     "position": "Câu {{current}}/{{total}}",
+    "guide": {
+      "open": "Hướng dẫn",
+      "ofSection": "Hướng dẫn của {{title}}",
+      "ofThisSection": "Hướng dẫn của Phần này"
+    },
     "timedOut": "Hết giờ. Đang nộp bài…",
     "timedOutHint": "Các câu đã lưu được giữ nguyên. Nếu mất kết nối, hệ thống sẽ thử nộp lại.",
     "mode": {
@@ -453,6 +458,7 @@
     "prefs": {
       "open": "Hiển thị",
       "title": "Hiển thị",
+      "view": "Cách xem đề",
       "fontSize": "Cỡ chữ",
       "typeface": "Kiểu chữ nội dung đề",
       "serif": "Có chân",

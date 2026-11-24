@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { openMonitor, room } from './monitor-support';
-import { overflow, signIn } from './take-support';
+import { overflow, setViewMode, signIn } from './take-support';
 
 // Q281–Q283: thanh dưới nêu rõ tiến độ và rà soát nhanh; thông báo của Người ra đề ghim ở thanh trên; Người dự thi luôn có
 // chỗ quay về Phiên thi. Chạy ở cả điện thoại (360 px) và máy tính.
@@ -12,11 +12,12 @@ test('Thanh dưới nêu tiến độ thật; bảng chọn câu lọc chưa là
   const { candidate } = await room(browser, project, 'T', { prefix: 'gd', fakeClock: false });
   const page = await candidate(1);
   // Máy tính mở sẵn "Cả đề"; bài kiểm này thử từng câu một.
-  await page.getByRole('button', { name: 'Từng câu' }).click();
+  await setViewMode(page, 'Từng câu');
 
   const bar = page.getByRole('button', { name: /^Danh sách câu/ });
   await expect(bar).toContainText('Đã làm 0/4 câu');
-  await expect(bar).toContainText('Còn 4 chưa làm');
+  await expect(bar).toContainText('Câu 1/4');
+  await expect(bar).toHaveAccessibleName(/Còn 4 chưa làm/);
   expect(await overflow(page), 'thanh dưới').toBe(0);
 
   // Làm câu 1 và đánh dấu: tiến độ đổi ngay (không chờ server)
@@ -28,7 +29,7 @@ test('Thanh dưới nêu tiến độ thật; bảng chọn câu lọc chưa là
   );
   expect(performance.now() - started, 'thanh dưới cập nhật tức thì').toBeLessThan(500);
   await page.getByRole('button', { name: 'Đánh dấu xem lại' }).click();
-  await expect(bar).toContainText('Còn 3 chưa làm · 1 đánh dấu');
+  await expect(bar).toHaveAccessibleName(/Còn 3 chưa làm, 1 đánh dấu/);
 
   // Bảng chọn câu: tóm tắt, lọc, nhảy tới câu chưa làm kế tiếp
   await bar.click();
@@ -63,7 +64,7 @@ test('Cảnh cáo và Cộng giờ ghim ở thanh trên: thấy ngay dù đang c
     fakeClock: false,
   });
   const page = await candidate(1);
-  await page.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(page, 'Cả đề');
   // Cuộn xuống cuối đề: đầu trang (nơi thông báo từng nằm) không còn trong màn hình
   await page.getByRole('textbox', { name: 'Câu trả lời' }).scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight }));
@@ -155,7 +156,7 @@ test('Cả đề: "Đến câu chưa làm kế tiếp" tính từ câu đang xem
   const project = testInfo.project.name;
   const { candidate } = await room(browser, project, 'K', { prefix: 'gd', fakeClock: false });
   const page = await candidate(1);
-  await page.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(page, 'Cả đề');
   await page.getByRole('radio', { name: 'Hà Nội' }).check(); // câu 1 đã làm
   // Cuộn tới câu 3 (chùm đúng/sai, chưa làm): câu 2 đã nằm phía trên màn hình
   await page.getByText(/^Xét hàm số bậc ba/).scrollIntoViewIfNeeded();

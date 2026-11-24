@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { examinerPage, seedOpenSession, signIn } from './take-support';
+import { examinerPage, seedOpenSession, setViewMode, signIn } from './take-support';
 
 // Chữ có chân Noto Serif cho nội dung đề (Q101, Q240): máy nào cũng thấy cùng một phông, kể cả máy không cài sẵn.
 
@@ -19,7 +19,7 @@ test('Nội dung đề dùng Noto Serif tự host, phần giao diện vẫn là 
   await page.getByRole('button', { name: 'Vào thi' }).click();
   await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
   await page.waitForURL(/\/take\/attempts\//);
-  await page.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(page, 'Cả đề');
   const stem = page.getByText(`Trình bày định nghĩa giới hạn ${p}-ft`);
   await expect(stem).toBeVisible();
 
@@ -34,7 +34,7 @@ test('Nội dung đề dùng Noto Serif tự host, phần giao diện vẫn là 
   };
   await stem.evaluate((el) => el.setAttribute('data-probe', 'stem'));
   await page
-    .getByRole('button', { name: 'Cả đề' })
+    .getByRole('button', { name: 'Nộp bài' })
     .evaluate((el) => el.setAttribute('data-probe', 'chrome'));
 
   // Chữ có dấu chồng trong đề lấy từ phông tự host, không rơi về phông của máy

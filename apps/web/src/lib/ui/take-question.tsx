@@ -42,7 +42,11 @@ export function TakeQuestion({
       className="flex scroll-mt-[calc(var(--take-header-h,6rem)+0.5rem)] flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4"
     >
       <header className="flex items-center justify-between gap-3">
-        <h2 id={`item-${item.itemId}-title`} className="font-sans text-base font-semibold">
+        <h2
+          id={`item-${item.itemId}-title`}
+          tabIndex={-1}
+          className="font-sans text-base font-semibold outline-none"
+        >
           {t('take.question', { no: item.no })}
           <span className="ml-2 text-sm font-normal text-fg-muted">
             {t('take.points', { count: item.points })}
