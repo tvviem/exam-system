@@ -13,23 +13,36 @@ const LETTERS = 'ABCDEFGH';
 export function QuestionView({
   question,
   showAnswer = false,
+  compact = false,
 }: {
   question: QuestionViewData;
   showAnswer?: boolean;
+  /** Gọn: bỏ dòng điểm (nơi gọi đã nêu) và đánh dấu đáp án đúng bằng dấu ✓ kèm chú thích khi rê chuột, ít chiếm chỗ. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   return (
-    <article className="flex flex-col gap-4">
-      <p className="text-sm text-fg-muted">
-        {t('questionBank.points', { points: question.defaultPoints })}
-      </p>
+    <article className={`flex flex-col ${compact ? 'gap-3' : 'gap-4'}`}>
+      {!compact && (
+        <p className="text-sm text-fg-muted">
+          {t('questionBank.points', { points: question.defaultPoints })}
+        </p>
+      )}
       <RichTextView doc={question.stem} className="text-base" />
-      <Answers question={question} showAnswer={showAnswer} />
+      <Answers question={question} showAnswer={showAnswer} compact={compact} />
     </article>
   );
 }
 
-function Answers({ question, showAnswer }: { question: QuestionViewData; showAnswer: boolean }) {
+function Answers({
+  question,
+  showAnswer,
+  compact,
+}: {
+  question: QuestionViewData;
+  showAnswer: boolean;
+  compact: boolean;
+}) {
   const { t } = useTranslation();
   const q = question as QuestionInput;
   if (q.type === 'single_choice' || q.type === 'multiple_choice') {
@@ -37,13 +50,15 @@ function Answers({ question, showAnswer }: { question: QuestionViewData; showAns
     return (
       <>
         {multiple && <p className="text-sm text-fg-muted">{t('questionBank.chooseMany')}</p>}
-        <ol className="flex flex-col gap-2">
+        <ol className={`flex flex-col ${compact ? 'gap-1.5' : 'gap-2'}`}>
           {q.payload.options.map((option, index) => {
             const correct = showAnswer && q.payload.key.includes(option.id);
             return (
               <li
                 key={option.id}
-                className={`flex items-start gap-3 rounded-lg border p-3 ${
+                data-correct={correct || undefined}
+                title={correct ? t('questionBank.correctAnswer') : undefined}
+                className={`flex items-start rounded-lg border ${compact ? 'gap-2 px-2.5 py-1.5' : 'gap-3 p-3'} ${
                   correct ? 'border-success bg-success-soft' : 'border-border bg-surface'
                 }`}
               >
@@ -56,12 +71,18 @@ function Answers({ question, showAnswer }: { question: QuestionViewData; showAns
                   {LETTERS[index]}
                 </span>
                 <RichTextView doc={option.content} className="flex-1" />
-                {correct && (
-                  <span className="inline-flex items-center gap-1 text-sm font-medium text-success">
-                    <Check aria-hidden className="size-4" />
-                    {t('questionBank.correctAnswer')}
-                  </span>
-                )}
+                {correct &&
+                  (compact ? (
+                    <span className="inline-flex items-center text-success">
+                      <Check aria-hidden className="size-5" />
+                      <span className="sr-only">{t('questionBank.correctAnswer')}</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-success">
+                      <Check aria-hidden className="size-4" />
+                      {t('questionBank.correctAnswer')}
+                    </span>
+                  ))}
               </li>
             );
           })}
@@ -71,11 +92,11 @@ function Answers({ question, showAnswer }: { question: QuestionViewData; showAns
   }
   if (q.type === 'true_false_cluster') {
     return (
-      <ol className="flex flex-col gap-2">
+      <ol className={`flex flex-col ${compact ? 'gap-1.5' : 'gap-2'}`}>
         {q.payload.statements.map((statement, index) => (
           <li
             key={statement.id}
-            className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-surface p-3"
+            className={`flex flex-wrap items-start rounded-lg border border-border bg-surface ${compact ? 'gap-2 px-2.5 py-1.5' : 'gap-3 p-3'}`}
           >
             <span aria-hidden className="mt-0.5 w-6 shrink-0 text-sm font-semibold">
               {String.fromCharCode(97 + index)})

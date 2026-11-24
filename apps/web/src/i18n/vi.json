@@ -1428,6 +1428,7 @@
       "none": "Không có câu khớp",
       "open": "Lọc"
     },
+    "pickForSection": "Chọn câu hỏi cho Phần này",
     "emptySection": "Phần này chưa có câu hỏi.",
     "points": "Điểm",
     "pointsOf": "Điểm câu {{n}}",
@@ -1553,6 +1554,18 @@
       "topic": "Chủ đề",
       "type": "Loại câu hỏi",
       "already": "Đã có trong Bộ đề",
+      "detail": {
+        "title": "Chi tiết câu hỏi",
+        "view": "Xem",
+        "open": "Xem chi tiết: {{preview}}",
+        "previous": "Câu trước",
+        "next": "Câu sau",
+        "position": "{{index}}/{{total}}",
+        "tags": "Thẻ",
+        "back": "Quay lại danh sách",
+        "choose": "Chọn câu này",
+        "unchoose": "Bỏ chọn"
+      },
       "none": "Không có câu hỏi nào khớp.",
       "selectQuestion": "Chọn câu: {{preview}}",
       "add": "Thêm {{count}} câu vào {{section}}",

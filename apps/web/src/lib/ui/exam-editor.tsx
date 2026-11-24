@@ -56,6 +56,7 @@ import {
   restoreExam,
   saveExam,
 } from '../exams';
+import { defaultPickerSection } from '../picker-nav';
 import { Badge, Button, Card, Dialog, ErrorMessage, PrimaryButton, TextField } from '.';
 import { Breadcrumb } from './breadcrumb';
 import { ExamItemFilter } from './exam-item-filter';
@@ -773,7 +774,15 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                         {t('exam.filter.none')}
                       </p>
                     ) : section.items.length === 0 ? (
-                      <p className="text-fg-muted">{t('exam.emptySection')}</p>
+                      <div className="flex flex-col items-start gap-2">
+                        <p className="text-fg-muted">{t('exam.emptySection')}</p>
+                        {!readOnly && (
+                          <Button onClick={() => setPickerFor(section.key)}>
+                            <Plus aria-hidden className="size-5" />
+                            {t('exam.pickForSection')}
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <ol className="flex flex-col gap-2">
                         {section.items
@@ -794,12 +803,6 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                             />
                           ))}
                       </ol>
-                    )}
-                    {!readOnly && !collapsed.has(section.key) && (
-                      <Button className="w-fit" onClick={() => setPickerFor(section.key)}>
-                        <Plus aria-hidden className="size-5" />
-                        {t('exam.addQuestions')}
-                      </Button>
                     )}
                   </Card>
                 ))}
@@ -878,10 +881,24 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                           </span>
                         )}
                       </div>
+                      {/* Thêm câu hỏi độc lập với các Phần: luôn thấy ở thanh dính; Phần đang xem là đích mặc định (đổi được trong hộp). */}
+                      <Button
+                        onClick={() =>
+                          setPickerFor(defaultPickerSection(draft.sections, viewingSection))
+                        }
+                      >
+                        <Plus aria-hidden className="size-5" />
+                        {t('exam.addQuestions')}
+                      </Button>
                       {allItems.length > 0 && (
-                        <Button onClick={() => setQuickOpen(true)}>
+                        // Trên điện thoại chỉ hiện biểu tượng để thanh dính không cao quá (vẫn có tên và chú thích).
+                        <Button
+                          aria-label={t('exam.quick.open')}
+                          title={t('exam.quick.open')}
+                          onClick={() => setQuickOpen(true)}
+                        >
                           <ListChecks aria-hidden className="size-5" />
-                          {t('exam.quick.open')}
+                          <span className="hidden sm:inline">{t('exam.quick.open')}</span>
                         </Button>
                       )}
                       {conflict && (
