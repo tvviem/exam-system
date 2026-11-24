@@ -11,8 +11,8 @@ export interface Column<T> {
   key: string;
   header: ReactNode;
   cell: (item: T) => ReactNode;
-  /** Chỉ hiện từ cỡ màn hình này trở lên; mặc định hiện từ 768 px. */
-  from?: 'lg';
+  /** Chỉ hiện từ cỡ màn hình này trở lên; mặc định hiện từ 768 px. `2xl` là 1536 px. */
+  from?: 'lg' | '2xl';
   className?: string;
 }
 
@@ -40,7 +40,7 @@ export function DataList<T>({
   highlight?: (item: T) => boolean;
 }) {
   const cellClass = (c: Column<T>) =>
-    `px-4 py-3 pointer-fine:py-2.5 ${c.from === 'lg' ? 'hidden lg:table-cell' : ''} ${c.className ?? ''}`;
+    `px-4 py-3 pointer-fine:py-2.5 ${c.from === 'lg' ? 'hidden lg:table-cell' : c.from === '2xl' ? 'hidden 2xl:table-cell' : ''} ${c.className ?? ''}`;
   return (
     <>
       <ul className="flex flex-col gap-3 md:hidden">
