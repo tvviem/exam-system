@@ -65,7 +65,7 @@ test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang
   await page.getByRole('dialog').getByLabel('Tên Bộ đề').fill('Đề chọn nhiều');
   await page.getByRole('dialog').getByRole('button', { name: 'Tạo Bộ đề' }).click();
   await expect(page.getByRole('heading', { name: 'Đề chọn nhiều', level: 1 })).toBeVisible();
-  await page.getByRole('button', { name: 'Thêm câu hỏi' }).first().click();
+  await page.getByRole('button', { name: 'Thêm câu hỏi' }).click();
   const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
   await dialog.getByLabel('Chủ đề').selectOption({ label: topicName });
   const count = (n: number) => dialog.getByText(new RegExp(`^Đã chọn ${n} câu`));
@@ -123,7 +123,7 @@ test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang
   await expect(page.getByText('5 câu · 5 điểm')).toBeVisible();
 
   // Mở lại: 5 câu đã có không chọn lại được, trang 1 còn 15 câu chọn được.
-  await page.getByRole('button', { name: 'Thêm câu hỏi' }).first().click();
+  await page.getByRole('button', { name: 'Thêm câu hỏi' }).click();
   await expect(
     dialog.getByRole('checkbox', { name: 'Chọn cả 15 câu trên trang này' }),
   ).toBeVisible();
@@ -195,9 +195,10 @@ test('hộp thêm câu cho biết đang thêm vào Phần nào; nút ngắn gọ
   const examId = await seedTwoSections(page, tag);
   await page.goto(`/examiner/exams/${examId}`);
 
-  // Mở từ nút của Phần 2 (tên rất dài).
-  await page.getByRole('button', { name: 'Thêm câu hỏi' }).nth(1).click();
+  // Mở từ nút ở thanh dính rồi đổi đích sang Phần 2 (tên rất dài).
+  await page.getByRole('button', { name: 'Thêm câu hỏi' }).click();
   const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
+  await dialog.getByLabel('Thêm vào Phần').selectOption({ index: 1 });
   await dialog.getByLabel('Chủ đề').selectOption({ label: `Đích ${tag}` });
 
   // Ngay đầu hộp: ô "Thêm vào Phần" đang chọn đúng Phần 2.

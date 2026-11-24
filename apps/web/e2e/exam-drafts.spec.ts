@@ -60,7 +60,7 @@ const orderOf = (page: Page) =>
     .allTextContents();
 
 async function pick(page: Page, section: string, stems: string[]) {
-  await page.getByRole('button', { name: 'Thêm câu hỏi' }).first().click();
+  await page.getByRole('button', { name: 'Thêm câu hỏi' }).click();
   const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
   for (const stem of stems)
     await dialog.getByRole('checkbox', { name: `Chọn câu: ${stem}` }).check();
@@ -116,8 +116,10 @@ test('soạn Bộ đề nháp: thêm câu, đặt điểm, chia Phần, sắp x�
     .selectOption({ label: 'Phần II: Nâng cao' });
   await expect(page.getByLabel('Tiêu đề Phần').first()).toHaveValue('Phần I: Cơ bản');
   expect(await orderOf(page)).toEqual(['Giới hạn', 'Đạo hàm', 'Tích phân']);
-  await page.getByRole('button', { name: 'Thêm câu hỏi' }).nth(1).click();
+  // Nút "Thêm câu hỏi" nằm ở thanh dính (độc lập với các Phần); đổi đích sang Phần II ngay trong hộp.
+  await page.getByRole('button', { name: 'Thêm câu hỏi' }).click();
   const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
+  await dialog.getByLabel('Thêm vào Phần').selectOption({ index: 1 });
   // Câu đã có trong Bộ đề hiện "Đã có" và không tick được.
   await expect(dialog.getByRole('checkbox', { name: 'Chọn câu: Đạo hàm' })).toBeDisabled();
   await dialog.getByRole('checkbox', { name: 'Chọn câu: Chuỗi số' }).check();
