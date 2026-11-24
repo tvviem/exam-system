@@ -2,6 +2,8 @@
 
 > Ngày 29/10/2026, sau khi chủ dự án dùng thử lát cắt 1. Phương pháp: bộ quy tắc của skill UI UX Pro Max (10 nhóm theo mức ưu tiên, kèm tra cứu quy tắc điều hướng, bố cục, bảng, biểu mẫu, phản hồi), ảnh chụp giao diện thật ở 390, 768, 1024 và 1440 px ở cả hai chế độ sáng và tối, và đối chiếu với các chức năng của lát cắt 2 đến 6 trong [architecture.md](architecture.md) và README. Kết luận đã dẫn tới các quyết định Q106–Q110 trong [ui-design.md](ui-design.md).
 
+> **Ghi chú (24/11/2026):** đây là đánh giá lịch sử của lát cắt 1. Các vấn đề nêu ở đây đã được xử lý trong [ui-design.md](ui-design.md). Đợt rà gần nhất (bản 0.5.1 đến 0.5.2, trên điện thoại và máy tính, kèm bài rà tự động) ghi ở [plan/ux-ra-soat-sau-0-5-1-thiet-ke.md](plan/ux-ra-soat-sau-0-5-1-thiet-ke.md).
+
 ## 1. Câu trả lời ngắn
 
 Giao diện quản trị của lát cắt 1 **dùng được trên điện thoại và máy tính** (không tràn ngang, vùng chạm 48 px, danh sách chuyển từ thẻ sang bảng ở 768 px), nhưng **chưa phải một khung giao diện đủ tốt để làm nền cho các lát cắt sau**:

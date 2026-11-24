@@ -38,7 +38,7 @@ Làm sau `make -C infra dev-up`, `pnpm db:migrate`, `bootstrap-admin` và khi `p
 
 **F. Người ra đề: Phiên thi**
 13. Mục **Phiên thi** → **Tạo Phiên thi**: Bộ đề `Kiểm tra Tin học căn bản`; Giờ mở là bây giờ; Giờ đóng là một ngày sau; Thời lượng **5** phút nếu muốn thử cảnh báo "còn 5 phút / 1 phút" (hoặc 30 để làm bài thong thả); Mã vào thi tự đặt, ví dụ `TIN101`; Số Lượt làm bài tối đa 1 hoặc 2.
-14. Trong **Danh sách dự thi**: dán danh sách Mã định danh `SV26001 SV26002 SV26003 SV26004 SV26005` → **Kiểm tra** → **Thêm 5 người**. Hoặc **Thêm cả lớp CNTT-K26 (5 người)**.
+14. Ở tab **Danh sách** của Phiên thi: dán danh sách Mã định danh `SV26001 SV26002 SV26003 SV26004 SV26005` → **Kiểm tra** → **Thêm 5 người**. Hoặc **Thêm cả lớp CNTT-K26 (5 người)**.
 
 **G. Người dự thi (cửa sổ ẩn danh hoặc trình duyệt khác, giả lập điện thoại 360 px)**
 15. Đăng nhập `SV26001` bằng mật khẩu tạm trên Phiếu tài khoản, đổi mật khẩu lần đầu, rồi vào `/take`.
@@ -67,7 +67,7 @@ Dùng ba file mới: `cau-hoi-cau-truc-du-lieu.xlsx` (10 câu Chọn một, Ch�
 **D. Bộ đề và Phiên thi (mỗi Người ra đề tự làm cho mình)**
 9. **Bộ đề** → **Tạo Bộ đề** (ví dụ `Cấu trúc dữ liệu và giải thuật - GV1`) → một Phần, **Thêm câu hỏi** lấy cả hai Chủ đề (20 câu, chọn nhiều bằng ô chọn của bảng) → **Lưu** → **Phát hành…**. Mong đợi "20 câu, 10 điểm".
 10. **Phiên thi** → **Tạo Phiên thi**: chọn Bộ đề vừa Phát hành, Giờ mở là bây giờ, Giờ đóng một ngày sau, Thời lượng 30 phút (hoặc 5 để thử cảnh báo), **Mã vào thi khác nhau** cho mỗi Người ra đề (ví dụ `GV1A`, `GV2A`, `GV3A`; hai Phiên thi có Khung giờ chồng nhau không được trùng mã).
-11. **Danh sách dự thi** → thêm cả lớp: GV1 chọn `CNTT-K26A`, GV2 chọn `CNTT-K26B`, GV3 chọn `CNTT-K26C` (mỗi lớp 10 người). Thử thêm cả một lớp thứ hai vào một Phiên thi để thấy 20 người.
+11. Tab **Danh sách** của Phiên thi → thêm cả lớp: GV1 chọn `CNTT-K26A`, GV2 chọn `CNTT-K26B`, GV3 chọn `CNTT-K26C` (mỗi lớp 10 người). Thử thêm cả một lớp thứ hai vào một Phiên thi để thấy 20 người.
 
 **E. Kiểm chứng chức năng**
 12. Người dự thi: đăng nhập `SV26101` bằng mật khẩu tạm trên Phiếu, đổi mật khẩu lần đầu, vào `/take`, nhập `GV1A`, làm bài (Chrome giả lập 360 × 780, mở qua `localhost`). Người dự thi lớp B không nhập được mã `GV1A` (không có tên trong Danh sách).

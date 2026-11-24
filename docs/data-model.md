@@ -1,4 +1,4 @@
-# Mô hình dữ liệu (bản đề xuất để duyệt)
+# Mô hình dữ liệu
 
 > PostgreSQL. Khóa chính dùng `uuid` (UUIDv7, sắp xếp được theo thời gian). Mọi bảng có `created_at` và `updated_at` (dạng `timestamptz`), các bảng dưới đây không ghi lại hai cột này. Thuật ngữ theo [GLOSSARY.md](../GLOSSARY.md).
 

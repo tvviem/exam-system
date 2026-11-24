@@ -31,6 +31,8 @@ Mỗi dòng ✓ là đạt, ⚠ là nên xem, ✗ là không đạt (lệnh tho�
 - [ ] **Cắm sạc** laptop; **tắt chế độ ngủ** khi cắm sạc (Windows: Cài đặt → Nguồn).
 - [ ] Đặt **giờ hoạt động** cho Windows Update ngoài giờ thi, hoặc tạm dừng cập nhật tới sau kỳ thi.
 - [ ] Biết ai ngồi cạnh máy trong lúc thi và có số điện thoại của người đó.
+- [ ] **(Người ra đề)** Phiên thi nhiều **Mã đề**: tab **Danh sách** của Phiên thi cho thấy số người từng Mã đề đều nhau (hoặc lệch có chủ ý) và không còn người nào chưa có Mã đề; tab **Đề** đúng bộ câu từng Mã đề. Đề giấy: đã **Xuất Word** từng Mã đề hoặc zip kèm Excel phân Mã đề. Từ Lượt làm bài đầu tiên không **Rút lại** hay **Chia lại** được nữa ([huong-dan/ma-de-phien-thi.md](../huong-dan/ma-de-phien-thi.md)).
+- [ ] **(Người ra đề)** Mã vào thi (đầu tab **Tổng quan** của Phiên thi) đã gửi cho Người dự thi; Danh sách dự thi đã có đủ người.
 - [ ] Nếu phòng thi **từ khoảng 300 người trở lên**: đã quyết dùng hai bản api (`make -C infra prod-scale N=2`) và đã kiểm `make -C infra scale-drill-test` hoặc bài đo 500 người với hai api ([hieu-nang.md](../hieu-nang.md)). Dưới 100 người: một bản api là đủ.
 
 ## Trước 1 giờ

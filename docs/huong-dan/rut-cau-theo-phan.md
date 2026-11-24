@@ -19,6 +19,7 @@ Không muốn rút thì **không cần làm gì**: mặc định mọi Phần l�
 - Không được để **mọi Phần đều 0 %** (Người dự thi sẽ không có câu nào).
 - Ô tỷ lệ chỉ nhận số từ 0 đến 100. Để trống hoặc nhập số sai thì ô báo lỗi ngay cạnh và nút **Lưu** bị khóa cho tới khi sửa.
 - **Phần đặt 0 %** không lấy câu nào: Người dự thi **không thấy Phần đó** (không hiện tên Phần rỗng) trong bài làm. Dòng Rút câu của Phần có ghi chú nhắc điều này.
+- **Bộ đề đã Phát hành** (đã khóa, chỉ xem): đầu trang có **thẻ tổng quan** gồm tổng số câu, tổng điểm, **mỗi Người dự thi nhận bao nhiêu câu và tối đa bao nhiêu điểm**, tỷ lệ rút chung, số Phần, và bảng từng Phần (số câu có, tỷ lệ rút, số câu nhận, điểm); bấm một dòng của bảng để nhảy tới Phần đó. Phía dưới là bộ lọc: gõ một phần nội dung (không cần dấu, không phân biệt hoa thường) hoặc chọn một **tag** để chỉ còn thấy các câu khớp; **Xóa lọc** để xem lại đủ. Thanh dính cuối trang có nút ‹ › chuyển Phần và nút **Lọc**.
 - Bộ đề có từ hai Phần trở lên: thanh dính cạnh nút **Lưu** có bộ **chuyển nhanh giữa các Phần**: nút ‹ › sang Phần trước/sau, nhãn "Phần 2/3" cho biết đang xem Phần nào (đổi theo vị trí cuộn trang) và bấm nhãn để mở danh sách Phần (tên, số câu) rồi nhảy thẳng tới Phần đó.
 - Dòng **Rút câu từ Phần này** luôn hiện trong thẻ của Phần, kể cả khi bấm **Thu gọn Phần** (chỉ danh sách câu bị ẩn), nên vẫn thấy tỷ lệ và "mỗi người nhận N/M câu".
 - Thanh cạnh nút **Lưu** có hai dòng: tổng của cả Bộ đề ("15 câu · 20 điểm") và, khi có Phần rút dưới 100 %, số **mỗi người nhận** ("Mỗi người nhận 9 câu · 14 điểm"; chỉ nêu số câu khi còn Phần lệch điểm).
@@ -37,7 +38,7 @@ Muốn Phiên thi này khác Bộ đề (ví dụ Bộ đề rút 40 % cho kiể
 
 - Tỷ lệ của Phiên thi chỉ sửa được **trước khi có người làm bài**. Từ Lượt làm bài đầu tiên, bảng bị khóa và hiện lý do (vì người đã làm bài đã nhận bộ câu rồi).
 - Phần lệch điểm bị ghi đè xuống dưới 100 % cũng bị cảnh báo ở kiểu **mỗi người một đề**. Bộ đề đã Phát hành không sửa điểm được; hãy Nhân bản Bộ đề, sửa điểm, tạo Phiên thi mới, đặt Phần đó 100 % hay 0 %, hoặc chuyển sang **dùng chung các Mã đề**.
-- Tab **Tổng quan** của Phiên thi có dòng **Rút câu**: "Mỗi người nhận 12/15 câu (Phần I 70 %)".
+- Tab **Tổng quan** của Phiên thi (**Mã vào thi** nằm đầu trang, kèm nút Sao chép) có dòng **Rút câu**: "Mỗi người nhận 12/15 câu (Phần I 70 %)".
 
 ### 4. Xem thử một lượt rút
 

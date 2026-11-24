@@ -182,6 +182,8 @@ Giữ nguyên hai chế độ xem đã chốt ở architecture.md mục 7: **A "
 - [ ] Test tương phản của bảng token đang xanh (Q104); chữ không nhỏ hơn 13 px (14 px với chữ thường)
 - [ ] Mọi chuỗi giao diện nằm trong `vi.json`
 - [ ] Trạng thái đang tải, lỗi và danh sách trống đều đã có thiết kế
+- [ ] Trang mới có đúng một `h1` (có thể ẩn trực quan bằng `sr-only`) và được thêm vào bài rà `apps/web/e2e/a11y-sweep.spec.ts` (đúng một `h1`, không nút thiếu tên, không tràn ngang, vùng bấm ≥ 44 px trên điện thoại và ≥ 24 px trên máy tính)
+- [ ] Danh sách và thẻ không lặp ở mọi dòng điều đã nói ở tiêu đề nhóm hay thanh bên (mục 13)
 
 ## 9. Khung ứng dụng (Q106, Q107)
 
@@ -226,6 +228,17 @@ Mẫu **Theo dõi** đã chọn qua prototype (3/11/2026, bản gộp ở nhánh
 ## 12. Phù hợp theo vai trò
 
 Chi tiết ở [ui-review.md](ui-review.md) mục 3. Tóm lại: Quản trị viên dùng khung thích ứng và các mẫu Danh sách, Chi tiết; Người ra đề dùng thêm Soạn, Các bước, Theo dõi và Chấm; Người dự thi dùng khu làm bài riêng cùng bảng màu (mục 3) và bảng "Hiển thị" (mục 4.1).
+
+## 13. Bổ sung sau bản 0.5.2 (24/11/2026)
+
+Rút ra từ các góp ý khi chạy thử và đợt rà UX/UI ([plan/ux-ra-soat-sau-0-5-1-thiet-ke.md](plan/ux-ra-soat-sau-0-5-1-thiet-ke.md)); không đổi các quyết định ở trên, chỉ làm rõ cách áp dụng.
+
+- **Thanh tab (`Tabs`):** nhãn không xuống dòng và cùng chiều cao; khi không đủ chỗ (điện thoại) thanh cuộn ngang, có dải mờ ở mép phải và tab đang chọn tự vào khung nhìn. Số kèm tab (ví dụ số Vi phạm chưa quyết) là huy hiệu chỉ hiện khi lớn hơn 0, có chữ đi kèm cho trình đọc màn hình. Tên tab ngắn ("Danh sách", không "Danh sách dự thi").
+- **Một nút chính trong nhóm hành động:** mỗi lúc chỉ một nút được nhấn mạnh (trang Kết quả: Chấm tự luận, Công bố kết quả hoặc Xử lý Phúc khảo, chọn bằng hàm thuần `primaryResultsAction`). Điện thoại: nút chính rộng trọn hàng và lên đầu, các nút còn lại lưới hai cột, chữ nhỏ hơn và ẩn biểu tượng để chữ không xuống dòng; máy tính giữ một hàng.
+- **Không lặp thông tin ở mọi dòng:** nhãn trạng thái không nhắc lại tiêu đề nhóm (màn Vào thi: nhóm "Đang mở" không có nhãn "Đang mở" trên thẻ); nhãn chỉ nêu ngoại lệ (Ngân hàng câu hỏi: chỉ câu chưa dùng có "Chưa dùng", câu đã vào Bộ đề không có nhãn); tên Chủ đề ở dòng phụ và chỉ khi chưa chọn một Chủ đề.
+- **Bảng và vùng nội dung thật:** ở 1280 px có hai thanh bên (menu và danh sách Chủ đề) nên vùng bảng chỉ còn khoảng 650 px: bảng ở đó tối đa 3 đến 4 cột, cột quan trọng nhất (Phần dẫn) rộng tối thiểu 18 rem, cột phụ (Cập nhật) chỉ hiện từ 1536 px (`from: '2xl'` của `DataList`) và dưới đó chuyển thành dòng phụ.
+- **Soạn Bộ đề:** nút **Thêm câu hỏi** ở thanh dính, độc lập với các Phần (đích mặc định là Phần đang xem); xem **Chi tiết câu hỏi** trước khi thêm, đáp án đúng đánh dấu bằng màu, dấu ✓ và chữ (không chỉ màu). Bộ đề đã Phát hành: thẻ tổng quan (ô số lớn và bảng Phần bấm nhảy), thanh dính chỉ đọc có chuyển Phần, bộ lọc theo nội dung hoặc tag.
+- **Tiêu đề và vùng bấm:** mỗi trang có đúng một `h1`; mọi thứ bấm được cao ≥ 44 px trên điện thoại (cả thẻ là một vùng bấm khi cả thẻ dẫn tới một việc). Bài rà `a11y-sweep.spec.ts` giữ điều này cho các trang chính.
 
 ## Quyết định (Q71–Q75)
 
