@@ -10,6 +10,7 @@ import {
   ListChecks,
   Plus,
   Save,
+  Search,
   Send,
   Trash2,
   TriangleAlert,
@@ -44,6 +45,8 @@ import {
   totalsOf,
   updateSection,
 } from '../exam-draft';
+import { filterExamItems, type ItemFilter, tagsOfExam } from '../exam-filter';
+import { examOverviewOf } from '../exam-overview';
 import {
   archiveExam,
   deleteExam,
@@ -56,6 +59,8 @@ import {
 import { defaultPickerSection } from '../picker-nav';
 import { Badge, Button, Card, Dialog, ErrorMessage, PrimaryButton, TextField } from '.';
 import { Breadcrumb } from './breadcrumb';
+import { ExamItemFilter } from './exam-item-filter';
+import { ExamOverviewCard } from './exam-overview';
 import { ExamPreview } from './exam-preview';
 import { ExamPublishDialog } from './exam-publish-dialog';
 import { KeyCorrectionDialog } from './grading/key-correction-dialog';
@@ -417,6 +422,19 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
   const sectionName = (section: DraftSection, index: number) =>
     section.title.trim() || t('exam.untitled', { n: index + 1 });
   const sectionList = draft.sections.map((s, i) => ({ key: s.key, name: sectionName(s, i) }));
+  // Bộ đề đã phát hành: số liệu tổng quan và bộ lọc câu hỏi (lọc ngay trên máy, không đổi bản nháp).
+  const overview = examOverviewOf(
+    draft,
+    draft.sections.map((s, i) => sectionName(s, i)),
+  );
+  const examTags = tagsOfExam(draft);
+  const [itemFilter, setItemFilter] = useState<ItemFilter>({ query: '', tag: '' });
+  const filterResult = filterExamItems(draft, itemFilter);
+  // Nút "Lọc" ở thanh dính: cuộn lên ô lọc và gõ được ngay.
+  const focusFilter = () => {
+    document.getElementById('exam-filter')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    document.getElementById('exam-filter-query')?.focus({ preventScroll: true });
+  };
 
   // Phần đang xem: theo vị trí cuộn trang (chỉ cần khi Bộ đề có từ hai Phần trở lên).
   const [viewingSection, setViewingSection] = useState(0);
@@ -557,6 +575,9 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
         />
       )}
       {readOnly && (
+        <ExamOverviewCard overview={overview} viewing={viewingSection} onJump={jumpToSection} />
+      )}
+      {readOnly && (
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-sm">
           <p role="status">
             {t('exam.readOnlyNote')}{' '}
@@ -590,26 +611,33 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
             label: t('exam.tabEdit'),
             content: (
               <div className="flex flex-col gap-4">
-                <Card className="flex flex-col gap-4">
-                  <TextField
-                    id="exam-title"
-                    label={t('exam.name')}
-                    value={draft.title}
-                    maxLength={200}
-                    disabled={readOnly}
-                    onChange={(e) => change((d) => ({ ...d, title: e.target.value }))}
+                {readOnly ? (
+                  // Bộ đề đã phát hành: tên đã có ở tiêu đề trang, thẻ tổng quan ở ngay dưới tiêu đề; đầu tab Soạn là bộ lọc câu hỏi.
+                  <ExamItemFilter
+                    filter={itemFilter}
+                    onChange={setItemFilter}
+                    tags={examTags}
+                    result={filterResult}
                   />
-                  {!readOnly && (
+                ) : (
+                  <Card className="flex flex-col gap-4">
+                    <TextField
+                      id="exam-title"
+                      label={t('exam.name')}
+                      value={draft.title}
+                      maxLength={200}
+                      onChange={(e) => change((d) => ({ ...d, title: e.target.value }))}
+                    />
                     <InstructionsField
                       id="exam-instructions"
                       label={t('exam.instructions')}
                       value={draft.instructions}
                       onChange={(instructions) => change((d) => ({ ...d, instructions }))}
                     />
-                  )}
-                </Card>
+                  </Card>
+                )}
 
-                {draw.active && (
+                {draw.active && !readOnly && (
                   <div className="flex flex-col gap-2" data-testid="draw-summary">
                     <p
                       className="rounded-lg border border-border bg-surface-raised p-3 text-sm"
@@ -738,7 +766,14 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                       </Button>
                     )}
 
-                    {collapsed.has(section.key) ? null : section.items.length === 0 ? (
+                    {collapsed.has(section.key) ? null : readOnly &&
+                      filterResult.active &&
+                      section.items.length > 0 &&
+                      (filterResult.perSection.get(section.key) ?? 0) === 0 ? (
+                      <p className="text-fg-muted" data-testid="filter-empty">
+                        {t('exam.filter.none')}
+                      </p>
+                    ) : section.items.length === 0 ? (
                       <div className="flex flex-col items-start gap-2">
                         <p className="text-fg-muted">{t('exam.emptySection')}</p>
                         {!readOnly && (
@@ -750,17 +785,23 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                       </div>
                     ) : (
                       <ol className="flex flex-col gap-2">
-                        {section.items.map((item) => (
-                          <ItemRow
-                            key={item.questionId}
-                            item={item}
-                            number={numberOf(draft, item.questionId) ?? 0}
-                            sections={sectionList}
-                            currentKey={section.key}
-                            readOnly={readOnly}
-                            onChange={change}
-                          />
-                        ))}
+                        {section.items
+                          .filter(
+                            (item) =>
+                              !(readOnly && filterResult.active) ||
+                              filterResult.visible.has(item.questionId),
+                          )
+                          .map((item) => (
+                            <ItemRow
+                              key={item.questionId}
+                              item={item}
+                              number={numberOf(draft, item.questionId) ?? 0}
+                              sections={sectionList}
+                              currentKey={section.key}
+                              readOnly={readOnly}
+                              onChange={change}
+                            />
+                          ))}
                       </ol>
                     )}
                   </Card>
@@ -771,6 +812,40 @@ export function ExamEditor({ exam }: { exam: ExamDetail }) {
                     <Plus aria-hidden className="size-5" />
                     {split ? t('exam.addSection') : t('exam.splitSections')}
                   </Button>
+                )}
+
+                {readOnly && (
+                  <StickyActionBar align="end">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      {draft.sections.length > 1 && (
+                        <SectionNav
+                          sections={draft.sections.map((s, i) => ({
+                            key: s.key,
+                            name: sectionName(s, i),
+                            count: s.items.length,
+                          }))}
+                          current={viewingSection}
+                          onJump={jumpToSection}
+                        />
+                      )}
+                      <span
+                        className="min-w-0 text-sm text-fg-muted"
+                        aria-live="polite"
+                        data-testid="view-count"
+                      >
+                        {filterResult.active
+                          ? t('exam.filter.showing', {
+                              shown: filterResult.shown,
+                              total: filterResult.total,
+                            })
+                          : t('exam.totals', { items: totals.items, points: totals.points })}
+                      </span>
+                      <Button onClick={focusFilter}>
+                        <Search aria-hidden className="size-5" />
+                        {t('exam.filter.open')}
+                      </Button>
+                    </div>
+                  </StickyActionBar>
                 )}
 
                 {!readOnly && (
