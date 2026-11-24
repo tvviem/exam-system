@@ -1934,5 +1934,41 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-uxa-gv-desktop",
+    "fullName": "Giảng viên Rà UX desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-uxa-sv-desktop",
+    "fullName": "Sinh viên Rà UX desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "UXA-D-001",
+    "classLabel": "LOP-UXA-D"
+  },
+  {
+    "username": "e2e-uxa-gv-mobile",
+    "fullName": "Giảng viên Rà UX mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-uxa-sv-mobile",
+    "fullName": "Sinh viên Rà UX mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "UXA-M-001",
+    "classLabel": "LOP-UXA-M"
   }
 ]
