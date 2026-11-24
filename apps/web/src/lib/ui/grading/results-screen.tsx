@@ -18,6 +18,7 @@ import {
   type ViolationItem,
   violationsQuery,
 } from '../../grading';
+import { primaryResultsAction } from '../../results-actions';
 import {
   Badge,
   Button,
@@ -36,7 +37,7 @@ import { useToast } from '../toast';
 import { AppealsPanel } from './appeals-panel';
 import { DelegateDialog } from './delegate-dialog';
 import { KeyCorrectionDialog } from './key-correction-dialog';
-import { ReleasePanel } from './release-panel';
+import { PRIMARY_ACTION_LAYOUT, ReleasePanel, SECONDARY_ACTION_COMPACT } from './release-panel';
 
 // Màn Kết quả của một Phiên thi (docs/plan/slice-5.md, PR 5b): bảng người, Thống kê câu, Vi phạm kèm Mức xử lý, chi tiết từng
 // người, Chấm ẩn tên và Ủy quyền chấm. Dùng cho chủ Phiên thi (tab) và người được Ủy quyền (đường dẫn riêng).
@@ -65,6 +66,11 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
   const data = results.data;
   const { status } = data;
   const released = data.release.releasedAt !== null;
+  const primary = primaryResultsAction({
+    pendingEssays: status.pendingEssays,
+    released,
+    appealsOpen: data.release.appeals.open,
+  });
   return (
     <div className="flex flex-col gap-4">
       <Card className="flex flex-col gap-3">
@@ -83,48 +89,61 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
             <Badge tone="warning">{t('grading.results.delegateRole')}</Badge>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            to="/examiner/sessions/$sessionId/grading"
-            params={{ sessionId }}
-            className={buttonClass(status.pendingEssays > 0 && !released ? 'primary' : 'secondary')}
-            aria-disabled={released}
-            tabIndex={released ? -1 : undefined}
-            onClick={(e) => released && e.preventDefault()}
-          >
-            <Pencil aria-hidden className="size-4" />
-            {t('grading.results.grade')}
-            {status.pendingEssays > 0 && ` (${status.pendingEssays})`}
-          </Link>
-          <button
-            type="button"
-            aria-pressed={data.blind}
-            disabled={blind.isPending || released}
-            onClick={() => blind.mutate(!data.blind)}
-            className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-lg border border-border-strong bg-surface px-3 text-sm font-medium pointer-fine:min-h-9"
-          >
-            <EyeOff aria-hidden className="size-4" />
-            {t(data.blind ? 'grading.blindOn' : 'grading.blindOff')}
-          </button>
-          {released && (
-            <Link
-              to="/examiner/sessions/$sessionId/appeals"
-              params={{ sessionId }}
-              className={buttonClass(data.release.appeals.open > 0 ? 'primary' : 'secondary')}
-              data-testid="handle-appeals"
-            >
-              <MessageSquareWarning aria-hidden className="size-4" />
-              {t('grading.results.handleAppeals', { count: data.release.appeals.open })}
-            </Link>
-          )}
-          {data.role === 'owner' && (
-            <Button onClick={() => setDelegating(true)}>
-              <UserCog aria-hidden className="size-4" />
-              {t('grading.delegate.open')}
-            </Button>
-          )}
-        </div>
-        <ReleasePanel sessionId={sessionId} data={data} onOpenAppeals={() => setTab('appeals')} />
+        <ReleasePanel
+          sessionId={sessionId}
+          data={data}
+          primary={primary}
+          onOpenAppeals={() => setTab('appeals')}
+          leading={
+            <>
+              <Link
+                to="/examiner/sessions/$sessionId/grading"
+                params={{ sessionId }}
+                className={buttonClass(
+                  primary === 'grade' ? 'primary' : 'secondary',
+                  primary === 'grade' ? PRIMARY_ACTION_LAYOUT : SECONDARY_ACTION_COMPACT,
+                )}
+                aria-disabled={released}
+                tabIndex={released ? -1 : undefined}
+                onClick={(e) => released && e.preventDefault()}
+              >
+                <Pencil aria-hidden className="size-4 max-sm:hidden" />
+                {t('grading.results.grade')}
+                {status.pendingEssays > 0 && ` (${status.pendingEssays})`}
+              </Link>
+              <button
+                type="button"
+                aria-pressed={data.blind}
+                disabled={blind.isPending || released}
+                onClick={() => blind.mutate(!data.blind)}
+                className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-border-strong bg-surface px-3 text-sm font-medium pointer-fine:min-h-9 disabled:cursor-not-allowed disabled:opacity-60 max-sm:px-2"
+              >
+                <EyeOff aria-hidden className="size-4 max-sm:hidden" />
+                {t(data.blind ? 'grading.blindOn' : 'grading.blindOff')}
+              </button>
+              {released && (
+                <Link
+                  to="/examiner/sessions/$sessionId/appeals"
+                  params={{ sessionId }}
+                  className={buttonClass(
+                    primary === 'appeals' ? 'primary' : 'secondary',
+                    primary === 'appeals' ? PRIMARY_ACTION_LAYOUT : SECONDARY_ACTION_COMPACT,
+                  )}
+                  data-testid="handle-appeals"
+                >
+                  <MessageSquareWarning aria-hidden className="size-4" />
+                  {t('grading.results.handleAppeals', { count: data.release.appeals.open })}
+                </Link>
+              )}
+              {data.role === 'owner' && (
+                <Button className={SECONDARY_ACTION_COMPACT} onClick={() => setDelegating(true)}>
+                  <UserCog aria-hidden className="size-4 max-sm:hidden" />
+                  {t('grading.delegate.open')}
+                </Button>
+              )}
+            </>
+          }
+        />
         {status.essayHidden && (
           <p
             role="status"
@@ -165,14 +184,18 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
             ? [
                 {
                   id: 'appeals',
-                  label: t('grading.results.appeals', { count: data.release.appeals.open }),
+                  label: t('grading.results.appeals'),
+                  badge: data.release.appeals.open,
+                  badgeNote: t('grading.results.appealsNote'),
                   content: tab === 'appeals' ? <AppealsPanel sessionId={sessionId} /> : null,
                 },
               ]
             : []),
           {
             id: 'violations',
-            label: t('grading.results.violations', { count: status.violationsUndecided }),
+            label: t('grading.results.violations'),
+            badge: status.violationsUndecided,
+            badgeNote: t('grading.results.violationsNote'),
             content:
               tab === 'violations' ? (
                 <ViolationsPanel sessionId={sessionId} released={released} />
@@ -290,26 +313,27 @@ function PeopleList({ sessionId, rows }: { sessionId: string; rows: ResultRow[] 
           rowKey={(r) => r.userId}
           columns={columns}
           card={(r) => (
-            <Card className="flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => setOpenId(r.userId)}
-                className="cursor-pointer text-left font-semibold"
-              >
-                {r.fullName}
-              </button>
-              <p className="text-sm text-fg-muted">
+            <button
+              type="button"
+              onClick={() => setOpenId(r.userId)}
+              data-testid="person-card"
+              className="flex min-h-12 w-full cursor-pointer flex-col gap-1 rounded-xl border border-border bg-surface p-5 text-left shadow-sm hover:bg-bg"
+            >
+              <span className="font-semibold">{r.fullName}</span>
+              <span className="text-sm text-fg-muted">
                 {[r.code, r.classLabel].filter(Boolean).join(' · ')}
-              </p>
-              <p className="tabular-nums">
-                {t('grading.results.cardScore', {
-                  raw: scoreText(r, 'raw'),
-                  max: fmt(r.maxScore),
-                  scaled: scoreText(r, 'scaled'),
-                })}
-              </p>
+              </span>
+              {r.state !== 'no_attempt' && (
+                <span className="tabular-nums">
+                  {t('grading.results.cardScore', {
+                    raw: scoreText(r, 'raw'),
+                    max: fmt(r.maxScore),
+                    scaled: scoreText(r, 'scaled'),
+                  })}
+                </span>
+              )}
               <Notes row={r} />
-            </Card>
+            </button>
           )}
         />
       )}

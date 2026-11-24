@@ -117,7 +117,7 @@ test('Người ra đề theo dõi kích hoạt của Yêu cầu đã duyệt: kh
   const tag = project === 'desktop' ? 'D' : 'M';
   const sessionId = await seedOpenSession(page, `td-${project}`, `TDE2E${tag}`, `TD-${project}-3`);
   await page.goto(`/examiner/sessions/${sessionId}`);
-  await page.getByRole('tab', { name: 'Danh sách dự thi' }).click();
+  await page.getByRole('tab', { name: 'Danh sách' }).click();
   const rosterRow = page.getByRole('listitem').filter({ hasText: 'Lê Văn Chi' });
   await expect(rosterRow.getByText(/Chưa gửi thư|Đã gửi thư/)).toBeVisible();
   // Danh sách vẽ lại khi dữ liệu theo dõi về, có thể đóng menu vừa mở: thử lại như các bài khác.

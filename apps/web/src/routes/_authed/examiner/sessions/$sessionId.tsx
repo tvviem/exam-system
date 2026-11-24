@@ -287,9 +287,20 @@ function SessionDetail({ session }: { session: SessionSummary }) {
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+/** Điện thoại: lưới hai cột; ô dài (`wide`) chiếm trọn hàng. Từ 640 px mỗi thông tin một dòng nhãn và giá trị như cũ. */
+function Row({
+  label,
+  children,
+  wide = false,
+}: {
+  label: string;
+  children: ReactNode;
+  wide?: boolean;
+}) {
   return (
-    <div className="grid gap-1 sm:grid-cols-[14rem_1fr] sm:gap-4">
+    <div
+      className={`grid gap-1 sm:grid-cols-[14rem_1fr] sm:gap-4 ${wide ? 'col-span-2 sm:col-span-1' : ''}`}
+    >
       <dt className="text-sm text-fg-muted">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>
@@ -303,6 +314,8 @@ function Overview({ session }: { session: SessionSummary }) {
   const onOff = (value: boolean) => t(value ? 'session.overview.on' : 'session.overview.off');
   // Phần nào được rút dưới 100 % (tỷ lệ hiệu lực: ghi đè của Phiên thi hoặc mặc định của Bộ đề).
   const drawingRows = (session.sectionDraws ?? []).filter((r) => r.percent < 100);
+  // Mã vào thi là thứ Người ra đề cần nhất lúc thi: khi Phiên thi chưa kết thúc, mã đứng đầu tab Tổng quan.
+  const codeFirst = ['upcoming', 'open', 'entry_closed'].includes(session.phase);
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(session.accessCode);
@@ -311,75 +324,95 @@ function Overview({ session }: { session: SessionSummary }) {
       // Trình duyệt chặn bảng nhớ tạm: người dùng vẫn đọc và gõ lại được mã hiển thị.
     }
   };
+  const codeNode = (
+    <span className="inline-flex flex-wrap items-center gap-3">
+      <span data-testid="access-code" className="font-mono text-2xl tracking-widest">
+        {session.accessCode}
+      </span>
+      <Button onClick={copyCode}>{t('session.action.copy')}</Button>
+    </span>
+  );
   return (
-    <Card>
-      <dl className="flex flex-col gap-3">
-        <Row label={t('session.overview.exam')}>{session.examTitle}</Row>
-        <Row label={t('session.overview.window')}>
-          {t('session.window', {
-            opens: formatDateTime(session.opensAt),
-            closes: formatDateTime(session.closesAt),
-          })}
-        </Row>
-        <Row label={t('session.overview.duration')}>
-          {t('session.overview.durationValue', { minutes: session.durationMinutes })}
-        </Row>
-        <Row label={t('session.overview.hardClose')}>{onOff(session.hardClose)}</Row>
-        <Row label={t('session.overview.attempts')}>
-          {session.maxAttempts}
-          {session.maxAttempts > 1 && ` · ${t(`session.field.${session.attemptScoring}`)}`}
-        </Row>
-        <Row label={t('session.variants.overview')}>
-          <span data-testid="overview-scope">
-            {session.drawScope === 'shared'
-              ? (session.variants?.length ?? 1) > 1
-                ? t('session.variants.overviewShared', { count: session.variants?.length })
-                : t('session.variants.overviewSharedOne')
-              : t('session.variants.overviewPerCandidate')}
-          </span>
-        </Row>
-        <Row label={t('session.overview.shuffle')}>
-          {t('session.overview.shuffleValue', {
-            items: onOff(session.shuffleItems),
-            options: onOff(session.shuffleOptions),
-          })}
-        </Row>
-        {drawingRows.length > 0 && (
-          <Row label={t('session.draw.overview')}>
-            <span data-testid="overview-draw">
-              {t('session.draw.overviewValue', {
-                count: (session.sectionDraws ?? []).reduce((n, r) => n + r.drawCount, 0),
-                total: (session.sectionDraws ?? []).reduce((n, r) => n + r.itemCount, 0),
-                list: drawingRows
-                  .map(
-                    (r) =>
-                      `${(session.sectionDraws ?? []).length > 1 ? `${r.title?.trim() || t('exam.untitled', { n: (session.sectionDraws ?? []).indexOf(r) + 1 })} ` : ''}${String(r.percent).replace('.', ',')} %`,
-                  )
-                  .join(', '),
-              })}
+    <div className="flex flex-col gap-4">
+      {codeFirst && (
+        <Card className="flex flex-col gap-2" data-testid="access-code-card">
+          <p className="text-sm text-fg-muted">{t('session.overview.accessCode')}</p>
+          {codeNode}
+          <p className="text-sm text-fg-muted">{t('session.overview.accessCodeHint')}</p>
+        </Card>
+      )}
+      <Card>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:flex-col">
+          <Row label={t('session.overview.exam')} wide>
+            {session.examTitle}
+          </Row>
+          <Row label={t('session.overview.window')} wide>
+            {t('session.window', {
+              opens: formatDateTime(session.opensAt),
+              closes: formatDateTime(session.closesAt),
+            })}
+          </Row>
+          <Row label={t('session.overview.duration')}>
+            {t('session.overview.durationValue', { minutes: session.durationMinutes })}
+          </Row>
+          <Row label={t('session.overview.hardClose')}>{onOff(session.hardClose)}</Row>
+          <Row label={t('session.overview.attempts')}>
+            {session.maxAttempts}
+            {session.maxAttempts > 1 && ` · ${t(`session.field.${session.attemptScoring}`)}`}
+          </Row>
+          <Row label={t('session.variants.overview')} wide>
+            <span data-testid="overview-scope">
+              {session.drawScope === 'shared'
+                ? (session.variants?.length ?? 1) > 1
+                  ? t('session.variants.overviewShared', { count: session.variants?.length })
+                  : t('session.variants.overviewSharedOne')
+                : t('session.variants.overviewPerCandidate')}
             </span>
           </Row>
-        )}
-        <Row label={t('session.overview.showScoringRules')}>{yes(session.showScoringRules)}</Row>
-        <Row label={t('session.overview.accessCode')}>
-          <span className="inline-flex flex-wrap items-center gap-3">
-            <span data-testid="access-code" className="font-mono text-xl tracking-widest">
-              {session.accessCode}
-            </span>
-            <Button onClick={copyCode}>{t('session.action.copy')}</Button>
-          </span>
-        </Row>
-        <Row label={t('session.overview.roster')}>
-          {t('session.roster.count', { count: session.rosterCount })}
-        </Row>
-        {session.cancelledAt && (
-          <Row label={t('session.overview.cancelledAt')}>{formatDateTime(session.cancelledAt)}</Row>
-        )}
-        {session.cancelReason && (
-          <Row label={t('session.overview.cancelReason')}>{session.cancelReason}</Row>
-        )}
-      </dl>
-    </Card>
+          <Row label={t('session.overview.shuffle')} wide>
+            {t('session.overview.shuffleValue', {
+              items: onOff(session.shuffleItems),
+              options: onOff(session.shuffleOptions),
+            })}
+          </Row>
+          {drawingRows.length > 0 && (
+            <Row label={t('session.draw.overview')} wide>
+              <span data-testid="overview-draw">
+                {t('session.draw.overviewValue', {
+                  count: (session.sectionDraws ?? []).reduce((n, r) => n + r.drawCount, 0),
+                  total: (session.sectionDraws ?? []).reduce((n, r) => n + r.itemCount, 0),
+                  list: drawingRows
+                    .map(
+                      (r) =>
+                        `${(session.sectionDraws ?? []).length > 1 ? `${r.title?.trim() || t('exam.untitled', { n: (session.sectionDraws ?? []).indexOf(r) + 1 })} ` : ''}${String(r.percent).replace('.', ',')} %`,
+                    )
+                    .join(', '),
+                })}
+              </span>
+            </Row>
+          )}
+          <Row label={t('session.overview.showScoringRules')}>{yes(session.showScoringRules)}</Row>
+          {!codeFirst && (
+            <Row label={t('session.overview.accessCode')} wide>
+              {codeNode}
+            </Row>
+          )}
+          <Row label={t('session.overview.roster')}>
+            {t('session.roster.count', { count: session.rosterCount })}
+          </Row>
+          {session.cancelledAt && (
+            <Row label={t('session.overview.cancelledAt')} wide>
+              {formatDateTime(session.cancelledAt)}
+            </Row>
+          )}
+          {session.cancelReason && (
+            <Row label={t('session.overview.cancelReason')} wide>
+              {session.cancelReason}
+            </Row>
+          )}
+        </dl>
+      </Card>
+    </div>
   );
 }
 

@@ -178,7 +178,7 @@ test('Phiên thi: tạo 3 bước, thêm người, phút cộng sẵn, sửa, nh
   // Nhân bản: bản sao Sắp mở, mang theo Danh sách
   await chooseFromRowMenu(page, 'Thao tác khác với Phiên thi', 'Nhân bản');
   await expect(page.getByRole('heading', { name: `Ca 1 sửa ${p} (bản sao)` })).toBeVisible();
-  await page.getByRole('tab', { name: 'Danh sách dự thi' }).click();
+  await page.getByRole('tab', { name: 'Danh sách' }).click();
   await expect(rows).toHaveCount(2);
 
   // Hủy bản sao: không hoàn tác, không sửa được nữa
