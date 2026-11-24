@@ -120,6 +120,7 @@ gh release create v0.1.1 --verify-tag --title "BLUni Exam 0.1.1" --notes-file gh
 
 - **Release cho mọi tag** (chủ dự án chốt 22/11/2026): `v0.1.0`, `v0.1.1`, `v0.2.0`, `v0.3.0` đều có Release, viết theo mẫu mục 4; bản đầu tiên ghi "không có bản trước". Mục đích chính là **điểm lùi**: mỗi Release nêu mã commit đầy đủ của bản trước để deploy lại khi bản mới lỗi.
 - **"Rút câu theo Phần" là `0.3.0` (MINOR), không phải `1.0.0`:** chỉ thêm hai bảng và hai trigger, không đổi cột nào của bảng đang có dữ liệu, không đổi kiến trúc; bản `0.2.0` vẫn chạy được trên cơ sở dữ liệu của `0.3.0`. `1.0.0` vẫn dành cho thay đổi lớn về kiến trúc hoặc mô hình dữ liệu (cách nhận biết ở mục 2).
+- **Hai nhóm góp ý sau buổi chạy thử (nút Thêm câu hỏi và Chi tiết câu hỏi khi soạn Bộ đề; thẻ tổng quan, chuyển Phần và lọc ở Bộ đề đã phát hành) là `0.5.1` (PATCH), không phải `0.6.0`** (chủ dự án chốt 24/11/2026): không đổi dữ liệu, API hay nghiệp vụ, chỉ chỉnh giao diện theo góp ý khi chạy thử; giai đoạn trước `1.0.0` chủ yếu là chỉnh UX/UI nên các đợt như vậy tăng số PATCH.
 
 ## 8. Các bản đã phát hành và cách lùi
 
@@ -132,5 +133,6 @@ gh release create v0.1.1 --verify-tag --title "BLUni Exam 0.1.1" --notes-file gh
 | `v0.3.1` | 22/11/2026 (deploy), tag gắn bù 24/11/2026 | `f92e027cca5c967a6556c4a2b1f07ffffcdbae24` | `v0.3.0` | chỉ giao diện, không migration; lùi an toàn |
 | `v0.4.0` | tag gắn bù 24/11/2026 | `e9a19f22610aa096c56452d25af66f6d87a19084` | `v0.3.1` | chỉ giao diện, không migration; lùi an toàn. Commit này **chưa từng deploy riêng** (chạy ở prod cùng `7c8ac07`, 23/11/2026), nên ảnh của đúng commit này có thể không còn trên máy |
 | `v0.5.0` | 24/11/2026 | `a44182cd02ef2e9a3f7a86a2252ed740c4efe7da` | `v0.4.0` | migration `0030` chỉ thêm (bảng, cột, trigger) nên bản cũ vẫn chạy, **nhưng bản cũ không biết Mã đề: Phiên thi dùng chung Mã đề sẽ bị rút riêng từng người**: chỉ lùi khi chưa có Phiên thi thật dùng chung Mã đề. Tag gắn khi prod còn chạy `7c8ac07`; chủ dự án deploy `a44182c` để chạy thử với dữ liệu |
+| `v0.5.1` | 24/11/2026 | `fcc062252859279bc80a749ce073c41fb579b4e2` | `v0.5.0` | chỉ giao diện, không migration; lùi an toàn (mất nút Thêm câu hỏi ở thanh dính, Chi tiết câu hỏi, thẻ tổng quan, chuyển Phần và lọc của Bộ đề đã phát hành) |
 
 **Cách lùi:** Actions → **Deploy (bấm tay)** → Run workflow, điền **mã commit đầy đủ** của bản muốn lùi vào ô *Mã commit* (workflow từ chối nếu mã không thuộc `main` hoặc ảnh không còn trên máy; ảnh của 3 bản gần nhất được giữ sẵn), duyệt **Approve and deploy**. Chỉ lùi mã ứng dụng, không lùi dữ liệu. Chi tiết và bảng đọc Summary: [trien-khai.md](./trien-khai.md) mục "Deploy bằng GitHub". Tag không bao giờ bị dời hay xóa; tên ảnh luôn là `ghcr.io/tvviem/exam-api:<mã commit>` và `ghcr.io/tvviem/exam-web:<mã commit>`.
