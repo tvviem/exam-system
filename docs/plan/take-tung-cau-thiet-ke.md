@@ -1,6 +1,6 @@
 # Màn làm bài, chế độ "Từng câu": câu hỏi là trung tâm (thiết kế)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt ngày 25/11/2026: hướng A "Câu hỏi là trung tâm" và đặt nút chuyển chế độ trong bảng Aa; cùng năm điểm kiểm thử T1 đến T5). Chỉ giao diện: không migration, không đổi API. Dự kiến ra bản `0.5.3` (PATCH).
+**Trạng thái: `accepted`** (chủ dự án duyệt ngày 25/11/2026: hướng A "Câu hỏi là trung tâm" và đặt nút chuyển chế độ trong bảng Aa; cùng năm điểm kiểm thử T1 đến T5). Chỉ giao diện: không migration, không đổi API. **Tiến độ (25/11/2026): đã làm xong (PR #164) và ra bản `0.5.3`** (tag trên `d1056ef`; PATCH).
 
 ## 1. Vấn đề (góp ý của chủ dự án sau khi chạy thử cả luồng, 25/11/2026)
 
