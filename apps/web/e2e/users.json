@@ -1986,5 +1986,41 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-tcq-gv-desktop",
+    "fullName": "Giảng viên Từng câu desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-tcq-sv-desktop",
+    "fullName": "Sinh viên Từng câu desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TCQ-D-001",
+    "classLabel": "LOP-TCQ-D"
+  },
+  {
+    "username": "e2e-tcq-gv-mobile",
+    "fullName": "Giảng viên Từng câu mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-tcq-sv-mobile",
+    "fullName": "Sinh viên Từng câu mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "TCQ-M-001",
+    "classLabel": "LOP-TCQ-M"
   }
 ]

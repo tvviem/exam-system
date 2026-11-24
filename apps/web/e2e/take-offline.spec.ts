@@ -1,5 +1,12 @@
 import { expect, type Page, test } from '@playwright/test';
-import { examinerPage, ORIGIN, overflow, seedOpenSession, signIn } from './take-support';
+import {
+  examinerPage,
+  ORIGIN,
+  overflow,
+  seedOpenSession,
+  setViewMode,
+  signIn,
+} from './take-support';
 
 // S6b (phần ngoại tuyến) và S6e: tải lại lúc mất mạng vẫn làm tiếp được; thiết bị bị thu hồi (Q243, Q244).
 
@@ -42,7 +49,7 @@ async function startAttempt(page: Page, username: string, code: string) {
   await page.getByRole('button', { name: 'Vào thi' }).click();
   await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
   await page.waitForURL(/\/take\/attempts\//);
-  await page.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(page, 'Cả đề');
 }
 
 test('Tải lại lúc mất mạng: mở đề từ máy, giữ câu trả lời, có mạng thì tự gửi (S6b)', async ({

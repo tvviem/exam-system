@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { examinerPage, seedOpenSession } from './take-support';
+import { examinerPage, seedOpenSession, setViewMode } from './take-support';
 
 // Xem thử qua Phiên thi (Q220, Q245, Q250): Người ra đề đi qua đề đúng như Người dự thi thấy, không ghi gì.
 
@@ -27,7 +27,7 @@ test('Xem thử: làm thử các câu, không gửi gì lên server, tải lại
   await expect(examiner.getByText(`Đang xem thử: Ca làm bài ${p}-pv`)).toBeVisible();
   await expect(examiner.getByRole('timer')).toHaveCount(0);
   await expect(examiner.getByRole('status', { name: 'Trạng thái lưu' })).toHaveCount(0);
-  await examiner.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(examiner, 'Cả đề');
 
   // Làm thử: chọn, viết; mọi thứ chỉ ở trang
   await examiner.getByRole('radio', { name: 'Hà Nội' }).check();
@@ -46,7 +46,7 @@ test('Xem thử: làm thử các câu, không gửi gì lên server, tải lại
 
   // Tải lại: dựng lại đề, câu trả lời mất
   await examiner.reload();
-  await examiner.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(examiner, 'Cả đề');
   await expect(examiner.getByRole('radio', { name: 'Hà Nội' })).not.toBeChecked();
   await expect(examiner.getByRole('textbox', { name: 'Câu trả lời' })).toHaveValue('');
 

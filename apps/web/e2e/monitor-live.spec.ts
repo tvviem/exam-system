@@ -1,6 +1,6 @@
 import { expect, type Page, test, type WebSocketRoute } from '@playwright/test';
 import { beat, openMonitor, openPerson, room } from './monitor-support';
-import { signIn } from './take-support';
+import { setViewMode, signIn } from './take-support';
 
 // S6 + thời gian đáp ứng cho ba vai (PR 4d-3, Q213). Tin đẩy Socket.IO chỉ là phần tăng tốc: các test dưới đây đo cái người
 // dùng thấy (không tua đồng hồ trang Người dự thi), rồi chặn kênh đẩy để chắc hệ thống vẫn đúng khi mất kênh.
@@ -90,7 +90,7 @@ test('Người ra đề: số câu đã trả lời trên màn Theo dõi đổi 
   await openMonitor(examiner, sessionId);
   await expect(examiner.getByText('Cập nhật trực tiếp')).toBeVisible();
 
-  await sv1.getByRole('button', { name: 'Cả đề' }).click(); // điện thoại mặc định "Từng câu"
+  await setViewMode(sv1, 'Cả đề'); // điện thoại mặc định "Từng câu"
   const answered = performance.now();
   await sv1.getByRole('radio', { name: 'Hà Nội' }).check();
   await expect(examiner.getByText('1/4').first()).toBeVisible({ timeout: 3000 });
@@ -184,7 +184,7 @@ test('Người ra đề: kênh đẩy đứt rồi tự nối lại, số liệu
 
   await sockets[0]?.close();
   await expect(examiner.getByText('Cập nhật mỗi 5 giây')).toBeVisible();
-  await sv1.getByRole('button', { name: 'Cả đề' }).click();
+  await setViewMode(sv1, 'Cả đề');
   await sv1.getByRole('radio', { name: 'Hà Nội' }).check(); // phát sinh khi kênh đang đứt
   // Tự nối lại, vào phòng lại và tải lại ảnh chụp: số liệu mới hiện và chỉ báo trở về trực tiếp
   await expect(examiner.getByText('Cập nhật trực tiếp')).toBeVisible({ timeout: 15_000 });

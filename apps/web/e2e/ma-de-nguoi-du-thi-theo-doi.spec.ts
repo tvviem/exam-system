@@ -136,7 +136,8 @@ test('Người dự thi thấy "Mã đề của bạn" ở màn xác nhận và 
       await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
       const banner = page.getByTestId('attempt-variant');
       await expect(banner).toContainText(`Mã đề của bạn: ${(variant as { label: string }).label}`);
-      await expect(banner).toContainText('Bài gồm 8 câu');
+      // Tổng số câu nằm ở thanh dưới: "Câu 1/8" (từng câu) hay "Đã làm 0/8 câu" (cả đề)
+      await expect(page.getByRole('button', { name: /^Danh sách câu/ })).toContainText(/\/8/);
       expect(await overflow(page)).toBeLessThanOrEqual(0);
       await shot(page, `lam-bai-${p}-${n}`);
     }

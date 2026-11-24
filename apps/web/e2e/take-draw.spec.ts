@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { examinerPage, ORIGIN, overflow, signIn } from './take-support';
+import { examinerPage, ORIGIN, overflow, setViewMode, signIn } from './take-support';
 
 // R4c (docs/plan/rut-cau-theo-phan-thiet-ke.md mục 4.6): Người dự thi biết bài rút ngẫu nhiên, thấy "Câu x/N" đúng N;
 // Người ra đề Xem thử một lượt rút mẫu.
@@ -139,7 +139,7 @@ test('Người dự thi biết bài rút ngẫu nhiên, thấy Câu x/N đúng N
   await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
   await page.waitForURL(/\/take\/attempts\//);
   // Máy tính mở sẵn "Cả đề"; chuyển sang "Từng câu" để thấy "Câu x/N" (điện thoại vốn đã ở chế độ này).
-  await page.getByRole('button', { name: 'Từng câu' }).click();
+  await setViewMode(page, 'Từng câu');
   await expect(page.getByText('Câu 1/9', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Danh sách câu/ })).toContainText(
     'Đã làm 0/9 câu',
@@ -158,7 +158,7 @@ test('Người dự thi biết bài rút ngẫu nhiên, thấy Câu x/N đúng N
   await expect(examiner.getByTestId('preview-draw')).toContainText(
     'gồm 9 câu trong 15 câu của Bộ đề',
   );
-  await examiner.getByRole('button', { name: 'Từng câu' }).click();
+  await setViewMode(examiner, 'Từng câu');
   await expect(examiner.getByText('Câu 1/9', { exact: true })).toBeVisible();
   await shot(examiner, `xem-thu-${p}`);
 });

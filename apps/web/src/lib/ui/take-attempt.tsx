@@ -11,6 +11,7 @@ import {
   ChevronUp,
   CloudOff,
   Eye,
+  Info,
   LayoutGrid,
   type LucideIcon,
   Timer,
@@ -20,7 +21,7 @@ import {
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
-import { attemptItemCount, candidateVariantLabel } from '../session-variants';
+import { candidateVariantLabel } from '../session-variants';
 import {
   type AttemptView,
   attemptQueryKey,
@@ -44,6 +45,7 @@ import {
 import { formatClock, type Warning } from '../take/clock';
 import type { Notice } from '../take/heartbeat-queue';
 import { forgetAttemptLocally } from '../take/local-data';
+import { hasRichText, oneModeContext } from '../take/one-mode';
 import type { SaveStatus } from '../take/save-queue';
 import { useCountdown } from '../take/use-countdown';
 import { useHeartbeat } from '../take/use-heartbeat';
@@ -327,30 +329,12 @@ function useAttemptSession(view: AttemptView): RunnerSession {
 }
 
 export function AttemptRunner({ view }: { view: AttemptView }) {
-  const { t } = useTranslation();
   const session = useAttemptSession(view);
   if (session.stop === 'DEVICE_REVOKED' || session.stop === 'NOT_FOUND') {
     return <StopScreen reason={session.stop} />;
   }
   const variant = candidateVariantLabel(view.variant);
-  return (
-    <AttemptScreen
-      content={view}
-      session={session}
-      banner={
-        variant ? (
-          <p
-            data-testid="attempt-variant"
-            className="rounded-lg border border-border bg-primary-soft p-3 font-sans text-sm font-medium text-on-primary-soft"
-          >
-            {t('take.variant.yours', { label: variant })}
-            {' · '}
-            {t('take.variant.itemCount', { count: attemptItemCount(view.sections) })}
-          </p>
-        ) : undefined
-      }
-    />
-  );
+  return <AttemptScreen content={view} session={session} variantLabel={variant ?? undefined} />;
 }
 
 /** Xem thử qua Phiên thi (Q220, Q245): cùng màn hình, nhưng không có giờ, không lưu, không nộp. Câu trả lời chỉ ở trang. */
@@ -418,13 +402,17 @@ function AttemptScreen({
   onFinish,
   finishLabel,
   banner,
+  variantLabel,
 }: {
   content: TakeContent;
   session: RunnerSession;
   /** Có thì nút kết thúc làm việc này ngay (xem thử); không có thì mở hộp thoại xác nhận Nộp bài. */
   onFinish?: () => void;
   finishLabel?: string;
+  /** Băng báo trên đầu đề (chỉ xem thử dùng). */
   banner?: ReactNode;
+  /** Nhãn Mã đề của người làm bài (chỉ khi Phiên thi có từ hai Mã đề): hiện thành chip ở thanh đầu. */
+  variantLabel?: string;
 }) {
   const { t } = useTranslation();
   const items = useMemo(() => content.sections.flatMap((section) => section.items), [content]);
@@ -435,6 +423,7 @@ function AttemptScreen({
   const [review, setReview] = useState<ReviewKind | null>(null);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const { answers, clock, saving, submit } = session;
 
   const progress = progressOf(
@@ -497,10 +486,25 @@ function AttemptScreen({
       requestAnimationFrame(() =>
         document.getElementById(`item-${target?.itemId}`)?.scrollIntoView({ block: 'start' }),
       );
-    } else {
-      window.scrollTo({ top: 0 });
     }
+    // Chế độ "Từng câu": hiệu ứng bên dưới cuộn tới đầu câu hỏi mới ngay sau khi đổi câu.
   };
+
+  // Chế độ "Từng câu": mỗi lần đổi câu (Câu tiếp, Câu trước, nhảy từ bảng câu) cuộn ngay tới đầu câu hỏi, sát dưới thanh đầu
+  // (đầu khối Phần nếu vừa sang Phần mới), và đưa con trỏ về tiêu đề "Câu n" cho trình đọc màn hình. Không cuộn lúc mở màn hình.
+  const firstRender = useRef(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy khi đổi câu hoặc đổi chế độ xem
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (mode !== 'one') return;
+    document
+      .querySelector<HTMLElement>('[data-scroll-anchor]')
+      ?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    document.querySelector<HTMLElement>('h2[id^="item-"]')?.focus({ preventScroll: true });
+  }, [current, mode]);
 
   const handlers = {
     onValue: session.setValue,
@@ -517,9 +521,10 @@ function AttemptScreen({
       : warning === 'five'
         ? 'bg-warning-soft text-warning'
         : 'text-fg';
-  const hasInstructions = (content.exam.instructions?.content ?? []).some(
-    (block) => block.type !== 'paragraph' || (block.content ?? []).length > 0,
-  );
+  const examHasInstructions = hasRichText(content.exam.instructions);
+  const context =
+    mode === 'one' ? oneModeContext(content.sections, current, examHasInstructions) : null;
+  const currentSection = sectionOf(items[current] as TakeItem);
 
   return (
     <MediaSourceContext.Provider value={(id, side) => `${content.mediaBase}/${id}/${side}`}>
@@ -539,6 +544,15 @@ function AttemptScreen({
             </span>
           )}
           {saving && <SaveBadge status={saving.status} unsaved={saving.unsaved} />}
+          {variantLabel && (
+            <span
+              data-testid="attempt-variant"
+              className="inline-flex min-h-8 max-w-24 items-center rounded-md bg-primary-soft px-2 font-sans text-xs font-semibold text-on-primary-soft"
+            >
+              <span className="sr-only">{t('take.variant.yours', { label: '' })}</span>
+              <span className="truncate">{variantLabel}</span>
+            </span>
+          )}
           <div className="ml-auto flex items-center gap-1">
             <button
               type="button"
@@ -588,33 +602,7 @@ function AttemptScreen({
             })}
           </ErrorMessage>
         )}
-        <div className="flex items-center justify-between gap-3 font-sans">
-          <fieldset className="inline-flex rounded-lg border border-border p-0.5">
-            <legend className="sr-only">{t('take.mode.label')}</legend>
-            {(['one', 'all'] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={mode === value}
-                onClick={() => updatePrefs({ viewMode: value })}
-                className={`min-h-12 cursor-pointer rounded-md px-3 text-sm font-medium ${
-                  mode === value
-                    ? 'bg-primary-soft text-on-primary-soft'
-                    : 'text-fg-muted hover:text-fg'
-                }`}
-              >
-                {t(`take.mode.${value}`)}
-              </button>
-            ))}
-          </fieldset>
-          {mode === 'one' && (
-            <p className="text-sm text-fg-muted">
-              {t('take.position', { current: current + 1, total: items.length })}
-            </p>
-          )}
-        </div>
-
-        {hasInstructions && (
+        {mode === 'all' && examHasInstructions && (
           <details className="rounded-lg border border-border bg-surface p-3">
             <summary className="min-h-12 cursor-pointer py-3 font-sans font-medium">
               {t('take.instructions')}
@@ -624,23 +612,64 @@ function AttemptScreen({
         )}
 
         <div className={`flex flex-col gap-4 ${prefs.serif ? 'font-serif' : 'font-sans'}`}>
-          {visible.map((item, index) => {
+          {visible.map((item) => {
             const section = sectionOf(item);
-            const first = section?.items[0] === item || mode === 'one';
+            const first = section?.items[0] === item;
             return (
               <div key={item.itemId} className="flex flex-col gap-3">
-                {first && section?.title && (
+                {mode === 'all' && first && section?.title && (
                   <h2 className="font-sans text-lg font-semibold">{section.title}</h2>
                 )}
-                {first && section?.instructions && mode === 'one' && index === 0 && (
-                  <RichTextView doc={section.instructions} className="text-fg-muted" />
+                {mode === 'all' &&
+                  first &&
+                  section?.instructions &&
+                  hasRichText(section.instructions) && (
+                    <RichTextView doc={section.instructions} className="text-fg-muted" />
+                  )}
+                {context && (context.sectionTitle || context.guideAvailable) && (
+                  <div
+                    data-scroll-anchor={context.anchor === 'section' ? 'true' : undefined}
+                    className="flex scroll-mt-[calc(var(--take-header-h,6rem)+0.5rem)] flex-col gap-2"
+                  >
+                    <div className="flex min-h-11 items-center justify-between gap-3 font-sans">
+                      <h2 className="min-w-0 truncate text-base font-semibold">
+                        {context.sectionTitle}
+                      </h2>
+                      {context.guideAvailable && (
+                        <button
+                          type="button"
+                          aria-haspopup="dialog"
+                          onClick={() => setGuideOpen(true)}
+                          className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-primary hover:bg-primary-soft"
+                        >
+                          <Info aria-hidden className="size-5" />
+                          {t('take.guide.open')}
+                        </button>
+                      )}
+                    </div>
+                    {context.introVisible && section?.instructions && (
+                      <RichTextView doc={section.instructions} className="text-fg-muted" />
+                    )}
+                  </div>
                 )}
-                <TakeQuestion
-                  item={item}
-                  value={answers[item.itemId]?.value}
-                  flagged={answers[item.itemId]?.flagged ?? false}
-                  handlers={handlers}
-                />
+                <div
+                  className="scroll-mt-[calc(var(--take-header-h,6rem)+0.5rem)]"
+                  data-scroll-anchor={
+                    mode === 'one' &&
+                    (!context ||
+                      context.anchor === 'question' ||
+                      !(context.sectionTitle || context.guideAvailable))
+                      ? 'true'
+                      : undefined
+                  }
+                >
+                  <TakeQuestion
+                    item={item}
+                    value={answers[item.itemId]?.value}
+                    flagged={answers[item.itemId]?.flagged ?? false}
+                    handlers={handlers}
+                  />
+                </div>
               </div>
             );
           })}
@@ -673,16 +702,20 @@ function AttemptScreen({
             <LayoutGrid aria-hidden className="size-5 shrink-0 text-primary" />
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-sm font-semibold tabular-nums">
-                {t('take.grid.open', { done: progress.done, total: progress.total })}
+                {mode === 'one'
+                  ? t('take.position', { current: current + 1, total: items.length })
+                  : t('take.grid.open', { done: progress.done, total: progress.total })}
               </span>
               <span className="truncate text-[13px] text-fg-muted">
-                {remaining.length === 0
-                  ? t('take.grid.allDone')
-                  : t('take.grid.remaining', {
-                      parts: remaining
-                        .map(({ kind, count }) => t(`take.review.${kind}`, { count }))
-                        .join(' · '),
-                    })}
+                {mode === 'one'
+                  ? t('take.grid.open', { done: progress.done, total: progress.total })
+                  : remaining.length === 0
+                    ? t('take.grid.allDone')
+                    : t('take.grid.remaining', {
+                        parts: remaining
+                          .map(({ kind, count }) => t(`take.review.${kind}`, { count }))
+                          .join(' · '),
+                      })}
               </span>
             </span>
             <ChevronUp aria-hidden className="size-5 shrink-0 text-fg-muted" />
@@ -866,10 +899,29 @@ function AttemptScreen({
         open={prefsOpen}
         onClose={() => setPrefsOpen(false)}
         prefs={prefs}
+        mode={mode}
         onChange={updatePrefs}
       >
         <ThemeSwitcher />
       </TakePrefsDialog>
+
+      <Dialog open={guideOpen} onClose={() => setGuideOpen(false)} title={t('take.instructions')}>
+        <div className="flex flex-col gap-4 font-sans">
+          {examHasInstructions && content.exam.instructions && (
+            <RichTextView doc={content.exam.instructions} />
+          )}
+          {currentSection?.instructions && hasRichText(currentSection.instructions) && (
+            <section className="flex flex-col gap-2">
+              <h3 className="text-base font-semibold">
+                {currentSection.title
+                  ? t('take.guide.ofSection', { title: currentSection.title })
+                  : t('take.guide.ofThisSection')}
+              </h3>
+              <RichTextView doc={currentSection.instructions} />
+            </section>
+          )}
+        </div>
+      </Dialog>
     </MediaSourceContext.Provider>
   );
 }

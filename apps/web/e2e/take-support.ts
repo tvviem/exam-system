@@ -142,3 +142,12 @@ export async function examinerPage(browser: Browser, username: string) {
 
 export const overflow = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+
+/** Chọn chế độ xem đề trong bảng "Hiển thị" (nút Aa): "Từng câu" hoặc "Cả đề". */
+export async function setViewMode(page: Page, mode: 'Từng câu' | 'Cả đề') {
+  await page.getByRole('button', { name: 'Hiển thị' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Hiển thị' });
+  await dialog.getByText(mode, { exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+}
