@@ -295,7 +295,7 @@ export function AppShell({
 
 function Brand({ className = '' }: { className?: string }) {
   return (
-    <Link to="/" className={`flex min-w-0 items-center ${className}`}>
+    <Link to="/" className={`flex min-h-11 min-w-0 items-center ${className}`}>
       <BrandMark />
     </Link>
   );

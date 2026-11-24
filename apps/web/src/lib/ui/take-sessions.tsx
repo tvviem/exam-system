@@ -10,7 +10,9 @@ import {
   type EntryAction,
   entryActionOf,
   groupOf,
+  needCodeNoteVisible,
   normalizeCode,
+  phaseBadgeVisible,
   type SessionGroup,
 } from '../take/entry';
 import { Badge, Button, buttonClass, Card, PrimaryButton, TextField } from '.';
@@ -90,7 +92,7 @@ export function TakeSessionList({ items }: { items: TakeSession[] }) {
             <ul className="flex flex-col gap-3">
               {rows.map((row) => (
                 <li key={row.sessionId}>
-                  <SessionCard row={row} />
+                  <SessionCard row={row} group={group} />
                 </li>
               ))}
             </ul>
@@ -101,7 +103,7 @@ export function TakeSessionList({ items }: { items: TakeSession[] }) {
   );
 }
 
-function SessionCard({ row }: { row: TakeSession }) {
+function SessionCard({ row, group }: { row: TakeSession; group: SessionGroup }) {
   const { t } = useTranslation();
   const action = entryActionOf(row);
   return (
@@ -111,7 +113,9 @@ function SessionCard({ row }: { row: TakeSession }) {
           <h3 className="font-semibold break-words">{row.title}</h3>
           <p className="text-sm text-fg-muted break-words">{row.examTitle}</p>
         </div>
-        <Badge tone={PHASE_TONE[row.phase]}>{t(`session.phase.${row.phase}`)}</Badge>
+        {phaseBadgeVisible(group, row.phase) && (
+          <Badge tone={PHASE_TONE[row.phase]}>{t(`session.phase.${row.phase}`)}</Badge>
+        )}
       </div>
       <p className="text-sm text-fg-muted">
         {formatDateTime(row.opensAt)} – {formatDateTime(row.closesAt)} ·{' '}
@@ -163,13 +167,11 @@ function ActionNote({ action, row }: { action: EntryAction; row: TakeSession }) 
         </p>
       );
     case 'enter-code':
-      return (
+      return needCodeNoteVisible(row.phase) ? (
         <p className="text-sm text-fg-muted">
-          {row.phase === 'upcoming'
-            ? t('take.list.needCodeEarly', { time: formatDateTime(row.opensAt) })
-            : t('take.list.needCode')}
+          {t('take.list.needCodeEarly', { time: formatDateTime(row.opensAt) })}
         </p>
-      );
+      ) : null;
     default:
       return (
         <p className="text-sm text-fg-muted">
@@ -228,6 +230,7 @@ function ActionButton({ action, row }: { action: EntryAction; row: TakeSession }
   if (action === 'enter-code') {
     return (
       <Button
+        className="max-sm:w-full"
         onClick={() => {
           const field = document.getElementById(CODE_FIELD);
           field?.scrollIntoView({ block: 'center' });

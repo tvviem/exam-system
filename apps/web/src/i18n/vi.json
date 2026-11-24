@@ -396,7 +396,6 @@
       "attemptsUsed": "Đã làm {{used}}/{{max}} lượt",
       "revoked": "Thiết bị này đã bị thu hồi. Hãy báo Người ra đề.",
       "notOpen": "Mở lúc {{time}}",
-      "needCode": "Nhập Mã vào thi để vào.",
       "needCodeEarly": "Mở lúc {{time}}. Đã nhập được Mã vào thi để vào Phòng chờ.",
       "waiting": "Phòng chờ",
       "waitingNote": "Đang ở Phòng chờ. Mở lúc {{time}}.",

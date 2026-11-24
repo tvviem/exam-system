@@ -27,6 +27,7 @@ function AppealsPage() {
           { label: t('appeal.panel.title') },
         ]}
       />
+      <h1 className="sr-only">{t('appeal.panel.title')}</h1>
       <AppealScreen
         sessionId={sessionId}
         appealId={appeal}

@@ -18,6 +18,13 @@ test('Người ra đề tải file mẫu và gửi yêu cầu; Quản trị viê
 
   // --- Người ra đề ---
   await signIn(page, `e2e-yc-gv-${project}`);
+  // Đăng nhập xong vào trang Phiên thi; mục Yêu cầu nằm ở thanh điều hướng.
+  await expect(page).toHaveURL(/\/examiner\/sessions/);
+  await page
+    .getByRole('link', { name: 'Yêu cầu', exact: false })
+    .filter({ visible: true })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/examiner\/account-requests/);
   await expect(
     page.getByRole('heading', { name: 'Yêu cầu cấp tài khoản', level: 1 }),
@@ -96,6 +103,8 @@ test('Thiếu email thì dòng bị loại ngay; Quản trị viên duyệt dòn
 
   // Người ra đề gửi yêu cầu: dòng thiếu email báo lỗi ngay.
   await signIn(page, `e2e-yc-gv-${project}`);
+  await expect(page).toHaveURL(/\/examiner\/sessions/); // đăng nhập xong rồi mới đi tiếp
+  await page.goto('/examiner/account-requests');
   await page.getByLabel('File danh sách').setInputFiles({
     name: fileName,
     mimeType: 'text/csv',

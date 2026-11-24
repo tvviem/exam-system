@@ -26,6 +26,7 @@ function GradingPage() {
           { label: t('grading.title') },
         ]}
       />
+      <h1 className="sr-only">{t('grading.title')}</h1>
       <GradingScreen
         sessionId={sessionId}
         itemId={item}
