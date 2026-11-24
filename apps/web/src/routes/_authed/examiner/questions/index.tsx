@@ -402,7 +402,7 @@ function QuestionList({
     <Link
       to="/examiner/questions/$questionId"
       params={{ questionId: item.id }}
-      className="font-medium text-primary hover:underline"
+      className="inline-block py-0.5 font-medium text-primary hover:underline"
     >
       {item.preview || t('questionBank.noPreview')}
     </Link>

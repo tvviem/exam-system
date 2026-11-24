@@ -77,3 +77,17 @@ export function groupOf(row: SessionRow): SessionGroup {
   if (row.phase === 'open' && row.attemptsUsed < row.maxAttempts) return 'open';
   return 'finished';
 }
+
+/**
+ * Nhãn trạng thái trên thẻ chỉ hiện khi nó thêm thông tin: nhóm "Đang mở" mà Phiên thi đang mở, hay nhóm "Sắp mở" mà Phiên thi sắp mở,
+ * thì nhãn chỉ lặp lại tiêu đề nhóm (docs/plan/ux-ra-soat-sau-0-5-1-thiet-ke.md, U5).
+ */
+export function phaseBadgeVisible(group: SessionGroup, phase: SessionPhase): boolean {
+  return !(
+    (group === 'open' && phase === 'open') ||
+    (group === 'upcoming' && phase === 'upcoming')
+  );
+}
+
+/** Lời nhắc "Nhập Mã vào thi để vào." chỉ còn khi nó có thông tin giờ mở; Phiên thi đang mở đã có nút "Nhập mã". */
+export const needCodeNoteVisible = (phase: SessionPhase) => phase === 'upcoming';

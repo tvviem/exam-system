@@ -572,6 +572,7 @@ function AttemptScreen({
         className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-4 pb-32"
         style={{ fontSize: `${prefs.fontScale / 100}rem` }}
       >
+        <h1 className="sr-only">{content.exam.title}</h1>
         {banner}
         {!session.connected && <OfflineNotice />}
         {session.timedOut && (

@@ -76,7 +76,7 @@ export function ResultsScreen({ sessionId }: { sessionId: string }) {
       <Card className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold">{data.session.title}</h2>
+            <h1 className="text-lg font-semibold">{data.session.title}</h1>
             <p className="text-sm text-fg-muted">
               {t('grading.results.meta', {
                 date: formatDateTime(data.session.opensAt),

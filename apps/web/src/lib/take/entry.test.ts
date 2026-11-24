@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { entryActionOf, groupOf, normalizeCode, resumeTargetOf, type SessionRow } from './entry';
+import {
+  entryActionOf,
+  groupOf,
+  needCodeNoteVisible,
+  normalizeCode,
+  phaseBadgeVisible,
+  resumeTargetOf,
+  type SessionRow,
+} from './entry';
 
 const row = (over: Partial<SessionRow> = {}): SessionRow => ({
   phase: 'open',
@@ -135,5 +143,39 @@ describe('Kết quả đã Công bố (PR 5c)', () => {
         row({ inProgressAttemptId: 'a1', deviceStatus: 'active', resultReleased: true }),
       ),
     ).toBe('resume');
+  });
+});
+
+// Màn "Phiên thi của tôi": không lặp điều tiêu đề nhóm đã nói rồi (docs/plan/ux-ra-soat-sau-0-5-1-thiet-ke.md, U5).
+describe('phaseBadgeVisible: nhãn trạng thái trên thẻ', () => {
+  it.each([
+    ['nhóm Đang mở, Phiên thi đang mở: nhãn lặp tiêu đề nhóm nên ẩn', 'open', 'open', false],
+    ['nhóm Sắp mở, Phiên thi sắp mở: nhãn lặp tiêu đề nhóm nên ẩn', 'upcoming', 'upcoming', false],
+    [
+      'nhóm Phòng chờ, Phiên thi sắp mở: nhãn "Sắp mở" bổ sung thông tin nên giữ',
+      'waiting',
+      'upcoming',
+      true,
+    ],
+    [
+      'nhóm Đã xong, Phiên thi đã đóng: nhãn "Đã đóng" khác "Đã xong" nên giữ',
+      'finished',
+      'closed',
+      true,
+    ],
+    ['nhóm Đã xong, Phiên thi bị hủy: giữ', 'finished', 'cancelled', true],
+    ['nhóm Đang mở, nhưng đã đóng cửa vào thi (đang làm dở): giữ', 'open', 'entry_closed', true],
+  ] as const)('%s', (_name, group, phase, shown) => {
+    expect(phaseBadgeVisible(group, phase)).toBe(shown);
+  });
+});
+
+describe('needCodeNoteVisible: lời nhắc "Nhập Mã vào thi để vào."', () => {
+  it('Phiên thi đang mở: nút "Nhập mã" đã đủ, không nhắc lại bằng chữ', () => {
+    expect(needCodeNoteVisible('open')).toBe(false);
+  });
+
+  it('Phiên thi sắp mở (vào Phòng chờ sớm): lời nhắc có thông tin giờ mở nên giữ', () => {
+    expect(needCodeNoteVisible('upcoming')).toBe(true);
   });
 });

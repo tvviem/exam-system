@@ -93,10 +93,9 @@ test('Quản trị viên tạo Lời mời (hệ thống tự gửi thư), ngư�
   await invitee.getByLabel('Nhập lại mật khẩu').fill('mat-khau-moi-rat-dai');
   await invitee.getByLabel('Học vị').selectOption({ label: 'Thạc sĩ' });
   await invitee.getByRole('button', { name: 'Tạo tài khoản và vào hệ thống' }).click();
-  await expect(invitee).toHaveURL(/\/examiner\/account-requests/);
-  await expect(
-    invitee.getByRole('heading', { name: 'Yêu cầu cấp tài khoản', level: 1 }),
-  ).toBeVisible();
+  // Người ra đề mới vào trang Phiên thi (trang làm việc hằng ngày), không phải form xin cấp tài khoản.
+  await expect(invitee).toHaveURL(/\/examiner\/sessions/);
+  await expect(invitee.getByRole('heading', { name: 'Phiên thi', level: 1 })).toBeVisible();
 
   // Liên kết dùng một lần.
   await invitee.goto(link);
