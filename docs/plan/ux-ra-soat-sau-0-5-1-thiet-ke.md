@@ -1,6 +1,6 @@
 # Rà soát UX/UI sau bản 0.5.1: sáu điểm cần chỉnh (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt ngày 24/11/2026, đồng ý cả sáu quyết định D1 đến D6 như đề xuất). Chỉ chỉnh giao diện: không migration, không đổi API, không đổi nghiệp vụ. **Tiến độ (24/11/2026):** PR A (U2, U3) đã merge (#158); PR B (U1) đang chờ CI (#159); PR C (U4 đến U6) chưa làm. Dự kiến ra bản **`0.5.2`** (PATCH, cùng lý do với `0.5.1`, xem [phat-hanh.md](../ops/phat-hanh.md) mục 7).
+**Trạng thái: `accepted`** (chủ dự án duyệt ngày 24/11/2026, đồng ý cả sáu quyết định D1 đến D6 như đề xuất). Chỉ chỉnh giao diện: không migration, không đổi API, không đổi nghiệp vụ. **Tiến độ (24/11/2026): đã làm xong cả sáu điểm.** PR A (U2, U3) là #158, PR B (U1) là #159, PR C (U4 đến U6) là #161; ra bản **`0.5.2`** (tag trên `5aa96ed`) (PATCH, cùng lý do với `0.5.1`, xem [phat-hanh.md](../ops/phat-hanh.md) mục 7).
 
 ## 1. Nguồn và phạm vi
 
