@@ -192,7 +192,13 @@ test('Rút câu ở Bộ đề: đặt tỷ lệ từng Phần, thấy số câu
   await page.getByRole('button', { name: 'Phát hành' }).first().click();
   await dialog.getByRole('button', { name: 'Phát hành', exact: true }).click();
   await expect(page.getByText('Đã Phát hành Bộ đề')).toBeVisible();
-  await expect(page.getByText('40 %', { exact: true })).toBeVisible();
+  // Tỷ lệ hiện ở thẻ tổng quan (máy tính: cột Tỷ lệ rút; điện thoại: dòng tóm tắt "rút 40 %") và ở dòng Rút câu của Phần.
+  const overview = page.getByTestId('exam-overview');
+  if (p === 'mobile') await expect(overview.getByText(/rút 40 %/).first()).toBeVisible();
+  else await expect(overview.getByText('40 %', { exact: true })).toBeVisible();
+  await expect(
+    page.locator('[id^="section-"]').first().getByText('40 %', { exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole('textbox', { name: /^Tỷ lệ rút của Phần/ })).toHaveCount(0);
 });
 
