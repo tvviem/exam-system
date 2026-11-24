@@ -288,9 +288,12 @@ test('Phát hành Bộ đề: kiểm tra, xác nhận, chỉ đọc, Nhân bản
     page.getByRole('region', { name: 'Nội dung xem thử' }).getByText('Biến cố').first(),
   ).toBeVisible();
 
-  // Câu hỏi đã dùng: ghi "Trong 1 Bộ đề"; chỉ Lưu trữ, không có nút Xóa.
+  // Câu hỏi đã dùng: không có nhãn "Chưa dùng" (đã nằm trong Bộ đề là trạng thái thường); chỉ Lưu trữ, không có nút Xóa.
   await page.goto('/examiner/questions');
-  await expect(page.getByText('Trong 1 Bộ đề').filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText('Biến cố').filter({ visible: true }).first()).toBeVisible();
+  await expect(
+    page.locator('li, tr').filter({ hasText: 'Biến cố' }).filter({ visible: true }).first(),
+  ).not.toContainText('Chưa dùng');
   await page.getByRole('checkbox', { name: /Chọn câu: Biến cố/ }).check();
   await expect(page.getByRole('button', { name: 'Xóa', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Lưu trữ', exact: true }).click();

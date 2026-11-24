@@ -18,6 +18,7 @@ import {
   restoreQuestions,
   topicsQuery,
 } from '../../../../lib/question-bank';
+import { questionRowInfo } from '../../../../lib/question-row';
 import {
   Badge,
   Button,
@@ -280,6 +281,7 @@ function QuestionBankPage() {
                 items={questions.data.items}
                 selected={selected}
                 setSelected={setSelected}
+                topicFiltered={Boolean(search.topicId)}
               />
               <Pagination
                 page={questions.data.page}
@@ -336,14 +338,33 @@ function TopicLink({
   );
 }
 
-/** Câu đã Lưu trữ hoặc đang nằm trong Bộ đề (Q174). */
-function UsageBadges({ item }: { item: QuestionListItem }) {
+/**
+ * Dòng phụ dưới phần dẫn: Chủ đề (khi đang xem mọi Chủ đề), nhãn Lưu trữ, "Chưa dùng" (chỉ nêu ngoại lệ, câu đã nằm trong Bộ đề là
+ * trạng thái thường) và ngày cập nhật khi bảng chưa đủ rộng để có cột riêng.
+ */
+function RowMeta({
+  item,
+  topicFiltered,
+  withDate = false,
+}: {
+  item: QuestionListItem;
+  topicFiltered: boolean;
+  withDate?: boolean;
+}) {
   const { t } = useTranslation();
-  const exams = examCountOf(item);
+  const info = questionRowInfo(item, { topicFiltered });
   return (
-    <span className="inline-flex flex-wrap items-center gap-1">
-      {item.archivedAt && <Badge tone="warning">{t('questionBank.archivedBadge')}</Badge>}
-      {exams > 0 && <Badge>{t('questionBank.inExams', { count: exams })}</Badge>}
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
+      {info.showTopic && <span>{item.topicName}</span>}
+      {info.archived && <Badge tone="warning">{t('questionBank.archivedBadge')}</Badge>}
+      {info.unused && <span>{t('questionBank.unused')}</span>}
+      {withDate && (
+        <span className="2xl:hidden">
+          {t('questionBank.updatedOn', {
+            date: new Date(item.updatedAt).toLocaleDateString('vi-VN'),
+          })}
+        </span>
+      )}
     </span>
   );
 }
@@ -352,10 +373,12 @@ function QuestionList({
   items,
   selected,
   setSelected,
+  topicFiltered,
 }: {
   items: QuestionListItem[];
   selected: Set<string>;
   setSelected: (next: Set<string>) => void;
+  topicFiltered: boolean;
 }) {
   const { t } = useTranslation();
   const toggle = (id: string) => {
@@ -413,26 +436,19 @@ function QuestionList({
           {
             key: 'stem',
             header: t('questionBank.stem'),
-            cell: (item) => link(item),
-            className: 'max-w-xl',
+            cell: (item) => (
+              <span className="flex flex-col gap-1">
+                {link(item)}
+                <RowMeta item={item} topicFiltered={topicFiltered} withDate />
+              </span>
+            ),
+            // Cột quan trọng nhất: luôn đủ rộng để đọc được trong hai dòng, dù bảng chỉ còn khoảng 650 px.
+            className: 'min-w-[18rem] max-w-xl',
           },
           {
             key: 'type',
             header: t('questionBank.type'),
             cell: (item) => <Badge tone="primary">{t(`questionType.${item.type}`)}</Badge>,
-          },
-          {
-            key: 'usage',
-            header: t('questionBank.usage'),
-            from: 'lg',
-            cell: (item) => <UsageBadges item={item} />,
-          },
-          {
-            key: 'topic',
-            header: t('questionBank.topic'),
-            from: 'lg',
-            className: 'text-fg-muted',
-            cell: (item) => item.topicName,
           },
           {
             key: 'points',
@@ -443,7 +459,7 @@ function QuestionList({
           {
             key: 'updated',
             header: t('questionBank.updatedAt'),
-            from: 'lg',
+            from: '2xl',
             className: 'text-fg-muted',
             cell: (item) => new Date(item.updatedAt).toLocaleDateString('vi-VN'),
           },
@@ -460,13 +476,12 @@ function QuestionList({
                 <p className="line-clamp-2 font-medium">
                   {item.preview || t('questionBank.noPreview')}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
                   <Badge tone="primary">{t(`questionType.${item.type}`)}</Badge>
-                  <span>{item.topicName}</span>
                   <span className="tabular-nums">
                     {t('questionBank.points', { points: item.defaultPoints })}
                   </span>
-                  <UsageBadges item={item} />
+                  <RowMeta item={item} topicFiltered={topicFiltered} />
                 </div>
               </div>
               <ChevronRight aria-hidden className="size-5 shrink-0 text-fg-muted" />
