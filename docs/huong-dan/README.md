@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng
 
-Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản trị viên**, **Người ra đề**, **Người dự thi**. Thuật ngữ in hoa theo [GLOSSARY.md](../../GLOSSARY.md). Các hướng dẫn này là nền để biên soạn tài liệu hướng dẫn dạng PDF gửi người dùng; bảng dưới cho biết phần nào đã có, phần nào còn thiếu. Cập nhật đến **bản 0.5.3** (25/11/2026).
+Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản trị viên**, **Người ra đề**, **Người dự thi**. Thuật ngữ in hoa theo [GLOSSARY.md](../../GLOSSARY.md). Các hướng dẫn chuyên đề dưới đây là nền; ba tài liệu trọn bộ theo vai nằm ở mục tiếp theo. Cập nhật đến **bản 0.5.3** (25/11/2026).
 
 ## Đã có
 
@@ -10,18 +10,17 @@ Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản
 | [rut-cau-theo-phan.md](rut-cau-theo-phan.md) | Người ra đề, Người dự thi | Tỷ lệ rút câu ở Bộ đề và Phiên thi, chuyển nhanh giữa các Phần, thẻ tổng quan và lọc của Bộ đề đã Phát hành, Xem thử, chấm theo bộ câu của từng người | 0.3.0 |
 | [ma-de-phien-thi.md](ma-de-phien-thi.md) | Người ra đề, Người dự thi | Cách ra đề, Mã đề, chia và đổi tay Người dự thi, Chia lại, Rút lại, xuất Word và zip, Theo dõi và Excel theo Mã đề | 0.5.0 |
 
-## Còn thiếu (cần viết để đủ bộ cho bản PDF)
+## Tài liệu trọn bộ theo vai (nguồn của bản Word)
 
-| Vai | Việc cần hướng dẫn | Tài liệu hiện có để dựa vào |
-|---|---|---|
-| Người dự thi | Nhận thư kích hoạt, đăng nhập và đổi mật khẩu, quên mật khẩu; **Vào thi** (Mã vào thi, màn xác nhận); làm bài trên điện thoại (Từng câu và Cả đề, đánh dấu xem lại, lưới số câu, mất mạng, nộp bài); xem Kết quả của tôi | [ops/tai-khoan-va-mat-khau.md](../ops/tai-khoan-va-mat-khau.md), [plan/slice-4.md](../plan/slice-4.md), [architecture.md](../architecture.md) mục 7 |
-| Người ra đề | Bắt đầu: đăng nhập, tài khoản, gửi **Yêu cầu cấp tài khoản** cho Người dự thi | [ops/tai-khoan-va-mat-khau.md](../ops/tai-khoan-va-mat-khau.md), [plan/yeu-cau-nhieu-giang-vien-thiet-ke.md](../plan/yeu-cau-nhieu-giang-vien-thiet-ke.md) |
-| Người ra đề | **Ngân hàng câu hỏi**: Chủ đề, bốn Loại câu hỏi, Hình minh họa, công thức, nhập từ Excel, Lưu trữ, tag | [plan/slice-2.md](../plan/slice-2.md), [demo-data/README.md](../../demo-data/README.md) |
-| Người ra đề | **Soạn Bộ đề**: Phần, thêm câu, Đặt điểm nhanh, Xem thử, Phát hành, Nhân bản, Lưu trữ, Xuất Bộ đề ra Word | [plan/slice-3.md](../plan/slice-3.md), [plan/xuat-bo-de-thiet-ke.md](../plan/xuat-bo-de-thiet-ke.md) |
-| Người ra đề | **Tạo Phiên thi và Danh sách dự thi**: Khung giờ, Thời lượng, Mã vào thi, thêm người theo Lớp, xáo trộn | [plan/slice-4.md](../plan/slice-4.md) |
-| Người ra đề | **Theo dõi phòng thi**: Cộng giờ, Buộc nộp và Hoàn tác, Thu hồi thiết bị, Cảnh cáo, Đình chỉ, Đóng cửa vào thi | [plan/slice-4.md](../plan/slice-4.md), [ops/checklist-phien-thi.md](../ops/checklist-phien-thi.md) |
-| Quản trị viên | Tạo Quản trị viên đầu tiên, Lời mời, duyệt Yêu cầu cấp tài khoản, Nhãn vai trò, Khóa và Xóa người dùng, Chuyển giao Chủ đề, nhật ký, Sao lưu | [ops/tai-khoan-va-mat-khau.md](../ops/tai-khoan-va-mat-khau.md), [ops/khoi-phuc.md](../ops/khoi-phuc.md), [ops/gui-thu.md](../ops/gui-thu.md) |
-| Mọi vai | Hỏi đáp thường gặp và cách xử lý khi có sự cố (không vào được, mất mạng giữa chừng, quên mật khẩu, đổi máy) | [ops/checklist-phien-thi.md](../ops/checklist-phien-thi.md) |
+Ba tài liệu đầy đủ, mỗi vai một tệp, viết từ đầu đến cuối việc của vai đó (có phần hỏi đáp và sự cố thường gặp). Ảnh chụp màn hình có đánh số ①②③ được sinh tự động và **không** nằm trong kho mã; xem [../../tools/huong-dan/README.md](../../tools/huong-dan/README.md) để chụp ảnh và dựng tệp Word.
+
+| Tài liệu | Vai | Nội dung chính | Bản |
+|---|---|---|---|
+| [tai-lieu/nguoi-du-thi.md](tai-lieu/nguoi-du-thi.md) | Người dự thi | Kích hoạt tài khoản, đăng nhập, quên mật khẩu, Vào thi, làm bài trên điện thoại (Từng câu và Cả đề, bốn Loại câu hỏi, bảng câu, nộp bài), Kết quả và Phúc khảo, sự cố thường gặp | 0.5.3 |
+| [tai-lieu/nguoi-ra-de.md](tai-lieu/nguoi-ra-de.md) | Người ra đề | Lời mời và Yêu cầu cấp tài khoản, Ngân hàng câu hỏi, soạn Bộ đề và Rút câu, Phiên thi và Mã đề, theo dõi phòng thi, chấm, Công bố, Phúc khảo | 0.5.3 |
+| [tai-lieu/quan-tri-vien.md](tai-lieu/quan-tri-vien.md) | Quản trị viên | Người dùng, Lời mời, duyệt Yêu cầu cấp tài khoản, Đơn vị, Ủy quyền chấm, nhật ký, Hàng đợi thư, Sao lưu, việc cần làm trước kỳ thi | 0.5.3 |
+
+Còn thiếu: bản PDF (nếu cần, xuất từ tệp Word sau khi chỉnh).
 
 ## Quy ước khi viết hướng dẫn
 
