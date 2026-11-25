@@ -35,6 +35,10 @@ UNIQUE (username) WHERE removed_at IS NULL
 UNIQUE (email)    WHERE removed_at IS NULL
 UNIQUE (code)     WHERE removed_at IS NULL AND code IS NOT NULL
 INDEX  (class_label) WHERE removed_at IS NULL
+-- Migration 0031 (quy mô lớn, plan/quy-mo-lon-thiet-ke.md):
+INDEX  (created_at, id)    WHERE removed_at IS NULL   -- danh sách Người dùng, mới tạo trước
+INDEX  (lower(code))       WHERE removed_at IS NULL   -- dán danh sách Mã định danh (kèm STATISTICS users_code_lower_stat)
+INDEX  (lower(class_label)) WHERE removed_at IS NULL  -- thêm cả lớp
 
 -- users có thêm cột: is_admin bool DEFAULT false   -- Quản trị viên không mang Nhãn vai trò
 
@@ -185,6 +189,9 @@ questions (
   tags text[], version int, archived_at, created_at, updated_at,
   search_text text                         -- văn bản thuần của Phần dẫn, Phương án, Mệnh đề, đã bỏ dấu và chữ thường
 )
+-- Chỉ mục: (owner_id, topic_id, updated_at); GIN (tags); và từ migration 0031 (quy mô lớn) hai chỉ mục từng phần
+-- (owner_id, updated_at, id) cho câu đang dùng (archived_at IS NULL) và cho câu Lưu trữ. Truy vấn có từ khóa sắp theo
+-- `updated_at + interval '0'` để KHÔNG đi dọc chỉ mục này (plan/quy-mo-lon-thiet-ke.md mục 3.3).
 -- Tìm kiếm: chuẩn hóa chuỗi tìm bằng cùng hàm rồi LIKE trên search_text (thoát %, _). Khác Người dùng (unaccent lúc truy vấn):
 -- cách này xử lý được cả "đ" và không cần gọi hàm trên từng dòng. `version` tăng mỗi lần sửa nội dung hoặc đổi Chủ đề.
 
@@ -264,7 +271,7 @@ exam_items (
   points numeric(6,2), sort int,
   snapshot jsonb NULL,                    -- điền khi Phát hành (ADR-0005)
   UNIQUE (exam_id, question_id)           -- một Câu hỏi không xuất hiện 2 lần trong cùng Bộ đề
-)
+)  -- INDEX (section_id, sort); INDEX (question_id) từ migration 0031 ("câu đang dùng ở đâu", khóa ngoại khi xóa Câu hỏi)
 -- Ràng buộc sở hữu (kiểm tra ở service + trigger): questions.owner_id = exams.owner_id
 
 exam_item_illustrations (                 -- ảnh nằm trong bản chụp của Bộ đề đã Phát hành (Q176)
