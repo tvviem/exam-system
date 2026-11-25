@@ -418,7 +418,7 @@ function ItemList({ items, admin, canDecide, onReview, onRejectRow }: ItemListPr
             <>
               {item.fullName ?? '—'}
               {/* 768–1023 px: cột Mã/Email và Lớp ẩn đi, gộp thành dòng phụ dưới tên */}
-              <p className="mt-0.5 text-sm font-normal text-fg-muted lg:hidden">
+              <p className="mt-0.5 text-sm font-normal break-words text-fg-muted lg:hidden">
                 {[identityOf(item), item.classLabel].filter(Boolean).join(' · ')}
               </p>
             </>
@@ -455,8 +455,8 @@ function ItemList({ items, admin, canDecide, onReview, onRejectRow }: ItemListPr
             </p>
             {rowMenu(item)}
           </div>
-          <p className="font-medium">{item.fullName ?? '—'}</p>
-          <p className="text-sm text-fg-muted">
+          <p className="font-medium break-words">{item.fullName ?? '—'}</p>
+          <p className="text-sm break-words text-fg-muted">
             {identityOf(item)}
             {item.classLabel && ` · ${item.classLabel}`}
             {item.dateOfBirth && ` · ${formatDate(item.dateOfBirth)}`}

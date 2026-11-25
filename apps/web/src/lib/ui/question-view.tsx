@@ -22,7 +22,7 @@ export function QuestionView({
 }) {
   const { t } = useTranslation();
   return (
-    <article className={`flex flex-col ${compact ? 'gap-3' : 'gap-4'}`}>
+    <article className={`flex min-w-0 flex-col break-words ${compact ? 'gap-3' : 'gap-4'}`}>
       {!compact && (
         <p className="text-sm text-fg-muted">
           {t('questionBank.points', { points: question.defaultPoints })}
@@ -70,7 +70,7 @@ function Answers({
                 >
                   {LETTERS[index]}
                 </span>
-                <RichTextView doc={option.content} className="flex-1" />
+                <RichTextView doc={option.content} className="min-w-0 flex-1" />
                 {correct &&
                   (compact ? (
                     <span className="inline-flex items-center text-success">
