@@ -163,7 +163,7 @@ function QuestionBankPage() {
         }
       />
 
-      <div className="lg:grid lg:grid-cols-[16rem_1fr] lg:items-start lg:gap-6">
+      <div className="lg:grid lg:grid-cols-[16rem_1fr] 2xl:grid-cols-[20rem_1fr] lg:items-start lg:gap-6">
         {/* Laptop: Chủ đề là cột bên trái; điện thoại: chip lọc (docs/ui-design.md mục 10). */}
         <aside className="hidden lg:block">
           <Card className="sticky top-[calc(var(--app-header-h)+1rem)] flex flex-col gap-1 p-3">
@@ -328,12 +328,12 @@ function TopicLink({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`flex min-h-12 cursor-pointer items-center justify-between gap-2 rounded-lg px-3 text-left text-sm font-medium pointer-fine:min-h-9 ${
+      className={`flex min-h-12 cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium pointer-fine:min-h-9 ${
         active ? 'bg-primary-soft text-on-primary-soft' : 'text-fg hover:bg-primary-soft'
       }`}
     >
-      <span className="truncate">{children}</span>
-      <span className="tabular-nums text-fg-muted">{count}</span>
+      <span className="min-w-0 break-words">{children}</span>
+      <span className="shrink-0 tabular-nums text-fg-muted">{count}</span>
     </button>
   );
 }
