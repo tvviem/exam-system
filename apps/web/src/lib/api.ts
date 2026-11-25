@@ -11,12 +11,13 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(
   path: string,
-  init: { method?: string; body?: unknown } = {},
+  init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
   // FormData (tải file lên) để trình duyệt tự đặt content-type kèm boundary.
   const isForm = init.body instanceof FormData;
   const res = await fetch(`/api${path}`, {
     method: init.method ?? 'GET',
+    signal: init.signal,
     headers: init.body === undefined || isForm ? {} : { 'content-type': 'application/json' },
     body:
       init.body === undefined

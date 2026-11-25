@@ -52,15 +52,17 @@ export interface QuestionListParams {
 export const topicsQuery = (includeArchived = false) =>
   queryOptions({
     queryKey: ['topics', { includeArchived }],
-    queryFn: () => apiFetch<Topic[]>(`/topics${includeArchived ? '?includeArchived=true' : ''}`),
+    queryFn: ({ signal }) =>
+      apiFetch<Topic[]>(`/topics${includeArchived ? '?includeArchived=true' : ''}`, { signal }),
   });
 
 export const questionsQuery = (params: QuestionListParams) =>
   queryOptions({
     queryKey: ['questions', 'list', params],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       apiFetch<PageResult<QuestionListItem>>(
         `/questions${queryString({ ...params, archived: params.archived ? 'true' : undefined })}`,
+        { signal },
       ),
     placeholderData: keepPreviousData,
   });

@@ -12,6 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { z } from 'zod';
+import { HeavyQuery } from '../../common/heavy-query';
 import { pageSchema } from '../../common/pagination';
 import { CurrentUser, RequireTag } from '../identity/auth/auth.decorators';
 import type { AuthenticatedUser } from '../identity/auth/auth.types';
@@ -38,6 +39,7 @@ export class QuestionsController {
   constructor(private readonly questions: QuestionsService) {}
 
   @Get()
+  @HeavyQuery('questions')
   list(@Query() query: unknown, @CurrentUser() user: AuthenticatedUser) {
     const { page, pageSize, ...filter } = listSchema.parse(query);
     return this.questions.list(user.id, filter, { page, pageSize });

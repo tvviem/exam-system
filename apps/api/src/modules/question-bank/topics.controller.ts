@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { z } from 'zod';
+import { HeavyQuery } from '../../common/heavy-query';
 import { CurrentUser, RequireTag } from '../identity/auth/auth.decorators';
 import type { AuthenticatedUser } from '../identity/auth/auth.types';
 import { TopicsService } from './topics.service';
@@ -36,6 +37,7 @@ export class TopicsController {
   constructor(private readonly topics: TopicsService) {}
 
   @Get()
+  @HeavyQuery('questions')
   list(@Query() query: unknown, @CurrentUser() user: AuthenticatedUser) {
     const { includeArchived } = listSchema.parse(query);
     return this.topics.list(user.id, includeArchived === 'true');

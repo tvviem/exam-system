@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import type { Actor } from '../../../common/actor';
+import { HeavyQuery } from '../../../common/heavy-query';
 import { pageSchema } from '../../../common/pagination';
 import { AdminOnly, CurrentActor } from '../auth/auth.decorators';
 import { academicDegreeEnum, academicTitleEnum, genderEnum, roleTagEnum } from '../identity.schema';
@@ -94,6 +95,7 @@ export class UserManagementController {
   constructor(private readonly users: UserManagementService) {}
 
   @Get()
+  @HeavyQuery('users')
   list(@Query() query: unknown) {
     return this.users.list(listSchema.parse(query ?? {}));
   }
