@@ -203,7 +203,7 @@ function ProfileCard({ account }: { account: Account }) {
         <h3 className="text-sm font-semibold text-fg-muted">{t('account.managedByAdmin')}</h3>
         <dl className="flex flex-col gap-3">
           <ReadOnlyRow label={t('account.username')} value={account.username} />
-          <ReadOnlyRow label={t('account.email')} value={account.email} />
+          <ReadOnlyRow label={t('account.email.heading')} value={account.email} />
           {account.code && <ReadOnlyRow label={t('account.code')} value={account.code} />}
           {account.classLabel && (
             <ReadOnlyRow label={t('account.classLabel')} value={account.classLabel} />

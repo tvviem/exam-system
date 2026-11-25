@@ -2022,5 +2022,21 @@
     "roleTags": ["candidate"],
     "code": "TCQ-M-001",
     "classLabel": "LOP-TCQ-M"
+  },
+  {
+    "username": "e2e-chip-desktop",
+    "fullName": "Giảng viên Chủ đề dài máy tính",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-chip-mobile",
+    "fullName": "Giảng viên Chủ đề dài mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]
