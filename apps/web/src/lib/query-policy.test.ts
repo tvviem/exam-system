@@ -20,6 +20,10 @@ describe('chính sách thử lại truy vấn', () => {
     }
   });
 
+  it('máy chủ báo bận (SERVER_BUSY) thì không tự thử lại: đã chờ ở máy chủ, thử thêm chỉ làm đông thêm', () => {
+    expect(shouldRetry(0, new ApiError(503, 'SERVER_BUSY'))).toBe(false);
+  });
+
   it('tổng thời gian chờ giữa các lần thử dưới 1 giây', () => {
     expect(retryDelay(0) + retryDelay(1)).toBeLessThan(1000);
     expect(retryDelay(0)).toBeGreaterThan(0);

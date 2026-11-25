@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import type { Actor } from '../../common/actor';
+import { HeavyQuery } from '../../common/heavy-query';
 import { pageSchema } from '../../common/pagination';
 import { CurrentActor, CurrentUser, RequireTag } from '../identity/auth/auth.decorators';
 import type { AuthenticatedUser } from '../identity/auth/auth.types';
@@ -55,6 +56,7 @@ export class SessionRosterController {
   }
 
   @Get('search')
+  @HeavyQuery('roster')
   search(
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @Query() query: unknown,

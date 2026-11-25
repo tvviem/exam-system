@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { z } from 'zod';
+import { HeavyQuery } from '../../../common/heavy-query';
 import { pageSchema } from '../../../common/pagination';
 import { AuditService } from '../../audit/audit.service';
 import { AdminOnly } from '../auth/auth.decorators';
@@ -22,6 +23,7 @@ export class AuditLogsController {
   ) {}
 
   @Get()
+  @HeavyQuery('logs')
   async list(@Query() query: unknown) {
     const result = await this.audit.list(listSchema.parse(query ?? {}));
     const names = await this.users.fullNamesOf(

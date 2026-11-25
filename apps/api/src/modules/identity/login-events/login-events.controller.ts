@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { z } from 'zod';
+import { HeavyQuery } from '../../../common/heavy-query';
 import { pageSchema } from '../../../common/pagination';
 import { AdminOnly } from '../auth/auth.decorators';
 import { LoginEventsService } from './login-events.service';
@@ -18,6 +19,7 @@ export class LoginEventsController {
   constructor(private readonly loginEvents: LoginEventsService) {}
 
   @Get()
+  @HeavyQuery('logs')
   list(@Query() query: unknown) {
     return this.loginEvents.list(listSchema.parse(query ?? {}));
   }

@@ -221,8 +221,10 @@ export const rebalanceVariants = (sessionId: string) =>
 export const rosterSearchQuery = (sessionId: string, q: string) =>
   queryOptions({
     queryKey: ['sessions', 'roster-search', sessionId, q],
-    queryFn: () =>
-      apiFetch<RosterSearchResult>(`/sessions/${sessionId}/roster/search${queryString({ q })}`),
+    queryFn: ({ signal }) =>
+      apiFetch<RosterSearchResult>(`/sessions/${sessionId}/roster/search${queryString({ q })}`, {
+        signal,
+      }),
     enabled: q.trim().length > 0,
   });
 

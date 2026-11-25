@@ -118,7 +118,8 @@ export interface UserListParams {
 export const usersQuery = (params: UserListParams) =>
   queryOptions({
     queryKey: ['admin', 'users', params],
-    queryFn: () => apiFetch<PageResult<UserListItem>>(`/admin/users${queryString({ ...params })}`),
+    queryFn: ({ signal }) =>
+      apiFetch<PageResult<UserListItem>>(`/admin/users${queryString({ ...params })}`, { signal }),
     placeholderData: keepPreviousData,
   });
 
@@ -142,8 +143,10 @@ export interface LoginEventParams {
 export const loginEventsQuery = (params: LoginEventParams) =>
   queryOptions({
     queryKey: ['admin', 'login-events', params],
-    queryFn: () =>
-      apiFetch<PageResult<LoginEvent>>(`/admin/login-events${queryString({ ...params })}`),
+    queryFn: ({ signal }) =>
+      apiFetch<PageResult<LoginEvent>>(`/admin/login-events${queryString({ ...params })}`, {
+        signal,
+      }),
     placeholderData: keepPreviousData,
   });
 
@@ -158,7 +161,8 @@ export interface AuditLogParams {
 export const auditLogsQuery = (params: AuditLogParams) =>
   queryOptions({
     queryKey: ['admin', 'audit-logs', params],
-    queryFn: () => apiFetch<PageResult<AuditLog>>(`/admin/audit-logs${queryString({ ...params })}`),
+    queryFn: ({ signal }) =>
+      apiFetch<PageResult<AuditLog>>(`/admin/audit-logs${queryString({ ...params })}`, { signal }),
     placeholderData: keepPreviousData,
   });
 
