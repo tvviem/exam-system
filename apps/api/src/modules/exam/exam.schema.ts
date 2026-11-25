@@ -79,6 +79,8 @@ export const examItems = pgTable(
   (t) => [
     unique('exam_items_exam_question_unique').on(t.examId, t.questionId),
     index('exam_items_section_idx').on(t.sectionId, t.sort),
+    // "Câu đang dùng ở đâu" và kiểm khóa ngoại khi xóa Câu hỏi (quy-mo-lon-thiet-ke.md mục 3.2).
+    index('exam_items_question_idx').on(t.questionId),
   ],
 );
 

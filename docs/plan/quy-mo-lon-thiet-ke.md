@@ -1,6 +1,6 @@
 # Quy mô lớn: hàng triệu Câu hỏi và hàng triệu tài khoản (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt ngày 26/11/2026: Q487 khoảng **500 người thi cùng lúc**, các câu còn lại theo đề xuất, mục 10). Tiến độ: **L1 xong về mã** (26/11/2026, số đo ở 6.2); L2 đến L5 chưa làm.
+**Trạng thái: `accepted`** (chủ dự án duyệt ngày 26/11/2026: Q487 khoảng **500 người thi cùng lúc**, các câu còn lại theo đề xuất, mục 10). Tiến độ: **L1** (#171, số đo ở 6.3) và **L2** (migration `0031`, số đo ở 6.4) xong về mã ngày 26/11/2026; L3 đến L5 chưa làm.
 
 ## 1. Yêu cầu và phạm vi
 
@@ -202,6 +202,32 @@ Thử nghiệm (chỉ giới hạn 2 mỗi người cho Câu hỏi, sửa tạm 
 | 5 Quản trị viên, mỗi người 8 lượt | **74 s** | 45 ms | 6 xong, 34 báo bận |
 
 Đạt ngưỡng "lưu câu trả lời dưới 100 ms giữa đợt tìm dồn dập", nên giữ con số tổng 3. Lượt tìm vẫn mất khoảng 2,4 giây mỗi lượt và xếp hàng (chờ L2, L4). Số lượt "báo bận" ở đây là do bài đo gửi nhiều lượt cùng lúc và không hủy lượt cũ; trên giao diện, lượt cũ bị hủy khi người dùng gõ tiếp. Phép đo mới có **một** Người dự thi; phòng thi 500 người đồng thời với tìm dồn dập chưa đo.
+
+### 6.4. Kết quả đo L2 (26/11/2026, mã trong kho)
+
+Cùng một bộ dữ liệu, đo qua api trước và sau (p50), gồm cả các bộ lọc hiếm.
+
+| 1.000.000 Câu hỏi của một người | Trước | Sau |
+|---|---|---|
+| Chủ đề kèm số câu | 597 ms | 178 ms |
+| Trang 1 / trang giữa | 430 / 1.012 ms | 96 / 569 ms |
+| Danh sách Lưu trữ | 291 ms | 12 ms |
+| Lọc Loại phổ biến | 383 ms | 216 ms |
+| Lọc Loại hiếm, tag, Chủ đề | 8–311 ms | 10–284 ms (không đổi) |
+| Tìm kiếm (phổ biến, hiếm, không có) | 357–415 ms | 362–419 ms (không đổi) |
+
+| 1.000.000 tài khoản | Trước | Sau |
+|---|---|---|
+| Người dùng: trang 1 / trang cuối | 274 / 952 ms | 48 / 360 ms |
+| Lọc Nhãn Người dự thi | 1.060 ms | 368 ms |
+| Dán 500 mã / thêm cả lớp | 507 / 222 ms | 24 / 16 ms |
+| Khóa, Đã Xóa, Chờ kích hoạt, Email chưa xác thực, Thư lỗi | 8–154 ms | 11–138 ms |
+| Tìm Người dùng | 2,7–3,3 s | không đổi (chờ L4) |
+
+- Lần đo đầu, bộ lọc **Email chưa xác thực** chậm đi (141 thành 355 ms) vì PostgreSQL ước lượng sai và đi dọc chỉ mục mới; đã sửa bằng cách sắp theo biểu thức cho bộ lọc này và cho truy vấn có từ khóa (cùng cách ở 3.3).
+- Phần còn lại của trang 1 Câu hỏi (96 ms) và của trang Người dùng là **đếm toàn bộ** (L3).
+- Migration chạy 1,3 giây ở 1.000.000 Câu hỏi và 5,2 giây ở 1.000.000 tài khoản (chặn ghi trong lúc đó); ở dữ liệu prod hiện nay là vài mili giây.
+- Cùng mã L1: người ra đề khác mở trang giữa 5, 20, 40 lượt tìm Câu hỏi dồn dập chờ 22–64 ms (trước L1: tới 10,5 giây).
 
 ## 7. Triển khai trên prod đang có dữ liệu
 

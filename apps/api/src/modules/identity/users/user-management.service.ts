@@ -112,6 +112,10 @@ export class UserManagementService {
 
   async list({ page, pageSize, ...filter }: Page & UserFilter) {
     const where = this.listCondition(filter);
+    // Từ khóa và "Email chưa xác thực" bị PostgreSQL ước lượng sai là khớp nhiều người: nó đi dọc chỉ mục "mới tạo trước" rồi lọc
+    // từng dòng, chậm hơn quét rồi sắp. Sắp theo biểu thức (cùng thứ tự) để tránh (docs/plan/quy-mo-lon-thiet-ke.md mục 4.2).
+    const scan = Boolean(filter.q) || filter.activation === 'unverified';
+    const createdAt = scan ? sql`${users.createdAt} + interval '0'` : users.createdAt;
     const result = await paginate(
       { page, pageSize },
       () => this.db.select({ total: count() }).from(users).where(where),
@@ -120,7 +124,7 @@ export class UserManagementService {
           .select()
           .from(users)
           .where(where)
-          .orderBy(desc(users.createdAt), desc(users.id))
+          .orderBy(desc(createdAt), desc(users.id))
           .limit(limit)
           .offset(offset),
     );

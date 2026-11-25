@@ -79,6 +79,16 @@ describe('tìm và lọc Người dùng', () => {
     expect(names(await list('q=binh@example'))).toEqual(['Trần Thị Bình']);
   });
 
+  it('có từ khóa hoặc lọc "Email chưa xác thực" vẫn xếp người mới tạo lên đầu', async () => {
+    await seedUser({ fullName: 'Võ Văn Sau', roleTags: ['candidate'] });
+    const inOrder = async (query: string) =>
+      (await list(query)).json().items.map((u: { fullName: string }) => u.fullName);
+    expect(await inOrder('q=van')).toEqual(['Võ Văn Sau', 'Lê Văn Cường', 'Nguyễn Văn An']);
+    const unverified = await inOrder('activation=unverified');
+    expect(unverified[0]).toBe('Võ Văn Sau');
+    expect(unverified.at(-1)).toBe('Quản Trị');
+  });
+
   it('ký tự % trong từ khóa được hiểu theo nghĩa đen', async () => {
     expect(names(await list('q=%25'))).toEqual([]);
   });

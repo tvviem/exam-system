@@ -207,6 +207,25 @@ describe('danh sách, tìm và lọc', () => {
   });
 });
 
+describe('tìm kiếm giữ thứ tự mới sửa trước', () => {
+  it('có từ khóa vẫn xếp câu mới sửa lên đầu, phân trang đúng', async () => {
+    const first = await newQuestion(singleChoice(topicId, { stem: 'Cây nhị phân một' }));
+    await newQuestion(singleChoice(topicId, { stem: 'Cây nhị phân hai' }));
+    await newQuestion(singleChoice(topicId, { stem: 'Đồ thị' }));
+    await mine('PUT', `/api/questions/${first.id}`, {
+      ...singleChoice(topicId, { stem: 'Cây nhị phân một (sửa)' }),
+      version: 1,
+    });
+    const page = async (n: number) =>
+      (await mine('GET', `/api/questions?q=cay%20nhi&pageSize=1&page=${n}`)).json();
+    expect(await page(1)).toMatchObject({
+      total: 2,
+      items: [{ preview: 'Cây nhị phân một (sửa)' }],
+    });
+    expect(await page(2)).toMatchObject({ total: 2, items: [{ preview: 'Cây nhị phân hai' }] });
+  });
+});
+
 describe('nhân bản, di chuyển, xóa', () => {
   it('nhân bản tạo Câu hỏi mới cùng nội dung, version 1', async () => {
     const q = await newQuestion(multipleChoice(topicId));

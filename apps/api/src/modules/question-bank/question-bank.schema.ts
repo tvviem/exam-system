@@ -68,6 +68,13 @@ export const questions = pgTable(
   },
   (t) => [
     index('questions_owner_topic_idx').on(t.ownerId, t.topicId, t.updatedAt),
+    // Quy mô lớn (docs/plan/quy-mo-lon-thiet-ke.md mục 3.2): trang "mới sửa trước" không phải quét và sắp cả bảng.
+    index('questions_owner_recent_idx')
+      .on(t.ownerId, t.updatedAt, t.id)
+      .where(sql`${t.archivedAt} IS NULL`),
+    index('questions_owner_archived_idx')
+      .on(t.ownerId, t.updatedAt, t.id)
+      .where(sql`${t.archivedAt} IS NOT NULL`),
     index('questions_tags_idx').using('gin', t.tags),
   ],
 );

@@ -74,6 +74,13 @@ export const users = pgTable(
       .on(t.code)
       .where(sql`${t.removedAt} IS NULL AND ${t.code} IS NOT NULL`),
     index('users_class_label_idx').on(t.classLabel).where(sql`${t.removedAt} IS NULL`),
+    // Quy mô lớn (docs/plan/quy-mo-lon-thiet-ke.md mục 4.2): danh sách mới tạo trước; tra Mã định danh và Lớp không phân biệt hoa
+    // thường. `lower(code)` cần thêm thống kê `users_code_lower_stat` (viết tay trong migration, Drizzle không khai báo được).
+    index('users_created_idx').on(t.createdAt, t.id).where(sql`${t.removedAt} IS NULL`),
+    index('users_code_lower_idx').on(sql`lower(${t.code})`).where(sql`${t.removedAt} IS NULL`),
+    index('users_class_lower_idx')
+      .on(sql`lower(${t.classLabel})`)
+      .where(sql`${t.removedAt} IS NULL`),
   ],
 );
 

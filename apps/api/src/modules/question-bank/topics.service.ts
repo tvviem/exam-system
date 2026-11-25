@@ -27,16 +27,25 @@ export class TopicsService {
   constructor(@Inject(DB) private readonly db: Database) {}
 
   async list(ownerId: string, includeArchived: boolean) {
-    const rows = await this.db
-      .select({ ...columns, questionCount: count(questions.id) })
+    // Đếm một lần trên các Câu hỏi của người này (đi theo chỉ mục có sẵn) rồi mới nối với Chủ đề; nối trước rồi đếm phải quét cả
+    // bảng Câu hỏi của mọi người (docs/plan/quy-mo-lon-thiet-ke.md mục 3.3). Đếm cả câu đã Lưu trữ.
+    const counts = this.db
+      .select({ topicId: questions.topicId, total: count().as('total') })
+      .from(questions)
+      .where(eq(questions.ownerId, ownerId))
+      .groupBy(questions.topicId)
+      .as('counts');
+    return this.db
+      .select({
+        ...columns,
+        questionCount: sql<number>`coalesce(${counts.total}, 0)`.mapWith(Number),
+      })
       .from(topics)
-      .leftJoin(questions, eq(questions.topicId, topics.id))
+      .leftJoin(counts, eq(counts.topicId, topics.id))
       .where(
         and(eq(topics.ownerId, ownerId), includeArchived ? undefined : isNull(topics.archivedAt)),
       )
-      .groupBy(topics.id)
       .orderBy(asc(topics.nameKey));
-    return rows;
   }
 
   create(ownerId: string, input: TopicInput) {

@@ -238,7 +238,12 @@ export class QuestionsService {
           .from(questions)
           .innerJoin(topics, eq(topics.id, questions.topicId))
           .where(where)
-          .orderBy(desc(questions.updatedAt), desc(questions.id))
+          // Có từ khóa thì sắp theo biểu thức (cùng thứ tự): nếu không, PostgreSQL đi dọc chỉ mục "mới sửa trước" rồi lọc từng
+          // dòng, và từ hiếm chậm đi 3 đến 4 lần (docs/plan/quy-mo-lon-thiet-ke.md mục 3.3).
+          .orderBy(
+            desc(q ? sql`${questions.updatedAt} + interval '0'` : questions.updatedAt),
+            desc(questions.id),
+          )
           .limit(limit)
           .offset(offset),
     );

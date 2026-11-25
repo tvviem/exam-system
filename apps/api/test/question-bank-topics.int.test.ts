@@ -60,6 +60,27 @@ describe('Chủ đề', () => {
     });
   });
 
+  it('số Câu hỏi tính cả câu Lưu trữ; Chủ đề trống là 0; không lẫn câu của người khác', async () => {
+    const full = await createTopic('Có câu');
+    await createTopic('Trống');
+    const theirs = await createTopic('Có câu', otherCookie);
+    const kept = await mine('POST', '/api/questions', singleChoice(full.id));
+    await mine('POST', '/api/questions', singleChoice(full.id));
+    await mine('POST', '/api/questions/archive', { ids: [kept.json().id] });
+    for (let i = 0; i < 3; i++) {
+      await as(otherCookie, 'POST', '/api/questions', singleChoice(theirs.id));
+    }
+    const counts = async (who: string) =>
+      (await as(who, 'GET', '/api/topics'))
+        .json()
+        .map((x: { name: string; questionCount: number }) => [x.name, x.questionCount]);
+    expect(await counts(cookie)).toEqual([
+      ['Có câu', 2],
+      ['Trống', 0],
+    ]);
+    expect(await counts(otherCookie)).toEqual([['Có câu', 3]]);
+  });
+
   it('tên không trùng với Chủ đề chưa lưu trữ của cùng chủ, không phân biệt hoa thường và dấu', async () => {
     const a = await createTopic('Giải tích');
     const dup = await mine('POST', '/api/topics', { name: ' giai  TICH ' });
