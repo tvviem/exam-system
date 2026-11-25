@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng
 
-Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản trị viên**, **Người ra đề**, **Người dự thi**. Thuật ngữ in hoa theo [GLOSSARY.md](../../GLOSSARY.md). Các hướng dẫn chuyên đề dưới đây là nền; ba tài liệu trọn bộ theo vai nằm ở mục tiếp theo. Cập nhật đến **bản 0.5.3** (25/11/2026).
+Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản trị viên**, **Người ra đề**, **Người dự thi**. Thuật ngữ in hoa theo [GLOSSARY.md](../../GLOSSARY.md). Các hướng dẫn chuyên đề dưới đây là nền; ba tài liệu trọn bộ theo vai nằm ở mục tiếp theo. Cập nhật đến **bản 0.5.4** (25/11/2026); ảnh chụp trong tệp Word lấy ở bản 0.5.3, bản 0.5.4 chỉ đổi cách xuống dòng của tên Chủ đề nên nội dung không đổi.
 
 ## Đã có
 
