@@ -29,4 +29,16 @@ test('Chủ đề tên dài không làm trang tràn ngang', async ({ page }, tes
     const width = page.viewportSize()?.width ?? 0;
     expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
   }
+
+  // Desktop: cột Chủ đề bên trái không được cắt tên bằng "…" (tên dài phải xuống dòng, đọc được đủ).
+  if (p === 'desktop') {
+    const cut = await page
+      .locator('aside button[aria-pressed] > span:first-child')
+      .evaluateAll(
+        (spans) =>
+          spans.filter((el) => el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight)
+            .length,
+      );
+    expect(cut).toBe(0);
+  }
 });
