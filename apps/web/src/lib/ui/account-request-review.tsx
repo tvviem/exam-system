@@ -206,7 +206,7 @@ export function MatchDialog({
               <p className="mb-1 font-medium">
                 {t(restore ? 'accountRequests.review.ifRestore' : 'accountRequests.review.ifSame')}
               </p>
-              <ul className="m-0 list-disc pl-5">
+              <ul className="m-0 list-disc pl-5 break-words">
                 {(restore ? ['keepHistory', 'pending', 'sendMail'] : ['tagOnly', 'noMail']).map(
                   (key) => (
                     <li key={key}>

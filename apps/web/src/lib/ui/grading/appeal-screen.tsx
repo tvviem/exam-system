@@ -100,7 +100,8 @@ export function AppealScreen({
           })}
         </p>
       </div>
-      <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      {/* Cột phải được co lại (minmax(0,…)): mặc định của lưới rộng bằng chuỗi liền dài nhất và đẩy trang tràn ngang. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <ul
           className="hidden max-h-[70vh] flex-col gap-1 overflow-y-auto lg:flex"
           aria-label={t('appeal.panel.title')}
@@ -191,7 +192,7 @@ function AppealDetailView({
       className="flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4"
     >
       <header className="flex flex-wrap items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0 break-words">
           <h2 className="text-lg font-semibold">
             {data.user.fullName}
             {data.user.code ? (

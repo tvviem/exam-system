@@ -2038,5 +2038,31 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ovf-admin",
+    "fullName": "RàTràn Nguyễn Hoàng Phương Thảo Quỳnh Như Công nghệ thông tin ứng dụng trí tuệ nhân tạo (quản trị)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": true,
+    "mustChangePassword": false,
+    "roleTags": []
+  },
+  {
+    "username": "e2e-ovf-gv",
+    "fullName": "RàTràn Nguyễn Hoàng Phương Thảo Quỳnh Như Công nghệ thông tin ứng dụng trí tuệ nhân tạo (ra đề)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ovf-sv",
+    "fullName": "RàTràn Nguyễn Hoàng Phương Thảo Quỳnh Như Công nghệ thông tin ứng dụng trí tuệ nhân tạo (dự thi)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "RATRAN-SV-012345678901234567",
+    "classLabel": "RàTràn-LOP-CONG-NGHE-THONG-TIN-CHAT-LUONG-CAO-KHOA-2026"
   }
 ]
