@@ -182,7 +182,7 @@ Mỗi ô soạn có thanh công cụ: **Đậm**, **Nghiêng**, **Gạch chân**
 
 ![Danh sách câu hỏi](anh:nguoi-ra-de/14-danh-sach-cau-hoi)
 
-- Cột trái chọn **Chủ đề** (kèm số câu).
+- Cột trái chọn **Chủ đề** (kèm số câu). Tên Chủ đề dài tự xuống dòng nên đọc được đủ.
 - **Tìm câu hỏi**: gõ một phần nội dung, không cần dấu (ví dụ "mang" tìm ra "mạng").
 - Lọc theo **Loại câu hỏi**, **Trạng thái** (Đang dùng hoặc Đã lưu trữ) và **Tag**.
 - Dòng phụ dưới mỗi câu cho biết Chủ đề, ngày cập nhật và nhãn **Chưa dùng** nếu câu chưa nằm trong Bộ đề nào.
