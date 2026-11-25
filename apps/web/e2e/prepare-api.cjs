@@ -13,7 +13,8 @@ const { hashPassword } = require(path.join(apiDir, 'dist/modules/identity/passwo
 const databaseUrl = process.env.E2E_DATABASE_URL ?? 'postgres://exam:exam@127.0.0.1:5434/exam_e2e';
 const redisUrl = process.env.E2E_REDIS_URL ?? 'redis://127.0.0.1:6381/14';
 
-const users = require('./users.json');
+// Bộ người dùng mặc định của E2E; bộ chụp ảnh hướng dẫn (apps/web/guide) đặt E2E_USERS_FILE để dùng danh sách riêng.
+const users = require(process.env.E2E_USERS_FILE ? path.resolve(process.env.E2E_USERS_FILE) : './users.json');
 
 async function main() {
   const url = new URL(databaseUrl);

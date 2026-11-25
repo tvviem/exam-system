@@ -1,0 +1,154 @@
+[
+  {
+    "username": "quantri",
+    "fullName": "Quản trị hệ thống",
+    "password": "mat-khau-demo",
+    "isAdmin": true,
+    "mustChangePassword": false,
+    "roleTags": []
+  },
+  {
+    "username": "quantri2",
+    "fullName": "Phạm Thị Hạnh (Quản trị viên)",
+    "password": "mat-khau-demo",
+    "isAdmin": true,
+    "mustChangePassword": false,
+    "roleTags": []
+  },
+  {
+    "username": "tran.mai",
+    "fullName": "Trần Thị Mai",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "le.hung",
+    "fullName": "Lê Quốc Hùng",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "sv26001",
+    "fullName": "Nguyễn Văn An",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": true,
+    "roleTags": ["candidate"],
+    "code": "SV26001",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26002",
+    "fullName": "Trần Thị Bình",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26002",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26003",
+    "fullName": "Lê Hoàng Cường",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26003",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26004",
+    "fullName": "Phạm Thu Dung",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26004",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26005",
+    "fullName": "Võ Minh Đức",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26005",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26006",
+    "fullName": "Đặng Ngọc Hà",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26006",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26007",
+    "fullName": "Bùi Quốc Huy",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26007",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26008",
+    "fullName": "Hoàng Thị Lan",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26008",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26009",
+    "fullName": "Ngô Thanh Nam",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26009",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26010",
+    "fullName": "Đỗ Thị Oanh",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26010",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26011",
+    "fullName": "Dương Văn Phúc",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26011",
+    "classLabel": "CNTT-K26"
+  },
+  {
+    "username": "sv26012",
+    "fullName": "Lý Thị Quyên",
+    "password": "mat-khau-demo",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "SV26012",
+    "classLabel": "CNTT-K26"
+  }
+]
