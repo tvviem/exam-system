@@ -1,4 +1,4 @@
-import { type RichText, richTextSchema } from '@exam/shared';
+import { CODE_MAX_CHARS, CODE_MAX_LINES, type RichText, richTextSchema } from '@exam/shared';
 import { BulletList, ListItem, OrderedList } from '@tiptap/extension-list';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
@@ -6,19 +6,21 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
   Bold,
+  Code,
   Image as ImageIcon,
   Italic,
   List,
   ListOrdered,
   type LucideIcon,
   Sigma,
+  SquareCode,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
   Underline as UnderlineIcon,
 } from 'lucide-react';
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeepCode, KeepCodeBlock } from './code-extensions';
+import { authoringCodeBlock } from './code-extensions';
 import { type ImageAttrs, ImageNode } from './image-extension';
 import { type MathAttrs, MathNode } from './math-extension';
 
@@ -37,7 +39,6 @@ const baseExtensions = [
     heading: false,
     blockquote: false,
     codeBlock: false,
-    code: false,
     horizontalRule: false,
     strike: false,
     link: false,
@@ -50,8 +51,6 @@ const baseExtensions = [
   FlatListItem,
   Superscript,
   Subscript,
-  KeepCode,
-  KeepCodeBlock,
 ];
 
 type Json = { type?: string; attrs?: Record<string, unknown>; content?: Json[] } & Record<
@@ -73,7 +72,14 @@ function clean(node: Json): Json {
     out.content = content
       .filter((child) => child.type !== 'codeBlock' || (child.content?.length ?? 0) > 0)
       .map(clean);
-    if (node.type === 'doc' && out.content.length === 0) out.content = [{ type: 'paragraph' }];
+    if (node.type === 'doc') {
+      // Trình soạn tự thêm đoạn trống sau khối mã cuối để còn chỗ gõ tiếp: không lưu đoạn đó.
+      const [last, beforeLast] = [out.content.at(-1), out.content.at(-2)];
+      if (last?.type === 'paragraph' && !last.content && beforeLast?.type === 'codeBlock') {
+        out.content = out.content.slice(0, -1);
+      }
+      if (out.content.length === 0) out.content = [{ type: 'paragraph' }];
+    }
   }
   return out;
 }
@@ -141,9 +147,11 @@ export default function RichTextEditor({
   // Tương tự cho Hình minh họa: `attrs` rỗng là chèn ảnh mới.
   const [image, setImage] = useState<{ pos: number | null; attrs: ImageAttrs | null } | null>(null);
   const editImage = useRef((pos: number, attrs: ImageAttrs) => setImage({ pos, attrs }));
+  const [codeTooLong, setCodeTooLong] = useState(false);
   const extensions = useMemo(
     () => [
       ...baseExtensions,
+      authoringCodeBlock(() => setCodeTooLong(true)),
       MathNode.configure({ onEdit: (pos, attrs) => editMath.current(pos, attrs) }),
       ImageNode.configure({ onEdit: (pos, attrs) => editImage.current(pos, attrs) }),
     ],
@@ -156,6 +164,8 @@ export default function RichTextEditor({
     // gõ tắt tạo danh sách ("- ", "1. "); đậm, nghiêng dùng nút hoặc phím tắt.
     enableInputRules: ['bulletList', 'orderedList'],
     enablePasteRules: false,
+    // Nút trên thanh công cụ phải đổi trạng thái ngay cả khi chỉ dời con trỏ hay bật định dạng cho chữ sắp gõ.
+    shouldRerenderOnTransaction: true,
     editorProps: {
       attributes: {
         id,
@@ -163,10 +173,11 @@ export default function RichTextEditor({
         'aria-multiline': 'true',
         'aria-label': label,
         'aria-invalid': invalid ? 'true' : 'false',
-        class: `${minHeight} px-3 py-2 outline-none [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_p]:my-1`,
+        class: `${minHeight} px-3 py-2 outline-none [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_p]:my-1 [&_code]:font-mono [&_p_code]:rounded [&_p_code]:bg-bg [&_p_code]:px-1 [&_pre]:my-1 [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border [&_pre]:bg-bg [&_pre]:p-3 [&_pre]:text-sm`,
       },
     },
     onUpdate: ({ editor: instance }) => {
+      setCodeTooLong(false);
       const doc = cleanRichText(instance.getJSON());
       if (doc) onChange(doc);
     },
@@ -228,6 +239,18 @@ export default function RichTextEditor({
           onClick={() => chain().toggleOrderedList().run()}
         />
         <ToolButton
+          label={t('editor.inlineCode')}
+          icon={Code}
+          active={editor.isActive('code')}
+          onClick={() => chain().toggleCode().run()}
+        />
+        <ToolButton
+          label={t('editor.codeBlock')}
+          icon={SquareCode}
+          active={editor.isActive('codeBlock')}
+          onClick={() => chain().toggleCodeBlock().run()}
+        />
+        <ToolButton
           label={t('editor.math')}
           icon={Sigma}
           active={false}
@@ -243,6 +266,14 @@ export default function RichTextEditor({
         )}
       </div>
       <EditorContent editor={editor} />
+      {codeTooLong && (
+        <p role="alert" className="border-t border-border px-3 py-2 text-sm text-danger">
+          {t('editor.codeTooLong', {
+            chars: CODE_MAX_CHARS.toLocaleString('vi-VN'),
+            lines: CODE_MAX_LINES,
+          })}
+        </p>
+      )}
       {math && (
         <Suspense fallback={null}>
           <MathDialog

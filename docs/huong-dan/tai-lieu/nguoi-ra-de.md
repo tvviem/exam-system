@@ -171,12 +171,26 @@ Nhập **Phần dẫn**, **Số ký tự tối đa của bài viết** và **Hư
 
 ### 3.4. Công thức, hình minh họa và định dạng
 
-Mỗi ô soạn có thanh công cụ: **Đậm**, **Nghiêng**, **Gạch chân**, chỉ số trên và dưới, danh sách đánh dấu hoặc đánh số, **Công thức** (Σ) và **Hình minh họa**.
+Mỗi ô soạn có thanh công cụ: **Đậm**, **Nghiêng**, **Gạch chân**, chỉ số trên và dưới, danh sách đánh dấu hoặc đánh số, **Mã trong dòng**, **Khối mã**, **Công thức** (Σ) và **Hình minh họa**.
 
 ![Thanh công cụ soạn](anh:nguoi-ra-de/24-thanh-cong-cu-soan)
 
 - **Công thức**: gõ bằng bàn phím toán hoặc gõ thẳng mã LaTeX (bắt đầu bằng dấu `\`). Công thức hiển thị đẹp trên điện thoại và xuất ra Word thành công thức gốc.
 - **Hình minh họa**: tải ảnh lên (có hạn mức dung lượng cho mỗi người) và ghi mô tả cho người khiếm thị.
+- **Mã lệnh** (cho các học phần lập trình): xem mục ngay dưới đây.
+
+#### Mã lệnh
+
+| Cần gì | Làm trong trình soạn | Viết trong file Excel |
+|---|---|---|
+| Mẩu mã ngắn xen trong câu (tên biến, một câu lệnh) | bấm **Mã trong dòng**, gõ, bấm lại để thoát | đặt giữa hai dấu `` ` ``, ví dụ `` `p->Next` `` |
+| Đoạn mã nhiều dòng | bấm **Khối mã**; **Tab** thụt lề, **Shift+Tab** lùi lề | đặt giữa hai dòng chỉ có `` ``` `` |
+
+- Dán mã từ trang web hoặc trình soạn mã vào ô soạn thì dấu `*`, `_` và thụt lề được giữ nguyên.
+- Ra khỏi khối mã để gõ chữ tiếp: nhấn **Enter** ba lần, hoặc nhấn mũi tên xuống ở cuối khối. Dùng bàn phím rời ô soạn: **Esc** rồi **Tab**.
+- Trong file Excel: xuống dòng trong ô bằng **Alt+Enter**, thụt lề bằng dấu cách. Trong mã, dấu `$` là chữ thường. Muốn in dấu `` ` `` thật thì viết `` \` ``. Quên dòng đóng thì cả đoạn hiện nguyên là chữ: kiểm ở bước **Xem** trước khi tạo.
+- Một khối mã tối đa 4.000 ký tự và 200 dòng.
+- Trên màn làm bài, khối mã có số dòng; dòng dài tự xuống hàng (hàng xuống thêm không có số), người thi không phải cuộn ngang. Đề Word in mã bằng phông Courier New.
 
 ### 3.5. Tìm, lọc và quản lý danh sách câu hỏi
 

@@ -58,7 +58,7 @@ const choiceColumns = (kind: 'Phương án' | 'Mệnh đề', first: 'A' | 'a'):
     width: kind === 'Phương án' ? 22 : 30,
     note:
       i === 0
-        ? `Điền liên tục từ ${letter}, không để ô trống ở giữa. Công thức viết trong $...$.`
+        ? `Điền liên tục từ ${letter}, không để ô trống ở giữa. Công thức viết trong $...$, mã lệnh viết trong \`...\`.`
         : `Tối đa ${ITEM_MAX_CHARS} ký tự.`,
   }));
 
@@ -67,7 +67,7 @@ const SHEETS: SheetDef[] = [
     name: 'Chọn một',
     columns: [
       content(
-        'Phần dẫn của câu hỏi. Bắt buộc. Công thức viết trong $...$; Alt+Enter để xuống dòng.',
+        'Phần dẫn của câu hỏi. Bắt buộc. Công thức viết trong $...$, mã lệnh trong `...` (xem sheet "Hướng dẫn"); Alt+Enter để xuống dòng.',
       ),
       ...choiceColumns('Phương án', 'A'),
       {
@@ -342,6 +342,11 @@ function addGuide(workbook: ExcelJS.Workbook, withExamples: boolean) {
     'Công thức toán',
     'Viết LaTeX giữa hai dấu đô la, ví dụ $x^2 + 1$ hoặc $\\frac{a}{b}$. Muốn in dấu đô la thật thì viết \\$. Không dùng $$...$$.',
   );
+  line(
+    'Mã lệnh',
+    'Mẩu ngắn trong câu viết giữa hai dấu `, ví dụ `p->Next`. Đoạn nhiều dòng đặt giữa hai dòng chỉ có ```, thụt lề bằng dấu cách. Trong mã, $ là chữ thường. Muốn in dấu ` thật thì viết \\`.',
+  );
+  line('Ví dụ khối mã', 'Đoạn sau in ra gì?\n```\nfor (i = 0; i < 3; i++)\n    s = s + i;\n```');
   line('Ảnh', 'Không nhập qua Excel: thêm khi sửa Câu hỏi sau khi nhập.');
   line(
     'Giới hạn',

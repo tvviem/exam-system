@@ -9,7 +9,7 @@ import {
 } from './take-support';
 
 // Mã lệnh trong Câu hỏi, bước M1 (docs/plan/ma-lenh-trong-cau-hoi-thiet-ke.md mục 4.2, 5): hiển thị khối mã và mã trong dòng;
-// trình soạn giữ nguyên nội dung có mã (chưa có nút tạo mã). Câu hỏi gieo qua API vì bước này chưa soạn được mã.
+// trình soạn giữ nguyên nội dung có mã. Câu hỏi gieo qua API; việc soạn mã bằng trình soạn ở code-editor.spec.ts.
 
 const text = (value: string, code = false) => ({
   type: 'text',
@@ -123,9 +123,7 @@ test('Khối mã và mã trong dòng hiển thị rõ: phông đơn cách, số 
   expect(await overflow(page), 'trang không cuộn ngang').toBeLessThanOrEqual(0);
 });
 
-test('Trình soạn mở và lưu câu có mã mà không mất mã; chưa tạo được mã bằng phím tắt', async ({
-  page,
-}, testInfo) => {
+test('Trình soạn mở và lưu câu có mã mà không mất mã', async ({ page }, testInfo) => {
   const id = await seedQuestion(page, testInfo.project.name, 'Sửa câu có mã');
   await page.goto(`/examiner/questions/${id}`);
   await openTab(page, 'Soạn');
@@ -134,17 +132,12 @@ test('Trình soạn mở và lưu câu có mã mà không mất mã; chưa tạo
   await editor.locator('p').first().click();
   await page.keyboard.press('Home');
   await page.keyboard.type('Hỏi: ');
-  // Phím tắt của mã trong dòng và khối mã chưa mở ở bước này
-  await page.keyboard.press('Control+e');
-  await page.keyboard.type('x');
-  await page.keyboard.press('Control+Alt+c');
-  await expect(editor.locator('pre')).toHaveCount(1); // chỉ khối mã đã có sẵn
   await expect(editor.locator('p code')).toHaveText(['p->Next']);
 
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
   await expect(page.getByText('Đã lưu Câu hỏi')).toBeVisible();
   const saved = await (await page.request.get(`/api/questions/${id}`)).json();
-  expect(saved.stem.content[0].content[0].text).toBe('Hỏi: xBiến ');
+  expect(saved.stem.content[0].content[0].text).toBe('Hỏi: Biến ');
   expect(saved.stem.content[0].content[1]).toEqual(text('p->Next', true));
   expect(saved.stem.content[1]).toEqual(block(PROGRAM));
   expect(saved.payload.options.map((o: { content: unknown }) => o.content)).toEqual(

@@ -537,6 +537,8 @@ describe('lỗi từng dòng của Câu chọn (Q123, Q145)', () => {
       'too_many_tags',
     ],
     ['tag quá 30 ký tự', { tags: 'x'.repeat(31) }, 'field_too_long'],
+    ['khối mã quá 4.000 ký tự', { stem: `\`\`\`\n${'x'.repeat(4001)}\n\`\`\`` }, 'code_too_long'],
+    ['khối mã quá 200 dòng', { stem: `\`\`\`\n${'x\n'.repeat(201)}\`\`\`` }, 'code_too_long'],
   ] as const)('%s → %s', async (_name, over: ChoiceOver, code) => {
     const parsed = await parseOne(choice(over));
     expect(parsed.error).toBe(code);

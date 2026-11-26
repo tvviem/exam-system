@@ -1,6 +1,6 @@
 # Mã lệnh trong Câu hỏi (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt Q490–Q497 theo đề xuất ngày 26/11/2026, mục 8). Tiến độ: **M0** (mục 3, #177) và **M1** (mục 5) xong về mã; M2 chưa làm.
+**Trạng thái: `accepted`** (chủ dự án duyệt Q490–Q497 theo đề xuất ngày 26/11/2026, mục 8). Tiến độ: **M0** (mục 3, #177) và **M1** (mục 5, #178) đã lên prod ngày 26/11/2026; **M2** (mục 4.3, 4.4) xong về mã. Còn soạn lại bộ câu hỏi Cấu trúc dữ liệu (Q497).
 
 ## 1. Yêu cầu
 
@@ -76,7 +76,7 @@ M2 deploy sau M1, ngoài giờ thi, khi không còn trang cũ đang làm bài.
 
 Ở M1, trình soạn đã **giữ** được nội dung có mã (mở, sửa chữ, lưu không mất) nhưng chưa có nút, phím tắt hay việc nhận mã từ HTML dán vào, nên lùi từ M2 về M1 vẫn an toàn.
 
-Việc để lại cho M2: khi một khối mã vượt giới hạn ở mục 4.1 trong lúc soạn, trình soạn phải **báo cho Người ra đề** (hiện bản sửa vượt giới hạn không được ghi nhận và không có thông báo).
+Ở M2, trình soạn **từ chối ngay** thao tác làm khối mã vượt giới hạn ở mục 4.1 và báo cho Người ra đề, nên nội dung đang thấy luôn là nội dung sẽ lưu. Không có gõ tắt `` ``` `` trong trình soạn: tạo mã bằng nút, phím tắt (Ctrl+E, Ctrl+Alt+C) hoặc dán.
 
 ## 6. Kiểm thử
 

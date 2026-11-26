@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
 import { HEADERS, SHEET } from '../../../../test/support/question-import-files';
+import { cellToDoc } from './question-import-cells';
 import { parseQuestionImportFile, QuestionImportFileError } from './question-import-file';
 import {
   buildQuestionImportExample,
@@ -42,6 +43,19 @@ describe('file mẫu nhập Câu hỏi (Q157)', () => {
     for (const name of Object.values(SHEET)) expect(all).toContain(`Sheet "${name}"`);
     expect(all).toContain('Bậc thang');
     expect(all).toContain('0,05');
+  });
+
+  it('sheet "Hướng dẫn" chỉ cách viết mã lệnh, và ô ví dụ đúng là đọc ra khối mã', async () => {
+    const workbook = await open(await buildQuestionImportTemplate());
+    const cells = new Map<string, string>();
+    workbook.getWorksheet('Hướng dẫn')?.eachRow((row) => {
+      cells.set(String(row.getCell(1).value ?? ''), String(row.getCell(2).value ?? ''));
+    });
+    expect(cells.get('Mã lệnh')).toContain('`p->Next`');
+    expect(cellToDoc(cells.get('Ví dụ khối mã') ?? '')?.content.map((b) => b.type)).toEqual([
+      'paragraph',
+      'codeBlock',
+    ]);
   });
 });
 
