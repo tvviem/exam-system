@@ -5,6 +5,7 @@ import { ChevronRight, FileSpreadsheet, FolderCog, Plus, Trash2 } from 'lucide-r
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
+import { cappedPageParam } from '../../../../lib/page-param';
 import {
   archiveQuestions,
   deleteQuestions,
@@ -49,7 +50,7 @@ export const Route = createFileRoute('/_authed/examiner/questions/')({
       : undefined,
     tag: typeof search.tag === 'string' && search.tag ? search.tag : undefined,
     archived: search.archived === true || search.archived === 'true' ? true : undefined,
-    page: Number(search.page) > 1 ? Number(search.page) : undefined,
+    page: cappedPageParam(search.page),
   }),
   component: QuestionBankPage,
 });
@@ -287,6 +288,7 @@ function QuestionBankPage() {
                 page={questions.data.page}
                 pageSize={questions.data.pageSize}
                 total={questions.data.total}
+                totalCapped={questions.data.totalCapped}
                 onPage={(page) => navigate({ search: (s) => ({ ...s, page }) })}
               />
               {selected.size > 0 && (

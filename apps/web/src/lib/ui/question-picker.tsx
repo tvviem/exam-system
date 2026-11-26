@@ -327,6 +327,7 @@ export function QuestionPicker({
               page={list.data.page}
               pageSize={list.data.pageSize}
               total={list.data.total}
+              totalCapped={list.data.totalCapped}
               onPage={setPage}
             />
           )}

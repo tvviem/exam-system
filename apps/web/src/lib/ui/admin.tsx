@@ -30,18 +30,22 @@ export function Pagination({
   page,
   pageSize,
   total,
+  totalCapped = false,
   onPage,
 }: {
   page: number;
   pageSize: number;
   total: number;
+  /** Còn nhiều hơn `total`: máy chủ chỉ đếm và cho lật tới mức đó. */
+  totalCapped?: boolean;
   onPage: (page: number) => void;
 }) {
   const { t } = useTranslation();
   if (total === 0) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
-  return (
+  const cap = total.toLocaleString('vi-VN');
+  const nav = (
     <nav aria-label={t('pagination.label')} className="flex items-center justify-between gap-2">
       <Button
         variant="ghost"
@@ -53,7 +57,9 @@ export function Pagination({
         <span className="hidden sm:inline">{t('pagination.previous')}</span>
       </Button>
       <p className="text-sm text-fg-muted tabular-nums">
-        {t('pagination.range', { from, to, total })}
+        {totalCapped
+          ? t('pagination.rangeCapped', { from, to, cap })
+          : t('pagination.range', { from, to, total })}
       </p>
       <Button
         variant="ghost"
@@ -65,6 +71,13 @@ export function Pagination({
         <ChevronRight aria-hidden className="size-5" />
       </Button>
     </nav>
+  );
+  if (!totalCapped) return nav;
+  return (
+    <div className="flex flex-col gap-1">
+      {nav}
+      <p className="text-center text-sm text-fg-muted">{t('pagination.cappedHint', { cap })}</p>
+    </div>
   );
 }
 

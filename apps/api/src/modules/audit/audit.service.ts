@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, type SQL } from 'drizzle-orm';
+import { and, desc, eq, type SQL } from 'drizzle-orm';
 import type { Actor } from '../../common/actor';
 import { CLOCK, type Clock } from '../../common/clock';
-import { type Page, paginate } from '../../common/pagination';
+import { countUpTo, type Page, paginateCapped } from '../../common/pagination';
 import { type Database, DB } from '../../db/db.module';
 import { auditLogs } from './audit.schema';
 
@@ -51,9 +51,9 @@ export class AuditService {
     if (filter.entityType) conditions.push(eq(auditLogs.entityType, filter.entityType));
     if (filter.entityId) conditions.push(eq(auditLogs.entityId, filter.entityId));
     const where = and(...conditions);
-    return paginate(
+    return paginateCapped(
       { page, pageSize },
-      () => this.db.select({ total: count() }).from(auditLogs).where(where),
+      (limit) => countUpTo(this.db, auditLogs, where, limit),
       (limit, offset) =>
         this.db
           .select()

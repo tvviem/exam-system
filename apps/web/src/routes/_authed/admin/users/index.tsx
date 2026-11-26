@@ -15,6 +15,7 @@ import {
 } from '../../../../lib/admin';
 import type { RoleTag } from '../../../../lib/auth';
 import { errorMessage } from '../../../../lib/errors';
+import { cappedPageParam } from '../../../../lib/page-param';
 import {
   Badge,
   Button,
@@ -44,7 +45,7 @@ export const Route = createFileRoute('/_authed/admin/users/')({
     activation: ACTIVATION_FILTERS.includes(search.activation as ActivationFilter)
       ? (search.activation as ActivationFilter)
       : undefined,
-    page: Number(search.page) > 1 ? Number(search.page) : undefined,
+    page: cappedPageParam(search.page),
   }),
   component: UsersPage,
 });
@@ -159,6 +160,7 @@ function UsersPage() {
             page={users.data.page}
             pageSize={users.data.pageSize}
             total={users.data.total}
+            totalCapped={users.data.totalCapped}
             onPage={(page) => navigate({ search: (s) => ({ ...s, page }) })}
           />
         </>

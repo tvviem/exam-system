@@ -223,6 +223,14 @@ describe('tìm kiếm giữ thứ tự mới sửa trước', () => {
       items: [{ preview: 'Cây nhị phân một (sửa)' }],
     });
     expect(await page(2)).toMatchObject({ total: 2, items: [{ preview: 'Cây nhị phân hai' }] });
+    // Lọc theo tag đi cùng đường truy vấn: vẫn mới sửa trước.
+    await newQuestion(singleChoice(topicId, { stem: 'Có tag cũ', tags: ['t'] }));
+    await newQuestion(singleChoice(topicId, { stem: 'Có tag mới', tags: ['t'] }));
+    const tagged = (await mine('GET', '/api/questions?tag=t')).json();
+    expect(tagged.items.map((i: { preview: string }) => i.preview)).toEqual([
+      'Có tag mới',
+      'Có tag cũ',
+    ]);
   });
 });
 

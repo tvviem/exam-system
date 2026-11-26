@@ -87,6 +87,8 @@ describe('tìm và lọc Người dùng', () => {
     const unverified = await inOrder('activation=unverified');
     expect(unverified[0]).toBe('Võ Văn Sau');
     expect(unverified.at(-1)).toBe('Quản Trị');
+    await seedUser({ fullName: 'Đỗ Văn Khóa Sau', status: 'locked' });
+    expect(await inOrder('status=locked')).toEqual(['Đỗ Văn Khóa Sau', 'Lê Văn Cường']);
   });
 
   it('ký tự % trong từ khóa được hiểu theo nghĩa đen', async () => {
