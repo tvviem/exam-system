@@ -117,6 +117,8 @@ Cách nhanh nhất khi bạn đã có sẵn bộ câu hỏi.
 
 ![Nhập từ Excel](anh:nguoi-ra-de/12-nhap-excel)
 
+Câu hỏi có **mã lệnh** thì đánh dấu ngay trong ô Excel (xem mục 3.4, phần Mã lệnh).
+
 Hệ thống kiểm tra và phân loại từng dòng:
 
 - **Hợp lệ**: sẽ được tạo.
@@ -179,18 +181,26 @@ Mỗi ô soạn có thanh công cụ: **Đậm**, **Nghiêng**, **Gạch chân**
 - **Hình minh họa**: tải ảnh lên (có hạn mức dung lượng cho mỗi người) và ghi mô tả cho người khiếm thị.
 - **Mã lệnh** (cho các học phần lập trình): xem mục ngay dưới đây.
 
+Gõ hay dán các dấu `*`, `_` **giữ nguyên là chữ** (không tự thành chữ nghiêng, đậm): muốn định dạng thì bấm nút hoặc dùng phím tắt.
+
 #### Mã lệnh
+
+![Soạn câu hỏi có mã lệnh](anh:nguoi-ra-de/28-soan-ma-lenh)
 
 | Cần gì | Làm trong trình soạn | Viết trong file Excel |
 |---|---|---|
 | Mẩu mã ngắn xen trong câu (tên biến, một câu lệnh) | bấm **Mã trong dòng**, gõ, bấm lại để thoát | đặt giữa hai dấu `` ` ``, ví dụ `` `p->Next` `` |
-| Đoạn mã nhiều dòng | bấm **Khối mã**; **Tab** thụt lề, **Shift+Tab** lùi lề | đặt giữa hai dòng chỉ có `` ``` `` |
+| Đoạn mã nhiều dòng | bấm **Khối mã**; **Tab** thụt lề, **Shift+Tab** lùi lề | một dòng `` ``` `` mở (được ghi kèm tên ngôn ngữ như `` ```c ``), các dòng mã, một dòng chỉ có `` ``` `` đóng |
 
 - Dán mã từ trang web hoặc trình soạn mã vào ô soạn thì dấu `*`, `_` và thụt lề được giữ nguyên.
 - Ra khỏi khối mã để gõ chữ tiếp: nhấn **Enter** ba lần, hoặc nhấn mũi tên xuống ở cuối khối. Dùng bàn phím rời ô soạn: **Esc** rồi **Tab**.
 - Trong file Excel: xuống dòng trong ô bằng **Alt+Enter**, thụt lề bằng dấu cách. Trong mã, dấu `$` là chữ thường. Muốn in dấu `` ` `` thật thì viết `` \` ``. Quên dòng đóng thì cả đoạn hiện nguyên là chữ: kiểm ở bước **Xem** trước khi tạo.
 - Một khối mã tối đa 4.000 ký tự và 200 dòng.
-- Trên màn làm bài, khối mã có số dòng; dòng dài tự xuống hàng (hàng xuống thêm không có số), người thi không phải cuộn ngang. Đề Word in mã bằng phông Courier New.
+- Trên màn làm bài, khối mã từ hai dòng có số dòng; dòng dài tự xuống hàng (hàng xuống thêm không có số), người thi không phải cuộn ngang. Đề Word in mã bằng phông Courier New, có số dòng khớp với màn hình.
+
+![Xem thử câu có mã](anh:nguoi-ra-de/29-xem-thu-ma-lenh)
+
+**Muốn in chính dấu** `` ` `` khi nhập Excel: một dấu lẻ thì giữ nguyên; cả cặp dùng như chữ thì viết `` \` `` trước từng dấu. Trong khối mã không cần thêm gì. Bảng đầy đủ và sự cố thường gặp ở hướng dẫn chuyên đề **Mã lệnh trong Câu hỏi**.
 
 ### 3.5. Tìm, lọc và quản lý danh sách câu hỏi
 
@@ -290,7 +300,7 @@ Các nút ở đầu trang: **Xuất Bộ đề** (ra Word), **Nhân bản**, **
 
 ### 4.7. Xuất Bộ đề ra Word
 
-Nút **Xuất Bộ đề** có ở trang Bộ đề đã Phát hành và ở trang Phiên thi. Trong hộp **Xuất Bộ đề ra Word**: chọn **Mã đề cần xuất** (nếu Phiên thi có nhiều Mã đề), nhập **Học phần**, chọn **Mẫu** (**Mẫu Trường** như giấy của Trường: khung thông tin, ô thí sinh, lưới trả lời; hoặc **Gọn**: chỉ thông tin thi và câu hỏi) rồi tải tệp **Đề thi**. Mục **Đáp án và thang điểm** cho tải riêng tệp có đáp án đúng, điểm từng câu và cách chấm. Công thức toán xuất thành công thức Word gốc, hình minh họa giữ nguyên.
+Nút **Xuất Bộ đề** có ở trang Bộ đề đã Phát hành và ở trang Phiên thi. Trong hộp **Xuất Bộ đề ra Word**: chọn **Mã đề cần xuất** (nếu Phiên thi có nhiều Mã đề), nhập **Học phần**, chọn **Mẫu** (**Mẫu Trường** như giấy của Trường: khung thông tin, ô thí sinh, lưới trả lời; hoặc **Gọn**: chỉ thông tin thi và câu hỏi) rồi tải tệp **Đề thi**. Mục **Đáp án và thang điểm** cho tải riêng tệp có đáp án đúng, điểm từng câu và cách chấm. Công thức toán xuất thành công thức Word gốc, hình minh họa giữ nguyên; mã lệnh in bằng phông Courier New, khối mã có khung và số dòng khớp với màn hình.
 
 ![Hộp Xuất Bộ đề](anh:nguoi-ra-de/70-xuat-bo-de)
 
@@ -517,6 +527,8 @@ Khi bạn gặp sự cố (ốm, mất liên lạc), **bạn (chủ Phiên thi) 
 
 | Tình huống | Cách xử lý |
 |---|---|
+| Báo **"Máy chủ đang bận"** khi tìm hoặc mở danh sách | Máy chủ đang xử lý nhiều lượt tìm nặng cùng lúc và ưu tiên người đang thi: đợi vài giây rồi thử lại, hoặc lọc theo Chủ đề trước khi tìm. |
+| Câu đã nhập còn hiện nguyên dấu `` ``` `` | Khối mã thiếu dòng đóng: sửa câu bằng nút **Khối mã**, hoặc xóa câu rồi nhập lại file đã sửa. |
 | Không xóa được câu hỏi | Câu đã nằm trong Bộ đề chỉ **Lưu trữ** được. |
 | Bộ đề không sửa được | Bộ đề đã **Phát hành** bị khóa. **Nhân bản** rồi sửa bản nháp. |
 | Muốn đổi tỷ lệ rút của Bộ đề đã phát hành | Đổi ở Phiên thi (**Thay đổi cho Phiên thi này**) hoặc Nhân bản Bộ đề. |

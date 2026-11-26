@@ -53,8 +53,25 @@ describe('ô Excel: khối mã', () => {
     expect(blocks('```\na;\n```\n```\nb;\n```')).toEqual([block('a;'), block('b;')]);
   });
 
+  it.each(['c', 'C++', 'c#', 'python', ' java ', 'objective-c'])(
+    'ghi tên ngôn ngữ sau ``` mở khối (%s) thì vẫn là khối mã, tên đó được bỏ đi',
+    (language) => {
+      expect(blocks(`\`\`\`${language}\na;\n\`\`\``)).toEqual([block('a;')]);
+    },
+  );
+
+  it('nhiều khối có ghi tên ngôn ngữ: chữ ở giữa vẫn là chữ', () => {
+    expect(blocks('```c\na;\n```\nchữ ở giữa\n```c\nb;\n```')).toEqual([
+      block('a;'),
+      p(t('chữ ở giữa')),
+      block('b;'),
+    ]);
+  });
+
   it.each([
     ['không có dòng đóng', '```\na;'],
+    ['dòng đóng còn ghi tên ngôn ngữ', '```c\na;\n```c'],
+    ['sau ``` là cả câu chữ', '``` là ký hiệu mở khối\na;\n```'],
     ['khối rỗng', '```\n```'],
     ['``` không đứng riêng một dòng', 'viết ``` trong câu'],
   ])('%s thì giữ nguyên là chữ', (_name, cell) => {

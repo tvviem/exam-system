@@ -104,6 +104,10 @@ test('Soạn bốn Loại câu hỏi', async ({ browser }) => {
         text: 'Định dạng chữ: đậm, nghiêng, gạch chân, chỉ số trên và dưới',
       },
       {
+        at: toolbar.getByRole('button', { name: 'Mã trong dòng' }),
+        text: 'Mã lệnh: Mã trong dòng và Khối mã',
+      },
+      {
         at: toolbar.getByRole('button', { name: 'Công thức' }),
         text: 'Chèn công thức toán (bàn phím toán hoặc mã LaTeX)',
       },

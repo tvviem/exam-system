@@ -344,7 +344,7 @@ function addGuide(workbook: ExcelJS.Workbook, withExamples: boolean) {
   );
   line(
     'Mã lệnh',
-    'Mẩu ngắn trong câu viết giữa hai dấu `, ví dụ `p->Next`. Đoạn nhiều dòng đặt giữa hai dòng chỉ có ```, thụt lề bằng dấu cách. Trong mã, $ là chữ thường. Muốn in dấu ` thật thì viết \\`.',
+    'Mẩu ngắn trong câu viết giữa hai dấu `, ví dụ `p->Next`. Đoạn nhiều dòng đặt giữa một dòng ``` mở (ghi kèm tên ngôn ngữ như ```c cũng được) và một dòng chỉ có ``` đóng, thụt lề bằng dấu cách. Trong mã, $ là chữ thường. Muốn in dấu ` thật thì viết \\`.',
   );
   line('Ví dụ khối mã', 'Đoạn sau in ra gì?\n```\nfor (i = 0; i < 3; i++)\n    s = s + i;\n```');
   line('Ảnh', 'Không nhập qua Excel: thêm khi sửa Câu hỏi sau khi nhập.');

@@ -58,4 +58,9 @@ export const authoringCodeBlock = (onTooLong: () => void) =>
         }),
       ];
     },
-  }).configure({ enableTabIndentation: true, tabSize: INDENT_SPACES });
+  }).configure({
+    enableTabIndentation: true,
+    tabSize: INDENT_SPACES,
+    // Bàn phím điện thoại không tự viết hoa, sửa chính tả trong mã.
+    HTMLAttributes: { autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false' },
+  });

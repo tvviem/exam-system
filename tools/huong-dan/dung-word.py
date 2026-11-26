@@ -206,7 +206,16 @@ def table_of_contents(document: Document):
 
 
 # ---------- nội dung ----------
-INLINE = re.compile(r"(\*\*.+?\*\*|`.+?`)")
+# `mã` và ``mã có dấu ` bên trong`` như CommonMark: đóng bằng đúng số dấu đã mở.
+INLINE = re.compile(r"((?<!`)``(?!`).+?(?<!`)``(?!`)|(?<!`)`(?!`)[^`]+`(?!`)|\*\*.+?\*\*)")
+
+
+def code_text(part: str) -> str:
+    ticks = 2 if part.startswith("``") else 1
+    inner = part[ticks:-ticks]
+    if ticks == 2 and inner.startswith(" ") and inner.endswith(" "):
+        inner = inner[1:-1]
+    return inner
 
 
 def add_inline(paragraph, text: str, size=None, color=None, bold_all=False):
@@ -217,7 +226,7 @@ def add_inline(paragraph, text: str, size=None, color=None, bold_all=False):
             run = paragraph.add_run(part[2:-2])
             run.bold = True
         elif part.startswith("`") and part.endswith("`"):
-            run = paragraph.add_run(part[1:-1])
+            run = paragraph.add_run(code_text(part))
             run.font.name = "Consolas"
             run._r.rPr.rFonts.set(qn("w:eastAsia"), "Consolas")
             run.font.color.rgb = RGBColor(0x8A, 0x2B, 0x0F)

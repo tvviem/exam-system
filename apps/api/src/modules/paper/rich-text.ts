@@ -37,22 +37,38 @@ const PLACEHOLDER = { color: 'FF0000' } as const;
 /** Word không canh tab trong chữ: mỗi tab thành hai dấu cách, như bề rộng tab trên web. */
 const codeChars = (text: string) => text.replace(/\t/g, '  ');
 
-const CODE_BLOCK_START = `<w:r><w:rPr><w:rStyle w:val="${STYLE.codeText}"/>`;
+const startsWithStyle = (runs: string, style: string): boolean =>
+  runs.startsWith(`<w:r><w:rPr><w:rStyle w:val="${style}"/>`);
 
-/** Đoạn do một khối mã tạo ra: người gọi đặt kiểu đoạn "Khối mã". */
-export const isCodeBlock = (runs: string): boolean => runs.startsWith(CODE_BLOCK_START);
+/** Đoạn do một dòng của khối mã tạo ra. */
+export const isCodeBlock = (runs: string): boolean =>
+  startsWithStyle(runs, STYLE.codeText) || startsWithStyle(runs, STYLE.lineNumber);
 
-/** Kiểu đoạn của một đoạn nội dung: khối mã luôn là "Khối mã", đoạn khác dùng kiểu của chỗ đặt. */
-export const paragraphStyleOf = (runs: string, fallback?: string): string | undefined =>
-  isCodeBlock(runs) ? STYLE.codeBlock : fallback;
+/** Kiểu đoạn của một đoạn nội dung: dòng mã luôn dùng kiểu của khối mã, đoạn khác dùng kiểu của chỗ đặt. */
+export const paragraphStyleOf = (runs: string, fallback?: string): string | undefined => {
+  if (startsWithStyle(runs, STYLE.lineNumber)) return STYLE.codeBlockNumbered;
+  return startsWithStyle(runs, STYLE.codeText) ? STYLE.codeBlock : fallback;
+};
 
-const codeBlockRuns = (block: BlockNode): string =>
-  ((block.content ?? []) as InlineNode[])
+/**
+ * Các đoạn của một khối mã, như trên màn hình: từ hai dòng thì mỗi dòng một đoạn mở đầu bằng số thứ tự (canh phải) và
+ * một tab; khối một dòng không có số.
+ */
+const codeBlockParagraphs = (block: BlockNode): string[] => {
+  const lines = ((block.content ?? []) as InlineNode[])
     .map((node) => node.text ?? '')
     .join('')
-    .split('\n')
-    .map((line) => run(codeChars(line), { style: STYLE.codeText }))
-    .join(lineBreak);
+    .split('\n');
+  const code = (line: string) => run(codeChars(line), { style: STYLE.codeText });
+  if (lines.length === 1) return lines.map(code);
+  const width = String(lines.length).length;
+  return lines.map(
+    (line, index) =>
+      run(String(index + 1).padStart(width, ' '), { style: STYLE.lineNumber }) +
+      '<w:r><w:tab/></w:r>' +
+      code(line),
+  );
+};
 
 const inlineRun = (node: InlineNode, { warn }: RichContext): string => {
   if (node.type === 'hardBreak') return lineBreak;
@@ -115,11 +131,14 @@ const inlineRuns = (block: BlockNode, ctx: RichContext): string =>
 export function paragraphRuns(richText: unknown, ctx: RichContext): string[] {
   const doc = richText as BlockNode;
   const paragraphs: string[] = [];
-  for (const block of (doc.content ?? []) as BlockNode[]) {
+  const blocks = (doc.content ?? []) as BlockNode[];
+  for (const [at, block] of blocks.entries()) {
     if (block.type === 'paragraph') {
       paragraphs.push(...inlineParagraphs(block, ctx));
     } else if (block.type === 'codeBlock') {
-      paragraphs.push(codeBlockRuns(block));
+      // Đoạn trống ngăn hai khối liền nhau, nếu không Word gom thành một khung.
+      if (blocks[at - 1]?.type === 'codeBlock') paragraphs.push('');
+      paragraphs.push(...codeBlockParagraphs(block));
     } else if (block.type === 'bulletList' || block.type === 'orderedList') {
       const start = block.attrs?.start ?? 1;
       ((block.content ?? []) as BlockNode[]).forEach((item, index) => {
