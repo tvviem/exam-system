@@ -143,6 +143,10 @@ export default function RichTextEditor({
   const editor = useEditor({
     extensions,
     content: value,
+    // Không đổi chữ gõ hay dán thành định dạng: mã lệnh có nhiều dấu * và _ (int *p, *q; __init__) sẽ bị mất dấu. Chỉ giữ
+    // gõ tắt tạo danh sách ("- ", "1. "); đậm, nghiêng dùng nút hoặc phím tắt.
+    enableInputRules: ['bulletList', 'orderedList'],
+    enablePasteRules: false,
     editorProps: {
       attributes: {
         id,

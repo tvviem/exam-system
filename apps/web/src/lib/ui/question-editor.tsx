@@ -290,7 +290,10 @@ export function QuestionEditor({
   );
 
   const preview = (
-    <Card className="flex flex-col gap-4 @4xl:sticky @4xl:top-[calc(var(--app-header-h)+1rem)] @4xl:max-h-[calc(100dvh-var(--app-header-h)-2rem)] @4xl:overflow-y-auto">
+    <Card
+      data-testid="question-preview"
+      className="flex flex-col gap-4 @4xl:sticky @4xl:top-[calc(var(--app-header-h)+1rem)] @4xl:max-h-[calc(100dvh-var(--app-header-h)-2rem)] @4xl:overflow-y-auto"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{t('questionBank.preview')}</h2>
         <label className="inline-flex min-h-12 cursor-pointer items-center gap-2 text-sm pointer-fine:min-h-9">

@@ -123,6 +123,14 @@ _Avoid_: trùng lặp (khi chưa chắc), duplicate
 Hình ảnh gắn vào Phần dẫn, Phương án hoặc Mệnh đề để diễn đạt nội dung.
 _Avoid_: attachment, media
 
+**Khối mã** (`CodeBlock`):
+Đoạn mã lệnh đứng riêng nhiều dòng trong Phần dẫn, Phương án hoặc Mệnh đề, giữ nguyên khoảng trắng và xuống dòng.
+_Avoid_: đoạn code, snippet
+
+**Mã trong dòng** (`InlineCode`):
+Mẩu mã lệnh ngắn (tên biến, câu lệnh) xen trong câu chữ.
+_Avoid_: code ngắn
+
 **Câu chọn một** (`SingleChoice`):
 Câu hỏi có từ 2 Phương án trở lên và đúng một Phương án đúng.
 _Avoid_: trắc nghiệm đơn
