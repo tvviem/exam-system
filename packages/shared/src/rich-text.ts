@@ -6,6 +6,9 @@ import { z } from 'zod';
 
 export const MATH_MAX_CHARS = 2_000;
 export const IMAGE_ALT_MAX_CHARS = 250;
+/** Giới hạn một khối mã: ký tự tính cả khoảng trắng (văn bản thuần gộp khoảng trắng nên không đếm được thụt lề). */
+export const CODE_MAX_CHARS = 4_000;
+export const CODE_MAX_LINES = 200;
 /** Cạnh dài (px) của các biến thể Hình minh họa mà api phục vụ (Q140, Q141). */
 export const ILLUSTRATION_VARIANT_SIDES = [480, 960, 1600] as const;
 /** Loại ảnh được tải lên (Q122). */
@@ -30,7 +33,7 @@ export const hasForbiddenLatex = (latex: string) =>
   FORBIDDEN_LATEX.test(latex.replace(/\\\\/g, ' '));
 
 const markSchema = z.strictObject({
-  type: z.enum(['bold', 'italic', 'underline', 'superscript', 'subscript']),
+  type: z.enum(['bold', 'italic', 'underline', 'superscript', 'subscript', 'code']),
 });
 
 // Mọi chữ trong nội dung được đưa về dạng dựng sẵn (NFC) ngay khi nhận: chữ Việt gõ hay dán ở dạng dấu rời (NFD) vẫn lưu,
@@ -38,7 +41,12 @@ const markSchema = z.strictObject({
 const textNodeSchema = z.strictObject({
   type: z.literal('text'),
   text: z.string().normalize('NFC').min(1),
-  marks: z.array(markSchema).max(5).optional(),
+  // Mã trong dòng không đi cùng định dạng khác.
+  marks: z
+    .array(markSchema)
+    .max(5)
+    .refine((marks) => marks.length === 1 || marks.every((mark) => mark.type !== 'code'))
+    .optional(),
 });
 
 const hardBreakSchema = z.strictObject({ type: z.literal('hardBreak') });
@@ -59,6 +67,23 @@ const imageSchema = z.strictObject({
     illustrationId: z.uuid(),
     alt: z.string().normalize('NFC').trim().min(1).max(IMAGE_ALT_MAX_CHARS),
   }),
+});
+
+// Khối mã: đúng một đoạn chữ thuần, xuống dòng là ký tự `\n`; chỉ đứng ở cấp ngoài cùng, không nằm trong mục danh sách.
+const codeTextSchema = z.strictObject({
+  type: z.literal('text'),
+  text: z
+    .string()
+    .normalize('NFC')
+    .overwrite((value) => value.replace(/\r\n?/g, '\n'))
+    .min(1)
+    .max(CODE_MAX_CHARS)
+    .refine((value) => value.split('\n').length <= CODE_MAX_LINES),
+});
+
+const codeBlockSchema = z.strictObject({
+  type: z.literal('codeBlock'),
+  content: z.array(codeTextSchema).length(1),
 });
 
 const paragraphSchema = z.strictObject({
@@ -94,6 +119,7 @@ export const richTextSchema = z.strictObject({
         bulletListSchema,
         orderedListSchema,
         imageSchema,
+        codeBlockSchema,
       ]),
     )
     .min(1),
@@ -105,6 +131,7 @@ type Block = RichText['content'][number];
 
 const blockTexts = (block: Block): string[] => {
   if (block.type === 'image') return [block.attrs.alt];
+  if (block.type === 'codeBlock') return block.content.map((node) => node.text);
   if (block.type === 'paragraph') {
     return [
       (block.content ?? [])
@@ -118,7 +145,7 @@ const blockTexts = (block: Block): string[] => {
 };
 
 const blockMath = (block: Block): { latex: string; display: boolean }[] => {
-  if (block.type === 'image') return [];
+  if (block.type === 'image' || block.type === 'codeBlock') return [];
   return block.type === 'paragraph'
     ? (block.content ?? []).flatMap((node) => (node.type === 'math' ? [node.attrs] : []))
     : block.content.flatMap((item) => item.content.flatMap(blockMath));

@@ -1,4 +1,6 @@
 import { latexToOmml } from './math/latex-to-omml';
+import type { TextSegment } from './option-layout';
+import { STYLE } from './styles';
 import { lineBreak, run } from './wordml';
 
 /** Chỗ báo cảnh báo của bản xuất; người gọi gắn thêm số câu. */
@@ -14,7 +16,7 @@ export interface RichContext {
 export const isImageRuns = (runs: string): boolean => runs.startsWith('<w:r><w:drawing>');
 
 interface Mark {
-  type: 'bold' | 'italic' | 'underline' | 'superscript' | 'subscript';
+  type: 'bold' | 'italic' | 'underline' | 'superscript' | 'subscript' | 'code';
 }
 
 interface InlineNode {
@@ -32,6 +34,26 @@ interface BlockNode {
 
 const PLACEHOLDER = { color: 'FF0000' } as const;
 
+/** Word không canh tab trong chữ: mỗi tab thành hai dấu cách, như bề rộng tab trên web. */
+const codeChars = (text: string) => text.replace(/\t/g, '  ');
+
+const CODE_BLOCK_START = `<w:r><w:rPr><w:rStyle w:val="${STYLE.codeText}"/>`;
+
+/** Đoạn do một khối mã tạo ra: người gọi đặt kiểu đoạn "Khối mã". */
+export const isCodeBlock = (runs: string): boolean => runs.startsWith(CODE_BLOCK_START);
+
+/** Kiểu đoạn của một đoạn nội dung: khối mã luôn là "Khối mã", đoạn khác dùng kiểu của chỗ đặt. */
+export const paragraphStyleOf = (runs: string, fallback?: string): string | undefined =>
+  isCodeBlock(runs) ? STYLE.codeBlock : fallback;
+
+const codeBlockRuns = (block: BlockNode): string =>
+  ((block.content ?? []) as InlineNode[])
+    .map((node) => node.text ?? '')
+    .join('')
+    .split('\n')
+    .map((line) => run(codeChars(line), { style: STYLE.codeText }))
+    .join(lineBreak);
+
 const inlineRun = (node: InlineNode, { warn }: RichContext): string => {
   if (node.type === 'hardBreak') return lineBreak;
   if (node.type === 'math') {
@@ -43,6 +65,7 @@ const inlineRun = (node: InlineNode, { warn }: RichContext): string => {
   }
   if (node.type !== 'text') return '';
   const kinds = new Set((node.marks ?? []).map((mark) => mark.type));
+  if (kinds.has('code')) return run(codeChars(node.text ?? ''), { style: STYLE.inlineCode });
   return run(node.text ?? '', {
     bold: kinds.has('bold'),
     italic: kinds.has('italic'),
@@ -95,6 +118,8 @@ export function paragraphRuns(richText: unknown, ctx: RichContext): string[] {
   for (const block of (doc.content ?? []) as BlockNode[]) {
     if (block.type === 'paragraph') {
       paragraphs.push(...inlineParagraphs(block, ctx));
+    } else if (block.type === 'codeBlock') {
+      paragraphs.push(codeBlockRuns(block));
     } else if (block.type === 'bulletList' || block.type === 'orderedList') {
       const start = block.attrs?.start ?? 1;
       ((block.content ?? []) as BlockNode[]).forEach((item, index) => {
@@ -128,4 +153,17 @@ export function plainText(richText: unknown): string {
         .join(''),
     )
     .join(' ');
+}
+
+/** Các mẩu chữ theo thứ tự, đánh dấu mẩu in bằng phông đơn cách (để đo độ rộng Phương án). */
+export function textSegments(richText: unknown): TextSegment[] {
+  const doc = richText as BlockNode;
+  return ((doc.content ?? []) as BlockNode[]).flatMap((block, index) => [
+    ...(index > 0 ? [{ text: ' ' }] : []),
+    ...((block.content ?? []) as InlineNode[]).flatMap((node) =>
+      node.type === 'text'
+        ? [{ text: node.text ?? '', code: node.marks?.some((mark) => mark.type === 'code') }]
+        : [],
+    ),
+  ]);
 }

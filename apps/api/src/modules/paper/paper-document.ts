@@ -4,7 +4,7 @@ import { coverTable, endMarker, nationalHeader, type PaperHeading } from './cove
 import { packDocx } from './docx-package';
 import { MediaRegistry, type PaperImage } from './media';
 import { type PaperItem, renderItem } from './question-renderers';
-import { paragraphRuns } from './rich-text';
+import { paragraphRuns, paragraphStyleOf } from './rich-text';
 import { STYLE } from './styles';
 import { paragraph, run } from './wordml';
 
@@ -53,7 +53,7 @@ const sectionHeading = (
         warn: (message) => warnings.push(`Hướng dẫn của Phần: ${message}`),
         image: (id, alt) => media.drawing(id, alt),
       })
-        .map((runs) => paragraph(runs, '', STYLE.note))
+        .map((runs) => paragraph(runs, '', paragraphStyleOf(runs, STYLE.note)))
         .join('')
     : '';
   return title + instructions;
@@ -66,7 +66,7 @@ const generalInstructions = (spec: PaperSpec, warnings: string[], media: MediaRe
         warn: (message) => warnings.push(`Hướng dẫn của Bộ đề: ${message}`),
         image: (id, alt) => media.drawing(id, alt),
       })
-        .map((runs) => paragraph(runs, '', STYLE.note))
+        .map((runs) => paragraph(runs, '', paragraphStyleOf(runs, STYLE.note)))
         .join('')
     : '';
 

@@ -24,7 +24,12 @@ export async function seedOpenSession(
   tag: string,
   code: string,
   candidateCode: string,
-  options: { essayLatex?: string; opensInMs?: number } = {},
+  options: {
+    essayLatex?: string;
+    opensInMs?: number;
+    /** Thay Phần dẫn và hai Phương án của câu chọn một (câu đầu đề). */
+    single?: { stem: unknown; options: [unknown, unknown] };
+  } = {},
 ) {
   const headers = { origin: ORIGIN };
   const post = async (url: string, data: unknown) => {
@@ -37,12 +42,12 @@ export async function seedOpenSession(
   const single = await post('/api/questions', {
     ...common,
     type: 'single_choice',
-    stem: rich(`Thủ đô của Việt Nam ${tag}?`),
+    stem: options.single?.stem ?? rich(`Thủ đô của Việt Nam ${tag}?`),
     defaultPoints: 1,
     payload: {
       options: [
-        { id: 'o1', content: rich('Hà Nội') },
-        { id: 'o2', content: rich('Huế') },
+        { id: 'o1', content: options.single?.options[0] ?? rich('Hà Nội') },
+        { id: 'o2', content: options.single?.options[1] ?? rich('Huế') },
       ],
       key: ['o1'],
       shuffleOptions: false,

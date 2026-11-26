@@ -1,6 +1,6 @@
 # Mã lệnh trong Câu hỏi (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt Q490–Q497 theo đề xuất ngày 26/11/2026, mục 8). Tiến độ: **M0** (mục 3) xong về mã; M1, M2 chưa làm.
+**Trạng thái: `accepted`** (chủ dự án duyệt Q490–Q497 theo đề xuất ngày 26/11/2026, mục 8). Tiến độ: **M0** (mục 3, #177) và **M1** (mục 5) xong về mã; M2 chưa làm.
 
 ## 1. Yêu cầu
 
@@ -73,6 +73,10 @@ Bản đang chạy **không đọc được** nội dung có khối mã (màn l�
 | M2 | Trình soạn và nhập Excel tạo ra khối mã; hướng dẫn | chỉ về M1; về trước M1 thì Câu hỏi có mã bị hỏng |
 
 M2 deploy sau M1, ngoài giờ thi, khi không còn trang cũ đang làm bài.
+
+Ở M1, trình soạn đã **giữ** được nội dung có mã (mở, sửa chữ, lưu không mất) nhưng chưa có nút, phím tắt hay việc nhận mã từ HTML dán vào, nên lùi từ M2 về M1 vẫn an toàn.
+
+Việc để lại cho M2: khi một khối mã vượt giới hạn ở mục 4.1 trong lúc soạn, trình soạn phải **báo cho Người ra đề** (hiện bản sửa vượt giới hạn không được ghi nhận và không có thông báo).
 
 ## 6. Kiểm thử
 

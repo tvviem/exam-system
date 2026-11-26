@@ -2,11 +2,13 @@ import type { QuestionType } from '@exam/shared';
 import type { ImageSource } from './media';
 import { optionLayoutOf } from './option-layout';
 import {
+  isCodeBlock,
   isDisplayMath,
   isImageRuns,
   paragraphRuns,
-  plainText,
+  paragraphStyleOf,
   type RichContext,
+  textSegments,
 } from './rich-text';
 import { STYLE } from './styles';
 import { mmToTwips, paragraph, run } from './wordml';
@@ -30,27 +32,27 @@ const LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 const TEXT_WIDTH_TWIPS = mmToTwips(193);
 
-/** Đoạn của một khối văn bản: hình canh giữa, còn lại theo kiểu mặc định. */
-const blockParagraph = (runs: string): string =>
-  paragraph(runs, isImageRuns(runs) ? '<w:jc w:val="center"/>' : '');
+/** Đoạn của một khối văn bản: hình canh giữa, khối mã theo kiểu của nó, còn lại theo kiểu `style` của chỗ đặt. */
+const blockParagraph = (runs: string, style?: string): string =>
+  paragraph(runs, isImageRuns(runs) ? '<w:jc w:val="center"/>' : '', paragraphStyleOf(runs, style));
+
+const isBlockRuns = (runs: string | undefined): boolean =>
+  runs !== undefined && (isDisplayMath(runs) || isImageRuns(runs) || isCodeBlock(runs));
 
 const stemOf = (item: PaperItem, number: number, ctx: RichContext): string => {
   const parts = paragraphRuns(item.stem, ctx);
-  // đoạn đầu là công thức riêng dòng thì "Câu N:" đứng một mình, công thức xuống đoạn kế
-  const startsWithDisplay = parts[0] !== undefined && isDisplayMath(parts[0]);
-  const first = startsWithDisplay ? '' : (parts[0] ?? '');
-  const rest = startsWithDisplay ? parts : parts.slice(1);
+  // đoạn đầu là công thức riêng dòng hoặc khối mã thì "Câu N:" đứng một mình, khối đó xuống đoạn kế
+  const startsAlone = parts[0] !== undefined && (isDisplayMath(parts[0]) || isCodeBlock(parts[0]));
+  const first = startsAlone ? '' : (parts[0] ?? '');
+  const rest = startsAlone ? parts : parts.slice(1);
   return (
     paragraph(
       run(`Câu ${number}:`, { style: STYLE.label }) + run(' ') + first,
       '',
       STYLE.question,
-    ) + rest.map(blockParagraph).join('')
+    ) + rest.map((runs) => blockParagraph(runs)).join('')
   );
 };
-
-const isBlockRuns = (runs: string | undefined): boolean =>
-  runs !== undefined && (isDisplayMath(runs) || isImageRuns(runs));
 
 const choice: Renderer = (item, number, ctx) => {
   const stem = stemOf(item, number, ctx);
@@ -62,12 +64,12 @@ const choice: Renderer = (item, number, ctx) => {
     return {
       runs: run(`${LABELS[index]}.`, { style: STYLE.label }) + run(' ') + (inline ? parts[0] : ''),
       below: inline ? parts.slice(1) : parts,
-      text: plainText(option.content),
+      segments: textSegments(option.content),
     };
   });
   // Phương án có nội dung xuống dòng thì cả câu xếp mỗi Phương án một dòng (Q419)
   const hasBelow = options.some((option) => option.below.length > 0);
-  const layout = hasBelow ? 'lines' : optionLayoutOf(options.map((option) => option.text));
+  const layout = hasBelow ? 'lines' : optionLayoutOf(options.map((option) => option.segments));
   // số Phương án mỗi đoạn: cả hàng, hai Phương án, hoặc một
   const perParagraph = layout === 'row' ? options.length : layout === 'columns' ? 2 : 1;
   const stops = Array.from({ length: perParagraph - 1 }, (_, i) =>
@@ -85,9 +87,7 @@ const choice: Renderer = (item, number, ctx) => {
     );
     for (const option of group) {
       for (const runs of option.below) {
-        lines.push(
-          paragraph(runs, isImageRuns(runs) ? '<w:jc w:val="center"/>' : '', STYLE.option),
-        );
+        lines.push(blockParagraph(runs, STYLE.option));
       }
     }
   }
@@ -99,12 +99,14 @@ const cluster: Renderer = (item, number, ctx) => {
   return (
     stemOf(item, number, ctx) +
     statements
-      .map((statement, index) =>
-        paragraph(
-          run(`${String.fromCharCode(97 + index)}) `) +
-            (paragraphRuns(statement.content, ctx)[0] ?? ''),
-        ),
-      )
+      .map((statement, index) => {
+        const parts = paragraphRuns(statement.content, ctx);
+        const inline = parts[0] !== undefined && !isBlockRuns(parts[0]);
+        return (
+          paragraph(run(`${String.fromCharCode(97 + index)}) `) + (inline ? parts[0] : '')) +
+          (inline ? parts.slice(1) : parts).map((runs) => blockParagraph(runs)).join('')
+        );
+      })
       .join('')
   );
 };

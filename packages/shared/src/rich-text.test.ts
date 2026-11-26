@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CODE_MAX_CHARS,
+  CODE_MAX_LINES,
   countMath,
   hasForbiddenLatex,
   imageNodesOf,
@@ -42,7 +44,6 @@ describe('richTextSchema', () => {
 
   it.each([
     ['liên kết', para({ ...text('a'), marks: [{ type: 'link', attrs: { href: 'https://x.y' } }] })],
-    ['mã nhúng', { type: 'codeBlock', content: [text('x')] }],
     ['bảng', { type: 'table', content: [] }],
     ['hình ngoài danh sách', { type: 'image', attrs: { src: 'http://x/y.png' } }],
     ['node lạ', { type: 'iframe' }],
@@ -267,5 +268,62 @@ describe('richTextSchema chuẩn hóa chữ Việt về NFC', () => {
     const a = richTextSchema.parse(doc(para(text(NFC_TEXT))));
     const b = richTextSchema.parse(doc(para(text(nfd(NFC_TEXT)))));
     expect(b).toEqual(a);
+  });
+});
+
+describe('mã lệnh: khối mã và mã trong dòng (docs/plan/ma-lenh-trong-cau-hoi-thiet-ke.md mục 4.1)', () => {
+  const code = (value: string) => ({ type: 'codeBlock', content: [text(value)] });
+  const program = 'for (i = 0; i < n; i++)\n    dem++;';
+
+  it('chấp nhận khối mã nhiều dòng và mã trong dòng, giữ nguyên khoảng trắng', () => {
+    const input = doc(para(text('Cho '), text('p->Next', ['code'])), code(program));
+    expect(richTextSchema.parse(input)).toEqual(input);
+  });
+
+  it('xuống dòng kiểu Windows được đưa về một ký tự xuống dòng', () => {
+    const parsed = richTextSchema.parse(doc(code('a;\r\n  b;\rc;')));
+    expect(parsed).toEqual(doc(code('a;\n  b;\nc;')));
+  });
+
+  it.each([
+    ['mã trong dòng kèm in đậm', para(text('x', ['code', 'bold']))],
+    ['khối mã có chữ định dạng', { type: 'codeBlock', content: [text('x', ['bold'])] }],
+    ['khối mã rỗng', { type: 'codeBlock' }],
+    ['khối mã hai đoạn chữ', { type: 'codeBlock', content: [text('a'), text('b')] }],
+    [
+      'khối mã có công thức',
+      { type: 'codeBlock', content: [{ type: 'math', attrs: { latex: 'x', display: false } }] },
+    ],
+    [
+      'khối mã có thuộc tính',
+      { type: 'codeBlock', attrs: { language: 'c' }, content: [text('x')] },
+    ],
+    [
+      'khối mã trong mục danh sách',
+      { type: 'bulletList', content: [{ type: 'listItem', content: [code('x')] }] },
+    ],
+  ])('từ chối %s', (_name, node) => {
+    expect(richTextSchema.safeParse(doc(node)).success).toBe(false);
+  });
+
+  it('giới hạn số ký tự (tính cả khoảng trắng) và số dòng của một khối mã', () => {
+    const ok = (value: string) => richTextSchema.safeParse(doc(code(value))).success;
+    expect(ok(`${' '.repeat(CODE_MAX_CHARS - 1)}x`)).toBe(true);
+    expect(ok(`${' '.repeat(CODE_MAX_CHARS)}x`)).toBe(false);
+    expect(ok(Array(CODE_MAX_LINES).fill('x').join('\n'))).toBe(true);
+    expect(
+      ok(
+        Array(CODE_MAX_LINES + 1)
+          .fill('x')
+          .join('\n'),
+      ),
+    ).toBe(false);
+  });
+
+  it('văn bản thuần (tìm kiếm, xem trước, đếm độ dài) gồm cả chữ trong mã; công thức và hình không bị lẫn', () => {
+    const parsed = richTextSchema.parse(doc(para(text('Đoạn')), code('if (a)\n  b = 1;')));
+    expect(plainTextOf(parsed)).toBe('Đoạn if (a) b = 1;');
+    expect(mathNodesOf(parsed)).toEqual([]);
+    expect(imageNodesOf(parsed)).toEqual([]);
   });
 });

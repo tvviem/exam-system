@@ -174,6 +174,8 @@ Quy tắc ràng buộc ở tầng service:
 
 ## 2. Ngân hàng câu hỏi (module `question-bank`)
 
+**Mã lệnh trong nội dung** ([thiết kế](plan/ma-lenh-trong-cau-hoi-thiet-ke.md)): ngoài đoạn văn, danh sách, công thức và Hình minh họa, nội dung có **Khối mã** (node `codeBlock`, một đoạn chữ thuần, tối đa 4.000 ký tự và 200 dòng, không nằm trong danh sách) và **Mã trong dòng** (mark `code`, không đi cùng mark khác). Không đổi bảng; bản mã trước M1 không đọc được nội dung có hai thành phần này.
+
 **Chữ Việt luôn ở dạng NFC (dựng sẵn).** Nội dung Câu hỏi (lời dẫn, Phương án, Mệnh đề, hướng dẫn chấm, công thức, mô tả ảnh) được `richTextSchema` đưa về NFC ngay khi nhận, và mọi ô của file Excel/CSV nhập vào được đưa về NFC ở `common/spreadsheet.ts`. Nhờ vậy chữ gõ hay dán ở dạng dấu rời (NFD) vẫn lưu, đếm ký tự (giới hạn `STEM_MAX_CHARS`, `ITEM_MAX_CHARS`) và hiển thị giống hệt dạng dựng sẵn; bản chụp trong `exam_items.snapshot` được sao từ nội dung đã chuẩn hóa nên Bộ đề, Phiên thi và Lượt làm bài đọc cùng một chuỗi. Chưa áp dụng cho: tên Chủ đề, nhãn, tiêu đề và các chữ ngắn ngoài nội dung có định dạng; câu trả lời tự luận của Người dự thi (việc đếm `maxLength` vẫn theo ký tự thô).
 
 ```sql
