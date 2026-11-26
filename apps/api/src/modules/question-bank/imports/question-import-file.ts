@@ -1,4 +1,6 @@
 import {
+  CODE_MAX_CHARS,
+  CODE_MAX_LINES,
   ITEM_MAX_CHARS,
   MATH_MAX_PER_QUESTION,
   normalizeForSearch,
@@ -66,6 +68,7 @@ export type ImportRowErrorCode =
   | 'invalid_ladder'
   | 'invalid_max_length'
   | 'field_too_long'
+  | 'code_too_long'
   | 'too_many_tags'
   | 'too_many_formulas'
   | 'math_invalid'
@@ -222,6 +225,16 @@ export async function parseQuestionImportFile(
   return { rows };
 }
 
+const hasOversizedCode = (doc: RichText): boolean =>
+  doc.content.some(
+    (block) =>
+      block.type === 'codeBlock' &&
+      block.content.some(
+        (node) =>
+          node.text.length > CODE_MAX_CHARS || node.text.split('\n').length > CODE_MAX_LINES,
+      ),
+  );
+
 type Built = { input: DraftQuestion; error: null } | { input: null; error: ImportRowErrorCode };
 const fail = (error: ImportRowErrorCode): Built => ({ input: null, error });
 
@@ -237,6 +250,7 @@ function buildQuestion(spec: SheetSpec, text: TextOf): Built {
   const tags = parseTags(text('tags'));
   if (typeof tags === 'string') return fail(tags);
 
+  if ([stem, ...part.items, ...part.notes].some(hasOversizedCode)) return fail('code_too_long');
   if (plainTextOf(stem).length > STEM_MAX_CHARS) return fail('field_too_long');
   if (part.items.some((doc) => plainTextOf(doc).length > ITEM_MAX_CHARS)) {
     return fail('field_too_long');

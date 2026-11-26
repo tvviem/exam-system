@@ -110,9 +110,13 @@ export function parseMaxLength(value: string): number | null {
 }
 
 type Inline =
-  | { type: 'text'; text: string }
+  | { type: 'text'; text: string; marks?: { type: 'code' }[] }
   | { type: 'hardBreak' }
   | { type: 'math'; attrs: { latex: string; display: false } };
+
+type Block =
+  | { type: 'paragraph'; content: Inline[] }
+  | { type: 'codeBlock'; content: { type: 'text'; text: string }[] };
 
 /** Công thức (LaTeX) trong một nội dung có định dạng. */
 export const formulasOf = (doc: RichText): string[] =>
@@ -122,18 +126,56 @@ export const formulasOf = (doc: RichText): string[] =>
       : [],
   );
 
+/** Dòng mở hoặc đóng khối mã: chỉ có ba dấu `. */
+const FENCE = /^\s*```\s*$/;
+
 /**
- * Ô → nội dung có định dạng: một đoạn, xuống dòng thành `hardBreak`, `$...$` thành công thức trong dòng,
- * `\$` là dấu đô la thật. `$` lẻ hoặc `$$` rỗng giữ nguyên là chữ.
+ * Ô → nội dung có định dạng (Q145, Q492): các dòng giữa hai dòng ``` thành khối mã; phần còn lại thành đoạn văn, xuống dòng
+ * thành `hardBreak`, `` `...` `` thành mã trong dòng, `$...$` thành công thức trong dòng. `` \` `` và `\$` là dấu thật.
+ * Dấu mở không có dấu đóng, cặp rỗng và `$$` giữ nguyên là chữ.
  */
 export function cellToDoc(text: string): RichText | null {
   if (text.trim() === '') return null;
-  const nodes: Inline[] = [];
-  text.split(/\r?\n/).forEach((line, i) => {
-    if (i > 0) nodes.push({ type: 'hardBreak' });
-    nodes.push(...inlineOf(line));
-  });
-  return { type: 'doc', content: [{ type: 'paragraph', content: nodes }] } as RichText;
+  const lines = text.split(/\r\n?|\n/);
+  const blocks: Block[] = [];
+  let plain: string[] = [];
+  const flush = () => {
+    if (plain.some((line) => line.trim() !== '')) {
+      const content = plain.flatMap((line, i): Inline[] => [
+        ...(i > 0 ? [{ type: 'hardBreak' as const }] : []),
+        ...inlineOf(line),
+      ]);
+      blocks.push({ type: 'paragraph', content });
+    }
+    plain = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] as string;
+    if (FENCE.test(line)) {
+      const end = lines.findIndex((other, j) => j > i && FENCE.test(other));
+      const code = end > i ? lines.slice(i + 1, end).join('\n') : '';
+      if (code !== '') {
+        flush();
+        blocks.push({ type: 'codeBlock', content: [{ type: 'text', text: code }] });
+        i = end;
+        continue;
+      }
+    }
+    plain.push(line);
+  }
+  flush();
+  return { type: 'doc', content: blocks } as RichText;
+}
+
+/** Mã trong dòng mở tại `start`: nội dung và vị trí sau dấu đóng; `null` nếu không có dấu đóng hoặc cặp rỗng. */
+function inlineCodeAt(line: string, start: number): { code: string; next: number } | null {
+  let code = '';
+  for (let j = start + 1; j < line.length; j++) {
+    if (line[j] === '`') return code === '' ? null : { code, next: j + 1 };
+    if (line[j] === '\\' && line[j + 1] === '`') j++;
+    code += line[j];
+  }
+  return null;
 }
 
 function inlineOf(line: string): Inline[] {
@@ -146,9 +188,14 @@ function inlineOf(line: string): Inline[] {
   let i = 0;
   while (i < line.length) {
     const char = line[i];
-    if (char === '\\' && line[i + 1] === '$') {
-      buffer += '$';
+    const code = char === '`' ? inlineCodeAt(line, i) : null;
+    if (char === '\\' && (line[i + 1] === '$' || line[i + 1] === '`')) {
+      buffer += line[i + 1];
       i += 2;
+    } else if (code) {
+      flush();
+      nodes.push({ type: 'text', text: code.code, marks: [{ type: 'code' }] });
+      i = code.next;
     } else if (char === '$' && line[i + 1] === '$') {
       // `$$...$$` không hỗ trợ (Q145): giữ nguyên là chữ, không tách thành công thức.
       buffer += '$$';
