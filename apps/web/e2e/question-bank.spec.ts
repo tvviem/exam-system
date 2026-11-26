@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { saveQuestion } from './question-support';
 
 const PASSWORD = 'mat-khau-on-dinh';
 
@@ -25,12 +26,6 @@ async function startQuestion(page: Page, typeLabel: string) {
     .getByRole('link', { name: new RegExp(`^${typeLabel}`) })
     .click();
   await expect(page.getByRole('heading', { name: 'Soạn câu hỏi', level: 1 })).toBeVisible();
-}
-
-async function save(page: Page) {
-  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
-  await expect(page.getByText('Đã lưu Câu hỏi')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Sửa câu hỏi', level: 1 })).toBeVisible();
 }
 
 test('Người ra đề tạo Chủ đề rồi soạn đủ 4 loại câu hỏi, tìm không dấu, nhân bản, chuyển và xóa', async ({
@@ -65,7 +60,7 @@ test('Người ra đề tạo Chủ đề rồi soạn đủ 4 loại câu hỏi
   await typeIn(page, 'Phương án B', '2x');
   await expect(page.getByRole('button', { name: 'Lưu', exact: true })).toBeDisabled(); // chưa chọn đáp án
   await page.getByRole('radio', { name: /Phương án B/ }).check();
-  await save(page);
+  await saveQuestion(page);
 
   // --- Chọn nhiều ---
   await page.goto('/examiner/questions');
@@ -77,7 +72,7 @@ test('Người ra đề tạo Chủ đề rồi soạn đủ 4 loại câu hỏi
   await typeIn(page, 'Phương án C', '7');
   await page.getByRole('checkbox', { name: /Phương án A/ }).check();
   await page.getByRole('checkbox', { name: /Phương án C/ }).check();
-  await save(page);
+  await saveQuestion(page);
 
   // --- Chùm đúng/sai (Bậc thang) ---
   await page.goto('/examiner/questions');
@@ -87,14 +82,14 @@ test('Người ra đề tạo Chủ đề rồi soạn đủ 4 loại câu hỏi
   await typeIn(page, 'Mệnh đề b', 'f có cực trị');
   await page.getByLabel('Cách chấm').selectOption('ladder');
   await expect(page.getByLabel('Đúng 1 Mệnh đề')).toHaveValue('0.5');
-  await save(page);
+  await saveQuestion(page);
 
   // --- Tự luận ---
   await page.goto('/examiner/questions');
   await startQuestion(page, 'Tự luận');
   await typeIn(page, 'Phần dẫn', 'Trình bày định nghĩa giới hạn');
   await typeIn(page, 'Hướng dẫn chấm', 'Nêu đủ định nghĩa ε-δ');
-  await save(page);
+  await saveQuestion(page);
 
   // --- Danh sách, tìm không dấu ---
   await page.goto('/examiner/questions');
@@ -256,7 +251,7 @@ test('chèn công thức vào Phần dẫn, xem thử, lưu, mở lại và sử
   await typeIn(page, 'Phương án B', 'y');
   await page.getByRole('radio', { name: /Phương án B/ }).check();
   await expect(page.locator('article .katex')).toHaveCount(1); // cột Xem thử (hoặc tab) cũng dựng công thức
-  await save(page);
+  await saveQuestion(page);
 
   await page.reload();
   await expect(stem.locator('.katex')).toHaveCount(1);
@@ -266,7 +261,7 @@ test('chèn công thức vào Phần dẫn, xem thử, lưu, mở lại và sử
   await setFormula('x^2');
   await edit.getByRole('button', { name: 'Lưu công thức' }).click();
   await expect(stem.getByRole('button', { name: /Công thức x\^2/ })).toBeVisible();
-  await save(page);
+  await saveQuestion(page);
 });
 
 // Công thức dài không được làm vỡ bố cục ở các điểm gãy chuẩn: trang không cuộn ngang, công thức nằm trong khung
