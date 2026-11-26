@@ -93,13 +93,17 @@ async function occluded(page: import('@playwright/test').Page): Promise<string[]
         continue;
       if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
       if (el.closest('[inert],[aria-hidden=true]')) continue;
-      const points: [number, number][] = [
-        [r.left + r.width / 2, r.top + r.height / 2],
-        [r.left + 3, r.top + 3],
-        [r.right - 3, r.top + 3],
-        [r.left + 3, r.bottom - 3],
-        [r.right - 3, r.bottom - 3],
-      ];
+      // Lấy điểm theo từng khung dòng: liên kết xuống hai dòng có khung bao chung trùm cả chữ đứng cạnh dòng thứ hai, dù
+      // không hề đè nhau.
+      const points = [...el.getClientRects()]
+        .filter((line) => line.width >= 4 && line.height >= 4)
+        .flatMap((line): [number, number][] => [
+          [line.left + line.width / 2, line.top + line.height / 2],
+          [line.left + 3, line.top + 3],
+          [line.right - 3, line.top + 3],
+          [line.left + 3, line.bottom - 3],
+          [line.right - 3, line.bottom - 3],
+        ]);
       for (const [x, y] of points) {
         if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue;
         const top = document.elementFromPoint(x, y);

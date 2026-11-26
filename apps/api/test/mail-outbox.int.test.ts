@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DISPATCH_LOCK_KEY } from '../src/modules/mail/mail.config';
 import { MailService } from '../src/modules/mail/mail.service';
 import { JobRegistry } from '../src/queue/job-queue';
@@ -389,7 +389,26 @@ describe('bền vững và đồng thời', () => {
     t.clock.advance(minutes(n));
     await runDispatch();
   };
-  const settle = () => new Promise((done) => setTimeout(done, 20));
+  /**
+   * Chờ tới khi lượt gửi đã tới vận chuyển và treo ở đó (thư đã được nhận việc). Chờ theo sự kiện, không theo thời gian:
+   * máy CI bận thì bước nhận việc lâu hơn, chờ cứng vài chục mili giây sẽ đỏ oan.
+   */
+  const hung = () =>
+    vi.waitFor(() => expect(t.mail.hangCount).toBe(1), { timeout: 5000, interval: 5 });
+  /** Chờ tới khi có một tiến trình đang đứng đợi khóa chọn thư (nhìn trong `pg_locks`). */
+  const waitingForDispatchLock = () =>
+    vi.waitFor(
+      async () => {
+        const [row] = await sql<{ waiting: number }>(
+          `SELECT count(*)::int AS waiting FROM pg_locks
+           WHERE locktype = 'advisory' AND NOT granted AND objid = $1::oid
+             AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
+          [DISPATCH_LOCK_KEY],
+        );
+        expect(row?.waiting).toBe(1);
+      },
+      { timeout: 5000, interval: 5 },
+    );
 
   it('M-17: tiến trình chết khi đang gửi (chưa tới máy chủ thư): quá 10 phút thư được nhận lại và gửi, không mất', async () => {
     t.mail.hangNext({ afterDelivering: false });
@@ -399,7 +418,7 @@ describe('bền vững và đồng thời', () => {
       lane: 'bulk',
     });
     void t.queue.drain(); // treo mãi: tiến trình "đã chết"
-    await settle();
+    await hung();
     expect(await mail.get(id)).toMatchObject({ status: 'sending' });
 
     t.clock.advance(minutes(9));
@@ -420,7 +439,7 @@ describe('bền vững và đồng thời', () => {
       lane: 'bulk',
     });
     void t.queue.drain();
-    await settle();
+    await hung();
     expect(t.mail.sent).toHaveLength(1);
 
     t.clock.advance(minutes(11));
@@ -512,7 +531,7 @@ describe('bền vững và đồng thời', () => {
     await mail.enqueue({ kind: 'password_reset', toEmail: 'a@example.com', lane: 'urgent' });
     await mail.enqueue({ kind: 'password_reset', toEmail: 'b@example.com', lane: 'urgent' });
     void runDispatch(); // lần chạy đầu kẹt ở vận chuyển
-    await settle();
+    await hung();
 
     const started = performance.now();
     await runDispatch(); // lần chạy thứ hai phải trả về ngay, không chờ và không gửi
@@ -527,8 +546,8 @@ describe('bền vững và đồng thời', () => {
       await mail.enqueue({ kind: 'password_reset', toEmail: 'a@example.com', lane: 'urgent' });
       await other.query('SELECT pg_advisory_lock($1)', [DISPATCH_LOCK_KEY]); // "tiến trình khác" đang chọn thư
       const running = runDispatch();
-      await settle();
-      expect(t.mail.sent).toEqual([]); // phải chờ, chưa gửi gì
+      await waitingForDispatchLock();
+      expect(t.mail.sent).toEqual([]); // đang đứng đợi khóa, chưa gửi gì
 
       await other.query('SELECT pg_advisory_unlock($1)', [DISPATCH_LOCK_KEY]);
       await running;

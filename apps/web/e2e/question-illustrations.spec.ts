@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { saveQuestion } from './question-support';
 
 const PASSWORD = 'mat-khau-on-dinh';
 
@@ -32,12 +33,6 @@ async function startQuestion(page: Page) {
     .getByRole('link', { name: /^Chọn một/ })
     .click();
   await expect(page.getByRole('heading', { name: 'Soạn câu hỏi', level: 1 })).toBeVisible();
-}
-
-async function save(page: Page) {
-  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
-  await expect(page.getByText('Đã lưu Câu hỏi')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Sửa câu hỏi', level: 1 })).toBeVisible();
 }
 
 /** Dựng ảnh JPEG/PNG ngay trong trình duyệt, để test không phải mang file ảnh theo. */
@@ -118,7 +113,7 @@ test('chèn hình minh họa: tải ảnh lớn, bắt buộc mô tả, xem th�
   await typeIn(page, 'Phương án B', 'b');
   await page.getByRole('radio', { name: /Phương án B/ }).check();
   await expect(page.locator('article img[alt="Đồ thị hàm số bậc hai"]')).toHaveCount(1); // cột Xem thử (hoặc tab)
-  await save(page);
+  await saveQuestion(page);
 
   // Mở lại: ảnh tải được, cỡ không vượt 1600 px (biến thể lớn nhất).
   await page.reload();
@@ -157,7 +152,7 @@ test('chèn hình minh họa: tải ảnh lớn, bắt buộc mô tả, xem th�
       .getByRole('textbox', { name: 'Phần dẫn' })
       .getByRole('img', { name: 'Parabol đi qua gốc tọa độ' }),
   ).toBeVisible();
-  await save(page);
+  await saveQuestion(page);
 });
 
 test('dùng lại ảnh trong thư viện, xóa ảnh chưa dùng, từ chối file không phải ảnh', async ({
@@ -244,7 +239,7 @@ test('câu hỏi có hình đã lưu: quay về danh sách không bị hỏi "C�
   await typeIn(page, 'Phương án A', 'a');
   await typeIn(page, 'Phương án B', 'b');
   await page.getByRole('radio', { name: /Phương án B/ }).check();
-  await save(page);
+  await saveQuestion(page);
 
   const backToList = async (step: string) => {
     await page.getByRole('link', { name: 'Ngân hàng câu hỏi' }).first().click();
@@ -267,7 +262,7 @@ test('câu hỏi có hình đã lưu: quay về danh sách không bị hỏi "C�
   // 3. Sửa rồi lưu, quay về.
   await page.getByText('Xem hình.').locator('visible=true').first().click();
   await typeIn(page, 'Phương án A', ' sửa');
-  await save(page);
+  await saveQuestion(page);
   await backToList('sau khi sửa và lưu');
   expect(dialogs, 'sau khi sửa và lưu').toEqual([]);
 });

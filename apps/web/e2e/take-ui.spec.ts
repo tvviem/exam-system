@@ -59,10 +59,8 @@ test('Cảnh cáo và Cộng giờ ghim ở thanh trên: thấy ngay dù đang c
   browser,
 }, testInfo) => {
   const project = testInfo.project.name;
-  const { examiner, sessionId, candidate } = await room(browser, project, 'N', {
-    prefix: 'gd',
-    fakeClock: false,
-  });
+  // Đồng hồ giả (thời gian vẫn tự trôi): để tua qua 15 giây tự đóng của thông báo thay vì chờ thật.
+  const { examiner, sessionId, candidate } = await room(browser, project, 'N', { prefix: 'gd' });
   const page = await candidate(1);
   await setViewMode(page, 'Cả đề');
   // Cuộn xuống cuối đề: đầu trang (nơi thông báo từng nằm) không còn trong màn hình
@@ -107,10 +105,14 @@ test('Cảnh cáo và Cộng giờ ghim ở thanh trên: thấy ngay dù đang c
   // Cảnh cáo không tự tắt; bấm "Đã hiểu" thì tới thông báo Cộng giờ
   await expect(warning).toBeVisible();
   await warning.getByRole('button', { name: 'Đã hiểu' }).click();
-  // Cộng giờ tự đóng sau ~15 giây dù trang vẽ lại mỗi giây (đồng hồ): không bấm gì cũng biến mất
+  // Cộng giờ tự đóng sau 15 giây dù trang vẽ lại mỗi giây (đồng hồ): không bấm gì cũng biến mất. `runFor` chạy lần lượt
+  // mọi hẹn giờ nên vẫn bắt được lỗi bộ đếm 15 giây bị đặt lại mỗi lần vẽ lại.
   const extended = page.getByRole('status').filter({ hasText: 'Người ra đề đã cộng giờ' });
   await expect(extended).toBeInViewport();
-  await expect(extended).toHaveCount(0, { timeout: 25_000 });
+  await page.clock.runFor(10_000);
+  await expect(extended).toBeVisible(); // chưa tới 15 giây thì chưa đóng
+  await page.clock.runFor(6_000);
+  await expect(extended).toHaveCount(0);
 });
 
 test('Người dự thi luôn có chỗ quay về Phiên thi: thanh tab/liên kết đầu trang và nút ở trang Tài khoản', async ({
