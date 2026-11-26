@@ -39,6 +39,9 @@ INDEX  (class_label) WHERE removed_at IS NULL
 INDEX  (created_at, id)    WHERE removed_at IS NULL   -- danh sách Người dùng, mới tạo trước
 INDEX  (lower(code))       WHERE removed_at IS NULL   -- dán danh sách Mã định danh (kèm STATISTICS users_code_lower_stat)
 INDEX  (lower(class_label)) WHERE removed_at IS NULL  -- thêm cả lớp
+-- Migration 0032: cột search_text text NOT NULL (họ tên, tên đăng nhập, email, Mã định danh, Lớp; mỗi trường một dòng; bỏ dấu, chữ
+-- thường) do trigger users_search_text điền, ứng dụng không ghi; GIN (search_text gin_trgm_ops) để tìm Người dùng.
+-- Từ khóa 1–2 ký tự không đi chỉ mục (common/trigram-search.ts).
 
 -- users có thêm cột: is_admin bool DEFAULT false   -- Quản trị viên không mang Nhãn vai trò
 
