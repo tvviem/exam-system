@@ -50,15 +50,22 @@ const styleName = (styles: DocxPart, id: string | null | undefined) =>
     ?.getElementsByTagNameNS(W_NS, 'name')[0]
     ?.getAttributeNS(W_NS, 'val');
 
-/** Các đoạn của thân đề: chữ (xuống dòng thành "\n") và tên kiểu đoạn. */
+/** Các đoạn của thân đề: chữ (xuống dòng thành "\n", tab trong lượt chữ thành "\t") và tên kiểu đoạn. */
 const paragraphsOf = (body: DocxPart, styles: DocxPart) =>
   body.all('p').map((p) => {
     const style = p.getElementsByTagNameNS(W_NS, 'pStyle')[0];
     return {
       style: style ? styleName(styles, body.attr(style, 'val')) : undefined,
       text: Array.from(p.getElementsByTagNameNS(W_NS, '*'))
-        .filter((n) => n.localName === 't' || n.localName === 'br')
-        .map((n) => (n.localName === 'br' ? '\n' : (n.textContent ?? '')))
+        .filter(
+          (n) =>
+            n.localName === 't' ||
+            n.localName === 'br' ||
+            (n.localName === 'tab' && (n.parentNode as Element | null)?.localName === 'r'),
+        )
+        .map((n) =>
+          n.localName === 'br' ? '\n' : n.localName === 'tab' ? '\t' : (n.textContent ?? ''),
+        )
         .join(''),
     };
   });
@@ -67,20 +74,62 @@ const program = 'for (i = 0; i < n; i++)\n\tif (a[i] > 0)\n    dem++;';
 const printed = 'for (i = 0; i < n; i++)\n  if (a[i] > 0)\n    dem++;';
 
 describe('đề Word có mã lệnh', () => {
-  it('khối mã là một đoạn kiểu "Khối mã": giữ thụt lề và xuống dòng, tab thành hai dấu cách, phông Courier New', async () => {
+  const numbered = 'Khối mã có số dòng';
+  const codeStyle = (styles: DocxPart, name: string) =>
+    styles
+      .all('style')
+      .find((s) => styleName(styles, styles.attr(s, 'styleId')) === name) as Element;
+
+  it('khối nhiều dòng: mỗi dòng một đoạn có số thứ tự như trên màn hình, giữ thụt lề, tab thành hai dấu cách', async () => {
     const { body, styles } = await build(
       choice(doc(para(text('Đoạn mã sau in gì?')), block(program)), [plain('1'), plain('2')]),
     );
     const paragraphs = paragraphsOf(body, styles);
-    const at = paragraphs.findIndex((p) => p.style === 'Khối mã');
-    expect(paragraphs[at]?.text).toBe(printed);
+    const at = paragraphs.findIndex((p) => p.style === numbered);
     expect(paragraphs[at - 1]?.text).toBe('Câu 1: Đoạn mã sau in gì?');
-    const style = styles
-      .all('style')
-      .find((s) => styleName(styles, styles.attr(s, 'styleId')) === 'Khối mã') as Element;
-    const fonts = style.getElementsByTagNameNS(W_NS, 'rFonts')[0] as Element;
-    expect(styles.attr(fonts, 'ascii')).toBe('Courier New');
-    expect(style.getElementsByTagNameNS(W_NS, 'pBdr')).toHaveLength(1);
+    expect(paragraphs.slice(at, at + 4)).toEqual([
+      ...printed.split('\n').map((line, i) => ({ style: numbered, text: `${i + 1}\t${line}` })),
+      expect.objectContaining({ style: 'Phương án' }),
+    ]);
+  });
+
+  it('số dòng canh thẳng hàng khi khối từ 10 dòng; dòng trống vẫn có số', async () => {
+    const code = ['a;', '', ...Array.from({ length: 8 }, () => 'b;')].join('\n');
+    const { body, styles } = await build(choice(doc(block(code)), [plain('1'), plain('2')]));
+    const lines = paragraphsOf(body, styles).filter((p) => p.style === numbered);
+    expect(lines.map((p) => p.text.split('\t')[0])).toEqual([
+      ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ` ${n}`),
+      '10',
+    ]);
+    expect(lines[1]?.text).toBe(' 2\t');
+  });
+
+  it('kiểu của khối mã: Courier New, viền, thụt treo để dòng tự xuống không lẫn vào cột số; cả khối giữ cùng trang', async () => {
+    const { styles } = await build(choice(doc(block(program)), [plain('1'), plain('2')]));
+    for (const name of ['Khối mã', numbered]) {
+      const style = codeStyle(styles, name);
+      const fonts = style.getElementsByTagNameNS(W_NS, 'rFonts')[0] as Element;
+      expect(styles.attr(fonts, 'ascii')).toBe('Courier New');
+      expect(style.getElementsByTagNameNS(W_NS, 'pBdr')).toHaveLength(1);
+    }
+    const indent = codeStyle(styles, numbered).getElementsByTagNameNS(W_NS, 'ind')[0] as Element;
+    expect(Number(styles.attr(indent, 'hanging'))).toBeGreaterThan(0);
+    for (const name of ['Khối mã', numbered]) {
+      expect(codeStyle(styles, name).getElementsByTagNameNS(W_NS, 'keepNext')).toHaveLength(1);
+    }
+  });
+
+  it('khối một dòng không có số; hai khối liền nhau không dính thành một khung', async () => {
+    const { body, styles } = await build(
+      choice(doc(block('a;'), block('b;')), [plain('1'), plain('2')]),
+    );
+    const paragraphs = paragraphsOf(body, styles);
+    const at = paragraphs.findIndex((p) => p.style === 'Khối mã');
+    expect(paragraphs.slice(at, at + 3)).toEqual([
+      { style: 'Khối mã', text: 'a;' },
+      { style: undefined, text: '' },
+      { style: 'Khối mã', text: 'b;' },
+    ]);
   });
 
   it('Phần dẫn mở đầu bằng khối mã thì "Câu N:" đứng một mình', async () => {
@@ -142,6 +191,9 @@ describe('đề Word có mã lệnh', () => {
     const paragraphs = paragraphsOf(body, styles);
     const at = paragraphs.findIndex((p) => p.text === 'a) Đoạn sau đúng:');
     expect(at).toBeGreaterThan(-1);
-    expect(paragraphs[at + 1]).toEqual({ style: 'Khối mã', text: 'free(p);\np = NULL;' });
+    expect(paragraphs.slice(at + 1, at + 3)).toEqual([
+      { style: 'Khối mã có số dòng', text: '1\tfree(p);' },
+      { style: 'Khối mã có số dòng', text: '2\tp = NULL;' },
+    ]);
   });
 });

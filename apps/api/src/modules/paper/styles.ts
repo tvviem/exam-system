@@ -11,6 +11,8 @@ export const STYLE = {
   label: 'NhanCau',
   codeBlock: 'KhoiMa',
   codeText: 'ChuKhoiMa',
+  codeBlockNumbered: 'KhoiMaDanhSo',
+  lineNumber: 'SoDong',
   inlineCode: 'MaTrongDong',
 } as const;
 
@@ -21,10 +23,17 @@ export const CODE_SIZE_PT = 10.5;
 const CODE_RUN =
   `<w:rFonts w:ascii="${CODE_FONT}" w:hAnsi="${CODE_FONT}" w:cs="${CODE_FONT}" w:eastAsia="${CODE_FONT}"/>` +
   `<w:sz w:val="${CODE_SIZE_PT * 2}"/><w:szCs w:val="${CODE_SIZE_PT * 2}"/>`;
-/** Khối mã: viền bốn cạnh, thụt vào bằng Phương án, không giãn dòng. */
-const CODE_BOX = `<w:keepLines/><w:pBdr>${['top', 'left', 'bottom', 'right']
-  .map((side) => `<w:${side} w:val="single" w:sz="4" w:space="4" w:color="808080"/>`)
-  .join('')}</w:pBdr><w:spacing w:before="40" w:after="40"/><w:ind w:left="397" w:right="113"/>`;
+/** Lề trái của khối mã (twips), bằng Phương án; cột số dòng rộng bốn ký tự Courier New 10,5 pt. */
+const CODE_INDENT = 397;
+const LINE_NUMBER_WIDTH = 504;
+/**
+ * Khối mã: viền bốn cạnh, không giãn đoạn (các đoạn liền nhau cùng kiểu được Word gom vào một khung), giữ cả khối đi
+ * cùng nội dung ngay sau. `indent` là thuộc tính `w:ind`.
+ */
+const codeBox = (indent: string) =>
+  `<w:keepNext/><w:keepLines/><w:pBdr>${['top', 'left', 'bottom', 'right']
+    .map((side) => `<w:${side} w:val="single" w:sz="4" w:space="4" w:color="808080"/>`)
+    .join('')}</w:pBdr><w:spacing w:before="0" w:after="0"/><w:ind ${indent} w:right="113"/>`;
 
 const characterStyle = (id: string, name: string, runProps: string) =>
   `<w:style w:type="character" w:styleId="${id}"><w:name w:val="${name}"/><w:qFormat/><w:rPr>${runProps}</w:rPr></w:style>`;
@@ -58,7 +67,15 @@ export const stylesXml = () =>
       paragraphStyle(STYLE.option, 'Phương án', '', '<w:ind w:left="284"/>') +
       paragraphStyle(STYLE.note, 'Ghi chú', '<w:i/><w:sz w:val="22"/><w:szCs w:val="22"/>') +
       paragraphStyle(STYLE.signature, 'Chữ ký', '<w:i/><w:sz w:val="20"/><w:szCs w:val="20"/>') +
-      paragraphStyle(STYLE.codeBlock, 'Khối mã', CODE_RUN, CODE_BOX) +
+      paragraphStyle(STYLE.codeBlock, 'Khối mã', CODE_RUN, codeBox(`w:left="${CODE_INDENT}"`)) +
+      // Số dòng đứng ở phần thụt treo; dòng dài tự xuống thẳng cột mã nên không lẫn với dòng mới.
+      paragraphStyle(
+        STYLE.codeBlockNumbered,
+        'Khối mã có số dòng',
+        CODE_RUN,
+        codeBox(`w:left="${CODE_INDENT + LINE_NUMBER_WIDTH}" w:hanging="${LINE_NUMBER_WIDTH}"`),
+      ) +
+      characterStyle(STYLE.lineNumber, 'Số dòng', `${CODE_RUN}<w:color w:val="808080"/>`) +
       characterStyle(STYLE.codeText, 'Chữ khối mã', CODE_RUN) +
       characterStyle(STYLE.inlineCode, 'Mã trong dòng', CODE_RUN) +
       characterStyle(STYLE.label, 'Nhãn câu', '<w:b/><w:color w:val="0000FF"/>') +

@@ -52,7 +52,7 @@ Bật `code` và `codeBlock` có sẵn trong thư viện đang dùng (không th�
 
 | Trong ô | Thành |
 |---|---|
-| một dòng chỉ có ba dấu `` ``` `` mở, một dòng như vậy đóng | khối mã gồm các dòng ở giữa |
+| một dòng ba dấu `` ``` `` mở (được kèm một tên ngôn ngữ, mục 9), một dòng chỉ có `` ``` `` đóng | khối mã gồm các dòng ở giữa |
 | `` `p->Next` `` | mã trong dòng |
 | `` \` `` | dấu `` ` `` thường |
 
@@ -98,3 +98,18 @@ Tô màu cú pháp; chạy hoặc chấm mã tự động; ô trả lời tự l
 | Q495 | Ô trả lời tự luận cho câu yêu cầu viết mã (phông đơn cách, tắt tự sửa chữ của điện thoại) để đợt sau? | Để sau |
 | Q496 | Phát hành hai lần M1 rồi M2 như mục 5? | Có |
 | Q497 | Sau M2, soạn lại 6 file câu hỏi Cấu trúc dữ liệu theo cách đánh dấu mới? | Có |
+
+## 9. Thống nhất hiển thị (chủ dự án yêu cầu ngày 27/11/2026)
+
+Yêu cầu: mã lệnh hiển thị thống nhất từ lúc soạn hoặc nạp file tới màn làm bài và đề Word. Rà các đường, sửa những chỗ lệch:
+
+| Câu | Chỗ lệch | Đã chốt |
+|---|---|---|
+| Q498 | Excel: `` ```c `` không mở được khối, hai khối như vậy làm chữ ở giữa thành mã | dòng mở được kèm **một** tên ngôn ngữ liền từ (chữ Latin, số, `+ # . -`, tối đa 20 ký tự), bỏ đi; dòng đóng vẫn chỉ gồm `` ``` `` |
+| Q499 | Đề Word không có số dòng như màn hình (thay một phần mục 4.5) | khối từ hai dòng: mỗi dòng một đoạn kiểu "Khối mã có số dòng", thụt treo; hai khối liền nhau ngăn bằng đoạn trống; cả khối giữ cùng trang với nội dung ngay sau |
+| Q500 | Người dự thi tăng cỡ chữ, khối mã không to theo | cỡ chữ của mã tính theo chữ xung quanh |
+| Q501 | Trình soạn hiện Tab rộng 4 | rộng 2; ô soạn mã tắt tự viết hoa, tự sửa chính tả |
+| Q502 | Dấu ngoặc đứng sát mã bị rớt lại cuối dòng | cụm mã tới 16 ký tự giữ liền; dài hơn mới được ngắt khi không vừa khung (mục 4.2) |
+
+Còn khác nhau, có chủ ý: ô soạn không đánh số dòng (**Xem thử** hiện đúng như màn làm bài); các danh sách chỉ hiện một đoạn chữ rút gọn.
+

@@ -123,7 +123,7 @@ Sau khi duyệt:
 
 Trang **Người dùng** liệt kê mọi tài khoản (có phân trang).
 
-- **Tìm Người dùng**: theo tên, mã, email hoặc lớp.
+- **Tìm Người dùng**: theo họ tên, tên đăng nhập, email, Mã định danh hoặc Lớp; không cần gõ dấu (gõ "do duc" tìm ra "Đỗ Đức"). Từ 3 ký tự trở lên tìm nhanh hơn.
 - Khi có hơn 10.000 người khớp, danh sách ghi **"hơn 10.000"** và chỉ cho xem 10.000 người mới tạo nhất; Lịch sử đăng nhập và Nhật ký thao tác cũng vậy. Hãy lọc hoặc tìm để thu hẹp.
 - Lọc **Trạng thái**, **Nhãn vai trò** và **Kích hoạt** (**Chờ kích hoạt**, **Email chưa xác thực**, **Thư lỗi**).
 
@@ -226,6 +226,8 @@ Mục **Sao lưu dữ liệu** chỉ để **xem** tình trạng: **Bản đêm 
 | **Sau kỳ thi** | Kiểm **Sao lưu dữ liệu** có bản mới sau khi công bố kết quả. |
 
 ## 8. Các tình huống thường gặp
+
+> **Báo "Máy chủ đang bận"** khi tìm hoặc mở danh sách: hệ thống giới hạn số lượt tìm nặng chạy cùng lúc để không làm chậm người đang thi. Đợi vài giây rồi thử lại, tránh bấm tìm liên tiếp.
 
 ### 8.1. Người dùng không nhận được thư kích hoạt
 

@@ -61,7 +61,7 @@
 | Thời gian thực | **Socket.IO** + Redis adapter | Đẩy thông báo cộng giờ hoặc buộc Nộp bài; theo dõi Phiên thi; tự kết nối lại khi rớt mạng |
 | Frontend | **React 19 + Vite**, TanStack Router + Query, Tailwind CSS | SPA nhẹ, tách code theo route; giao diện thiết kế cho điện thoại trước |
 | PWA | vite-plugin-pwa (Workbox) | Cài lên màn hình chính, cache vỏ ứng dụng, chịu được mạng chập chờn |
-| Soạn nội dung | TipTap (rich text) + **MathLive** (soạn công thức trực quan, có bàn phím toán ảo) + KaTeX (hiển thị) | Công thức lưu dạng LaTeX trong node riêng của TipTap. Trang làm bài chỉ tải KaTeX (nhẹ); MathLive chỉ tải ở trang soạn câu hỏi |
+| Soạn nội dung | TipTap (rich text) + **MathLive** (soạn công thức trực quan, có bàn phím toán ảo) + KaTeX (hiển thị) | Công thức lưu dạng LaTeX trong node riêng của TipTap; mã lệnh là khối mã và mã trong dòng, một bộ dựng hiển thị chung cho mọi màn và bộ xuất Word riêng ([thiết kế](plan/ma-lenh-trong-cau-hoi-thiet-ke.md)). Trang làm bài chỉ tải KaTeX (nhẹ); MathLive chỉ tải ở trang soạn câu hỏi |
 | Excel | ExcelJS (trong worker) | Nhập câu hỏi theo mẫu, nhập Yêu cầu cấp tài khoản, xuất Kết quả |
 | Ngôn ngữ giao diện | i18next | Giai đoạn 1 chỉ có tiếng Việt; chuỗi giao diện tách ra file |
 | Ảnh | sharp (trong worker) + lưu trên volume | Tạo biến thể WebP 480/960/1600 px để điện thoại tải nhanh. Việc lưu file nằm sau một interface `MediaStore`, hiện dùng filesystem, sau này đổi sang S3/R2 mà không sửa nghiệp vụ ([ADR-0006](./adr/0006-podman-pod-tren-wsl-qua-cloudflare-tunnel.md)) |

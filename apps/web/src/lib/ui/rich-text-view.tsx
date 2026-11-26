@@ -8,14 +8,27 @@ import { MathView } from './math-view';
 type Block = RichText['content'][number];
 type Inline = NonNullable<Extract<Block, { type: 'paragraph' }>['content']>[number];
 
-/** Cụm chữ liền (như `p->Next`) không bị ngắt giữa chừng: chỉ ngắt ở khoảng trắng, hoặc khi cụm dài hơn cả khung. */
+/** Cụm dài hơn chừng này ký tự mới được phép ngắt giữa chừng (khi không vừa khung). */
+const NOWRAP_MAX_CHARS = 16;
+
+/**
+ * Cụm chữ liền (như `p->Next`) không bị ngắt giữa chừng: chỉ ngắt ở khoảng trắng. Cụm ngắn giữ liền một dòng, nên dấu
+ * ngoặc đứng sát trước nó đi cùng nó; cụm dài là một khối riêng, tự ngắt khi rộng hơn cả khung.
+ */
 function CodeTokens({ text }: { text: string }) {
   return text.split(/(\s+)/).map((part, index) =>
     part.trim() === '' ? (
       part
     ) : (
-      // biome-ignore lint/suspicious/noArrayIndexKey: nội dung chỉ đọc, không đổi thứ tự
-      <span key={index} className="inline-block max-w-full indent-0 [overflow-wrap:anywhere]">
+      <span
+        // biome-ignore lint/suspicious/noArrayIndexKey: nội dung chỉ đọc, không đổi thứ tự
+        key={index}
+        className={
+          part.length <= NOWRAP_MAX_CHARS
+            ? 'whitespace-nowrap'
+            : 'inline-block max-w-full indent-0 [overflow-wrap:anywhere]'
+        }
+      >
         {part}
       </span>
     ),
@@ -30,7 +43,7 @@ function CodeBlock({ code }: { code: string }) {
   const lines = code.replaceAll('\t', '  ').split('\n');
   const numberWidth = `${String(lines.length).length}ch`;
   return (
-    <pre className="whitespace-pre-wrap rounded-lg border border-border bg-bg p-3 font-mono text-sm font-normal leading-relaxed text-fg">
+    <pre className="whitespace-pre-wrap rounded-lg border border-border bg-bg p-3 font-mono text-[0.875em] font-normal leading-relaxed text-fg">
       <code>
         {lines.map((line, index) => {
           const hang = `${line.length - line.trimStart().length + 2}ch`;

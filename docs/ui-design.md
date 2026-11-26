@@ -243,6 +243,15 @@ Rút ra từ các góp ý khi chạy thử và đợt rà UX/UI ([plan/ux-ra-soa
 - **Không tràn ngang trên điện thoại (25/11/2026):** bài rà `mobile-overflow-sweep.spec.ts` đi qua các trang và hộp thoại chính của cả ba vai ở màn 360 px với dữ liệu tên rất dài và chuỗi liền không khoảng trắng; thêm trang hay hộp thoại mới thì thêm vào bài này. Cách tránh thường gặp: chữ do người dùng nhập thêm `break-words`; phần tử con của `flex` thêm `min-w-0`; lưới một cột khai `grid-cols-[minmax(0,1fr)]`; vùng cố ý cuộn ngang ghi rõ `overflow-x-auto`.
 - **Tiêu đề và vùng bấm:** mỗi trang có đúng một `h1`; mọi thứ bấm được cao ≥ 44 px trên điện thoại (cả thẻ là một vùng bấm khi cả thẻ dẫn tới một việc). Bài rà `a11y-sweep.spec.ts` giữ điều này cho các trang chính.
 
+## 14. Mã lệnh trong nội dung câu hỏi (27/11/2026)
+
+Theo [plan/ma-lenh-trong-cau-hoi-thiet-ke.md](plan/ma-lenh-trong-cau-hoi-thiet-ke.md); mọi màn đọc nội dung dùng `rich-text-view.tsx`.
+
+- **Phông và cỡ:** phông đơn cách của máy (không tải thêm phông), nền `bg`, viền `border`; cỡ tính theo `em` của chữ xung quanh nên theo lựa chọn **Cỡ chữ** của Người dự thi.
+- **Không cuộn ngang:** khối mã tự xuống hàng, giữ thụt lề; từ hai dòng có số dòng (trình đọc màn hình bỏ qua), hàng xuống thêm thụt sâu hơn và không có số.
+- **Ngắt dòng:** chỉ ở khoảng trắng; cụm tới 16 ký tự giữ liền (dấu ngoặc đứng sát đi cùng), dài hơn mới được ngắt khi rộng hơn khung.
+- **Tab** rộng 2 dấu cách ở mọi nơi. Ô soạn mã tắt tự viết hoa và tự sửa chính tả của bàn phím điện thoại. Chưa tô màu cú pháp.
+
 ## Quyết định (Q71–Q75)
 
 | Câu | Câu hỏi | Quyết định |

@@ -173,7 +173,7 @@ export default function RichTextEditor({
         'aria-multiline': 'true',
         'aria-label': label,
         'aria-invalid': invalid ? 'true' : 'false',
-        class: `${minHeight} px-3 py-2 outline-none [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_p]:my-1 [&_code]:font-mono [&_p_code]:rounded [&_p_code]:bg-bg [&_p_code]:px-1 [&_pre]:my-1 [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border [&_pre]:bg-bg [&_pre]:p-3 [&_pre]:text-sm`,
+        class: `${minHeight} px-3 py-2 outline-none [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_p]:my-1 [&_code]:font-mono [&_p_code]:rounded [&_p_code]:bg-bg [&_p_code]:px-1 [&_pre]:my-1 [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-border [&_pre]:bg-bg [&_pre]:p-3 [&_pre]:text-sm [&_pre]:[tab-size:2]`,
       },
     },
     onUpdate: ({ editor: instance }) => {

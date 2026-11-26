@@ -21,6 +21,7 @@ Mỗi dòng ✓ là đạt, ⚠ là nên xem, ✗ là không đạt (lệnh tho�
 - [ ] Ba tờ giấy (A khóa gpg, B mật khẩu khóa, C mã khôi phục 2FA Bitwarden) **còn đủ**, cất ở các nơi khác nhau ([khoi-phuc.md](./khoi-phuc.md) mục 4.1.1).
 - [ ] Đã đọc email của healthchecks.io gần đây: không có thư LỖI hoặc IM LẶNG chưa xử lý.
 - [ ] Đã diễn tập khôi phục sang máy khác từ R2 trong vòng 3 tháng qua (`make -C infra dr-drill`, [khoi-phuc.md](./khoi-phuc.md) mục 5.6), hoặc chấp nhận rủi ro ghi rõ.
+- [ ] Đề có **mã lệnh**: mở **Xem thử** trên điện thoại, kiểm thụt lề và số dòng; nếu in giấy thì xuất Word và đối chiếu ([hướng dẫn](../huong-dan/ma-lenh-trong-cau-hoi.md)).
 
 ## Trước 1 ngày
 

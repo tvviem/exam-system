@@ -165,6 +165,18 @@ Bạn **gõ câu trả lời** vào ô văn bản. Dưới ô có bộ đếm s�
 
 > **Mẹo:** viết ý chính trước, ý phụ sau. Giảng viên chấm theo từng ý trong hướng dẫn chấm, nên trả lời ngắn gọn, đúng trọng tâm.
 
+#### Câu hỏi có mã lệnh
+
+Đề của học phần lập trình có thể chứa mã. Mã dùng phông đều nét, nền nhạt; đoạn từ hai dòng có **số dòng** ở lề trái.
+
+![Câu hỏi có mã](anh:nguoi-du-thi/24-cau-hoi-co-ma)
+
+Ảnh chụp ở chế độ xem thử của giảng viên; khi thi thật, thanh trên có đồng hồ và nút **Nộp bài**.
+
+- Dòng dài **tự xuống hàng**, bạn không phải kéo ngang. Hàng xuống thêm thụt vào và **không có số**: đó vẫn là dòng phía trên.
+- Chữ nhỏ thì bấm **Aa** tăng **Cỡ chữ**: mã to theo.
+- Phương án là mã thì chạm vào đâu trong ô cũng chọn được Phương án đó.
+
 ### 4.4. Đánh dấu xem lại và bảng Danh sách câu
 
 Câu chưa chắc chắn? Bấm **Đánh dấu xem lại** ở góc phải câu hỏi để quay lại sau.

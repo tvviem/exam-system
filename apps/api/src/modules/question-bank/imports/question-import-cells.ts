@@ -126,8 +126,10 @@ export const formulasOf = (doc: RichText): string[] =>
       : [],
   );
 
-/** Dòng mở hoặc đóng khối mã: chỉ có ba dấu `. */
-const FENCE = /^\s*```\s*$/;
+/** Dòng mở khối mã: ba dấu `, có thể kèm một tên ngôn ngữ như ```c hay ```C++ (nhiều người quen viết vậy; tên bị bỏ đi). */
+const OPENING_FENCE = /^\s*```\s*(?:[A-Za-z][\w+#.-]{0,19})?\s*$/;
+/** Dòng đóng khối mã: chỉ có ba dấu `. */
+const CLOSING_FENCE = /^\s*```\s*$/;
 
 /**
  * Ô → nội dung có định dạng (Q145, Q492): các dòng giữa hai dòng ``` thành khối mã; phần còn lại thành đoạn văn, xuống dòng
@@ -151,8 +153,8 @@ export function cellToDoc(text: string): RichText | null {
   };
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] as string;
-    if (FENCE.test(line)) {
-      const end = lines.findIndex((other, j) => j > i && FENCE.test(other));
+    if (OPENING_FENCE.test(line)) {
+      const end = lines.findIndex((other, j) => j > i && CLOSING_FENCE.test(other));
       const code = end > i ? lines.slice(i + 1, end).join('\n') : '';
       if (code !== '') {
         flush();
