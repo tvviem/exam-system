@@ -162,3 +162,7 @@ Phiên thi dùng chung Mã đề rút bộ câu **một lần khi lưu Phiên th
 | Xuất zip 10 Mã đề (10 tệp Đề, 10 tệp Đáp án, Excel phân Mã đề; 108 KB) | 352 ms |
 
 Mọi số đều dưới ngân sách phản hồi (1 giây, xuất zip 3 giây). Chi tiết và ngân sách từng việc: [architecture.md](architecture.md), mục "Ngân sách phản hồi".
+
+## Quy mô lớn (đo 26/11/2026)
+
+Ở **1.000.000 Câu hỏi của một Người ra đề và 1.000.000 tài khoản** (dữ liệu giả, một tiến trình api, máy phát triển), các trang danh sách và lọc trả lời trong 8–180 ms, tìm Người dùng từ 3 ký tự trong 6–165 ms, và một người tìm dồn dập không làm người khác đứng chờ. Lưu câu trả lời giữa đợt 40 lượt tìm dồn dập chậm nhất khoảng 40–65 ms. Một chỗ còn vượt ngưỡng: gợi ý người khi gõ một tên rất phổ biến (khoảng 0,6–0,7 giây). Một triệu người **dùng cùng lúc** nằm ngoài khả năng hiện tại (đã kiểm 500 người thi cùng lúc). Chi tiết, cách chạy lại và giới hạn: [plan/quy-mo-lon-thiet-ke.md](plan/quy-mo-lon-thiet-ke.md) mục 6.7.
