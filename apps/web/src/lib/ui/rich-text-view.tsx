@@ -30,7 +30,8 @@ function InlineNode({ node }: { node: Inline }) {
 
 function Paragraph({ block }: { block: Extract<Block, { type: 'paragraph' }> }) {
   return (
-    <p>
+    // Giữ khoảng trắng như trong trình soạn (thụt lề của đoạn mã), dòng dài vẫn tự xuống.
+    <p className="whitespace-pre-wrap">
       {(block.content ?? []).map((node, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: nội dung chỉ đọc, không đổi thứ tự
         <InlineNode key={index} node={node} />
