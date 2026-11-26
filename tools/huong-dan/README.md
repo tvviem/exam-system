@@ -22,8 +22,8 @@ Cần Python 3 với `python-docx`, `Pillow` (và `defusedxml`, `lxml` nếu mu�
 
 ```
 python tools/huong-dan/dung-word.py --nguon docs/huong-dan/tai-lieu/nguoi-du-thi.md \
-  --anh huong-dan-word/anh --ra huong-dan-word/HuongDan-NguoiDuThi-v0.5.4.docx \
-  --phien-ban 0.5.4 --ngay 25/11/2026
+  --anh huong-dan-word/anh --ra huong-dan-word/HuongDan-NguoiDuThi-v0.6.0.docx \
+  --phien-ban 0.6.0 --ngay 27/11/2026
 ```
 
 Làm tương tự cho `nguoi-ra-de.md` và `quan-tri-vien.md`. Ảnh `nguoi-du-thi/` được đặt vào khung điện thoại.
