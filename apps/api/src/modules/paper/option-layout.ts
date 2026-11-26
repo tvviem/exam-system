@@ -1,4 +1,11 @@
+import { CODE_SIZE_PT } from './styles';
 import { textWidthMm } from './text-width';
+
+/** Một mẩu chữ của Phương án; `code` là in bằng phông đơn cách. */
+export interface TextSegment {
+  text: string;
+  code?: boolean;
+}
 
 /** Một hàng (mỗi Phương án một cột), hai Phương án mỗi hàng, hoặc mỗi Phương án một dòng. */
 export type OptionLayout = 'row' | 'columns' | 'lines';
@@ -13,13 +20,24 @@ const COLUMN_GAP_MM = 13;
 
 const labelOf = (index: number) => `${String.fromCharCode(65 + index)}. `;
 
+/** Courier New: mọi ký tự rộng 0,6 cỡ chữ. */
+const codeWidthMm = (text: string) => [...text].length * 0.6 * CODE_SIZE_PT * (25.4 / 72);
+
+const widthMm = (option: string | TextSegment[]) =>
+  typeof option === 'string'
+    ? textWidthMm(option, FONT_SIZE_PT)
+    : option.reduce(
+        (sum, part) =>
+          sum + (part.code ? codeWidthMm(part.text) : textWidthMm(part.text, FONT_SIZE_PT)),
+        0,
+      );
+
 /** Cách xếp bốn (hoặc n) Phương án theo độ rộng của Phương án dài nhất, tính cả nhãn "A. " in đậm. */
-export function optionLayoutOf(texts: string[]): OptionLayout {
+export function optionLayoutOf(texts: (string | TextSegment[])[]): OptionLayout {
   const widest = Math.max(
     0,
     ...texts.map(
-      (text, index) =>
-        textWidthMm(labelOf(index), FONT_SIZE_PT, { bold: true }) + textWidthMm(text, FONT_SIZE_PT),
+      (text, index) => textWidthMm(labelOf(index), FONT_SIZE_PT, { bold: true }) + widthMm(text),
     ),
   );
   if (widest <= TEXT_WIDTH_MM / texts.length - COLUMN_GAP_MM) return 'row';

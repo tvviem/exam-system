@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { KeepCode, KeepCodeBlock } from './code-extensions';
 import { type ImageAttrs, ImageNode } from './image-extension';
 import { type MathAttrs, MathNode } from './math-extension';
 
@@ -49,6 +50,8 @@ const baseExtensions = [
   FlatListItem,
   Superscript,
   Subscript,
+  KeepCode,
+  KeepCodeBlock,
 ];
 
 type Json = { type?: string; attrs?: Record<string, unknown>; content?: Json[] } & Record<
@@ -65,7 +68,13 @@ function clean(node: Json): Json {
   }
   if (node.type === 'math') out.attrs = { latex: attrs?.latex, display: attrs?.display === true };
   if (node.type === 'image') out.attrs = { illustrationId: attrs?.illustrationId, alt: attrs?.alt };
-  if (content) out.content = content.map(clean);
+  // Khối mã bị xóa hết chữ thì bỏ luôn: schema đòi khối mã có chữ.
+  if (content) {
+    out.content = content
+      .filter((child) => child.type !== 'codeBlock' || (child.content?.length ?? 0) > 0)
+      .map(clean);
+    if (node.type === 'doc' && out.content.length === 0) out.content = [{ type: 'paragraph' }];
+  }
   return out;
 }
 

@@ -2096,5 +2096,25 @@
     "isAdmin": false,
     "mustChangePassword": false,
     "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-ma-lenh-sv-desktop",
+    "fullName": "Thí sinh Mã lệnh (desktop)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "ML-D-001",
+    "classLabel": "LOP-ML-D"
+  },
+  {
+    "username": "e2e-ma-lenh-sv-mobile",
+    "fullName": "Thí sinh Mã lệnh (mobile)",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["candidate"],
+    "code": "ML-M-001",
+    "classLabel": "LOP-ML-M"
   }
 ]

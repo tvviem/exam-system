@@ -3,7 +3,7 @@ import { type DocxContent, packDocx } from './docx-package';
 import { MediaRegistry } from './media';
 import type { AnswerRow, AnswerSpec } from './paper-answer-spec';
 import type { PaperDocument } from './paper-document';
-import { paragraphRuns } from './rich-text';
+import { isCodeBlock, paragraphRuns, paragraphStyleOf } from './rich-text';
 import { STYLE } from './styles';
 import { mmToTwips, paragraph, run, table } from './wordml';
 
@@ -59,11 +59,21 @@ export async function buildAnswerDocument(spec: AnswerSpec): Promise<PaperDocume
               warn: (message) => warnings.push(`Câu ${number}: ${message}`),
               image: (id, alt) => media.drawing(id, alt),
             });
-            return parts
-              .map((runs, index) =>
-                paragraph(index === 0 ? run(`Câu ${number}: `, { bold: true }) + runs : runs),
-              )
-              .join('');
+            const label = run(`Câu ${number}: `, { bold: true });
+            // Hướng dẫn mở đầu bằng khối mã thì nhãn đứng một mình để khối mã giữ kiểu đoạn của nó.
+            const alone = parts[0] !== undefined && isCodeBlock(parts[0]);
+            return (
+              (alone ? paragraph(label) : '') +
+              parts
+                .map((runs, index) =>
+                  paragraph(
+                    index === 0 && !alone ? label + runs : runs,
+                    '',
+                    paragraphStyleOf(runs),
+                  ),
+                )
+                .join('')
+            );
           })
           .join('');
 
