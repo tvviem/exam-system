@@ -185,6 +185,13 @@ describe('tìm người để thêm vào Danh sách dự thi (Q200)', () => {
     expect(byClass.classes).toEqual([{ label: 'K65-A', count: 2 }]);
   });
 
+  it('chỉ khớp họ tên và Mã định danh (không khớp email, tên đăng nhập); từ khóa ngắn vẫn tìm được', async () => {
+    await sql(`UPDATE users SET email = 'rieng@example.edu.vn' WHERE code = 'SV003'`);
+    expect((await search('rieng@example')).json()).toEqual({ users: [], classes: [] });
+    const short = (await search('an')).json().users as { fullName: string }[];
+    expect(names(short)).toContain('Nguyễn Văn An');
+  });
+
   it('không gợi ý Người ra đề, người đã Khóa, đã Xóa hay không có Nhãn Người dự thi', async () => {
     await seedUser({
       username: 'khoa',

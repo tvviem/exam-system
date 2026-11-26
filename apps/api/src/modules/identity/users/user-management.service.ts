@@ -9,7 +9,6 @@ import {
   inArray,
   isNotNull,
   isNull,
-  or,
   type SQL,
   sql,
 } from 'drizzle-orm';
@@ -25,6 +24,7 @@ import {
 } from '../../../common/owned-content';
 import { countUpTo, type Page, paginateCapped } from '../../../common/pagination';
 import { mapUniqueToConflict } from '../../../common/pg-error';
+import { searchTextContains } from '../../../common/trigram-search';
 import {
   USER_DEACTIVATION_HOOKS,
   type UserDeactivationHooks,
@@ -91,8 +91,6 @@ const hasContent = (
 
 const isUniqueViolation = (error: unknown) =>
   (error as { cause?: { code?: string } }).cause?.code === '23505';
-
-const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /** Quản lý Người dùng của Quản trị viên (PR 1b). */
 @Injectable()
@@ -722,16 +720,8 @@ export class UserManagementService {
         )`,
       );
     }
-    if (q) {
-      const pattern = `%${escapeLike(q)}%`;
-      conditions.push(
-        or(
-          ...[users.fullName, users.username, users.email, users.code, users.classLabel].map(
-            (column) => sql`unaccent(coalesce(${column}::text, '')) ILIKE unaccent(${pattern})`,
-          ),
-        ),
-      );
-    }
+    // Họ tên, tên đăng nhập, email, Mã định danh, Lớp: gộp sẵn ở `search_text`, tìm bằng chỉ mục trigram.
+    if (q) conditions.push(searchTextContains(users.searchText, q));
     return and(...conditions);
   }
 

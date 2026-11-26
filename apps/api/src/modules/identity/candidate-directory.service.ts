@@ -9,6 +9,7 @@ import type {
   Executor,
 } from '../../common/candidate-directory';
 import { escapeLike } from '../../common/sql-like';
+import { searchTextPrefilter } from '../../common/trigram-search';
 import { type Database, DB } from '../../db/db.module';
 import { users } from './identity.schema';
 
@@ -82,7 +83,8 @@ export class CandidateDirectoryService implements CandidateDirectory {
     q: string,
     options: { excludeUserId: string; userLimit: number; classLimit: number },
   ) {
-    const like = `%${escapeLike(normalizeForSearch(q))}%`;
+    const normalized = normalizeForSearch(q);
+    const like = `%${escapeLike(normalized)}%`;
     const eligible = eligibleFor(options.excludeUserId);
     const found = await this.db
       .select({
@@ -92,13 +94,20 @@ export class CandidateDirectoryService implements CandidateDirectory {
         classLabel: users.classLabel,
       })
       .from(users)
-      .where(and(eligible, matches(like)))
+      // `search_text` chứa cả họ tên và mã nên lọc trước bằng chỉ mục trigram không bỏ sót; `matches` giữ đúng nghĩa cũ.
+      .where(and(eligible, searchTextPrefilter(users.searchText, normalized), matches(like)))
       .orderBy(sql`${users.fullName} COLLATE ${VIETNAMESE}`, users.id)
       .limit(options.userLimit);
     const classes = await this.db
       .select({ label: sql<string>`${users.classLabel}`, count: sql<number>`count(*)::int` })
       .from(users)
-      .where(and(eligible, sql`unaccent(lower(${users.classLabel})) LIKE ${like}`))
+      .where(
+        and(
+          eligible,
+          searchTextPrefilter(users.searchText, normalized),
+          sql`unaccent(lower(${users.classLabel})) LIKE ${like}`,
+        ),
+      )
       .groupBy(users.classLabel)
       .orderBy(users.classLabel)
       .limit(options.classLimit);

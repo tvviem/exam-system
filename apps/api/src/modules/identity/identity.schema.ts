@@ -64,6 +64,11 @@ export const users = pgTable(
     createdBy: uuid('created_by').references((): AnyPgColumn => users.id),
     removedAt: timestamp('removed_at', { withTimezone: true }),
     removedBy: uuid('removed_by').references((): AnyPgColumn => users.id),
+    /**
+     * Họ tên, tên đăng nhập, email, Mã định danh, Lớp (mỗi thứ một dòng, đã bỏ dấu, chữ thường) để tìm Người dùng bằng chỉ mục
+     * trigram. Trigger `users_search_text` điền (migration 0032); ứng dụng không ghi cột này.
+     */
+    searchText: text('search_text').notNull().default(''),
     ...timestamps,
   },
   (t) => [
@@ -81,6 +86,7 @@ export const users = pgTable(
     index('users_class_lower_idx')
       .on(sql`lower(${t.classLabel})`)
       .where(sql`${t.removedAt} IS NULL`),
+    index('users_search_trgm_idx').using('gin', t.searchText.op('gin_trgm_ops')),
   ],
 );
 

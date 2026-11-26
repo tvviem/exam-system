@@ -225,6 +225,13 @@
       "when": 1795648465468,
       "tag": "0031_quy_mo_lon_chi_muc",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795660522147,
+      "tag": "0032_tim_nguoi_dung",
+      "breakpoints": true
     }
   ]
 }

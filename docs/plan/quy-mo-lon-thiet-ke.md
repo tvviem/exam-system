@@ -1,6 +1,6 @@
 # Quy mô lớn: hàng triệu Câu hỏi và hàng triệu tài khoản (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt ngày 26/11/2026: Q487 khoảng **500 người thi cùng lúc**, các câu còn lại theo đề xuất, mục 10). Tiến độ: **L1** (#171, số đo ở 6.3) và **L2** (migration `0031`, số đo ở 6.4) xong về mã ngày 26/11/2026; **L3** (đếm có chặn, số đo ở 6.5) xong về mã; L4, L5 chưa làm.
+**Trạng thái: `accepted`** (chủ dự án duyệt ngày 26/11/2026: Q487 khoảng **500 người thi cùng lúc**, các câu còn lại theo đề xuất, mục 10). Tiến độ: **L1** (#171, số đo ở 6.3) và **L2** (migration `0031`, số đo ở 6.4) xong về mã ngày 26/11/2026; **L3** (#173, số đo ở 6.5), **L4** (migration `0032`, số đo ở 6.6) xong về mã; L5 chưa làm.
 
 ## 1. Yêu cầu và phạm vi
 
@@ -246,11 +246,30 @@ Cùng một bộ dữ liệu, đo qua api trước và sau (p50), gồm cả cá
 
 Đổi so với đề xuất: địa chỉ trỏ quá trang 500 được đưa thẳng về trang 500.
 
+### 6.6. Kết quả L4 (26/11/2026, mã trong kho)
+
+`users.search_text` (họ tên, tên đăng nhập, email, Mã định danh, Lớp; mỗi trường một dòng; bỏ dấu, chữ thường) do trigger giữ đồng bộ, chỉ mục `GIN (search_text gin_trgm_ops)`. Đo qua api ở 1.000.000 tài khoản (p50):
+
+| Việc | Trước | Sau |
+|---|---|---|
+| Tìm theo mã, email | 2,4 s | 18–19 ms |
+| Tìm họ tên đầy đủ; không có kết quả | 3,0 s; 2,6 s | 28 ms; 7 ms |
+| Tên phổ biến; rất phổ biến; khớp mọi người | khoảng 2 s | 90 ms; 234 ms; 476 ms |
+| Từ khóa 1–2 ký tự | khoảng 2–3 s | 444–768 ms |
+| Gợi ý người khi lập Danh sách dự thi (mã, họ tên, Lớp) | 870 ms | 10–48 ms; tên phổ biến 300 ms |
+| Gợi ý với 2 ký tự | khoảng 1,6 s | không đổi |
+
+- **Đổi so với Q488:** không bắt gõ từ 3 ký tự. Từ khóa không có 3 chữ hoặc số liền nhau đi đường quét cột (không đụng chỉ mục), vẫn nhanh hơn trước; tên 2 chữ cái như "An", "Vy" tìm được như cũ.
+- Gợi ý người vẫn chỉ khớp họ tên và Mã định danh: chỉ mục trên `search_text` làm bước lọc trước.
+- Chi phí ghi: thêm 2.000 người 83 thành 103 ms; sửa tên 2.000 người 255 thành 378 ms. Chỉ mục 87 MB.
+- Chọn Người ra đề (ủy quyền, chuyển giao) không đổi: số Người ra đề nhỏ.
+
 ## 7. Triển khai trên prod đang có dữ liệu
 
 1. Dùng đường deploy hiện có: **sao lưu trước deploy** (`pg_dump`), chạy migration, rồi thay api. Không bước làm tay, không biến môi trường mới.
 2. Migration chạy trong một giao dịch nên dùng `CREATE INDEX` thường; lệnh này **chặn ghi** (không chặn đọc) trong lúc tạo: ở quy mô hiện nay là vài mili giây; ba chỉ mục Câu hỏi ở 1.000.000 dòng tổng khoảng 2 giây. Không cần `CONCURRENTLY`.
 3. Chỉ thêm (chỉ mục, thống kê, một cột có trigger): không đổi và không xóa dữ liệu. Điền `search_text` cho dữ liệu cũ ngay trong migration.
+   **Riêng migration `0032`: trong lúc chạy, bảng `users` bị khóa cả đọc lẫn ghi** (thêm cột và điền dữ liệu cùng một giao dịch), nghĩa là không ai đăng nhập hay thao tác được. Ở quy mô hiện nay là vài mili giây; đo ở 1.000.000 tài khoản là **97 giây** và bảng phình từ 468 MB lên khoảng 1,1 GB. Nếu về sau chạy lại trên cơ sở dữ liệu lớn (ví dụ khôi phục từ bản trước 0032) thì phải làm ngoài giờ thi.
 4. Deploy ngoài giờ thi.
 5. **Lùi bản:** bản cũ chạy được trên cơ sở dữ liệu mới. Nếu lùi khi ngân hàng đã lớn, tìm Câu hỏi của bản cũ sẽ chậm như cảnh báo ở 3.3; xử lý bằng `DROP INDEX questions_owner_recent_idx;`.
 6. Sau deploy: `prod-status`, `prod-preflight`, kiểm chỉ mục có và hợp lệ, mở Ngân hàng câu hỏi, hộp chọn câu, trang Người dùng.
