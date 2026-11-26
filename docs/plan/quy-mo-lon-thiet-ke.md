@@ -1,6 +1,6 @@
 # Quy mô lớn: hàng triệu Câu hỏi và hàng triệu tài khoản (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt ngày 26/11/2026: Q487 khoảng **500 người thi cùng lúc**, các câu còn lại theo đề xuất, mục 10). Tiến độ: **L1** (#171, số đo ở 6.3) và **L2** (migration `0031`, số đo ở 6.4) xong về mã ngày 26/11/2026; **L3** (#173, số đo ở 6.5), **L4** (migration `0032`, số đo ở 6.6) xong về mã; L5 chưa làm.
+**Trạng thái: `accepted`** (chủ dự án duyệt ngày 26/11/2026: Q487 khoảng **500 người thi cùng lúc**, các câu còn lại theo đề xuất, mục 10). Tiến độ: **L1** (#171, số đo ở 6.3) và **L2** (migration `0031`, số đo ở 6.4) xong về mã ngày 26/11/2026; **L3** (#173, số đo ở 6.5), **L4** (#174, migration `0032`, số đo ở 6.6) đã lên prod ngày 26/11/2026; **L5** (bài đo trong kho, số đo ở 6.7) xong về mã. Còn **một ngưỡng chưa đạt** ở 1.000.000 (6.7).
 
 ## 1. Yêu cầu và phạm vi
 
@@ -263,6 +263,29 @@ Cùng một bộ dữ liệu, đo qua api trước và sau (p50), gồm cả cá
 - Gợi ý người vẫn chỉ khớp họ tên và Mã định danh: chỉ mục trên `search_text` làm bước lọc trước.
 - Chi phí ghi: thêm 2.000 người 83 thành 103 ms; sửa tên 2.000 người 255 thành 378 ms. Chỉ mục 87 MB.
 - Chọn Người ra đề (ủy quyền, chuyển giao) không đổi: số Người ra đề nhỏ.
+
+### 6.7. Nghiệm thu bằng bài đo trong kho (L5, 26/11/2026)
+
+`apps/api/test/quy-mo-bench.int.test.ts` (chạy tay bằng `QUY_MO_BENCH=1`, thêm `QUY_MO_N=1000000` cho quy mô nghiệm thu; không chạy trong CI). Gieo Câu hỏi và tài khoản, đặt **trường hợp hiếm ở đầu cũ nhất**, gọi api trong cùng tiến trình với bài kiểm tra (chưa gồm mạng; bài kiểm tra và api chung CPU nên số đo đợt dồn dập khắt khe hơn chạy thật).
+
+Ở 1.000.000 Câu hỏi và 1.000.000 tài khoản, chạy ở ưu tiên thường: **37 trên 38 ngưỡng đạt** (cả bài khoảng 3 phút rưỡi). Trước đó hai lần chạy ở ưu tiên thấp (`nice -n 15`) cho cùng số đo các đường đơn lẻ, nhưng lưu câu trả lời giữa đợt tìm Người dùng 2 ký tự lên 183–239 ms vì tiến trình api bị nhường CPU; đo lại ở ưu tiên thường được 64 ms (một lần đo).
+
+| Nhóm | Kết quả (p50) |
+|---|---|
+| Câu hỏi: danh sách, lọc, Lưu trữ, trường hợp hiếm | 8–17 ms; Loại hiếm khoảng 130 ms |
+| Chủ đề kèm số câu; tìm Câu hỏi | 135–160 ms; 160–180 ms |
+| Người dùng: danh sách, lọc; trường hợp hiếm | 6–19 ms; 100–120 ms; Nhật ký 55 ms |
+| Tìm Người dùng: mã, họ tên; tên phổ biến; 2 ký tự | 6–24 ms; 160 ms; 460 ms |
+| Dán 490 mã; thêm cả lớp; gợi ý theo mã, Lớp | 13–105 ms |
+| 40 lượt tìm Câu hỏi: lưu câu trả lời chậm nhất; người khác mở trang | 38–49 ms; 50–78 ms |
+| 40 lượt tìm Người dùng 2 ký tự: lưu câu trả lời chậm nhất; người khác mở trang | 64 ms; 11 ms |
+| 20 yêu cầu trang 1 cùng lúc (đến lượt cuối) | 76–100 ms |
+
+**Chưa đạt:**
+
+| Việc | Đo được | Ngưỡng | Vì sao, hướng xử lý (chờ quyết) |
+|---|---|---|---|
+| Gợi ý người khi gõ tên rất phổ biến (khoảng 9 % tài khoản khớp) | 609–711 ms | 500 ms | hai truy vấn đều đi qua toàn bộ người khớp (sắp theo tên tiếng Việt để lấy vài người đầu; gom theo Lớp). Đề xuất chấp nhận: chỉ gặp ở quy mô rất lớn, gõ thêm một chữ là hết |
 
 ## 7. Triển khai trên prod đang có dữ liệu
 

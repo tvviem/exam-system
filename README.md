@@ -308,6 +308,8 @@ Cần như phần Rút câu và `pnpm db:migrate` (migration `0030`: Mã đề c
 
 Từng bước chi tiết cho người dùng: [docs/huong-dan/ma-de-phien-thi.md](docs/huong-dan/ma-de-phien-thi.md). Kiểm tra bằng test: `test/ma-de-phien-thi.int.test.ts` và các `test/ma-de-v*.int.test.ts` (trong `pnpm test:integration`).
 
+**Đo quy mô lớn** (hàng triệu Câu hỏi và tài khoản): `QUY_MO_BENCH=1 pnpm --filter @exam/api exec vitest run --project integration test/quy-mo-bench.int.test.ts` (mặc định 100.000, khoảng 30 giây; thêm `QUY_MO_N=1000000` cho quy mô nghiệm thu, khoảng 4 phút). In bảng đạt hoặc trượt theo ngưỡng; chạy trên cơ sở dữ liệu test và xóa sạch khi xong. Đừng chạy lúc máy đang phục vụ thi. Thiết kế và số đo: [docs/plan/quy-mo-lon-thiet-ke.md](docs/plan/quy-mo-lon-thiet-ke.md).
+
 **Đo tải Mã đề:** `MA_DE_BENCH=1 pnpm --filter @exam/api exec vitest run --project integration test/ma-de-bench.int.test.ts` (10 Mã đề, Bộ đề 100 câu, 500 người); số đo ở [docs/architecture.md](docs/architecture.md) mục "Ngân sách phản hồi" và [docs/hieu-nang.md](docs/hieu-nang.md).
 
 ## Vận hành

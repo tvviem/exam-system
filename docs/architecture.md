@@ -294,6 +294,8 @@ Số đo chấm tự động (6/11/2026, PR 5a, một tiến trình, PostgreSQL 
 
 Số đo chấm tay và Kết quả (6/11/2026, PR 5b-1, 500 Lượt đã chấm tự động, PostgreSQL thật): bảng Kết quả 500 người 48 ms, hàng đợi chấm 500 bài 30 ms, mở một bài tự luận 33 ms, lưu điểm một bài 32 ms, Thống kê câu 24 ms.
 
+Số đo quy mô lớn (26/11/2026, 1.000.000 Câu hỏi và 1.000.000 tài khoản, bộ đo `apps/api/test/quy-mo-bench.int.test.ts`, chạy khi đặt `QUY_MO_BENCH=1`): 37 trên 38 ngưỡng đạt; bảng và chỗ chưa đạt ở [plan/quy-mo-lon-thiet-ke.md](plan/quy-mo-lon-thiet-ke.md) mục 6.7. Thay đổi truy vấn danh sách thì chạy lại bộ đo này.
+
 Số đo Mã đề của Phiên thi (23/11/2026, V5a, một tiến trình, PostgreSQL thật, bộ đo `apps/api/test/ma-de-bench.int.test.ts`, chạy khi đặt `MA_DE_BENCH=1`): Phiên thi 10 Mã đề từ Bộ đề 100 câu (rút 50 %), Danh sách 500 người.
 
 | Việc | Số đo | Ngân sách |
