@@ -487,7 +487,9 @@
     "label": "Phân trang",
     "previous": "Trang trước",
     "next": "Trang sau",
-    "range": "{{from}}–{{to}} / {{total}}"
+    "range": "{{from}}–{{to}} / {{total}}",
+    "rangeCapped": "{{from}}–{{to}} / hơn {{cap}}",
+    "cappedHint": "Chỉ hiện {{cap}} kết quả đầu: hãy lọc hoặc tìm để thu hẹp."
   },
   "userStatus": {
     "active": "Đang hoạt động",

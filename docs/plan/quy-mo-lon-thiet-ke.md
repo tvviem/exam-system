@@ -1,6 +1,6 @@
 # Quy mô lớn: hàng triệu Câu hỏi và hàng triệu tài khoản (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt ngày 26/11/2026: Q487 khoảng **500 người thi cùng lúc**, các câu còn lại theo đề xuất, mục 10). Tiến độ: **L1** (#171, số đo ở 6.3) và **L2** (migration `0031`, số đo ở 6.4) xong về mã ngày 26/11/2026; L3 đến L5 chưa làm.
+**Trạng thái: `accepted`** (chủ dự án duyệt ngày 26/11/2026: Q487 khoảng **500 người thi cùng lúc**, các câu còn lại theo đề xuất, mục 10). Tiến độ: **L1** (#171, số đo ở 6.3) và **L2** (migration `0031`, số đo ở 6.4) xong về mã ngày 26/11/2026; **L3** (đếm có chặn, số đo ở 6.5) xong về mã; L4, L5 chưa làm.
 
 ## 1. Yêu cầu và phạm vi
 
@@ -228,6 +228,23 @@ Cùng một bộ dữ liệu, đo qua api trước và sau (p50), gồm cả cá
 - Phần còn lại của trang 1 Câu hỏi (96 ms) và của trang Người dùng là **đếm toàn bộ** (L3).
 - Migration chạy 1,3 giây ở 1.000.000 Câu hỏi và 5,2 giây ở 1.000.000 tài khoản (chặn ghi trong lúc đó); ở dữ liệu prod hiện nay là vài mili giây.
 - Cùng mã L1: người ra đề khác mở trang giữa 5, 20, 40 lượt tìm Câu hỏi dồn dập chờ 22–64 ms (trước L1: tới 10,5 giây).
+
+### 6.5. Kết quả đo L3 (26/11/2026, mã trong kho)
+
+Đo qua api (p50), so với sau L2.
+
+| Ở 1.000.000 dòng | Sau L2 | Sau L3 |
+|---|---|---|
+| Câu hỏi: trang 1 / trang cuối cho phép | 96 / 569 ms (trang giữa) | 11 / 19 ms |
+| Câu hỏi: một Chủ đề; lọc Loại phổ biến; Lưu trữ | 81; 216; 12 ms | 20; 18; 10 ms |
+| Người dùng: trang 1; Nhãn Người dự thi; Chờ kích hoạt | 48; 368; 113 ms | 13; 20; 18 ms |
+| Lịch sử đăng nhập; Nhật ký thao tác | 67–126 ms | 8–53 ms |
+| Bộ lọc hiếm (tag, Bị khóa, Đã xóa, Email chưa xác thực, Loại hiếm) | | 9–278 ms |
+| Tìm Câu hỏi; tìm Người dùng | không đổi | không đổi |
+
+**Lỗi còn sót của L2 tìm ra khi đo L3:** khi bộ lọc hiếm chỉ khớp những dòng **cũ** (lọc tag, "Bị khóa"), truy vấn lấy trang đi dọc chỉ mục "mới trước" qua gần hết bảng (tag hiếm: 920 ms). Lần đo L2 không lộ vì phụ thuộc thống kê lấy mẫu. Đã sửa: lọc tag và lọc "Bị khóa" cũng sắp theo biểu thức (3.3). "Email chưa xác thực" đếm đủ thay vì đếm có chặn (đếm có chặn làm mất quét song song: 189 so với 75 ms). **Bài đo của L5 phải gieo trường hợp hiếm nằm ở đầu cũ nhất.**
+
+Đổi so với đề xuất: địa chỉ trỏ quá trang 500 được đưa thẳng về trang 500.
 
 ## 7. Triển khai trên prod đang có dữ liệu
 

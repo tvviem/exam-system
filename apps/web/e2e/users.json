@@ -2064,5 +2064,21 @@
     "roleTags": ["candidate"],
     "code": "RATRAN-SV-012345678901234567",
     "classLabel": "RàTràn-LOP-CONG-NGHE-THONG-TIN-CHAT-LUONG-CAO-KHOA-2026"
+  },
+  {
+    "username": "e2e-cap-desktop",
+    "fullName": "Giảng viên Ngân hàng lớn máy tính",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-cap-mobile",
+    "fullName": "Giảng viên Ngân hàng lớn mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]

@@ -182,6 +182,7 @@ Mỗi ô soạn có thanh công cụ: **Đậm**, **Nghiêng**, **Gạch chân**
 
 ![Danh sách câu hỏi](anh:nguoi-ra-de/14-danh-sach-cau-hoi)
 
+- Khi có hơn 10.000 câu khớp, danh sách ghi **"hơn 10.000"** và chỉ cho xem 10.000 câu mới sửa nhất: hãy lọc theo Chủ đề, Loại, tag hoặc tìm để thu hẹp.
 - Cột trái chọn **Chủ đề** (kèm số câu). Tên Chủ đề dài tự xuống dòng nên đọc được đủ.
 - **Tìm câu hỏi**: gõ một phần nội dung, không cần dấu (ví dụ "mang" tìm ra "mạng").
 - Lọc theo **Loại câu hỏi**, **Trạng thái** (Đang dùng hoặc Đã lưu trữ) và **Tag**.

@@ -3,7 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { EXAM_USAGE, type ExamRef, type ExamUsage } from '../../common/exam-usage';
-import { type Page, paginate } from '../../common/pagination';
+import { countUpTo, type Page, paginateCapped } from '../../common/pagination';
 import { type Database, DB } from '../../db/db.module';
 import { IllustrationsService } from './illustrations/illustrations.service';
 import { assertLatexValid } from './latex';
@@ -218,9 +218,9 @@ export class QuestionsService {
       q ? sql`${questions.searchText} LIKE ${`%${escapeLike(q)}%`}` : undefined,
       filter.archived ? isNotNull(questions.archivedAt) : isNull(questions.archivedAt),
     );
-    const result = await paginate(
+    const result = await paginateCapped(
       page,
-      () => this.db.select({ total: sql<number>`count(*)::int` }).from(questions).where(where),
+      (limit) => countUpTo(this.db, questions, where, limit),
       (limit, offset) =>
         this.db
           .select({
@@ -238,10 +238,12 @@ export class QuestionsService {
           .from(questions)
           .innerJoin(topics, eq(topics.id, questions.topicId))
           .where(where)
-          // Có từ khóa thì sắp theo biểu thức (cùng thứ tự): nếu không, PostgreSQL đi dọc chỉ mục "mới sửa trước" rồi lọc từng
-          // dòng, và từ hiếm chậm đi 3 đến 4 lần (docs/plan/quy-mo-lon-thiet-ke.md mục 3.3).
+          // Có từ khóa hoặc tag thì sắp theo biểu thức (cùng thứ tự): nếu không, PostgreSQL đi dọc chỉ mục "mới sửa trước" rồi lọc
+          // từng dòng, và khi câu khớp hiếm hoặc cũ thì đi gần hết ngân hàng (docs/plan/quy-mo-lon-thiet-ke.md mục 3.3).
           .orderBy(
-            desc(q ? sql`${questions.updatedAt} + interval '0'` : questions.updatedAt),
+            desc(
+              q || filter.tag ? sql`${questions.updatedAt} + interval '0'` : questions.updatedAt,
+            ),
             desc(questions.id),
           )
           .limit(limit)

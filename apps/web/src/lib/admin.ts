@@ -20,6 +20,8 @@ export const GENDERS: Gender[] = ['male', 'female', 'other'];
 export const ROLE_TAGS: RoleTag[] = ['examiner', 'candidate'];
 
 export interface PageResult<T> {
+  /** Danh sách lớn: còn nhiều kết quả hơn `total` (api chỉ đếm tới `LIST_TOTAL_CAP`). */
+  totalCapped?: boolean;
   total: number;
   page: number;
   pageSize: number;

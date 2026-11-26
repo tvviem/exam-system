@@ -124,6 +124,7 @@ Sau khi duyệt:
 Trang **Người dùng** liệt kê mọi tài khoản (có phân trang).
 
 - **Tìm Người dùng**: theo tên, mã, email hoặc lớp.
+- Khi có hơn 10.000 người khớp, danh sách ghi **"hơn 10.000"** và chỉ cho xem 10.000 người mới tạo nhất; Lịch sử đăng nhập và Nhật ký thao tác cũng vậy. Hãy lọc hoặc tìm để thu hẹp.
 - Lọc **Trạng thái**, **Nhãn vai trò** và **Kích hoạt** (**Chờ kích hoạt**, **Email chưa xác thực**, **Thư lỗi**).
 
 ![Lọc người chờ kích hoạt](anh:quan-tri/10-loc-cho-kich-hoat)

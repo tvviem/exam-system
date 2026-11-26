@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, desc, eq, type SQL } from 'drizzle-orm';
-import { type Page, paginate } from '../../../common/pagination';
+import { and, desc, eq, type SQL } from 'drizzle-orm';
+import { countUpTo, type Page, paginateCapped } from '../../../common/pagination';
 import { type Database, DB } from '../../../db/db.module';
 import { loginEvents, users } from '../identity.schema';
 
@@ -19,9 +19,9 @@ export class LoginEventsService {
     if (userId) conditions.push(eq(loginEvents.userId, userId));
     if (success !== undefined) conditions.push(eq(loginEvents.success, success));
     const where = and(...conditions);
-    return paginate(
+    return paginateCapped(
       { page, pageSize },
-      () => this.db.select({ total: count() }).from(loginEvents).where(where),
+      (limit) => countUpTo(this.db, loginEvents, where, limit),
       (limit, offset) =>
         this.db
           .select({

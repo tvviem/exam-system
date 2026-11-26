@@ -23,7 +23,7 @@ import {
   type OwnedCounts,
   type PreparedTransfer,
 } from '../../../common/owned-content';
-import { type Page, paginate } from '../../../common/pagination';
+import { countUpTo, type Page, paginateCapped } from '../../../common/pagination';
 import { mapUniqueToConflict } from '../../../common/pg-error';
 import {
   USER_DEACTIVATION_HOOKS,
@@ -112,13 +112,18 @@ export class UserManagementService {
 
   async list({ page, pageSize, ...filter }: Page & UserFilter) {
     const where = this.listCondition(filter);
-    // Từ khóa và "Email chưa xác thực" bị PostgreSQL ước lượng sai là khớp nhiều người: nó đi dọc chỉ mục "mới tạo trước" rồi lọc
-    // từng dòng, chậm hơn quét rồi sắp. Sắp theo biểu thức (cùng thứ tự) để tránh (docs/plan/quy-mo-lon-thiet-ke.md mục 4.2).
-    const scan = Boolean(filter.q) || filter.activation === 'unverified';
+    // Từ khóa, "Email chưa xác thực" và "Bị khóa" thường khớp ít người: đi dọc chỉ mục "mới tạo trước" rồi lọc từng dòng có thể
+    // quét gần hết bảng. Sắp theo biểu thức (cùng thứ tự) để tránh (docs/plan/quy-mo-lon-thiet-ke.md mục 4.2).
+    const unverified = filter.activation === 'unverified';
+    const scan = Boolean(filter.q) || unverified || filter.status === 'locked';
     const createdAt = scan ? sql`${users.createdAt} + interval '0'` : users.createdAt;
-    const result = await paginate(
+    const result = await paginateCapped(
       { page, pageSize },
-      () => this.db.select({ total: count() }).from(users).where(where),
+      // "Email chưa xác thực" bị ước lượng sai là khớp nhiều người nên đếm có chặn mất quét song song (chậm gấp 2,5 lần): đếm đủ.
+      (limit) =>
+        unverified
+          ? this.db.select({ total: count() }).from(users).where(where)
+          : countUpTo(this.db, users, where, limit),
       (limit, offset) =>
         this.db
           .select()

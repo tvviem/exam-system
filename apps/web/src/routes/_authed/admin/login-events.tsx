@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { type LoginEventParams, loginEventsQuery } from '../../../lib/admin';
 import { errorMessage } from '../../../lib/errors';
 import { formatDateTime } from '../../../lib/format';
+import { cappedPageParam } from '../../../lib/page-param';
 import { ErrorMessage, SelectField } from '../../../lib/ui';
 import { EmptyState, FilterChip, ListSkeleton, Pagination } from '../../../lib/ui/admin';
 
@@ -12,7 +13,7 @@ export const Route = createFileRoute('/_authed/admin/login-events')({
   validateSearch: (search: Record<string, unknown>): LoginEventParams => ({
     userId: typeof search.userId === 'string' ? search.userId : undefined,
     success: search.success === 'true' || search.success === 'false' ? search.success : undefined,
-    page: Number(search.page) > 1 ? Number(search.page) : undefined,
+    page: cappedPageParam(search.page),
   }),
   component: LoginEventsPage,
 });
@@ -109,6 +110,7 @@ function LoginEventsPage() {
             page={events.data.page}
             pageSize={events.data.pageSize}
             total={events.data.total}
+            totalCapped={events.data.totalCapped}
             onPage={(page) => navigate({ search: (s) => ({ ...s, page }) })}
           />
         </>
