@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng
 
-Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản trị viên**, **Người ra đề**, **Người dự thi**. Thuật ngữ in hoa theo [GLOSSARY.md](../../GLOSSARY.md). Các hướng dẫn chuyên đề dưới đây là nền; ba tài liệu trọn bộ theo vai nằm ở mục tiếp theo. Cập nhật ngày **27/11/2026** (sau bản 0.5.4, thêm mã lệnh trong Câu hỏi và các thay đổi cho danh sách lớn); ảnh chụp trong tệp Word lấy cùng ngày.
+Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản trị viên**, **Người ra đề**, **Người dự thi**. Thuật ngữ in hoa theo [GLOSSARY.md](../../GLOSSARY.md). Các hướng dẫn chuyên đề dưới đây là nền; ba tài liệu trọn bộ theo vai nằm ở mục tiếp theo. Cập nhật đến **bản 0.6.0** (27/11/2026: mã lệnh trong Câu hỏi và các thay đổi cho danh sách lớn); ảnh chụp trong tệp Word lấy ở bản này.
 
 ## Đã có
 
@@ -8,7 +8,7 @@ Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản
 |---|---|---|---|
 | [cham-diem-va-phuc-khao.md](cham-diem-va-phuc-khao.md) | Người ra đề, Người dự thi | Chấm tự động và chấm Câu tự luận, quyết Mức xử lý cho Vi phạm, Công bố kết quả, Phúc khảo, Đính chính đáp án, Ủy quyền chấm, xem Kết quả của tôi | 0.1.0 |
 | [rut-cau-theo-phan.md](rut-cau-theo-phan.md) | Người ra đề, Người dự thi | Tỷ lệ rút câu ở Bộ đề và Phiên thi, chuyển nhanh giữa các Phần, thẻ tổng quan và lọc của Bộ đề đã Phát hành, Xem thử, chấm theo bộ câu của từng người | 0.3.0 |
-| [ma-lenh-trong-cau-hoi.md](ma-lenh-trong-cau-hoi.md) | Người ra đề, Người dự thi | Mã trong dòng và Khối mã: soạn trên web, nhập từ Excel (kể cả cách in dấu `` ` ``), hiển thị trên màn làm bài, xuất Word, giới hạn và sự cố thường gặp | sau 0.5.4 |
+| [ma-lenh-trong-cau-hoi.md](ma-lenh-trong-cau-hoi.md) | Người ra đề, Người dự thi | Mã trong dòng và Khối mã: soạn trên web, nhập từ Excel (kể cả cách in dấu `` ` ``), hiển thị trên màn làm bài, xuất Word, giới hạn và sự cố thường gặp | 0.6.0 |
 | [ma-de-phien-thi.md](ma-de-phien-thi.md) | Người ra đề, Người dự thi | Cách ra đề, Mã đề, chia và đổi tay Người dự thi, Chia lại, Rút lại, xuất Word và zip, Theo dõi và Excel theo Mã đề | 0.5.0 |
 
 ## Tài liệu trọn bộ theo vai (nguồn của bản Word)
@@ -17,9 +17,9 @@ Ba tài liệu đầy đủ, mỗi vai một tệp, viết từ đầu đến cu
 
 | Tài liệu | Vai | Nội dung chính | Bản |
 |---|---|---|---|
-| [tai-lieu/nguoi-du-thi.md](tai-lieu/nguoi-du-thi.md) | Người dự thi | Kích hoạt tài khoản, đăng nhập, quên mật khẩu, Vào thi, làm bài trên điện thoại (Từng câu và Cả đề, bốn Loại câu hỏi, câu có mã lệnh, bảng câu, nộp bài), Kết quả và Phúc khảo, sự cố thường gặp | sau 0.5.4 |
-| [tai-lieu/nguoi-ra-de.md](tai-lieu/nguoi-ra-de.md) | Người ra đề | Lời mời và Yêu cầu cấp tài khoản, Ngân hàng câu hỏi (kể cả mã lệnh), soạn Bộ đề và Rút câu, Phiên thi và Mã đề, theo dõi phòng thi, chấm, Công bố, Phúc khảo | sau 0.5.4 |
-| [tai-lieu/quan-tri-vien.md](tai-lieu/quan-tri-vien.md) | Quản trị viên | Người dùng, Lời mời, duyệt Yêu cầu cấp tài khoản, Đơn vị, Ủy quyền chấm, nhật ký, Hàng đợi thư, Sao lưu, việc cần làm trước kỳ thi | sau 0.5.4 |
+| [tai-lieu/nguoi-du-thi.md](tai-lieu/nguoi-du-thi.md) | Người dự thi | Kích hoạt tài khoản, đăng nhập, quên mật khẩu, Vào thi, làm bài trên điện thoại (Từng câu và Cả đề, bốn Loại câu hỏi, câu có mã lệnh, bảng câu, nộp bài), Kết quả và Phúc khảo, sự cố thường gặp | 0.6.0 |
+| [tai-lieu/nguoi-ra-de.md](tai-lieu/nguoi-ra-de.md) | Người ra đề | Lời mời và Yêu cầu cấp tài khoản, Ngân hàng câu hỏi (kể cả mã lệnh), soạn Bộ đề và Rút câu, Phiên thi và Mã đề, theo dõi phòng thi, chấm, Công bố, Phúc khảo | 0.6.0 |
+| [tai-lieu/quan-tri-vien.md](tai-lieu/quan-tri-vien.md) | Quản trị viên | Người dùng, Lời mời, duyệt Yêu cầu cấp tài khoản, Đơn vị, Ủy quyền chấm, nhật ký, Hàng đợi thư, Sao lưu, việc cần làm trước kỳ thi | 0.6.0 |
 
 Còn thiếu: bản PDF (nếu cần, xuất từ tệp Word sau khi chỉnh).
 

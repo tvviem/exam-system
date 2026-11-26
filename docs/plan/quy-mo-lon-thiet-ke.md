@@ -335,7 +335,7 @@ Giới hạn của các số đo: dữ liệu giả phân bố đều; máy đo 
 | L4 | Cột tìm kiếm Người dùng và trigram (4.3) | cột mới, trigger |
 | L5 | Bài đo trong kho; cập nhật `data-model.md`, `architecture.md`, `hieu-nang.md` | |
 
-Phát hành: có migration và đổi hành vi nên là **MINOR** (`0.6.0`).
+Phát hành: có migration và đổi hành vi nên là **MINOR** (`0.6.0`). Đã phát hành ngày 27/11/2026 ([phat-hanh.md](../ops/phat-hanh.md) mục 8).
 
 ## 10. Quyết định của chủ dự án (Q480–Q489, chốt 26/11/2026)
 

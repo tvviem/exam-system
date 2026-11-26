@@ -1,6 +1,6 @@
 # Hướng dẫn: Mã lệnh trong Câu hỏi
 
-Dành cho **Người ra đề** (và phần "Người dự thi thấy gì"). Từ bản sau 0.5.4 (chưa gắn số phiên bản). Thiết kế và các quyết định ở [plan/ma-lenh-trong-cau-hoi-thiet-ke.md](../plan/ma-lenh-trong-cau-hoi-thiet-ke.md), thuật ngữ ở [GLOSSARY.md](../../GLOSSARY.md).
+Dành cho **Người ra đề** (và phần "Người dự thi thấy gì"). Từ bản **0.6.0**. Thiết kế và các quyết định ở [plan/ma-lenh-trong-cau-hoi-thiet-ke.md](../plan/ma-lenh-trong-cau-hoi-thiet-ke.md), thuật ngữ ở [GLOSSARY.md](../../GLOSSARY.md).
 
 Dùng cho các học phần lập trình: C, C++, Java, Python, SQL và ngôn ngữ khác. Hệ thống giữ nguyên khoảng trắng và ký tự của mã, **không tô màu cú pháp** và không chạy mã.
 
