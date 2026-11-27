@@ -28,6 +28,7 @@ import { EmptyState, ListSkeleton, Pagination } from '../../../../../lib/ui/admi
 import { Breadcrumb } from '../../../../../lib/ui/breadcrumb';
 import { CancelImportButton } from '../../../../../lib/ui/cancel-import';
 import { PageHeader } from '../../../../../lib/ui/page-header';
+import { TopicOptions } from '../../../../../lib/ui/topic-options';
 
 export const Route = createFileRoute('/_authed/examiner/questions/import/')({
   validateSearch: (search: Record<string, unknown>): { topicId?: string; page?: number } => ({
@@ -175,11 +176,7 @@ function UploadCard() {
               required
             >
               <option value="">{t('questionImport.chooseTopic')}</option>
-              {topics.data?.map((topic) => (
-                <option key={topic.id} value={topic.id}>
-                  {topic.name}
-                </option>
-              ))}
+              <TopicOptions topics={topics.data ?? []} />
             </SelectField>
           </li>
           <li className="flex flex-col gap-2">

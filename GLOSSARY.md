@@ -96,6 +96,10 @@ _Avoid_: hủy tài khoản
 Nhóm Câu hỏi thuộc sở hữu duy nhất của một Người ra đề, thường tương ứng với một học phần. Không dùng chung giữa các Người ra đề.
 _Avoid_: học phần, môn học, Course, Subject
 
+**Nhóm Chủ đề** (`TopicGroup`):
+Các Chủ đề của một Người ra đề có cùng phần đầu tên (trước ` - `), được gom lại khi hiển thị để dễ tìm. Không phải một thực thể: không có chủ, không lưu riêng; đổi tên Chủ đề là đổi nhóm.
+_Avoid_: học phần, thư mục, Chủ đề cha
+
 **Câu hỏi** (`Question`):
 Một đơn vị nội dung kiểm tra thuộc một Chủ đề, có một Loại câu hỏi. Câu hỏi thuộc sở hữu của Người ra đề tạo ra nó; chỉ người đó được dùng nó, và có thể dùng lại trong nhiều Bộ đề của mình.
 

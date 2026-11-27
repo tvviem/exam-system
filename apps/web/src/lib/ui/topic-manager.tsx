@@ -13,6 +13,7 @@ import {
   topicsQuery,
   updateTopic,
 } from '../question-bank';
+import { sortTopics } from '../topic-tree';
 import { Button, Dialog, ErrorMessage, PrimaryButton, SearchField, TextField } from '.';
 import { RowMenu } from './row-menu';
 import { useToast } from './toast';
@@ -68,7 +69,7 @@ export function TopicManager({ open, onClose }: { open: boolean; onClose: () => 
   }, [topics.data]);
   const shown = useMemo(() => {
     const needle = normalizeForSearch(query);
-    return (topics.data ?? []).filter(
+    return sortTopics(topics.data ?? []).filter(
       (topic) =>
         Boolean(topic.archivedAt) === (view === 'archived') &&
         normalizeForSearch(topic.name).includes(needle),

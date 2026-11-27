@@ -2116,5 +2116,21 @@
     "roleTags": ["candidate"],
     "code": "ML-M-001",
     "classLabel": "LOP-ML-M"
+  },
+  {
+    "username": "e2e-nhom-desktop",
+    "fullName": "Giảng viên Nhóm Chủ đề desktop",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
+  },
+  {
+    "username": "e2e-nhom-mobile",
+    "fullName": "Giảng viên Nhóm Chủ đề mobile",
+    "password": "mat-khau-on-dinh",
+    "isAdmin": false,
+    "mustChangePassword": false,
+    "roleTags": ["examiner"]
   }
 ]
