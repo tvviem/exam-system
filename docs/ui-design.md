@@ -252,6 +252,15 @@ Theo [plan/ma-lenh-trong-cau-hoi-thiet-ke.md](plan/ma-lenh-trong-cau-hoi-thiet-k
 - **Ngắt dòng:** chỉ ở khoảng trắng; cụm tới 16 ký tự giữ liền (dấu ngoặc đứng sát đi cùng), dài hơn mới được ngắt khi rộng hơn khung.
 - **Tab** rộng 2 dấu cách ở mọi nơi. Ô soạn mã tắt tự viết hoa và tự sửa chính tả của bàn phím điện thoại. Chưa tô màu cú pháp.
 
+## 15. Danh sách Chủ đề dài (27/11/2026)
+
+Theo [plan/chu-de-ux-thiet-ke.md](plan/chu-de-ux-thiet-ke.md).
+
+- Gom nhóm theo phần đầu tên (`topic-tree.ts`), chỉ ở giao diện; tiêu đề nhóm là nút `aria-expanded`; thứ tự tự nhiên tiếng Việt.
+- Dòng trong khung cuộn kiểu cột phải có `shrink-0`, nếu không dòng bị co và chữ đè lên dòng khác (lỗi thật đã gặp; bài `topic-nav.spec.ts` giữ).
+- Danh sách dài cần ô tìm; điện thoại dùng hộp chọn có ô tìm thay cho ô chọn gốc khi cần tìm.
+- Một thành phần dùng ở hai chỗ cùng có trong trang (cột và hộp thoại) thì `id` của ô nhập sinh bằng `useId`.
+
 ## Quyết định (Q71–Q75)
 
 | Câu | Câu hỏi | Quyết định |

@@ -1,7 +1,6 @@
-import { normalizeForSearch } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ChevronRight, FileSpreadsheet, FolderCog, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileSpreadsheet, FolderCog, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
@@ -20,6 +19,7 @@ import {
   topicsQuery,
 } from '../../../../lib/question-bank';
 import { questionRowInfo } from '../../../../lib/question-row';
+import { sortTopics } from '../../../../lib/topic-tree';
 import {
   Badge,
   Button,
@@ -40,6 +40,8 @@ import { PageHeader } from '../../../../lib/ui/page-header';
 import { StickyActionBar } from '../../../../lib/ui/sticky-action-bar';
 import { useToast } from '../../../../lib/ui/toast';
 import { TopicManager } from '../../../../lib/ui/topic-manager';
+import { TopicNav } from '../../../../lib/ui/topic-nav';
+import { TopicOptions } from '../../../../lib/ui/topic-options';
 
 export const Route = createFileRoute('/_authed/examiner/questions/')({
   validateSearch: (search: Record<string, unknown>): QuestionListParams => ({
@@ -66,13 +68,9 @@ function QuestionBankPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [managing, setManaging] = useState(false);
   const [choosingType, setChoosingType] = useState(false);
-  const [topicQuery, setTopicQuery] = useState('');
+  const [pickingTopic, setPickingTopic] = useState(false);
   // Từ 7 Chủ đề trở lên chip lọc thành ô chọn (điện thoại); từ 9 thì cột bên có ô tìm và vùng cuộn (laptop).
   const topicCount = topics.data?.length ?? 0;
-  const manyTopics = topicCount > 8;
-  const visibleTopics = (topics.data ?? []).filter((topic) =>
-    normalizeForSearch(topic.name).includes(normalizeForSearch(topicQuery)),
-  );
 
   // Tìm khi ngừng gõ 300 ms; thay URL thay vì thêm lịch sử.
   useEffect(() => {
@@ -171,61 +169,30 @@ function QuestionBankPage() {
             <h2 className="px-2 pb-1 text-sm font-semibold text-fg-muted">
               {t('questionBank.topics')}
             </h2>
-            <TopicLink
-              active={!search.topicId}
-              onClick={() => setFilter({ topicId: undefined })}
-              count={total}
-            >
-              {t('questionBank.allTopics')}
-            </TopicLink>
-            {manyTopics && (
-              <div className="px-1 pb-1">
-                <SearchField
-                  id="topic-filter"
-                  label={t('questionBank.searchTopics')}
-                  value={topicQuery}
-                  onChange={(e) => setTopicQuery(e.target.value)}
-                />
-              </div>
-            )}
-            <div className="flex max-h-[55dvh] flex-col gap-1 overflow-y-auto">
-              {visibleTopics.map((topic) => (
-                <TopicLink
-                  key={topic.id}
-                  active={search.topicId === topic.id}
-                  count={topic.questionCount ?? 0}
-                  onClick={() => setFilter({ topicId: topic.id })}
-                >
-                  {topic.name}
-                </TopicLink>
-              ))}
-              {manyTopics && visibleTopics.length === 0 && (
-                <p className="px-2 py-2 text-sm text-fg-muted">
-                  {t('questionBank.noTopicMatch', { q: topicQuery.trim() })}
-                </p>
-              )}
-            </div>
+            <TopicNav
+              topics={topics.data ?? []}
+              selectedId={search.topicId}
+              onSelect={(topicId) => setFilter({ topicId })}
+              scroll
+            />
           </Card>
         </aside>
 
         <div className="flex min-w-0 flex-col gap-4">
           <div className="lg:hidden">
             {topicCount > 6 ? (
-              <SelectField
-                id="topic-picker"
-                label={t('questionBank.topicPicker')}
-                value={search.topicId ?? ''}
-                onChange={(e) => setFilter({ topicId: e.target.value || undefined })}
+              <Button
+                className="w-full justify-between! text-left"
+                aria-haspopup="dialog"
+                onClick={() => setPickingTopic(true)}
               >
-                <option value="">
-                  {t('questionBank.allTopics')} ({total})
-                </option>
-                {topics.data?.map((topic) => (
-                  <option key={topic.id} value={topic.id}>
-                    {topic.name} ({topic.questionCount ?? 0})
-                  </option>
-                ))}
-              </SelectField>
+                <span className="min-w-0 break-words">
+                  <span className="font-normal text-fg-muted">{t('questionBank.topics')}: </span>
+                  {topics.data?.find((topic) => topic.id === search.topicId)?.name ??
+                    t('questionBank.allTopics')}
+                </span>
+                <ChevronDown aria-hidden className="size-5 shrink-0" />
+              </Button>
             ) : (
               <ChipGroup label={t('questionBank.topics')}>
                 <Chip
@@ -235,7 +202,7 @@ function QuestionBankPage() {
                 >
                   {t('questionBank.allTopics')}
                 </Chip>
-                {topics.data?.map((topic) => (
+                {sortTopics(topics.data ?? []).map((topic) => (
                   <Chip
                     key={topic.id}
                     active={search.topicId === topic.id}
@@ -303,6 +270,20 @@ function QuestionBankPage() {
         </div>
       </div>
 
+      <Dialog
+        open={pickingTopic}
+        onClose={() => setPickingTopic(false)}
+        title={t('questionBank.chooseTopicTitle')}
+      >
+        <TopicNav
+          topics={topics.data ?? []}
+          selectedId={search.topicId}
+          onSelect={(topicId) => {
+            setFilter({ topicId });
+            setPickingTopic(false);
+          }}
+        />
+      </Dialog>
       <TopicManager open={managing} onClose={() => setManaging(false)} />
       <TypeChooser
         open={choosingType}
@@ -311,32 +292,6 @@ function QuestionBankPage() {
         noTopics={noTopics}
       />
     </section>
-  );
-}
-
-function TopicLink({
-  active,
-  count,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  count: number;
-  onClick: () => void;
-  children: string;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`flex min-h-12 cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium pointer-fine:min-h-9 ${
-        active ? 'bg-primary-soft text-on-primary-soft' : 'text-fg hover:bg-primary-soft'
-      }`}
-    >
-      <span className="min-w-0 break-words">{children}</span>
-      <span className="shrink-0 tabular-nums text-fg-muted">{count}</span>
-    </button>
   );
 }
 
@@ -589,11 +544,7 @@ function BulkBar({
           onChange={(e) => setTarget(e.target.value)}
         >
           <option value="">{t('questionBank.chooseTopic')}</option>
-          {topics.data?.map((topic) => (
-            <option key={topic.id} value={topic.id}>
-              {topic.name}
-            </option>
-          ))}
+          <TopicOptions topics={topics.data ?? []} />
         </SelectField>
         <ErrorMessage>{move.isError && errorMessage(t, move.error)}</ErrorMessage>
         <div className="flex flex-col gap-2 sm:flex-row-reverse">

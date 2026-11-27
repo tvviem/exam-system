@@ -10,6 +10,7 @@ import { pageState, selectRange, togglePage, toggleQuestion } from '../question-
 import { Button, Dialog, ErrorMessage, SearchField, SelectField, TextField } from '.';
 import { EmptyState, ListSkeleton, Pagination } from './admin';
 import { QuestionDetailDialog } from './question-detail-dialog';
+import { TopicOptions } from './topic-options';
 
 /**
  * Chọn Câu hỏi từ ngân hàng để thêm vào một Phần của Bộ đề (Q186): dùng cùng bộ lọc với danh sách Câu hỏi, tick nhiều
@@ -197,11 +198,7 @@ export function QuestionPicker({
               }}
             >
               <option value="">{t('exam.picker.allTopics')}</option>
-              {topics.data?.map((topic) => (
-                <option key={topic.id} value={topic.id}>
-                  {topic.name}
-                </option>
-              ))}
+              <TopicOptions topics={topics.data ?? []} />
             </SelectField>
             <SelectField
               id="picker-type"

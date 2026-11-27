@@ -32,6 +32,7 @@ import { QuestionView } from './question-view';
 import { StickyActionBar } from './sticky-action-bar';
 import { Tabs } from './tabs';
 import { useToast } from './toast';
+import { TopicOptions } from './topic-options';
 
 // Trình soạn Câu hỏi (docs/plan/slice-2.md, Q119): lưu bằng nút, cảnh báo khi rời trang đang sửa dở,
 // bản đang soạn nhớ trên thiết bị. TipTap tải lười để không nặng trang danh sách.
@@ -213,11 +214,7 @@ export function QuestionEditor({
             onChange={(e) => patch({ topicId: e.target.value })}
             error={shown.includes('topic') && t('questionBank.problem.topic')}
           >
-            {activeTopics.map((topic) => (
-              <option key={topic.id} value={topic.id}>
-                {topic.name}
-              </option>
-            ))}
+            <TopicOptions topics={activeTopics} />
           </SelectField>
           <SelectField
             id="q-type"

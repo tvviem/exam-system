@@ -1062,6 +1062,10 @@
   "questionBank": {
     "title": "Ngân hàng câu hỏi",
     "topics": "Chủ đề",
+    "topicMatches": "{{count}} Chủ đề khớp",
+    "noTopicMatchHint": "Thử gõ ít từ hơn.",
+    "topicGroupSize": "({{count}} Chủ đề)",
+    "chooseTopicTitle": "Chọn Chủ đề",
     "allTopics": "Tất cả Chủ đề",
     "topic": "Chủ đề",
     "type": "Loại câu hỏi",

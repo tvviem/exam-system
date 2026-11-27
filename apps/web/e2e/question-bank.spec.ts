@@ -427,9 +427,12 @@ test('quản lý nhiều Chủ đề: tìm, lưu trữ, khôi phục qua menu; c
   await expect(manager).toBeVisible();
   await manager.getByRole('button', { name: 'Đóng', exact: true }).last().click();
 
-  // cột lọc: laptop có ô tìm Chủ đề, điện thoại là ô chọn
+  // cột lọc: laptop có ô tìm Chủ đề, điện thoại là nút mở hộp chọn Chủ đề (có ô tìm)
   if (testInfo.project.name === 'mobile') {
-    await expect(page.getByLabel('Chủ đề', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /^Chủ đề:/ }).click();
+    await expect(
+      page.getByRole('dialog', { name: 'Chọn Chủ đề' }).getByLabel('Tìm Chủ đề'),
+    ).toBeVisible();
   } else {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.getByLabel('Tìm Chủ đề').fill('dao ham');

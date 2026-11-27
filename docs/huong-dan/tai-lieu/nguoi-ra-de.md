@@ -207,7 +207,8 @@ Gõ hay dán các dấu `*`, `_` **giữ nguyên là chữ** (không tự thành
 ![Danh sách câu hỏi](anh:nguoi-ra-de/14-danh-sach-cau-hoi)
 
 - Khi có hơn 10.000 câu khớp, danh sách ghi **"hơn 10.000"** và chỉ cho xem 10.000 câu mới sửa nhất: hãy lọc theo Chủ đề, Loại, tag hoặc tìm để thu hẹp.
-- Cột trái chọn **Chủ đề** (kèm số câu). Tên Chủ đề dài tự xuống dòng nên đọc được đủ.
+- Cột trái chọn **Chủ đề** (kèm số câu). Tên Chủ đề dài tự xuống dòng nên đọc được đủ. Các Chủ đề có **cùng phần đầu trước dấu ` - `** được gom thành nhóm bấm mở, đóng (ví dụ `CTDL 1 - Mở đầu`, `CTDL 2 - Danh sách` vào nhóm **CTDL**); số trong tên được xếp đúng thứ tự (`Chương 2` trước `Chương 10`). Muốn Chủ đề tự vào nhóm thì đặt tên theo kiểu `Tên học phần - Chương …`.
+- **Tìm Chủ đề:** gõ một hay nhiều từ, không cần dấu, thứ tự nào cũng được (ví dụ `cay ctdl`); **Enter** chọn kết quả đầu, **Esc** xóa từ khóa. Trên điện thoại, bấm nút **Chủ đề: …** để mở danh sách có ô tìm. Ô chọn Chủ đề ở màn soạn, nhập Excel và hộp chọn câu cũng chia theo nhóm.
 - **Tìm câu hỏi**: gõ một phần nội dung, không cần dấu (ví dụ "mang" tìm ra "mạng").
 - Lọc theo **Loại câu hỏi**, **Trạng thái** (Đang dùng hoặc Đã lưu trữ) và **Tag**.
 - Dòng phụ dưới mỗi câu cho biết Chủ đề, ngày cập nhật và nhãn **Chưa dùng** nếu câu chưa nằm trong Bộ đề nào.
