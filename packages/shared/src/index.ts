@@ -11,6 +11,7 @@ export * from './question.js';
 export * from './realtime.js';
 export * from './rich-text.js';
 export * from './session.js';
+export * from './tag-filter.js';
 export * from './undo-force-submit.js';
 export * from './variant.js';
 export * from './waiting-room.js';

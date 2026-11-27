@@ -1,17 +1,20 @@
-import { EXAM_MAX_ITEMS, QUESTION_TYPES } from '@exam/shared';
+import { EXAM_MAX_ITEMS, QUESTION_TYPES, type TagMatch } from '@exam/shared';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, Eye, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../errors';
 import type { PickedQuestion } from '../exam-draft';
-import { questionsQuery, topicsQuery } from '../question-bank';
+import { questionsQuery, questionTagsQuery, topicsQuery } from '../question-bank';
 import { pageState, selectRange, togglePage, toggleQuestion } from '../question-selection';
 import { useMediaQuery, WIDE_SCREEN } from '../use-media-query';
-import { Button, Dialog, ErrorMessage, fieldClass, SearchField, SelectField, TextField } from '.';
+import { Button, Dialog, ErrorMessage, fieldClass, SearchField, SelectField } from '.';
 import { EmptyState, FilterChip, ListSkeleton, Pagination } from './admin';
 import { QuestionDetailDialog } from './question-detail-dialog';
+import { TagFilter, TagFilterSummary } from './tag-filter';
 import { TopicCombobox } from './topic-combobox';
+
+const NARROW_CHIPS = 4;
 
 /**
  * Chọn Câu hỏi từ ngân hàng để thêm vào một Phần của Bộ đề (Q186): dùng cùng bộ lọc với danh sách Câu hỏi, tick nhiều
@@ -47,7 +50,8 @@ export function QuestionPicker({
   const [q, setQ] = useState('');
   const [topicId, setTopicId] = useState('');
   const [type, setType] = useState('');
-  const [tag, setTag] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagMatch, setTagMatch] = useState<TagMatch>('all');
   const [page, setPage] = useState(1);
   const [chosen, setChosen] = useState<Map<string, PickedQuestion>>(new Map());
   // Câu đang xem ở "Chi tiết câu hỏi" (mở từ nút Xem của dòng); đóng hộp chính thì đóng luôn.
@@ -65,7 +69,7 @@ export function QuestionPicker({
   useEffect(() => {
     anchor.current = null;
     listRef.current?.scrollTo(0, 0);
-  }, [page, q, topicId, type, tag]);
+  }, [page, q, topicId, type, tags, tagMatch]);
 
   // Chờ gõ xong một nhịp rồi mới hỏi api. Chỉ đặt lại trang khi từ khóa thật sự đổi: nếu không, bộ đếm chạy ngay từ lúc màn
   // Bộ đề được dựng và kéo người dùng về trang 1 giữa chừng khi họ vừa sang trang 2.
@@ -84,10 +88,16 @@ export function QuestionPicker({
     ...questionsQuery({
       q: q || undefined,
       topicId: topicId || undefined,
-      tag: tag.trim() || undefined,
+      tag: tags.length > 0 ? tags : undefined,
+      tagMatch: tags.length > 1 && tagMatch === 'any' ? 'any' : undefined,
       type: (type || undefined) as (typeof QUESTION_TYPES)[number] | undefined,
       page,
     }),
+    enabled: open,
+  });
+
+  const tagCounts = useQuery({
+    ...questionTagsQuery({ topicId: topicId || undefined }),
     enabled: open,
   });
 
@@ -169,7 +179,11 @@ export function QuestionPicker({
   };
   const pickTopic = filter(setTopicId);
   const pickType = filter(setType);
-  const pickTag = filter(setTag);
+  const pickTags = (next: string[], match: TagMatch) => {
+    setTags(next);
+    setTagMatch(match);
+    setPage(1);
+  };
   const topicName = topics.data?.find((topic) => topic.id === topicId)?.name;
   const chips = [
     topicId && { key: 'topic', label: topicName ?? '', clear: () => pickTopic('') },
@@ -178,14 +192,21 @@ export function QuestionPicker({
       label: t(`questionType.${type as (typeof QUESTION_TYPES)[number]}`),
       clear: () => pickType(''),
     },
-    tag.trim() && {
-      key: 'tag',
-      label: t('exam.picker.tagFilter', { tag: tag.trim() }),
-      clear: () => pickTag(''),
-    },
+    ...tags.map((tag) => ({
+      key: `tag ${tag}`,
+      label: tag,
+      clear: () => {
+        setTags((prev) => prev.filter((other) => other !== tag));
+        setPage(1);
+      },
+    })),
   ].filter((chip) => !!chip);
+  // Màn hẹp chỉ hiện vài nhãn để chừa chỗ cho danh sách; phần còn lại xem ở màn Bộ lọc.
+  const shownChips = wide ? chips : chips.slice(0, NARROW_CHIPS);
   const resetFilters = () => {
-    for (const chip of chips) chip.clear();
+    pickTopic('');
+    pickType('');
+    pickTags([], 'all');
   };
 
   const sectionSelect = sections.length > 1 && (
@@ -263,12 +284,11 @@ export function QuestionPicker({
                 </option>
               ))}
             </SelectField>
-            <TextField
-              id="picker-tag"
-              label={t('exam.picker.tag')}
-              value={tag}
-              maxLength={100}
-              onChange={(e) => pickTag(e.target.value)}
+            <TagFilter
+              counts={tagCounts.data}
+              selected={tags}
+              match={tagMatch}
+              onChange={pickTags}
             />
           </div>
 
@@ -295,13 +315,22 @@ export function QuestionPicker({
 
             {chips.length > 0 && (
               <ul aria-label={t('exam.picker.activeFilters')} className="flex flex-wrap gap-2">
-                {chips.map((chip) => (
+                {shownChips.map((chip) => (
                   <li key={chip.key} className="min-w-0 wrap-anywhere">
                     <FilterChip label={chip.label} onClear={chip.clear} />
                   </li>
                 ))}
+                {chips.length > shownChips.length && (
+                  <li>
+                    <Button variant="ghost" onClick={() => setFiltering(true)}>
+                      {t('exam.picker.moreFilters', { count: chips.length - shownChips.length })}
+                    </Button>
+                  </li>
+                )}
               </ul>
             )}
+
+            <TagFilterSummary tags={tags} match={tagMatch} />
 
             {room <= 0 && <p className="text-sm text-warning">{t('exam.picker.full')}</p>}
             {chosen.size >= room && room > 0 && (

@@ -483,6 +483,24 @@
       "variantFull": "Đang xem {{label}}: Mã đề này lấy đủ mọi câu của Bộ đề."
     }
   },
+  "tagFilter": {
+    "label": "Tag",
+    "search": "Tìm tag",
+    "searchPlaceholder": "Tìm tag…",
+    "match": "Cách khớp",
+    "matchAll": "Khớp tất cả",
+    "matchAny": "Khớp bất kỳ",
+    "other": "Khác",
+    "option": "{{tag}}, {{count}} câu",
+    "more": "Xem thêm {{count}} tag",
+    "less": "Thu gọn",
+    "full": "Đã chọn tối đa {{count}} tag.",
+    "empty": "Chưa có tag nào.",
+    "none": "Không có tag khớp.",
+    "filtering": "Đang lọc: {{description}}",
+    "choose": "Chọn tag",
+    "chooseCount": "Chọn tag ({{count}})"
+  },
   "topicPicker": {
     "placeholder": "Gõ để tìm Chủ đề…",
     "recent": "Dùng gần đây",
@@ -1080,7 +1098,6 @@
     "topic": "Chủ đề",
     "type": "Loại câu hỏi",
     "allTypes": "Mọi loại",
-    "tag": "Tag",
     "tags": "Tags",
     "tagsHint": "Cách nhau bằng dấu phẩy, tối đa 10 tag.",
     "search": "Tìm câu hỏi",
@@ -1606,7 +1623,6 @@
       "clear": "Bỏ chọn tất cả",
       "keepHint": "Các câu đã chọn được giữ khi đổi trang hoặc bộ lọc.",
       "shiftHint": "Mẹo: tick một câu rồi giữ Shift và tick câu khác để chọn cả dải ở giữa.",
-      "tag": "Tag",
       "selectPageShort": "Chọn cả {{count}} câu",
       "filters": "Bộ lọc",
       "filtersActive": "Bộ lọc ({{count}})",
@@ -1616,7 +1632,7 @@
       "showList": "Xem danh sách",
       "showCount": "Xem {{count}} câu",
       "showCapped": "Xem hơn {{cap}} câu",
-      "tagFilter": "Tag: {{tag}}"
+      "moreFilters": "+{{count}} bộ lọc khác"
     },
     "nav": {
       "label": "Chuyển nhanh giữa các Phần",

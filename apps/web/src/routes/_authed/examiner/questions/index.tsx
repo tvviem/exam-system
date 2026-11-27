@@ -1,6 +1,15 @@
+import { normalizeTag, TAG_FILTER_MAX, type TagMatch } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ChevronDown, ChevronRight, FileSpreadsheet, FolderCog, Plus, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  FileSpreadsheet,
+  FolderCog,
+  Plus,
+  Tags,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { errorMessage } from '../../../../lib/errors';
@@ -15,6 +24,7 @@ import {
   type QuestionListParams,
   type QuestionType,
   questionsQuery,
+  questionTagsQuery,
   restoreQuestions,
   topicsQuery,
 } from '../../../../lib/question-bank';
@@ -30,18 +40,27 @@ import {
   PrimaryButton,
   SearchField,
   SelectField,
-  TextField,
 } from '../../../../lib/ui';
-import { EmptyState, ListSkeleton, Pagination } from '../../../../lib/ui/admin';
+import { EmptyState, FilterChip, ListSkeleton, Pagination } from '../../../../lib/ui/admin';
 import { Chip, ChipGroup } from '../../../../lib/ui/chips';
 import { DataList } from '../../../../lib/ui/data-list';
 import { FilterBar } from '../../../../lib/ui/filter-bar';
 import { PageHeader } from '../../../../lib/ui/page-header';
 import { StickyActionBar } from '../../../../lib/ui/sticky-action-bar';
+import { TagFilter, TagFilterSummary } from '../../../../lib/ui/tag-filter';
 import { useToast } from '../../../../lib/ui/toast';
 import { TopicManager } from '../../../../lib/ui/topic-manager';
 import { TopicNav } from '../../../../lib/ui/topic-nav';
 import { TopicOptions } from '../../../../lib/ui/topic-options';
+
+function tagsFromSearch(value: unknown): string[] | undefined {
+  const tags = [value ?? []]
+    .flat()
+    .filter((tag) => typeof tag === 'string' || typeof tag === 'number')
+    .map((tag) => normalizeTag(String(tag)))
+    .filter(Boolean);
+  return tags.length > 0 ? [...new Set(tags)].slice(0, TAG_FILTER_MAX) : undefined;
+}
 
 export const Route = createFileRoute('/_authed/examiner/questions/')({
   validateSearch: (search: Record<string, unknown>): QuestionListParams => ({
@@ -50,7 +69,9 @@ export const Route = createFileRoute('/_authed/examiner/questions/')({
     type: QUESTION_TYPES.includes(search.type as QuestionType)
       ? (search.type as QuestionType)
       : undefined,
-    tag: typeof search.tag === 'string' && search.tag ? search.tag : undefined,
+    // Địa chỉ cũ có một `tag` (chữ), địa chỉ mới là danh sách.
+    tag: tagsFromSearch(search.tag),
+    tagMatch: search.tagMatch === 'any' ? 'any' : undefined,
     archived: search.archived === true || search.archived === 'true' ? true : undefined,
     page: cappedPageParam(search.page),
   }),
@@ -64,42 +85,56 @@ function QuestionBankPage() {
   const topics = useQuery(topicsQuery());
   const questions = useQuery(questionsQuery(search));
   const [q, setQ] = useState(search.q ?? '');
-  const [tag, setTag] = useState(search.tag ?? '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [managing, setManaging] = useState(false);
   const [choosingType, setChoosingType] = useState(false);
   const [pickingTopic, setPickingTopic] = useState(false);
+  const [pickingTags, setPickingTags] = useState(false);
+  const tags = search.tag ?? [];
+  const tagMatch = search.tagMatch ?? 'all';
+  const tagCounts = useQuery({
+    ...questionTagsQuery({ topicId: search.topicId, archived: search.archived }),
+    enabled: pickingTags,
+  });
   // Từ 7 Chủ đề trở lên chip lọc thành ô chọn (điện thoại); từ 9 thì cột bên có ô tìm và vùng cuộn (laptop).
   const topicCount = topics.data?.length ?? 0;
 
   // Tìm khi ngừng gõ 300 ms; thay URL thay vì thêm lịch sử.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if ((search.q ?? '') !== q.trim() || (search.tag ?? '') !== tag.trim()) {
+      if ((search.q ?? '') !== q.trim()) {
         void navigate({
-          search: (s) => ({
-            ...s,
-            q: q.trim() || undefined,
-            tag: tag.trim() || undefined,
-            page: undefined,
-          }),
+          search: (s) => ({ ...s, q: q.trim() || undefined, page: undefined }),
           replace: true,
         });
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [q, tag, search.q, search.tag, navigate]);
+  }, [q, search.q, navigate]);
 
   // Đổi bộ lọc hoặc trang thì bỏ chọn, để thao tác hàng loạt không chạm vào dòng đã khuất.
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ cần theo dõi tham số tìm
   useEffect(
     () => setSelected(new Set()),
-    [search.q, search.topicId, search.type, search.tag, search.archived, search.page],
+    [
+      search.q,
+      search.topicId,
+      search.type,
+      search.tag,
+      search.tagMatch,
+      search.archived,
+      search.page,
+    ],
   );
 
   const setFilter = (patch: Partial<QuestionListParams>) =>
     navigate({ search: (s) => ({ ...s, ...patch, page: undefined }) });
-  const activeFilters = [search.type, search.tag, search.archived].filter(Boolean).length;
+  const setTags = (next: string[], match: TagMatch) =>
+    setFilter({
+      tag: next.length > 0 ? next : undefined,
+      tagMatch: next.length > 1 && match === 'any' ? 'any' : undefined,
+    });
+  const activeFilters = [search.type, search.archived].filter(Boolean).length;
   const total = topics.data?.reduce((sum, topic) => sum + (topic.questionCount ?? 0), 0) ?? 0;
   const noTopics = topics.isSuccess && topics.data.length === 0;
 
@@ -127,12 +162,6 @@ function QuestionBankPage() {
         <option value="active">{t('questionBank.statusActive')}</option>
         <option value="archived">{t('questionBank.statusArchived')}</option>
       </SelectField>
-      <TextField
-        id="filter-tag"
-        label={t('questionBank.tag')}
-        value={tag}
-        onChange={(e) => setTag(e.target.value)}
-      />
     </>
   );
 
@@ -218,7 +247,6 @@ function QuestionBankPage() {
 
           <FilterBar
             activeCount={activeFilters}
-            wide
             contained
             filters={filters}
             search={
@@ -231,6 +259,31 @@ function QuestionBankPage() {
               />
             }
           />
+
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button aria-haspopup="dialog" onClick={() => setPickingTags(true)}>
+                <Tags aria-hidden className="size-5" />
+                {tags.length > 0
+                  ? t('tagFilter.chooseCount', { count: tags.length })
+                  : t('tagFilter.choose')}
+              </Button>
+              {tags.map((tag) => (
+                <span key={tag} className="min-w-0 wrap-anywhere">
+                  <FilterChip
+                    label={tag}
+                    onClear={() =>
+                      setTags(
+                        tags.filter((other) => other !== tag),
+                        tagMatch,
+                      )
+                    }
+                  />
+                </span>
+              ))}
+            </div>
+            <TagFilterSummary tags={tags} match={tagMatch} />
+          </div>
 
           {noTopics ? (
             <EmptyState>
@@ -283,6 +336,18 @@ function QuestionBankPage() {
             setPickingTopic(false);
           }}
         />
+      </Dialog>
+      <Dialog
+        open={pickingTags}
+        onClose={() => setPickingTags(false)}
+        title={t('tagFilter.choose')}
+      >
+        <TagFilter counts={tagCounts.data} selected={tags} match={tagMatch} onChange={setTags} />
+        <div className="sticky bottom-0 -mx-5 -mb-5 border-t border-border bg-surface-raised px-5 py-3">
+          <PrimaryButton className="w-full" onClick={() => setPickingTags(false)}>
+            {t('common.done')}
+          </PrimaryButton>
+        </div>
       </Dialog>
       <TopicManager open={managing} onClose={() => setManaging(false)} />
       <TypeChooser

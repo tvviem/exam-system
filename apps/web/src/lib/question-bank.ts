@@ -1,4 +1,4 @@
-import type { QuestionInput, QuestionType, RichText } from '@exam/shared';
+import type { QuestionInput, QuestionType, RichText, TagMatch } from '@exam/shared';
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import type { PageResult } from './admin';
 import { apiFetch } from './api';
@@ -43,7 +43,9 @@ export interface QuestionListParams {
   q?: string;
   topicId?: string;
   type?: QuestionType;
-  tag?: string;
+  tag?: string[];
+  /** Cách ghép nhiều tag; mặc định `all`. */
+  tagMatch?: TagMatch;
   /** Chỉ hiện câu đã Lưu trữ (Q174). */
   archived?: boolean;
   page?: number;
@@ -62,6 +64,18 @@ export const questionsQuery = (params: QuestionListParams) =>
     queryFn: ({ signal }) =>
       apiFetch<PageResult<QuestionListItem>>(
         `/questions${queryString({ ...params, archived: params.archived ? 'true' : undefined })}`,
+        { signal },
+      ),
+    placeholderData: keepPreviousData,
+  });
+
+/** Các tag đang có kèm số câu, theo Chủ đề và trạng thái Lưu trữ đang xem. */
+export const questionTagsQuery = (params: { topicId?: string; archived?: boolean }) =>
+  queryOptions({
+    queryKey: ['questions', 'tags', params],
+    queryFn: ({ signal }) =>
+      apiFetch<{ tag: string; count: number }[]>(
+        `/questions/tags${queryString({ ...params, archived: params.archived ? 'true' : undefined })}`,
         { signal },
       ),
     placeholderData: keepPreviousData,
