@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { choosePickerTopic } from '../e2e/topic-support';
 import { openPage, shot, signIn } from './support';
 
 // Người ra đề: soạn Bộ đề (tài liệu nguoi-ra-de.md).
@@ -33,9 +34,7 @@ test('Soạn Bộ đề: tạo, thêm câu, Phần, điểm, rút câu, xem th�
     await expect(addDialog).toBeVisible();
     if (section !== undefined)
       await addDialog.getByLabel('Thêm vào Phần').selectOption({ index: section });
-    await addDialog
-      .getByLabel('Chủ đề', { exact: true })
-      .selectOption({ label: 'Tin học căn bản' });
+    await choosePickerTopic(addDialog, 'Tin học căn bản');
     await addDialog.getByLabel('Loại câu hỏi').selectOption({ label: type });
     await expect(addDialog.getByText(/Chọn cả \d+ câu trên trang này/)).toBeVisible();
   };
@@ -43,7 +42,10 @@ test('Soạn Bộ đề: tạo, thêm câu, Phần, điểm, rút câu, xem th�
   await addDialog.getByText(/Chọn cả \d+ câu trên trang này/).click();
   await shot(page, 'nguoi-ra-de', '33-hop-them-cau', {
     marks: [
-      { at: addDialog.getByLabel('Chủ đề', { exact: true }), text: 'Lọc theo Chủ đề' },
+      {
+        at: addDialog.getByRole('combobox', { name: 'Chủ đề' }),
+        text: 'Chọn Chủ đề: gõ để tìm, cả chữ cái đầu',
+      },
       {
         at: addDialog.getByLabel('Loại câu hỏi'),
         text: 'Lọc theo Loại câu hỏi (hoặc tìm theo nội dung, tag)',

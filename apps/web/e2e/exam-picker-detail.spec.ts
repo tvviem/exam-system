@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { ORIGIN, overflow, signIn } from './take-support';
+import { choosePickerTopic } from './topic-support';
 
 // Soạn Bộ đề: nút "Thêm câu hỏi" ở thanh dính (độc lập với các Phần) và hộp "Chi tiết câu hỏi" trong hộp "Thêm câu hỏi vào Bộ đề".
 // Chạy trên cả desktop và mobile.
@@ -152,7 +153,7 @@ test('Nút "Thêm câu hỏi" ở thanh dính: luôn thấy khi cuộn, không c
   await addButton(page).click();
   await expect(selectedDestination(page)).toContainText('Phần I');
   await expect(selectedDestination(page)).not.toContainText('Phần II');
-  await pickerDialog(page).getByRole('button', { name: 'Hủy' }).click();
+  await pickerDialog(page).getByRole('button', { name: 'Đóng' }).click();
   await expect(pickerDialog(page)).toBeHidden();
 
   // Cuộn tới cuối (đang xem Phần II) → đích mặc định là Phần II; đổi sang Phần I ngay trong hộp; thêm câu vào Phần I.
@@ -160,7 +161,7 @@ test('Nút "Thêm câu hỏi" ở thanh dính: luôn thấy khi cuộn, không c
   await addButton(page).click();
   await expect(selectedDestination(page)).toContainText('Phần II');
   await pickerDialog(page).getByLabel('Thêm vào Phần').selectOption({ index: 0 });
-  await pickerDialog(page).getByLabel('Chủ đề').selectOption({ label: topicName });
+  await choosePickerTopic(pickerDialog(page), topicName);
   await pickerDialog(page)
     .getByRole('checkbox', { name: /Thủ đô của Việt Nam/ })
     .check();
@@ -198,7 +199,7 @@ test('Hộp "Chi tiết câu hỏi": đủ đề bài và phương án, đáp á
   await page.goto(`/examiner/exams/${examId}`);
   await addButton(page).click();
   const picker = pickerDialog(page);
-  await picker.getByLabel('Chủ đề').selectOption({ label: topicName });
+  await choosePickerTopic(picker, topicName);
   await expect(picker.getByRole('checkbox', { name: /Thủ đô của Việt Nam/ })).toBeVisible();
 
   // Mở chi tiết câu chọn một: đề bài, ba phương án, đúng một đáp án có dấu ✓ kèm chú thích; thẻ và Chủ đề.

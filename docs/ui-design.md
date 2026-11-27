@@ -261,6 +261,16 @@ Theo [plan/chu-de-ux-thiet-ke.md](plan/chu-de-ux-thiet-ke.md).
 - Danh sách dài cần ô tìm; điện thoại dùng hộp chọn có ô tìm thay cho ô chọn gốc khi cần tìm.
 - Một thành phần dùng ở hai chỗ cùng có trong trang (cột và hộp thoại) thì `id` của ô nhập sinh bằng `useId`.
 
+## 16. Hộp chọn nội dung lớn (27/11/2026)
+
+Theo [plan/hop-chon-cau-thiet-ke.md](plan/hop-chon-cau-thiet-ke.md); mẫu đầu tiên là hộp "Thêm câu hỏi vào Bộ đề".
+
+- `Dialog` cỡ `screen`: toàn màn hình dưới 1024 px, gần hết màn hình từ 1024 px; đầu và chân đứng yên, **chỉ danh sách và cột lọc cuộn** (không cuộn cả hộp, không lồng hai vùng cuộn).
+- Màn hẹp: bộ lọc là một màn riêng trong cùng hộp; Esc hay nút Back quay về danh sách trước khi đóng hộp (`onEscape`).
+- Bộ lọc đang bật hiện thành nhãn gỡ được, nên tên dài vẫn đọc đủ dù ô chọn chỉ có một dòng.
+- `TopicCombobox`: ô chọn Chủ đề gõ để tìm (mẫu `combobox` + `listbox`), dùng khi danh sách dài. Danh sách đang mở thì Esc chỉ đóng danh sách.
+- Lớp `hidden` không ghi đè được `inline-flex` của `Button`: muốn ẩn nút theo bề rộng thì bọc ngoài hoặc không dựng.
+
 ## Quyết định (Q71–Q75)
 
 | Câu | Câu hỏi | Quyết định |

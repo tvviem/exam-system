@@ -31,6 +31,7 @@ export function Pagination({
   pageSize,
   total,
   totalCapped = false,
+  compact = false,
   onPage,
 }: {
   page: number;
@@ -38,6 +39,8 @@ export function Pagination({
   total: number;
   /** Còn nhiều hơn `total`: máy chủ chỉ đếm và cho lật tới mức đó. */
   totalCapped?: boolean;
+  /** Chỉ biểu tượng ở hai nút, cho thanh công cụ hẹp. */
+  compact?: boolean;
   onPage: (page: number) => void;
 }) {
   const { t } = useTranslation();
@@ -54,7 +57,7 @@ export function Pagination({
         aria-label={t('pagination.previous')}
       >
         <ChevronLeft aria-hidden className="size-5" />
-        <span className="hidden sm:inline">{t('pagination.previous')}</span>
+        {!compact && <span className="hidden sm:inline">{t('pagination.previous')}</span>}
       </Button>
       <p className="text-sm text-fg-muted tabular-nums">
         {totalCapped
@@ -67,7 +70,7 @@ export function Pagination({
         onClick={() => onPage(page + 1)}
         aria-label={t('pagination.next')}
       >
-        <span className="hidden sm:inline">{t('pagination.next')}</span>
+        {!compact && <span className="hidden sm:inline">{t('pagination.next')}</span>}
         <ChevronRight aria-hidden className="size-5" />
       </Button>
     </nav>
