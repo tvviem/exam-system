@@ -483,6 +483,16 @@
       "variantFull": "Đang xem {{label}}: Mã đề này lấy đủ mọi câu của Bộ đề."
     }
   },
+  "topicPicker": {
+    "placeholder": "Gõ để tìm Chủ đề…",
+    "recent": "Dùng gần đây",
+    "byName": "Theo tên",
+    "option": "{{name}}, {{count}} câu",
+    "more": "Còn {{count}} Chủ đề khác. Gõ tên để tìm.",
+    "matches": "{{count}} Chủ đề khớp",
+    "moreResults": "Còn {{count}} kết quả, gõ thêm để thu hẹp.",
+    "none": "Không có Chủ đề khớp. Thử gõ ít từ hơn."
+  },
   "pagination": {
     "label": "Phân trang",
     "previous": "Trang trước",
@@ -1596,7 +1606,17 @@
       "clear": "Bỏ chọn tất cả",
       "keepHint": "Các câu đã chọn được giữ khi đổi trang hoặc bộ lọc.",
       "shiftHint": "Mẹo: tick một câu rồi giữ Shift và tick câu khác để chọn cả dải ở giữa.",
-      "tag": "Tag"
+      "tag": "Tag",
+      "selectPageShort": "Chọn cả {{count}} câu",
+      "filters": "Bộ lọc",
+      "filtersActive": "Bộ lọc ({{count}})",
+      "activeFilters": "Đang lọc",
+      "backToList": "Quay lại danh sách",
+      "resetFilters": "Xóa bộ lọc",
+      "showList": "Xem danh sách",
+      "showCount": "Xem {{count}} câu",
+      "showCapped": "Xem hơn {{cap}} câu",
+      "tagFilter": "Tag: {{tag}}"
     },
     "nav": {
       "label": "Chuyển nhanh giữa các Phần",

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 // Component dùng chung (docs/ui-design.md mục 6): phần tử HTML gốc, chỉ dùng token màu.
 
-const fieldClass =
+export const fieldClass =
   'h-12 pointer-fine:h-10 w-full rounded-lg border border-border-strong bg-surface px-3 text-base text-fg outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/40 aria-invalid:border-danger';
 
 function FieldShell({
@@ -261,14 +261,23 @@ export function Dialog({
   children,
   dismissible = true,
   size = 'md',
+  headerExtra,
+  onEscape,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   dismissible?: boolean;
-  /** `xl` cho nội dung rộng như ảnh phóng to. */
-  size?: 'md' | 'xl';
+  /**
+   * `xl` cho nội dung rộng như ảnh phóng to. `screen` cho màn chọn nhiều nội dung: toàn màn hình khi hẹp, gần hết màn hình
+   * khi rộng; đầu hộp cố định, nội dung (`children`) tự chia vùng cuộn.
+   */
+  size?: 'md' | 'xl' | 'screen';
+  /** Nội dung cạnh tiêu đề, trước nút đóng (cỡ `screen`). */
+  headerExtra?: ReactNode;
+  /** Phím Esc hay nút Back của máy; mặc định giống nút đóng. */
+  onEscape?: () => void;
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
@@ -281,35 +290,59 @@ export function Dialog({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
+  const screen = size === 'screen';
+  const header = (
+    <div
+      className={
+        screen
+          ? 'flex shrink-0 items-center gap-4 border-b border-border py-2 pr-3 pl-4 lg:pl-5'
+          : 'flex items-start justify-between gap-4'
+      }
+    >
+      <h2 id={titleId} className={`text-lg font-semibold ${screen ? 'min-w-0 flex-1' : ''}`}>
+        {title}
+      </h2>
+      {headerExtra}
+      {dismissible && (
+        <button
+          type="button"
+          aria-label={t('common.close')}
+          className={`inline-flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-lg text-fg-muted hover:bg-primary-soft ${
+            screen ? '' : '-m-2'
+          }`}
+          onClick={onClose}
+        >
+          <X aria-hidden className="size-5" />
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <dialog
       ref={ref}
       aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();
-        if (dismissible) onClose();
+        if (dismissible) (onEscape ?? onClose)();
       }}
-      className={`m-0 mt-auto w-full max-w-none rounded-t-2xl bg-surface-raised p-0 text-fg sm:m-auto sm:rounded-2xl ${
-        size === 'xl' ? 'sm:max-w-4xl' : 'sm:max-w-lg'
+      className={`bg-surface-raised p-0 text-fg ${
+        screen
+          ? 'm-0 h-dvh max-h-none w-full max-w-none lg:m-auto lg:h-[min(57.5rem,calc(100dvh-2rem))] lg:w-[min(75rem,calc(100vw-2rem))] lg:rounded-2xl'
+          : `m-0 mt-auto w-full max-w-none rounded-t-2xl sm:m-auto sm:rounded-2xl ${
+              size === 'xl' ? 'sm:max-w-4xl' : 'sm:max-w-lg'
+            }`
       }`}
     >
       {open && (
-        <div className="flex max-h-[85dvh] flex-col gap-4 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          <div className="flex items-start justify-between gap-4">
-            <h2 id={titleId} className="text-lg font-semibold">
-              {title}
-            </h2>
-            {dismissible && (
-              <button
-                type="button"
-                aria-label={t('common.close')}
-                className="-m-2 inline-flex size-12 cursor-pointer items-center justify-center rounded-lg text-fg-muted hover:bg-primary-soft"
-                onClick={onClose}
-              >
-                <X aria-hidden className="size-5" />
-              </button>
-            )}
-          </div>
+        <div
+          className={
+            screen
+              ? 'flex h-full flex-col overflow-hidden'
+              : 'flex max-h-[85dvh] flex-col gap-4 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]'
+          }
+        >
+          {header}
           {children}
         </div>
       )}

@@ -240,8 +240,10 @@ Bộ đề mới là **bản nháp** (sửa tự do). Chỉ khi **Phát hành** 
 
 Bấm **Thêm câu hỏi** (nút luôn nằm ở thanh dưới cùng màn hình, kể cả khi bạn cuộn). Hộp chọn câu hiện ra:
 
-- Dòng đầu cho biết đang thêm vào **Phần** nào (đổi được ngay trong hộp).
-- Lọc theo **Chủ đề**, **Loại câu hỏi**, **Tag** hoặc tìm theo nội dung.
+- Trên máy tính, bộ lọc nằm ở **cột bên trái**, danh sách câu bên phải. Trên điện thoại hộp chiếm cả màn hình; bấm **Bộ lọc** để mở màn lọc, rồi **Xem … câu** để quay lại.
+- **Thêm vào Phần** nào được ghi rõ và đổi được ngay trong hộp (máy tính: góc trên; điện thoại: phía dưới).
+- **Chủ đề** là ô **gõ để tìm**: mới mở chỉ hiện vài Chủ đề (ưu tiên Chủ đề vừa dùng); gõ một hay nhiều từ không dấu, hoặc chữ cái đầu (`ctdl` ra "Cấu trúc dữ liệu"); mũi tên và **Enter** để chọn, **Esc** để đóng danh sách.
+- Lọc thêm theo **Loại câu hỏi**, **Tag** (gõ đúng một tag) hoặc tìm theo nội dung. Các bộ lọc đang bật hiện thành nhãn phía trên danh sách, bấm dấu × để gỡ.
 - Tick từng câu, hoặc **Chọn cả … câu trên trang này**. Mẹo: tick một câu rồi giữ **Shift** và tick câu khác để chọn cả dải.
 - Bấm **Xem** để mở **Chi tiết câu hỏi** (đề bài, phương án, đáp án đúng đánh dấu bằng màu và dấu ✓) trước khi quyết định.
 - Bấm **Thêm … câu vào Phần …**.

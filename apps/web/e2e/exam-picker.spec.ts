@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { choosePickerTopic } from './topic-support';
 
 // Hộp "Thêm câu hỏi vào Bộ đề": chọn cả trang, Shift + tick chọn dải, lựa chọn giữ qua trang và bộ lọc.
 
@@ -67,7 +68,7 @@ test('chọn cả trang, Shift + tick chọn dải, giữ lựa chọn qua trang
   await expect(page.getByRole('heading', { name: 'Đề chọn nhiều', level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'Thêm câu hỏi' }).click();
   const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
-  await dialog.getByLabel('Chủ đề').selectOption({ label: topicName });
+  await choosePickerTopic(dialog, topicName);
   const count = (n: number) => dialog.getByText(new RegExp(`^Đã chọn ${n} câu`));
   const boxes = dialog.getByRole('checkbox', { name: /^Chọn câu:/ });
   await expect(boxes).toHaveCount(20);
@@ -199,7 +200,7 @@ test('hộp thêm câu cho biết đang thêm vào Phần nào; nút ngắn gọ
   await page.getByRole('button', { name: 'Thêm câu hỏi' }).click();
   const dialog = page.getByRole('dialog', { name: 'Thêm câu hỏi vào Bộ đề' });
   await dialog.getByLabel('Thêm vào Phần').selectOption({ index: 1 });
-  await dialog.getByLabel('Chủ đề').selectOption({ label: `Đích ${tag}` });
+  await choosePickerTopic(dialog, `Đích ${tag}`);
 
   // Ngay đầu hộp: ô "Thêm vào Phần" đang chọn đúng Phần 2.
   const target = dialog.getByLabel('Thêm vào Phần');
