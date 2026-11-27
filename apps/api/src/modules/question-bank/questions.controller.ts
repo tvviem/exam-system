@@ -1,4 +1,10 @@
-import { normalizeTag, questionInputSchema, questionTypeSchema } from '@exam/shared';
+import {
+  normalizeTag,
+  questionInputSchema,
+  questionTypeSchema,
+  TAG_FILTER_MAX,
+  TAG_MATCHES,
+} from '@exam/shared';
 import {
   Body,
   Controller,
@@ -18,16 +24,25 @@ import { CurrentUser, RequireTag } from '../identity/auth/auth.decorators';
 import type { AuthenticatedUser } from '../identity/auth/auth.types';
 import { QuestionsService } from './questions.service';
 
+// Một `tag` hay nhiều `tag=…&tag=…`; chuẩn hóa như lúc lưu, bỏ rỗng và trùng.
+const tagFilter = z
+  .union([z.string(), z.array(z.string())])
+  .optional()
+  .transform((value) => [...new Set([value ?? []].flat().map(normalizeTag))].filter(Boolean))
+  .pipe(z.array(z.string().max(100)).max(TAG_FILTER_MAX));
+const archived = z
+  .enum(['true', 'false'])
+  .optional()
+  .transform((v) => v === 'true');
 const listSchema = pageSchema.extend({
   topicId: z.uuid().optional(),
   type: questionTypeSchema.optional(),
-  tag: z.string().max(100).transform(normalizeTag).optional(),
+  tag: tagFilter,
+  tagMatch: z.enum(TAG_MATCHES).default('all'),
   q: z.string().trim().max(200).optional(),
-  archived: z
-    .enum(['true', 'false'])
-    .optional()
-    .transform((v) => v === 'true'),
+  archived,
 });
+const tagListSchema = z.object({ topicId: z.uuid().optional(), archived });
 const versionSchema = z.object({ version: z.number().int().min(1) });
 const idsSchema = z.array(z.uuid()).min(1).max(200);
 const moveSchema = z.strictObject({ ids: idsSchema, topicId: z.uuid() });
@@ -41,8 +56,15 @@ export class QuestionsController {
   @Get()
   @HeavyQuery('questions')
   list(@Query() query: unknown, @CurrentUser() user: AuthenticatedUser) {
-    const { page, pageSize, ...filter } = listSchema.parse(query);
-    return this.questions.list(user.id, filter, { page, pageSize });
+    const { page, pageSize, tag, ...filter } = listSchema.parse(query);
+    return this.questions.list(user.id, { ...filter, tags: tag }, { page, pageSize });
+  }
+
+  // Đường dẫn tĩnh đặt trước các đường dẫn có :id.
+  @Get('tags')
+  @HeavyQuery('questions')
+  tags(@Query() query: unknown, @CurrentUser() user: AuthenticatedUser) {
+    return this.questions.tags(user.id, tagListSchema.parse(query));
   }
 
   @Post()

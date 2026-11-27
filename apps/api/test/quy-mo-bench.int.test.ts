@@ -56,7 +56,9 @@ async function seedQuestions(ownerId: string) {
          jsonb_build_object('type','doc','content', jsonb_build_array(jsonb_build_object('type','paragraph','content',
            jsonb_build_array(jsonb_build_object('type','text','text', 'Câu ' || n || ' ' || w.acc))))),
          '{"maxLength": 100}', 1,
-         CASE WHEN n > $4 - ${RARE} THEN ARRAY['rathiem'] ELSE ARRAY['nhom ' || (n % 200)] END,
+         CASE WHEN n > $4 - ${RARE} THEN ARRAY['rathiem']
+              ELSE ARRAY['nhom ' || (n % 200), 'chương ' || (1 + n % 5),
+                         (ARRAY['nhận biết','thông hiểu','vận dụng'])[1 + n % 3]] END,
          'cau ' || n || ' ' || w.plain,
          now() - (n || ' seconds')::interval,
          CASE WHEN n % 50 = 7 AND n <= $4 - ${RARE} THEN now() END
@@ -99,6 +101,9 @@ async function seedAccounts() {
     `INSERT INTO audit_logs (action, entity_type, entity_id, at) SELECT 'user.created', 'user', id, created_at FROM users`,
   );
 }
+
+const tags = (...values: string[]) =>
+  values.map((value) => `tag=${encodeURIComponent(value)}`).join('&');
 
 const median = (values: number[]) =>
   [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
@@ -163,6 +168,25 @@ describe.skipIf(!process.env.QUY_MO_BENCH)(`đo quy mô lớn: ${N} Câu hỏi, 
         // Quét theo Loại không có chỉ mục riêng: ngưỡng nới (docs mục 6.5).
         ['Hiếm: Loại chỉ ở câu cũ nhất', '/api/questions?type=essay', 500],
         ['Chủ đề kèm số câu', '/api/topics', 200],
+        // Lọc nhiều tag và danh sách tag (loc-nhieu-tag-thiet-ke.md mục 6).
+        [
+          'Ba tag rộng: hai chương và một mức',
+          `/api/questions?${tags('chương 1', 'chương 2', 'vận dụng')}`,
+          500,
+        ],
+        ['Ba tag hẹp', `/api/questions?${tags('nhom 17', 'chương 3', 'vận dụng')}`, 500],
+        [
+          'Bất kỳ trong ba tag',
+          `/api/questions?${tags('nhom 17', 'nhom 18', 'chương 3')}&tagMatch=any`,
+          500,
+        ],
+        [
+          'Ba tag không câu nào khớp',
+          `/api/questions?${tags('rathiem', 'chương 1', 'vận dụng')}`,
+          500,
+        ],
+        ['Danh sách tag: một Chủ đề', `/api/questions/tags?topicId=${topic}`, 1000],
+        ['Danh sách tag: mọi Chủ đề', '/api/questions/tags', 1000],
         ['Tìm Câu hỏi: từ phổ biến', '/api/questions?q=ngan%20xep', 500],
         ['Tìm Câu hỏi: chỉ khớp câu cũ nhất', `/api/questions?q=cau%20${N - 3}`, 500],
         ['Tìm Câu hỏi: không có', '/api/questions?q=khongcocaunao', 500],

@@ -1,6 +1,6 @@
 # Lọc và quản lý theo nhiều tag
 
-**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q516–Q517 và Q520–Q524; thứ tự phát hành ở Q523 được thay bằng Q529 của [hop-chon-cau-thiet-ke.md](hop-chon-cau-thiet-ke.md)). Chưa viết mã.
+**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q516–Q517 và Q520–Q524; thứ tự phát hành ở Q523 được thay bằng Q529 của [hop-chon-cau-thiet-ke.md](hop-chon-cau-thiet-ke.md)). Tiến độ: **G1** xong về mã (lát P2); G2, G3 chưa làm.
 
 ## 1. Yêu cầu và hiện trạng
 
@@ -80,6 +80,18 @@ Chọn ngẫu nhiên N câu đang khớp bộ lọc trong hộp chọn câu; sau
 | Tích hợp API | lọc nhiều tag đúng ý nghĩa mục 2; một `tag` cũ vẫn đúng; quá 20 tag bị từ chối; danh sách tag đúng số, chỉ của người gọi, theo Chủ đề và trạng thái; thêm, bỏ hàng loạt (vượt 10 bị bỏ qua, không đụng câu người khác); đổi tên và gộp không tạo tag trùng; Bộ đề đã Phát hành không đổi |
 | Giao diện (máy tính, điện thoại) | tìm không dấu rồi chọn; nhãn, dòng "Đang lọc", chuyển chế độ; giữ trên địa chỉ; hộp chọn câu của Bộ đề lọc như vậy; không tràn ngang, trợ năng; gợi ý khi soạn; thao tác hàng loạt và đổi tên |
 | Quy mô | thêm vào `quy-mo-bench`: lọc ba tag, danh sách tag của một Chủ đề; mục tiêu dưới 500 ms ở 1.000.000 câu cho lọc, dưới 1 giây cho danh sách tag (không đạt thì đề xuất cách khác trước khi phát hành) |
+
+**Đã đo (27/11/2026, `quy-mo-bench`, mỗi câu ba tag, p50, một lần chạy):**
+
+| Việc | 100.000 câu | 1.000.000 câu | Ngưỡng |
+|---|---|---|---|
+| Lọc ba tag (hai chương và một mức, khớp rộng) | 47 ms | 238 ms | 500 ms |
+| Lọc ba tag khớp hẹp, hoặc không câu nào khớp | 34–44 ms | 8–15 ms | 500 ms |
+| Khớp bất kỳ trong ba tag | 42 ms | 235 ms | 500 ms |
+| Danh sách tag của một Chủ đề | 11 ms | 101 ms | 1 giây |
+| Danh sách tag của mọi Chủ đề | 56 ms | 400 ms | 1 giây |
+
+Cùng lần chạy 1.000.000: mục "gợi ý người khi gõ tên rất phổ biến" (đã ghi là chưa đạt ở [quy-mo-lon-thiet-ke.md](quy-mo-lon-thiet-ke.md) mục 6, trước đo 609–711 ms) đo được 1.022 ms; "lưu câu trả lời chậm nhất giữa 40 lượt tìm Câu hỏi" đạt sát ngưỡng (97 ms trên 100, trước 38–49 ms). Hai đường này không đổi mã ở lát này; chưa đo lại.
 
 ## 7. Rủi ro
 

@@ -1,6 +1,12 @@
-import { normalizeForSearch, plainTextOf, type QuestionInput } from '@exam/shared';
+import {
+  normalizeForSearch,
+  plainTextOf,
+  type QuestionInput,
+  type TagMatch,
+  tagGroups,
+} from '@exam/shared';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { ApiError } from '../../common/api-error';
 import { EXAM_USAGE, type ExamRef, type ExamUsage } from '../../common/exam-usage';
 import { countUpTo, type Page, paginateCapped } from '../../common/pagination';
@@ -14,13 +20,22 @@ import { TopicsService } from './topics.service';
 export interface QuestionFilter {
   topicId?: string;
   type?: QuestionInput['type'];
-  tag?: string;
+  /** Tag đã chuẩn hóa; cách ghép theo `tagMatch` (docs/plan/loc-nhieu-tag-thiet-ke.md mục 2). */
+  tags?: string[];
+  tagMatch?: TagMatch;
   q?: string;
   /** Mặc định ẩn câu đã Lưu trữ; `true` chỉ hiện câu đã Lưu trữ (Q174). */
   archived?: boolean;
 }
 
 const PREVIEW_CHARS = 160;
+/** Số tag nhiều nhất trong danh sách tag (nhiều câu nhất được giữ). */
+const TAG_LIST_MAX = 500;
+const textArray = (values: string[]) =>
+  sql`ARRAY[${sql.join(
+    values.map((value) => sql`${value}`),
+    sql`, `,
+  )}]::text[]`;
 
 /** `INVALID_STATE` nêu các Bộ đề nháp đang giữ Câu hỏi (Q166). */
 const questionInExam = (exams: ExamRef[]) =>
@@ -208,13 +223,35 @@ export class QuestionsService {
     }
   }
 
+  /** Các tag đang có (theo Chủ đề và trạng thái Lưu trữ) kèm số câu, nhiều câu trước; chỉ câu của người này. */
+  tags(ownerId: string, filter: Pick<QuestionFilter, 'topicId' | 'archived'>) {
+    const tag = sql<string>`tag`;
+    const total = count();
+    return this.db
+      .select({ tag, count: total })
+      .from(sql`${questions}, unnest(${questions.tags}) AS tag`)
+      .where(
+        and(
+          eq(questions.ownerId, ownerId),
+          filter.topicId ? eq(questions.topicId, filter.topicId) : undefined,
+          filter.archived ? isNotNull(questions.archivedAt) : isNull(questions.archivedAt),
+        ),
+      )
+      .groupBy(tag)
+      .orderBy(desc(total), asc(tag))
+      .limit(TAG_LIST_MAX);
+  }
+
   async list(ownerId: string, filter: QuestionFilter, page: Page) {
     const q = filter.q ? normalizeForSearch(filter.q) : '';
     const where = and(
       eq(questions.ownerId, ownerId),
       filter.topicId ? eq(questions.topicId, filter.topicId) : undefined,
       filter.type ? eq(questions.type, filter.type) : undefined,
-      filter.tag ? sql`${questions.tags} @> ARRAY[${filter.tag}]::text[]` : undefined,
+      // Mỗi nhóm cần ít nhất một tag của nó (`&&`, đi cùng chỉ mục GIN).
+      ...tagGroups(filter.tags ?? [], filter.tagMatch ?? 'all').map(
+        (group) => sql`${questions.tags} && ${textArray(group)}`,
+      ),
       q ? sql`${questions.searchText} LIKE ${`%${escapeLike(q)}%`}` : undefined,
       filter.archived ? isNotNull(questions.archivedAt) : isNull(questions.archivedAt),
     );
@@ -242,7 +279,9 @@ export class QuestionsService {
           // từng dòng, và khi câu khớp hiếm hoặc cũ thì đi gần hết ngân hàng (docs/plan/quy-mo-lon-thiet-ke.md mục 3.3).
           .orderBy(
             desc(
-              q || filter.tag ? sql`${questions.updatedAt} + interval '0'` : questions.updatedAt,
+              q || filter.tags?.length
+                ? sql`${questions.updatedAt} + interval '0'`
+                : questions.updatedAt,
             ),
             desc(questions.id),
           )
