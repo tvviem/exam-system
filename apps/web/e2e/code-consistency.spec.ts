@@ -1,4 +1,4 @@
-import { type Browser, expect, type Page, test } from '@playwright/test';
+import { type Browser, expect, type Page, type TestInfo, test } from '@playwright/test';
 import {
   examinerPage,
   ORIGIN,
@@ -48,7 +48,7 @@ test('Soạn trên web và nạp từ Excel cùng một nội dung thì lưu và
   await signIn(page, `e2e-ma-lenh-${project}`);
 
   // Soạn trên web
-  await post(page, '/api/topics', { name: `Thống nhất web ${project}` });
+  await post(page, '/api/topics', { name: `Thống nhất web ${project} ${testInfo.retry}` });
   await page.goto('/examiner/questions');
   await page.getByRole('button', { name: 'Soạn câu hỏi' }).click();
   await page
@@ -86,7 +86,9 @@ test('Soạn trên web và nạp từ Excel cùng một nội dung thì lưu và
   const typedId = new URL(page.url()).pathname.split('/').pop() as string;
 
   // Nạp từ Excel, ghi cả tên ngôn ngữ sau ```
-  const topic = await post(page, '/api/topics', { name: `Thống nhất Excel ${project}` });
+  const topic = await post(page, '/api/topics', {
+    name: `Thống nhất Excel ${project} ${testInfo.retry}`,
+  });
   await page.goto('/examiner/questions/import');
   await page.getByLabel('Chủ đề', { exact: true }).selectOption(topic.id);
   await page.getByLabel('File câu hỏi (.xlsx)').setInputFiles({
@@ -116,11 +118,13 @@ test('Soạn trên web và nạp từ Excel cùng một nội dung thì lưu và
   expect(typed.inline).toEqual(['p->Next']);
 });
 
-async function candidateOnCodeQuestion(browser: Browser, project: string) {
+async function candidateOnCodeQuestion(browser: Browser, info: TestInfo) {
+  const project = info.project.name;
   const letter = project === 'desktop' ? 'D' : 'M';
   const examiner = await examinerPage(browser, `e2e-ma-lenh-${project}`);
   const rich = (...content: unknown[]) => ({ type: 'doc', content });
-  await seedOpenSession(examiner, `cỡ chữ ${project}`, `COCHU${letter}`, `ML-${letter}-001`, {
+  const code = `COCHU${letter}${info.retry}`;
+  await seedOpenSession(examiner, `cỡ chữ ${project} ${info.retry}`, code, `ML-${letter}-001`, {
     single: {
       stem: rich(
         { type: 'paragraph', content: [text('Cho '), text('p->Next', true)] },
@@ -137,7 +141,7 @@ async function candidateOnCodeQuestion(browser: Browser, project: string) {
   const page = await context.newPage();
   await signIn(page, `e2e-ma-lenh-sv-${project}`);
   await page.goto('/take');
-  await page.getByLabel('Mã vào thi').fill(`COCHU${letter}`);
+  await page.getByLabel('Mã vào thi').fill(code);
   await page.getByRole('button', { name: 'Vào thi' }).click();
   await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
   await page.waitForURL(/\/take\/attempts\//);
@@ -146,7 +150,7 @@ async function candidateOnCodeQuestion(browser: Browser, project: string) {
 }
 
 test('Người dự thi tăng cỡ chữ thì mã to theo đúng tỷ lệ', async ({ browser }, testInfo) => {
-  const page = await candidateOnCodeQuestion(browser, testInfo.project.name);
+  const page = await candidateOnCodeQuestion(browser, testInfo);
   const size = (selector: string) =>
     page
       .locator(selector)
@@ -164,7 +168,7 @@ test('Người dự thi tăng cỡ chữ thì mã to theo đúng tỷ lệ', asy
 test('Dấu ngoặc quanh mã trong dòng không bị rớt lại cuối dòng', async ({ page }, testInfo) => {
   const project = testInfo.project.name;
   await signIn(page, `e2e-ma-lenh-${project}`);
-  const topic = await post(page, '/api/topics', { name: `Dấu ngoặc ${project}` });
+  const topic = await post(page, '/api/topics', { name: `Dấu ngoặc ${project} ${testInfo.retry}` });
   // 40 dòng dài dần, để dấu "(" lần lượt rơi vào mọi vị trí quanh mép phải.
   const content = Array.from({ length: 40 }, (_, i) => [
     ...(i > 0 ? [{ type: 'hardBreak' }] : []),

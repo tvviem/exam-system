@@ -1,15 +1,17 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, type TestInfo, test } from '@playwright/test';
 import { ORIGIN, overflow, signIn } from './take-support';
 import { workbook, XLSX_MIME } from './xlsx';
 
 // Mã lệnh trong Câu hỏi, bước M2 (docs/plan/ma-lenh-trong-cau-hoi-thiet-ke.md mục 4.3, 4.4): soạn khối mã, mã trong dòng
 // bằng trình soạn và nhập từ Excel.
 
-async function topicFor(page: Page, project: string, name: string): Promise<string> {
+async function topicFor(page: Page, info: TestInfo, name: string): Promise<string> {
+  const project = info.project.name;
   await signIn(page, `e2e-ma-lenh-${project}`);
   const res = await page.request.post('/api/topics', {
     headers: { origin: ORIGIN },
-    data: { name: `${name} ${project}` },
+    // Kèm số lần chạy lại để không trùng tên.
+    data: { name: `${name} ${project} ${info.retry}` },
   });
   expect(res.ok(), await res.text()).toBe(true);
   return (await res.json()).id;
@@ -36,7 +38,7 @@ const text = (value: string, code = false) => ({
 test('Soạn mã bằng nút: mã trong dòng, khối mã, Tab thụt lề, Escape rồi Tab để ra khỏi ô, chặn khi quá dài', async ({
   page,
 }, testInfo) => {
-  await topicFor(page, testInfo.project.name, 'Soạn mã');
+  await topicFor(page, testInfo, 'Soạn mã');
   await page.goto('/examiner/questions');
   await page.getByRole('button', { name: 'Soạn câu hỏi' }).click();
   await page
@@ -112,7 +114,7 @@ test('Soạn mã bằng nút: mã trong dòng, khối mã, Tab thụt lề, Esca
 test('Nhập Excel có đánh dấu mã: xem trước thấy khối mã, tạo xong câu hỏi giữ đúng mã', async ({
   page,
 }, testInfo) => {
-  const topicId = await topicFor(page, testInfo.project.name, 'Nhập mã');
+  const topicId = await topicFor(page, testInfo, 'Nhập mã');
   const file = await workbook({
     'Chọn một': [
       ['Nội dung', 'Phương án A', 'Phương án B', 'Đáp án'],

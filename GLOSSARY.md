@@ -103,6 +103,10 @@ _Avoid_: học phần, thư mục, Chủ đề cha
 **Câu hỏi** (`Question`):
 Một đơn vị nội dung kiểm tra thuộc một Chủ đề, có một Loại câu hỏi. Câu hỏi thuộc sở hữu của Người ra đề tạo ra nó; chỉ người đó được dùng nó, và có thể dùng lại trong nhiều Bộ đề của mình.
 
+**Loại tag** (`TagKind`):
+Nhóm mà một tag của Câu hỏi thuộc về, suy từ chính chữ của tag: `chương 1` thuộc loại *chương*; `bài: ngăn xếp` thuộc loại *bài*; bốn tag `nhận biết`, `thông hiểu`, `vận dụng`, `vận dụng cao` thuộc loại *mức độ*; tag không theo dạng nào thì không có loại. Khi lọc nhiều tag, cùng loại nghĩa là "hoặc", khác loại là "và". Không lưu riêng.
+_Avoid_: Loại câu hỏi (khái niệm khác), nhóm tag, danh mục
+
 **Lưu trữ câu hỏi** (`Archive`):
 Ẩn Câu hỏi khỏi danh sách mặc định và khỏi việc chọn vào Bộ đề mới nhưng giữ lại; Khôi phục đưa Câu hỏi trở lại. Câu hỏi nằm trong một Bộ đề (nháp hoặc đã Phát hành) không xóa được: Bộ đề nháp thì gỡ câu ra trước, Bộ đề đã Phát hành thì chỉ Lưu trữ vì Bản chụp cần câu gốc. Câu hỏi chưa nằm trong Bộ đề nào thì xóa hẳn được.
 _Avoid_: xóa mềm câu hỏi

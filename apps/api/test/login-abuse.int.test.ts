@@ -91,6 +91,24 @@ describe('V1: kẻ tấn công không khóa được sinh viên khác', () => {
     expect(await limiter.allow('192.0.2.251', 'sv-c')).toBe(false); // đủ 10 + 190 = 200
   });
 
+  it('V1-i: số lượt của mỗi cặp chỉnh được bằng LOGIN_MAX_PER_IDENTIFIER_AND_IP, trần theo tên vẫn giữ', async () => {
+    const before = process.env.LOGIN_MAX_PER_IP;
+    process.env.LOGIN_MAX_PER_IP = '1000'; // một IP gọi hơn 200 lượt: không để giới hạn theo IP chặn trước
+    process.env.LOGIN_MAX_PER_IDENTIFIER_AND_IP = '1000';
+    const relaxed = await createTestApp();
+    try {
+      const limiter = relaxed.app.get(LoginRateLimiter);
+      for (let i = 0; i < 200; i++) expect(await limiter.allow(ATTACKER, 'sv-d')).toBe(true);
+      // Nới theo cặp tới đâu thì trần 200 theo tên đăng nhập vẫn chặn.
+      expect(await limiter.allow(ATTACKER, 'sv-d')).toBe(false);
+    } finally {
+      delete process.env.LOGIN_MAX_PER_IDENTIFIER_AND_IP;
+      if (before === undefined) delete process.env.LOGIN_MAX_PER_IP;
+      else process.env.LOGIN_MAX_PER_IP = before;
+      await relaxed.app.close();
+    }
+  });
+
   it('V1-g: đặt lại mật khẩu bằng liên kết (7d-3 thay cho "Cấp lại mật khẩu tạm") gỡ mọi khóa theo cặp của tài khoản đó', async () => {
     await seedUser({ username: 'qt-hoi', isAdmin: true });
     const victim = await seedUser({ username: 'sv-nan-nhan' });

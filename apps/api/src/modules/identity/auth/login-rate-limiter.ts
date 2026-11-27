@@ -6,8 +6,6 @@ import type { Env } from '../../../config/env';
 import { REDIS } from '../../../redis/redis.module';
 
 const WINDOW_MS = 10 * 60_000;
-/** Mỗi cặp (tên đăng nhập, IP) tối đa 10 lần thử mỗi 10 phút: kẻ tấn công chỉ làm cạn lượt của chính IP của họ. */
-const MAX_PER_IDENTIFIER_AND_IP = 10;
 /**
  * Trần theo tên đăng nhập trên cả hệ thống, bất kể IP: chặn đoán mật khẩu của một tài khoản từ rất nhiều IP. Đủ cao để kẻ tấn công
  * phải dùng cả mạng máy ma mới chạm tới, và chỉ đếm những lần thử đã qua giới hạn theo cặp.
@@ -30,9 +28,9 @@ export class LoginRateLimiter {
     const where = ip ?? 'unknown';
     if ((await this.count(`auth:rl:ip:${where}:${window}`)) > this.env.LOGIN_MAX_PER_IP)
       return false;
-    if ((await this.count(`auth:rl:pair:${who}:${where}:${window}`)) > MAX_PER_IDENTIFIER_AND_IP) {
-      return false;
-    }
+    // Mỗi cặp (tên đăng nhập, IP) có số lượt riêng: kẻ tấn công chỉ làm cạn lượt của chính IP của họ.
+    const pair = await this.count(`auth:rl:pair:${who}:${where}:${window}`);
+    if (pair > this.env.LOGIN_MAX_PER_IDENTIFIER_AND_IP) return false;
     // Lượt đã bị chặn theo cặp không được đếm vào trần theo tên: một IP không thể tự đẩy trần cho cả hệ thống.
     return (await this.count(`auth:rl:id:${who}:${window}`)) <= MAX_PER_IDENTIFIER;
   }

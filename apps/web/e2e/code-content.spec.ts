@@ -1,14 +1,16 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, type TestInfo, test } from '@playwright/test';
 import { ORIGIN, overflow, signIn } from './take-support';
 
 // Mã lệnh trong Câu hỏi, bước 0 (docs/plan/ma-lenh-trong-cau-hoi-thiet-ke.md mục 3): thụt lề giữ nguyên khi hiển thị, và
 // trình soạn không tự đổi dấu * hay _ của mã thành chữ nghiêng, đậm.
 
-async function newQuestion(page: Page, project: string, topic: string) {
+async function newQuestion(page: Page, info: TestInfo, topic: string) {
+  const project = info.project.name;
   await signIn(page, `e2e-ma-lenh-${project}`);
   const res = await page.request.post('/api/topics', {
     headers: { origin: ORIGIN },
-    data: { name: `${topic} ${project}` },
+    // Kèm số lần chạy lại để không trùng tên.
+    data: { name: `${topic} ${project} ${info.retry}` },
   });
   expect(res.ok(), await res.text()).toBe(true);
   await page.goto('/examiner/questions');
@@ -34,7 +36,7 @@ const paste = (page: Page, text: string) =>
 test('Trình soạn giữ nguyên dấu * và _ khi gõ và khi dán; nút In đậm vẫn dùng được', async ({
   page,
 }, testInfo) => {
-  const stem = await newQuestion(page, testInfo.project.name, 'Gõ mã');
+  const stem = await newQuestion(page, testInfo, 'Gõ mã');
   await stem.click();
   const typed = ['int *p, *q;', 's = a **b** c;', 'x = _y_ + __z__;'];
   for (const line of typed) {
@@ -80,7 +82,7 @@ const lineStart = (page: Page, needle: string) =>
 test('Thụt lề của đoạn mã hiện đúng ở bản xem trước, cả sau khi lưu, không cuộn ngang', async ({
   page,
 }, testInfo) => {
-  const stem = await newQuestion(page, testInfo.project.name, 'Thụt lề');
+  const stem = await newQuestion(page, testInfo, 'Thụt lề');
   await stem.click();
   const lines = [
     'Đoạn mã sau chạy bao nhiêu lần?',

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, type TestInfo, test } from '@playwright/test';
 import {
   examinerPage,
   ORIGIN,
@@ -32,14 +32,16 @@ const options = [
   { id: 'o2', content: doc(block('free(p->Next);')) },
 ];
 
-async function seedQuestion(page: Page, project: string, name: string): Promise<string> {
+async function seedQuestion(page: Page, info: TestInfo, name: string): Promise<string> {
+  const project = info.project.name;
   await signIn(page, `e2e-ma-lenh-${project}`);
   const post = async (url: string, data: unknown) => {
     const res = await page.request.post(url, { headers: { origin: ORIGIN }, data });
     expect(res.ok(), await res.text()).toBe(true);
     return res.json();
   };
-  const topic = await post('/api/topics', { name: `${name} ${project}` });
+  // Kèm số lần chạy lại: lần trước đã tạo Chủ đề thì lần sau không trùng tên.
+  const topic = await post('/api/topics', { name: `${name} ${project} ${info.retry}` });
   const question = await post('/api/questions', {
     type: 'single_choice',
     topicId: topic.id,
@@ -87,7 +89,7 @@ const measure = (page: Page, needle: string, nth = 0) =>
 test('Khối mã và mã trong dòng hiển thị rõ: phông đơn cách, số dòng, giữ thụt lề, tự xuống dòng không cắt giữa cụm', async ({
   page,
 }, testInfo) => {
-  const id = await seedQuestion(page, testInfo.project.name, 'Hiển thị mã');
+  const id = await seedQuestion(page, testInfo, 'Hiển thị mã');
   await page.goto(`/examiner/questions/${id}`);
   await openTab(page, 'Xem thử');
   const preview = page.getByTestId('question-preview');
@@ -124,13 +126,17 @@ test('Khối mã và mã trong dòng hiển thị rõ: phông đơn cách, số 
 });
 
 test('Trình soạn mở và lưu câu có mã mà không mất mã', async ({ page }, testInfo) => {
-  const id = await seedQuestion(page, testInfo.project.name, 'Sửa câu có mã');
+  const id = await seedQuestion(page, testInfo, 'Sửa câu có mã');
   await page.goto(`/examiner/questions/${id}`);
   await openTab(page, 'Soạn');
   const editor = page.getByRole('textbox', { name: 'Phần dẫn' });
   await expect(editor).toContainText('while (p->Next != NULL)');
-  await editor.locator('p').first().click();
-  await page.keyboard.press('Home');
+  // Bấm đúng đầu dòng. Bấm giữa dòng rồi nhấn Home ngay là chạy đua: 20 ms sau khi ô nhận tiêu điểm, ProseMirror ghi lại
+  // con trỏ và có thể đè lên vị trí Home vừa đặt, chữ gõ thêm ra cuối dòng.
+  await editor
+    .locator('p')
+    .first()
+    .click({ position: { x: 1, y: 8 } });
   await page.keyboard.type('Hỏi: ');
   await expect(editor.locator('p code')).toHaveText(['p->Next']);
 
@@ -151,14 +157,15 @@ test('Màn làm bài: mã ở Phần dẫn và Phương án đọc được trê
   const project = testInfo.project.name;
   const letter = project === 'desktop' ? 'D' : 'M';
   const examiner = await examinerPage(browser, `e2e-ma-lenh-${project}`);
-  await seedOpenSession(examiner, `mã ${project}`, `MALENH${letter}`, `ML-${letter}-001`, {
+  const code = `MALENH${letter}${testInfo.retry}`;
+  await seedOpenSession(examiner, `mã ${project} ${testInfo.retry}`, code, `ML-${letter}-001`, {
     single: { stem, options: [options[0]?.content, options[1]?.content] },
   });
   const context = await browser.newContext({ baseURL: ORIGIN });
   const page = await context.newPage();
   await signIn(page, `e2e-ma-lenh-sv-${project}`);
   await page.goto('/take');
-  await page.getByLabel('Mã vào thi').fill(`MALENH${letter}`);
+  await page.getByLabel('Mã vào thi').fill(code);
   await page.getByRole('button', { name: 'Vào thi' }).click();
   await page.getByRole('button', { name: 'Bắt đầu làm bài' }).click();
   await page.waitForURL(/\/take\/attempts\//);
@@ -169,9 +176,9 @@ test('Màn làm bài: mã ở Phần dẫn và Phương án đọc được trê
     expect(await box.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
   }
   // Chạm đúng chỗ có mã: ô chọn phủ lên cả Phương án nên bấm theo tọa độ, như ngón tay.
-  const code = page.locator('pre').nth(1);
-  await code.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-  const box = await code.boundingBox();
+  const optionCode = page.locator('pre').nth(1);
+  await optionCode.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const box = await optionCode.boundingBox();
   if (!box) throw new Error('không thấy khối mã của Phương án');
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.getByRole('radio').nth(1)).toBeChecked();
