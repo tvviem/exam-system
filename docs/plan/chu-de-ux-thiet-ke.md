@@ -1,6 +1,6 @@
 # Chủ đề: cột bên trái và Quản lý Chủ đề cho vài chục đến hàng trăm Chủ đề (thiết kế đề xuất)
 
-**Trạng thái: `accepted`** (chủ dự án duyệt Q503–Q512 theo đề xuất ngày 27/11/2026, mục 9). Tiến độ: **T1** xong về mã (phát hành `0.6.1`, Q519); **T2, T3 hoãn** để làm lọc nhiều tag trước (Q518).
+**Trạng thái: `accepted`** (chủ dự án duyệt Q503–Q512 theo đề xuất ngày 27/11/2026, mục 9). Tiến độ: **T1** đã phát hành ở bản `0.6.1` (27/11/2026, Q519); **T2, T3 hoãn** để làm lọc nhiều tag trước (Q518).
 
 ## 1. Yêu cầu và bằng chứng
 
