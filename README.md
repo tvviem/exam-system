@@ -334,6 +334,7 @@ Từng bước chi tiết cho người dùng: [docs/huong-dan/ma-de-phien-thi.md
 | `APP_ORIGINS` | production | Địa chỉ công khai của hệ thống, cách nhau bằng dấu phẩy; địa chỉ đầu tiên dùng làm gốc của liên kết trong thư. Cũng là danh sách Origin được phép gửi request đổi dữ liệu (chống CSRF) |
 | `MEDIA_DIR` | không | Thư mục lưu file tải lên tạm và Hình minh họa (mặc định `./media-data`). Production: một volume cho cả api lẫn worker |
 | `LOGIN_MAX_PER_IP` | không | Số lần thử đăng nhập tối đa mỗi IP trong 10 phút (mặc định 20). Nâng cao khi chạy `demo:room` hay đo tải |
+| `LOGIN_MAX_PER_IDENTIFIER_AND_IP` | không | Số lần thử đăng nhập tối đa cho mỗi tên đăng nhập từ một IP trong 10 phút (mặc định 10). **Production giữ mặc định**; chỉ môi trường kiểm thử nâng cao |
 | `DB_POOL_MAX` | không | Số kết nối PostgreSQL tối đa của mỗi tiến trình (mặc định 10); tổng api và worker phải nhỏ hơn `max_connections` |
 | `TRUST_PROXY` | không | Ai được tin khi báo địa chỉ khách qua `X-Forwarded-For` (mặc định `loopback`, nginx cùng pod) |
 | `ILLUSTRATION_QUOTA_BYTES`, `MEDIA_ACCEL_PREFIX` | không | Hạn mức dung lượng Hình minh họa mỗi Người ra đề (mặc định 500 MB); tiền tố để api nhờ nginx trả ảnh (`X-Accel-Redirect`, ví dụ `/_media`) |

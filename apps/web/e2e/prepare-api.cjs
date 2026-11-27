@@ -66,6 +66,8 @@ async function main() {
     REDIS_URL: redisUrl,
     APP_ORIGINS: 'http://localhost:4173',
     LOGIN_MAX_PER_IP: '1000',
+    // Nhiều bài dùng chung một tài khoản thử và chạy lại khi đỏ: nới giới hạn theo cặp (prod giữ mặc định 10).
+    LOGIN_MAX_PER_IDENTIFIER_AND_IP: '100',
     // Hạn mức thư như production (6 giây giữa hai thư, làm nóng 50/100/... thư) làm các bài E2E xếp thư chờ nhau quá 15 giây.
     EMAIL_MIN_GAP_SECONDS: '0',
     EMAIL_WARMUP_BULK: '',

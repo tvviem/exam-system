@@ -217,6 +217,8 @@ Chủ dự án đồng ý làm cả hai (15/11/2026). Làm theo TDD trên nhánh
 
 Hệ quả cần biết: kẻ chỉ có **một IP** không còn khóa được sinh viên. Kẻ có **rất nhiều IP** vẫn có thể làm cạn trần 200 lần mỗi 10 phút của một tài khoản (cần cả một mạng máy ma, và Cloudflare chặn lớp này), khi đó sinh viên đó nhận "thao tác quá nhiều lần" trong tối đa 10 phút. Cột `users.failed_login_count` không còn dùng (còn trong cơ sở dữ liệu, bỏ ở một PR dọn sau).
 
+**Sửa đổi 28/11/2026 (Q531, chủ dự án đồng ý):** con số 10 lần theo cặp chỉnh được bằng biến `LOGIN_MAX_PER_IDENTIFIER_AND_IP`, **mặc định 10 và production giữ mặc định**. Chỉ môi trường kiểm thử giao diện đặt 100, vì nhiều bài dùng chung một tài khoản thử và CI đỏ giả khi chạy lại. Trần 200 lần theo tên đăng nhập không chỉnh được.
+
 ### 14.2 Lỗ hổng 2: đốt CPU bằng Argon2
 
 `WorkGate`: tối đa **4 lần băm chạy đồng thời** (hoặc số luồng của máy nếu ít hơn; chỉnh bằng `HASH_CONCURRENCY`), tối đa **400 lần chờ** (`HASH_QUEUE_MAX`), quá thì **503 `SERVER_BUSY`** ngay ("Máy chủ đang bận, hãy đợi vài giây"). Áp cho mọi lần băm và kiểm tra mật khẩu (đăng nhập, đặt mật khẩu, đổi mật khẩu). Bị từ chối vì bận **không** tính là một lần sai mật khẩu. 100 đăng nhập đúng cùng lúc (đầu giờ thi) vẫn đều thành công (V2-c).

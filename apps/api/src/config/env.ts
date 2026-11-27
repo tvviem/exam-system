@@ -10,6 +10,9 @@ const baseEnvSchema = z.object({
   // Số lần thử đăng nhập tối đa mỗi IP trong 10 phút (Q47). Cả lớp dùng chung Wi-Fi nên không đặt thấp;
   // E2E nâng cao vì mọi test đăng nhập từ cùng một IP.
   LOGIN_MAX_PER_IP: z.coerce.number().int().positive().default(20),
+  // Số lần thử tối đa cho mỗi cặp (tên đăng nhập, IP) trong 10 phút (Q531). Production giữ mặc định 10; chỉ E2E nâng cao
+  // vì nhiều bài cùng dùng một tài khoản thử. Trần 200 lần theo tên đăng nhập trên cả hệ thống không chỉnh được.
+  LOGIN_MAX_PER_IDENTIFIER_AND_IP: z.coerce.number().int().positive().default(10),
   // Số kết nối Postgres tối đa của MỖI tiến trình (api và worker mỗi bên một nhóm); tổng phải nhỏ hơn max_connections.
   DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   // Ai được tin khi báo địa chỉ khách qua X-Forwarded-For: `loopback` (nginx cùng pod) hoặc danh sách địa chỉ/dải cách

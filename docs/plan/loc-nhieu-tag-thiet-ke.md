@@ -112,3 +112,4 @@ Cùng lần chạy 1.000.000: mục "gợi ý người khi gõ tên rất phổ 
 | Q522 | Đổi tên, gộp tag mặc định chỉ trong Chủ đề đang chọn; muốn mọi Chủ đề phải chọn rõ | **Đã đồng ý** (27/11/2026) |
 | Q523 | G1 phát hành trước một mình (không đổi dữ liệu), G2 sau | **Đã đồng ý**, sau thay bằng Q529: G1 phát hành chung `0.7.0` với hộp chọn câu mới |
 | Q524 | Xác nhận ba điểm kiểm thử: hàm thuần, API qua HTTP với PostgreSQL thật, giao diện Playwright | **Đã đồng ý** (27/11/2026) |
+| Q530 | Thêm thuật ngữ **Loại tag** (`TagKind`) vào `GLOSSARY.md` | **Đã đồng ý** (28/11/2026) |
