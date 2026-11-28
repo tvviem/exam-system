@@ -208,7 +208,8 @@ Gõ hay dán các dấu `*`, `_` **giữ nguyên là chữ** (không tự thành
 
 - Khi có hơn 10.000 câu khớp, danh sách ghi **"hơn 10.000"** và chỉ cho xem 10.000 câu mới sửa nhất: hãy lọc theo Chủ đề, Loại, tag hoặc tìm để thu hẹp.
 - Cột trái chọn **Chủ đề** (kèm số câu). Tên Chủ đề dài tự xuống dòng nên đọc được đủ. Các Chủ đề có **cùng phần đầu trước dấu ` - `** được gom thành nhóm bấm mở, đóng (ví dụ `CTDL 1 - Mở đầu`, `CTDL 2 - Danh sách` vào nhóm **CTDL**); số trong tên được xếp đúng thứ tự (`Chương 2` trước `Chương 10`). Muốn Chủ đề tự vào nhóm thì đặt tên theo kiểu `Tên học phần - Chương …`.
-- **Tìm Chủ đề:** gõ một hay nhiều từ, không cần dấu, thứ tự nào cũng được (ví dụ `cay ctdl`); **Enter** chọn kết quả đầu, **Esc** xóa từ khóa. Trên điện thoại, bấm nút **Chủ đề: …** để mở danh sách có ô tìm. Ô chọn Chủ đề ở màn soạn, nhập Excel và hộp chọn câu cũng chia theo nhóm.
+- **Tìm Chủ đề:** gõ một hay nhiều từ, không cần dấu, thứ tự nào cũng được (ví dụ `cay ctdl`); **Enter** chọn kết quả đầu, **Esc** xóa từ khóa. Trên điện thoại, bấm nút **Chủ đề: …** để mở danh sách có ô tìm.
+- **Ô chọn Chủ đề** (soạn câu hỏi, nhập Excel, chuyển Chủ đề, hộp thêm câu vào Bộ đề) là ô **gõ để tìm**: mới mở chỉ hiện vài Chủ đề, ưu tiên Chủ đề vừa dùng; gõ không dấu hoặc chữ cái đầu (`ctdl` ra "Cấu trúc dữ liệu"); mũi tên và **Enter** để chọn, **Esc** để đóng danh sách.
 - **Tìm câu hỏi**: gõ một phần nội dung, không cần dấu (ví dụ "mang" tìm ra "mạng").
 - Lọc theo **Loại câu hỏi** và **Trạng thái** (Đang dùng hoặc Đã lưu trữ).
 - **Lọc theo nhiều tag:** bấm **Chọn tag**, tích các tag cần lọc rồi bấm **Xong** (xem mục 3.6). Tag đang lọc hiện thành nhãn, bấm × để gỡ; địa chỉ trang giữ lại bộ lọc nên tải lại không mất.
@@ -218,7 +219,7 @@ Gõ hay dán các dấu `*`, `_` **giữ nguyên là chữ** (không tự thành
 
 Tick ô bên trái của nhiều câu (hoặc **Chọn mọi câu trên trang**) để dùng thanh thao tác nổi:
 
-- **Chuyển Chủ đề** sang Chủ đề khác.
+- **Chuyển Chủ đề** sang Chủ đề khác: gõ tên Chủ đề đích, chọn trong danh sách, rồi bấm **Chuyển Chủ đề**.
 - **Lưu trữ**: ẩn câu khỏi danh sách và khỏi hộp chọn câu (**Khôi phục** lại bất cứ lúc nào).
 - **Xóa**: chỉ xóa được câu **chưa từng nằm trong Bộ đề**.
 
@@ -226,7 +227,18 @@ Tick ô bên trái của nhiều câu (hoặc **Chọn mọi câu trên trang**)
 
 > **Lưu ý:** câu đã nằm trong Bộ đề **không xóa được**, chỉ **Lưu trữ**. Bộ đề đã Phát hành giữ **bản chụp** nội dung câu lúc phát hành, nên sửa câu về sau **không làm thay đổi** các Bộ đề cũ và bài đã thi.
 
-### 3.6. Lọc theo nhiều tag
+### 3.6. Đặt tag và lọc theo nhiều tag
+
+**Đặt tag theo một quy tắc chung** thì về sau tìm và ra đề mới nhanh:
+
+| Quy tắc | Cách làm |
+|---|---|
+| **Mỗi câu nên có** | 1 tag chương (`chương 2`), 1 tag mức độ (`nhận biết`, `thông hiểu`, `vận dụng` hoặc `vận dụng cao`) và 1 đến 3 tag nội dung (`ngăn xếp`). Ví dụ ô Tags: `chương 2, vận dụng, ngăn xếp` |
+| **Viết thống nhất** | cùng một ý chỉ viết một cách: `chương 2`, không viết `c2`, `Chương II` hay `chuong 2`. Có dấu và không dấu là hai tag khác nhau; chữ hoa tự đổi thành chữ thường |
+| **Loại riêng** | muốn thêm một loại để lọc thì viết dạng `loại: giá trị`, ví dụ `chuẩn: clo1` |
+| **Không cần gắn** | tên học phần (đã có Chủ đề) và Loại câu hỏi (đã lọc riêng được) |
+
+Quy tắc này cũng có sẵn khi làm: ở màn soạn câu hỏi, bấm **Cách đặt tag để dễ tìm** dưới ô Tags; trong file Excel mẫu, xem mục cùng tên ở sheet **Hướng dẫn**.
 
 Danh sách tag là các tag **đang có** trong Chủ đề đang chọn (chưa chọn Chủ đề thì của mọi Chủ đề), kèm số câu. Ô **Tìm tag** không cần dấu. Mỗi lần chọn tối đa 20 tag.
 

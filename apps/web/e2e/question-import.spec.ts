@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { chooseTopic } from './topic-support';
 import { workbook, XLSX_MIME } from './xlsx';
 
 const PASSWORD = 'mat-khau-on-dinh';
@@ -85,7 +86,7 @@ test('nhập câu hỏi từ Excel bốn sheet: tải lên, xem trước, lọc 
     '',
   );
 
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption({ label: 'Số học' });
+  await chooseTopic(page, 'Số học');
   await upload(page, 'cau-hoi.xlsx', await mixed());
 
   // Xem trước: 5 hợp lệ, 1 nghi trùng, 1 lỗi.
@@ -153,7 +154,7 @@ test('file ví dụ tải từ hệ thống nhập được nguyên vẹn: 8 câ
   await signIn(page, `e2e-nx-${testInfo.project.name}`);
   await createTopic(page, 'Ví dụ');
   await page.goto('/examiner/questions/import');
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption({ label: 'Ví dụ' });
+  await chooseTopic(page, 'Ví dụ');
 
   const example = await page.request.get('/api/question-imports/example');
   expect(example.ok()).toBe(true);
@@ -172,7 +173,7 @@ test('hủy lô đang chờ xác nhận rồi tải lại file đã sửa', asyn
   await signIn(page, `e2e-nx-${testInfo.project.name}`);
   await createTopic(page, 'Hủy lô');
   await page.goto('/examiner/questions/import');
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption({ label: 'Hủy lô' });
+  await chooseTopic(page, 'Hủy lô');
   await upload(page, 'sai-noi-dung.xlsx', await mixed());
   await expect(page.getByText('Đã chọn 5 dòng')).toBeVisible();
 
@@ -204,7 +205,7 @@ test('file có sheet lạ: báo tên sheet, hủy lô đọc lỗi từ danh sá
   await signIn(page, `e2e-nx-${testInfo.project.name}`);
   await createTopic(page, 'Hình học');
   await page.goto('/examiner/questions/import');
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption({ label: 'Hình học' });
+  await chooseTopic(page, 'Hình học');
   await upload(page, 'sheet-la.xlsx', await workbook({ 'Câu hỏi': [['Nội dung'], ['x']] }));
   await expect(page.getByText(/File có sheet “Câu hỏi” không thuộc mẫu/)).toBeVisible();
   await page.getByRole('link', { name: 'Tải file khác' }).click();
@@ -224,7 +225,7 @@ test('file thiếu cột bắt buộc: báo rõ sheet nào', async ({ page }, te
   await signIn(page, `e2e-nx-${testInfo.project.name}`);
   await createTopic(page, 'Đại số');
   await page.goto('/examiner/questions/import');
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption({ label: 'Đại số' });
+  await chooseTopic(page, 'Đại số');
   await upload(
     page,
     'thieu-cot.xlsx',
@@ -246,7 +247,7 @@ for (const width of [360, 768, 1024, 1440]) {
     await signIn(page, `e2e-nx-${testInfo.project.name}`);
     await createTopic(page, `Chủ đề ${width}`);
     await page.goto('/examiner/questions/import');
-    await page.getByLabel('Chủ đề', { exact: true }).selectOption({ label: `Chủ đề ${width}` });
+    await chooseTopic(page, `Chủ đề ${width}`);
     await page
       .getByLabel('File câu hỏi (.xlsx)')
       .setInputFiles({ name: 'cau-hoi.xlsx', mimeType: XLSX_MIME, buffer: await mixed() });

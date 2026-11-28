@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { saveQuestion } from './question-support';
+import { chooseTopic } from './topic-support';
 
 const PASSWORD = 'mat-khau-on-dinh';
 
@@ -115,8 +116,18 @@ test('Người ra đề tạo Chủ đề rồi soạn đủ 4 loại câu hỏi
     .check();
   await expect(page.getByText('Đã chọn 5 câu')).toBeVisible();
   await page.getByRole('button', { name: 'Chuyển Chủ đề' }).click();
-  await page.getByLabel('Chủ đề đích').selectOption({ label: 'Đại số' });
-  await page.getByRole('dialog').getByRole('button', { name: 'Chuyển Chủ đề' }).click();
+  const move = page.getByRole('dialog');
+  const confirm = move.getByRole('button', { name: 'Chuyển Chủ đề' });
+  await expect(confirm).toBeDisabled();
+  // Danh sách gợi ý nằm trọn trong hộp (không bị cắt), và nút Hủy vẫn bấm được khi danh sách đang mở.
+  await move.getByRole('combobox', { name: 'Chủ đề đích' }).click();
+  const options = move.getByRole('listbox', { name: 'Chủ đề đích' }).getByRole('option');
+  await expect(options.first()).toBeInViewport({ ratio: 1 });
+  await move.getByRole('button', { name: 'Hủy' }).click();
+  await expect(move).toBeHidden();
+  await page.getByRole('button', { name: 'Chuyển Chủ đề' }).click();
+  await chooseTopic(move, 'Đại số', 'Chủ đề đích');
+  await confirm.click();
   await expect(page.getByText('Đã chuyển 5 Câu hỏi')).toBeVisible();
 
   await page

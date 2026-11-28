@@ -48,14 +48,18 @@ test('Soạn Bộ đề: tạo, thêm câu, Phần, điểm, rút câu, xem th�
       },
       {
         at: addDialog.getByLabel('Loại câu hỏi'),
-        text: 'Lọc theo Loại câu hỏi (hoặc tìm theo nội dung, tag)',
+        text: 'Lọc theo Loại câu hỏi (hoặc tìm theo nội dung)',
+      },
+      {
+        at: addDialog.getByRole('searchbox', { name: 'Tìm tag' }),
+        text: 'Lọc theo tag: tích một hay nhiều tag trong danh sách',
       },
       {
         at: addDialog.getByText(/Chọn cả \d+ câu trên trang này/),
         text: 'Chọn cả trang, hoặc tick từng câu',
       },
       {
-        at: addDialog.getByRole('button', { name: /^Xem/ }).first(),
+        at: addDialog.getByRole('button', { name: /^Xem chi tiết:/ }).first(),
         text: 'Xem chi tiết câu hỏi trước khi thêm',
       },
       {
@@ -64,7 +68,10 @@ test('Soạn Bộ đề: tạo, thêm câu, Phần, điểm, rút câu, xem th�
       },
     ],
   });
-  await addDialog.getByRole('button', { name: /^Xem/ }).first().click();
+  await addDialog
+    .getByRole('button', { name: /^Xem chi tiết:/ })
+    .first()
+    .click();
   const detail = page.getByRole('dialog', { name: 'Chi tiết câu hỏi' });
   await expect(detail).toBeVisible();
   await shot(page, 'nguoi-ra-de', '34-chi-tiet-cau-hoi', {

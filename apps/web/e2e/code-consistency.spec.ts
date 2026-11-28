@@ -7,6 +7,7 @@ import {
   setViewMode,
   signIn,
 } from './take-support';
+import { chooseTopic } from './topic-support';
 import { workbook, XLSX_MIME } from './xlsx';
 
 // Mã lệnh hiển thị thống nhất (docs/plan/ma-lenh-trong-cau-hoi-thiet-ke.md mục 9): cùng một nội dung soạn trên web hay nạp
@@ -90,7 +91,7 @@ test('Soạn trên web và nạp từ Excel cùng một nội dung thì lưu và
     name: `Thống nhất Excel ${project} ${testInfo.retry}`,
   });
   await page.goto('/examiner/questions/import');
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption(topic.id);
+  await chooseTopic(page, `Thống nhất Excel ${project} ${testInfo.retry}`);
   await page.getByLabel('File câu hỏi (.xlsx)').setInputFiles({
     name: 'ma.xlsx',
     mimeType: XLSX_MIME,

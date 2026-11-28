@@ -1,4 +1,4 @@
-import { POINTS_MAX, POINTS_MIN, POINTS_STEP } from '@exam/shared';
+import { POINTS_MAX, POINTS_MIN, POINTS_STEP, TAG_GUIDE_EXAMPLE } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { Copy, Save, Trash2 } from 'lucide-react';
@@ -31,8 +31,9 @@ import {
 import { QuestionView } from './question-view';
 import { StickyActionBar } from './sticky-action-bar';
 import { Tabs } from './tabs';
+import { TagGuide } from './tag-guide';
 import { useToast } from './toast';
-import { TopicOptions } from './topic-options';
+import { TopicCombobox } from './topic-combobox';
 
 // Trình soạn Câu hỏi (docs/plan/slice-2.md, Q119): lưu bằng nút, cảnh báo khi rời trang đang sửa dở,
 // bản đang soạn nhớ trên thiết bị. TipTap tải lười để không nặng trang danh sách.
@@ -207,15 +208,16 @@ export function QuestionEditor({
     <div key={formKey} className="@container flex flex-col gap-4">
       <Card className="flex flex-col gap-4">
         <div className="grid gap-4 @md:grid-cols-2 @xl:grid-cols-3">
-          <SelectField
-            id="q-topic"
-            label={t('questionBank.topic')}
-            value={draft.topicId}
-            onChange={(e) => patch({ topicId: e.target.value })}
-            error={shown.includes('topic') && t('questionBank.problem.topic')}
-          >
-            <TopicOptions topics={activeTopics} />
-          </SelectField>
+          {/* Trọn một hàng: tên Chủ đề dài vẫn đọc được, cả khi ô đóng lẫn trong danh sách. */}
+          <div className="@md:col-span-2 @xl:col-span-3">
+            <TopicCombobox
+              label={t('questionBank.topic')}
+              topics={activeTopics}
+              value={draft.topicId}
+              onChange={(topicId) => patch({ topicId })}
+              error={shown.includes('topic') && t('questionBank.problem.topic')}
+            />
+          </div>
           <SelectField
             id="q-type"
             label={t('questionBank.type')}
@@ -240,11 +242,11 @@ export function QuestionEditor({
             onChange={(e) => patch({ defaultPoints: Number(e.target.value) })}
             error={shown.includes('points') && t('questionBank.problem.points')}
           />
-          <div className="@xl:col-span-3">
+          <div className="@md:col-span-2 @xl:col-span-3">
             <TextField
               id="q-tags"
               label={t('questionBank.tags')}
-              hint={t('questionBank.tagsHint')}
+              hint={t('questionBank.tagsHint', { example: TAG_GUIDE_EXAMPLE })}
               value={tagsText}
               onChange={(e) => {
                 setTagsText(e.target.value);
@@ -257,6 +259,7 @@ export function QuestionEditor({
               }}
               error={shown.includes('tags') && t('questionBank.problem.tags')}
             />
+            <TagGuide />
           </div>
         </div>
       </Card>

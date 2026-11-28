@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { chooseTopic } from '../e2e/topic-support';
 import { openPage, shot, signIn } from './support';
 
 // Người ra đề: soạn bốn Loại câu hỏi bằng trình soạn (tài liệu nguoi-ra-de.md).
@@ -18,8 +19,7 @@ async function chooseType(page: Page, label: string) {
     .click();
   await expect(page.getByRole('heading', { name: 'Soạn câu hỏi', level: 1 })).toBeVisible();
   const topic = page.getByLabel('Chủ đề', { exact: true });
-  if (await topic.isVisible().catch(() => false))
-    await topic.selectOption({ label: 'Tin học căn bản' });
+  if (await topic.isVisible().catch(() => false)) await chooseTopic(page, 'Tin học căn bản');
 }
 
 async function save(page: Page) {

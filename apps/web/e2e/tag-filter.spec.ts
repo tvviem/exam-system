@@ -186,3 +186,34 @@ test('Ngân hàng câu hỏi: hộp "Chọn tag", giữ trên địa chỉ trang
   await expect(row('A')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Bỏ lọc: chương 3' })).toBeVisible();
 });
+
+test('màn soạn câu hỏi chỉ cách đặt tag: ví dụ ngay dưới ô, hướng dẫn mở khi cần', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-tag-${p}`);
+  await seed(page, unique(p));
+  await page.goto('/examiner/questions/new?type=single_choice');
+  const tags = page.getByLabel('Tags', { exact: true });
+  await expect(tags).toHaveAccessibleDescription(/Ví dụ: chương 2, vận dụng, ngăn xếp/);
+  const guide = page.getByText('Cách đặt tag để dễ tìm');
+  await expect(guide).toBeVisible();
+  await expect(page.getByText('Mỗi câu nên có')).toBeHidden(); // đóng sẵn, không chiếm chỗ
+  await guide.click();
+  // Ô Tags và hướng dẫn rộng trọn hàng, đọc thoải mái.
+  const [field, row] = await tags.evaluate((el) => [
+    el.getBoundingClientRect().width,
+    (el.closest('.grid') as Element).getBoundingClientRect().width,
+  ]);
+  expect(Math.round(field as number)).toBe(Math.round(row as number));
+  for (const title of [
+    'Mỗi câu nên có',
+    'Viết thống nhất',
+    'Loại riêng',
+    'Không cần gắn',
+    'Khi lọc',
+  ])
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
+  await noOverflow(page);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/tag-soan-${p}.png` });
+});

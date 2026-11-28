@@ -49,9 +49,9 @@ import { PageHeader } from '../../../../lib/ui/page-header';
 import { StickyActionBar } from '../../../../lib/ui/sticky-action-bar';
 import { TagFilter, TagFilterSummary } from '../../../../lib/ui/tag-filter';
 import { useToast } from '../../../../lib/ui/toast';
+import { TopicCombobox } from '../../../../lib/ui/topic-combobox';
 import { TopicManager } from '../../../../lib/ui/topic-manager';
 import { TopicNav } from '../../../../lib/ui/topic-nav';
-import { TopicOptions } from '../../../../lib/ui/topic-options';
 
 function tagsFromSearch(value: unknown): string[] | undefined {
   const tags = [value ?? []]
@@ -602,15 +602,13 @@ function BulkBar({
         onClose={() => setMoving(false)}
         title={t('questionBank.moveTitle', { count: ids.length })}
       >
-        <SelectField
-          id="move-target"
+        <TopicCombobox
+          inline
           label={t('questionBank.targetTopic')}
+          topics={topics.data ?? []}
           value={target}
-          onChange={(e) => setTarget(e.target.value)}
-        >
-          <option value="">{t('questionBank.chooseTopic')}</option>
-          <TopicOptions topics={topics.data ?? []} />
-        </SelectField>
+          onChange={setTarget}
+        />
         <ErrorMessage>{move.isError && errorMessage(t, move.error)}</ErrorMessage>
         <div className="flex flex-col gap-2 sm:flex-row-reverse">
           <PrimaryButton disabled={!target || move.isPending} onClick={() => move.mutate()}>

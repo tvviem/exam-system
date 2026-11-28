@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { ORIGIN, overflow, signIn } from './take-support';
+import { chooseTopic } from './topic-support';
 
 // Cột Chủ đề của Ngân hàng câu hỏi khi có nhiều Chủ đề (docs/plan/chu-de-ux-thiet-ke.md, bài E-01 đến E-05): chữ không đè,
 // thứ tự tự nhiên, gom nhóm, tìm, ô chọn chia nhóm. Máy tính dùng cột bên trái; điện thoại mở hộp "Chọn Chủ đề".
@@ -158,27 +159,42 @@ test('E-04: tìm nhiều từ không dấu mở nhóm khớp; Enter chọn; Esca
   }
 });
 
-test('E-05: ô chọn Chủ đề chia nhóm theo thứ tự tự nhiên, chọn theo tên đầy đủ vẫn đúng', async ({
+test('E-05: màn soạn và nhập Excel chọn Chủ đề bằng ô gõ để tìm, giống hộp chọn câu', async ({
   page,
 }, testInfo) => {
   const p = testInfo.project.name;
   await openBank(page, p);
-  const check = async () => {
-    const select = page.getByLabel('Chủ đề', { exact: true });
-    await expect(select).toBeVisible();
-    await expect(select.locator('optgroup')).toHaveCount(3);
-    expect(
-      await select
-        .locator('optgroup')
-        .evaluateAll((groups) => groups.map((g) => (g as HTMLOptGroupElement).label)),
-    ).toEqual(['Cơ sở dữ liệu', 'CTDL', 'NLS và ứng dụng AI']);
-    const first = await select.locator('optgroup').first().locator('option').allTextContents();
-    expect(first.slice(0, 3).map((t) => /Chương (\d+)/.exec(t)?.[1])).toEqual(['1', '2', '3']);
-    await select.selectOption({ label: 'CTDL 3 - Cấu trúc dữ liệu phần 3' });
-    await expect(select).toHaveValue(topicId[p]?.['CTDL 3 - Cấu trúc dữ liệu phần 3'] as string);
-  };
+  const wanted = 'CTDL 3 - Cấu trúc dữ liệu phần 3';
+  const box = page.getByRole('combobox', { name: 'Chủ đề', exact: true });
+  const list = page.getByRole('listbox', { name: 'Chủ đề' });
+
+  // Màn soạn: đã có sẵn một Chủ đề; mở ra chỉ vài mục, không có "Mọi Chủ đề".
   await page.goto('/examiner/questions/new?type=single_choice');
-  await check();
+  await expect(box).toHaveValue(/.+/);
+  await box.click();
+  await expect(list.getByRole('option')).toHaveCount(6);
+  await expect(list.getByRole('option', { name: 'Mọi Chủ đề' })).toHaveCount(0);
+  await expect(page.getByText(/^Còn \d+ Chủ đề khác\. Gõ tên để tìm\.$/)).toBeVisible();
+  await box.press('Escape');
+  await chooseTopic(page, wanted);
+  // Ô Chủ đề rộng trọn hàng của lưới thông tin câu hỏi, không bị ép vào một cột hẹp.
+  const [field, row] = await box.evaluate((el) => [
+    el.getBoundingClientRect().width,
+    (el.closest('.grid') as Element).getBoundingClientRect().width,
+  ]);
+  expect(Math.round(field as number)).toBe(Math.round(row as number));
+
+  // Nhập Excel: chưa chọn thì ô trống và chưa tải lên được; tìm không dấu rồi Enter.
   await page.goto('/examiner/questions/import');
-  await check();
+  await expect(box).toBeVisible();
+  await box.click();
+  await box.fill('cau truc 3');
+  await box.press('Enter');
+  await expect(box).toHaveValue(wanted);
+  await expect(list).toBeHidden();
+  await expect(
+    page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    ),
+  ).resolves.toBe(0);
 });

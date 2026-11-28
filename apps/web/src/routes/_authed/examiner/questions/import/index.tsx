@@ -22,13 +22,12 @@ import {
   Card,
   ErrorMessage,
   PrimaryButton,
-  SelectField,
 } from '../../../../../lib/ui';
 import { EmptyState, ListSkeleton, Pagination } from '../../../../../lib/ui/admin';
 import { Breadcrumb } from '../../../../../lib/ui/breadcrumb';
 import { CancelImportButton } from '../../../../../lib/ui/cancel-import';
 import { PageHeader } from '../../../../../lib/ui/page-header';
-import { TopicOptions } from '../../../../../lib/ui/topic-options';
+import { TopicCombobox } from '../../../../../lib/ui/topic-combobox';
 
 export const Route = createFileRoute('/_authed/examiner/questions/import/')({
   validateSearch: (search: Record<string, unknown>): { topicId?: string; page?: number } => ({
@@ -168,16 +167,12 @@ function UploadCard() {
           </li>
           <li className="flex flex-col gap-2">
             <Step n={2}>{t('questionImport.step2')}</Step>
-            <SelectField
-              id="import-topic"
+            <TopicCombobox
               label={t('questionImport.topic')}
+              topics={topics.data ?? []}
               value={topicId}
-              onChange={(e) => setTopicId(e.target.value)}
-              required
-            >
-              <option value="">{t('questionImport.chooseTopic')}</option>
-              <TopicOptions topics={topics.data ?? []} />
-            </SelectField>
+              onChange={setTopicId}
+            />
           </li>
           <li className="flex flex-col gap-2">
             <Step n={3}>{t('questionImport.step3')}</Step>

@@ -1,3 +1,4 @@
+import { TAG_GUIDE, TAG_GUIDE_EXAMPLE, tagKind } from '@exam/shared';
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
 import { HEADERS, SHEET } from '../../../../test/support/question-import-files';
@@ -56,6 +57,37 @@ describe('file mẫu nhập Câu hỏi (Q157)', () => {
       'paragraph',
       'codeBlock',
     ]);
+  });
+});
+
+describe('hướng dẫn đặt tag trong file mẫu', () => {
+  it('sheet "Hướng dẫn" có mục đặt tag đủ từng quy tắc, ghi chú cột Tags kèm ví dụ', async () => {
+    const workbook = await open(await buildQuestionImportTemplate());
+    const cells: string[] = [];
+    workbook.getWorksheet('Hướng dẫn')?.eachRow((row) => {
+      cells.push(`${row.getCell(1).value ?? ''}|${row.getCell(2).value ?? ''}`);
+    });
+    expect(cells).toContain('Cách đặt tag để dễ tìm|');
+    for (const rule of TAG_GUIDE) expect(cells).toContain(`${rule.title}|${rule.text}`);
+    for (const name of Object.values(SHEET)) {
+      const header = workbook.getWorksheet(name)?.getRow(1);
+      const column = ((header?.values ?? []) as string[]).indexOf('Tags');
+      expect(JSON.stringify(header?.getCell(column).note)).toContain(TAG_GUIDE_EXAMPLE);
+    }
+  });
+
+  it('8 câu ví dụ đặt tag đúng quy tắc: một chương, một mức độ, một đến ba tag nội dung', async () => {
+    const { rows } = await parseQuestionImportFile(await buildQuestionImportExample());
+    for (const row of rows) {
+      const kinds = (row.input?.tags ?? []).map(tagKind);
+      expect(kinds.filter((kind) => kind === 'chương')).toHaveLength(1);
+      expect(kinds.filter((kind) => kind === 'mức độ')).toHaveLength(1);
+      const content = kinds.filter((kind) => kind === null).length;
+      expect(content).toBeGreaterThanOrEqual(1);
+      expect(content).toBeLessThanOrEqual(3);
+      expect(row.input?.tags).not.toContain('toán rời rạc');
+      expect(row.input?.tags).not.toContain('tin học căn bản');
+    }
   });
 });
 

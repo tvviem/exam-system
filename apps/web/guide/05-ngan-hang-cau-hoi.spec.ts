@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import { chooseTopic } from '../e2e/topic-support';
 import { openPage, shot, signIn } from './support';
 
 // Người ra đề: Ngân hàng câu hỏi (Chủ đề, nhập từ Excel, soạn bốn Loại câu hỏi, danh sách) - tài liệu nguoi-ra-de.md.
@@ -57,7 +58,7 @@ test('Ngân hàng câu hỏi: Chủ đề, nhập Excel, soạn câu, danh sách
   await expect(
     page.getByRole('heading', { name: 'Nhập câu hỏi từ Excel', level: 1 }),
   ).toBeVisible();
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption({ label: 'Tin học căn bản' });
+  await chooseTopic(page, 'Tin học căn bản');
   await page.getByLabel('File câu hỏi (.xlsx)').setInputFiles(DEMO('cau-hoi-tin-hoc-can-ban.xlsx'));
   await shot(page, 'nguoi-ra-de', '12-nhap-excel', {
     full: true,
@@ -100,9 +101,7 @@ test('Ngân hàng câu hỏi: Chủ đề, nhập Excel, soạn câu, danh sách
 
   // Nhập thêm bộ câu hỏi thứ hai cho Chủ đề kiến trúc (không chụp)
   await page.goto('/examiner/questions/import');
-  await page
-    .getByLabel('Chủ đề', { exact: true })
-    .selectOption({ label: 'Thiết kế kiến trúc hệ thống phần mềm' });
+  await chooseTopic(page, 'Thiết kế kiến trúc hệ thống phần mềm');
   await page
     .getByLabel('File câu hỏi (.xlsx)')
     .setInputFiles(DEMO('cau-hoi-kien-truc-phan-mem.xlsx'));

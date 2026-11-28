@@ -1,5 +1,6 @@
 import { expect, type Page, type TestInfo, test } from '@playwright/test';
 import { ORIGIN, overflow, signIn } from './take-support';
+import { chooseTopic } from './topic-support';
 import { workbook, XLSX_MIME } from './xlsx';
 
 // Mã lệnh trong Câu hỏi, bước M2 (docs/plan/ma-lenh-trong-cau-hoi-thiet-ke.md mục 4.3, 4.4): soạn khối mã, mã trong dòng
@@ -127,7 +128,7 @@ test('Nhập Excel có đánh dấu mã: xem trước thấy khối mã, tạo x
     ],
   });
   await page.goto('/examiner/questions/import');
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption(topicId);
+  await chooseTopic(page, `Nhập mã ${testInfo.project.name} ${testInfo.retry}`);
   await page
     .getByLabel('File câu hỏi (.xlsx)')
     .setInputFiles({ name: 'ma.xlsx', mimeType: XLSX_MIME, buffer: file });

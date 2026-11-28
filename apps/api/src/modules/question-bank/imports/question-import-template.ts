@@ -4,6 +4,9 @@ import {
   POINTS_MIN,
   POINTS_STEP,
   STEM_MAX_CHARS,
+  TAG_GUIDE,
+  TAG_GUIDE_EXAMPLE,
+  TAG_GUIDE_TITLE,
   TAG_MAX_CHARS,
   TAGS_MAX,
 } from '@exam/shared';
@@ -50,7 +53,7 @@ const points: Column = {
 const tags: Column = {
   title: 'Tags',
   width: 26,
-  note: `Cách nhau bằng dấu phẩy, tối đa ${TAGS_MAX} tag, mỗi tag tối đa ${TAG_MAX_CHARS} ký tự.`,
+  note: `Cách nhau bằng dấu phẩy, tối đa ${TAGS_MAX} tag, mỗi tag tối đa ${TAG_MAX_CHARS} ký tự. Nên có chương, mức độ, nội dung, ví dụ: ${TAG_GUIDE_EXAMPLE} (xem "${TAG_GUIDE_TITLE}" ở sheet "Hướng dẫn").`,
 };
 const choiceColumns = (kind: 'Phương án' | 'Mệnh đề', first: 'A' | 'a'): Column[] =>
   letters(first).map((letter, i) => ({
@@ -88,7 +91,7 @@ const SHEETS: SheetDef[] = [
         'Phương án D': '$n^2$',
         'Đáp án': 'C',
         Điểm: '0,5',
-        Tags: 'toán rời rạc, tập hợp',
+        Tags: 'chương 1, nhận biết, tập hợp',
       },
       {
         'Nội dung': 'Đơn vị nhỏ nhất dùng để đo lượng thông tin trong máy tính là gì?',
@@ -98,7 +101,7 @@ const SHEETS: SheetDef[] = [
         'Phương án D': 'Pixel',
         'Đáp án': 'B',
         Điểm: '0,25',
-        Tags: 'tin học căn bản, biểu diễn thông tin',
+        Tags: 'chương 1, nhận biết, biểu diễn thông tin',
       },
     ],
   },
@@ -132,7 +135,7 @@ const SHEETS: SheetDef[] = [
         'Đáp án': 'A,C',
         Điểm: '1',
         'Quy tắc chấm': 'Tỷ lệ',
-        Tags: 'toán rời rạc, logic mệnh đề',
+        Tags: 'chương 2, thông hiểu, logic mệnh đề',
       },
       {
         'Nội dung': 'Chọn các thiết bị thuộc nhóm thiết bị nhập (input) của máy tính:',
@@ -144,7 +147,7 @@ const SHEETS: SheetDef[] = [
         'Đáp án': 'A,C,E',
         Điểm: '1,5',
         'Quy tắc chấm': 'Đúng hết',
-        Tags: 'tin học căn bản, phần cứng',
+        Tags: 'chương 2, nhận biết, phần cứng',
       },
     ],
   },
@@ -183,7 +186,7 @@ const SHEETS: SheetDef[] = [
         Điểm: '1',
         'Quy tắc chấm': 'Bậc thang',
         'Bậc thang': '0; 0,1; 0,25; 0,5; 1',
-        Tags: 'toán rời rạc, đồ thị',
+        Tags: 'chương 3, vận dụng, đồ thị',
       },
       {
         'Nội dung': 'Về hệ điều hành và quản lý tệp, xét các nhận định sau:',
@@ -193,7 +196,7 @@ const SHEETS: SheetDef[] = [
         'Đáp án': 'Đ,S,Đ',
         Điểm: '1',
         'Quy tắc chấm': 'Tỷ lệ',
-        Tags: 'tin học căn bản, hệ điều hành',
+        Tags: 'chương 3, thông hiểu, hệ điều hành',
       },
     ],
   },
@@ -222,7 +225,7 @@ const SHEETS: SheetDef[] = [
         'Hướng dẫn chấm':
           'Bước cơ sở ($n = 1$): 0,5 điểm.\nGiả thiết quy nạp: 0,5 điểm.\nBước quy nạp và kết luận: 1 điểm.',
         Điểm: '2',
-        Tags: 'toán rời rạc, quy nạp',
+        Tags: 'chương 4, vận dụng, quy nạp',
       },
       {
         'Nội dung':
@@ -231,7 +234,7 @@ const SHEETS: SheetDef[] = [
         'Hướng dẫn chấm':
           'Mỗi ý đúng 0,5 điểm, tối đa 1,5 điểm: tính khả biến khi mất điện; khả năng ghi dữ liệu; vai trò (dữ liệu đang xử lý so với chương trình khởi động).',
         Điểm: '1,5',
-        Tags: 'tin học căn bản, bộ nhớ',
+        Tags: 'chương 4, thông hiểu, bộ nhớ',
       },
     ],
   },
@@ -352,6 +355,11 @@ function addGuide(workbook: ExcelJS.Workbook, withExamples: boolean) {
     'Giới hạn',
     `Tối đa ${MAX_IMPORT_ROWS} dòng cho cả file, ${MAX_UPLOAD_BYTES / 1024 / 1024} MB, định dạng .xlsx.`,
   );
+  guide.addRow([]);
+
+  heading(TAG_GUIDE_TITLE);
+  for (const rule of TAG_GUIDE) line(rule.title, rule.text);
+  line('Ví dụ ô Tags', TAG_GUIDE_EXAMPLE);
   guide.addRow([]);
 
   for (const def of SHEETS) {

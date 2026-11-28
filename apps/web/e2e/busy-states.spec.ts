@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { chooseTopic } from './topic-support';
 import { workbook, XLSX_MIME } from './xlsx';
 
 // Tác vụ nặng (tải file, server đọc file) phải báo rõ "đang xử lý": biểu tượng quay, nút aria-busy,
@@ -88,7 +89,7 @@ test('Nhập Excel Câu hỏi: tải lên báo tên file và dung lượng, nút
     await delay(1500);
     return route.continue();
   });
-  await page.locator('#import-topic').selectOption({ label: `Chủ đề bận ${p}` });
+  await chooseTopic(page, `Chủ đề bận ${p}`);
   const header = [
     'Nội dung',
     'Phương án A',
