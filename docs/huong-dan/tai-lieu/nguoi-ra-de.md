@@ -227,7 +227,18 @@ Tick ô bên trái của nhiều câu (hoặc **Chọn mọi câu trên trang**)
 
 > **Lưu ý:** câu đã nằm trong Bộ đề **không xóa được**, chỉ **Lưu trữ**. Bộ đề đã Phát hành giữ **bản chụp** nội dung câu lúc phát hành, nên sửa câu về sau **không làm thay đổi** các Bộ đề cũ và bài đã thi.
 
-### 3.6. Lọc theo nhiều tag
+### 3.6. Đặt tag và lọc theo nhiều tag
+
+**Đặt tag theo một quy tắc chung** thì về sau tìm và ra đề mới nhanh:
+
+| Quy tắc | Cách làm |
+|---|---|
+| **Mỗi câu nên có** | 1 tag chương (`chương 2`), 1 tag mức độ (`nhận biết`, `thông hiểu`, `vận dụng` hoặc `vận dụng cao`) và 1 đến 3 tag nội dung (`ngăn xếp`). Ví dụ ô Tags: `chương 2, vận dụng, ngăn xếp` |
+| **Viết thống nhất** | cùng một ý chỉ viết một cách: `chương 2`, không viết `c2`, `Chương II` hay `chuong 2`. Có dấu và không dấu là hai tag khác nhau; chữ hoa tự đổi thành chữ thường |
+| **Loại riêng** | muốn thêm một loại để lọc thì viết dạng `loại: giá trị`, ví dụ `chuẩn: clo1` |
+| **Không cần gắn** | tên học phần (đã có Chủ đề) và Loại câu hỏi (đã lọc riêng được) |
+
+Quy tắc này cũng có sẵn khi làm: ở màn soạn câu hỏi, bấm **Cách đặt tag để dễ tìm** dưới ô Tags; trong file Excel mẫu, xem mục cùng tên ở sheet **Hướng dẫn**.
 
 Danh sách tag là các tag **đang có** trong Chủ đề đang chọn (chưa chọn Chủ đề thì của mọi Chủ đề), kèm số câu. Ô **Tìm tag** không cần dấu. Mỗi lần chọn tối đa 20 tag.
 

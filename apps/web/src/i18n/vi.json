@@ -1099,7 +1099,7 @@
     "type": "Loại câu hỏi",
     "allTypes": "Mọi loại",
     "tags": "Tags",
-    "tagsHint": "Cách nhau bằng dấu phẩy, tối đa 10 tag.",
+    "tagsHint": "Cách nhau bằng dấu phẩy, tối đa 10 tag. Ví dụ: {{example}}.",
     "search": "Tìm câu hỏi",
     "searchPlaceholder": "Gõ một phần nội dung, không cần dấu",
     "newQuestion": "Soạn câu hỏi",

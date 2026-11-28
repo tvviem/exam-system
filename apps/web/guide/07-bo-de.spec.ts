@@ -68,7 +68,10 @@ test('Soạn Bộ đề: tạo, thêm câu, Phần, điểm, rút câu, xem th�
       },
     ],
   });
-  await addDialog.getByRole('button', { name: /^Xem chi tiết:/ }).first().click();
+  await addDialog
+    .getByRole('button', { name: /^Xem chi tiết:/ })
+    .first()
+    .click();
   const detail = page.getByRole('dialog', { name: 'Chi tiết câu hỏi' });
   await expect(detail).toBeVisible();
   await shot(page, 'nguoi-ra-de', '34-chi-tiet-cau-hoi', {

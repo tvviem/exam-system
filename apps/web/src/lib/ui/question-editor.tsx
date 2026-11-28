@@ -1,4 +1,4 @@
-import { POINTS_MAX, POINTS_MIN, POINTS_STEP } from '@exam/shared';
+import { POINTS_MAX, POINTS_MIN, POINTS_STEP, TAG_GUIDE_EXAMPLE } from '@exam/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { Copy, Save, Trash2 } from 'lucide-react';
@@ -31,6 +31,7 @@ import {
 import { QuestionView } from './question-view';
 import { StickyActionBar } from './sticky-action-bar';
 import { Tabs } from './tabs';
+import { TagGuide } from './tag-guide';
 import { useToast } from './toast';
 import { TopicCombobox } from './topic-combobox';
 
@@ -241,11 +242,11 @@ export function QuestionEditor({
             onChange={(e) => patch({ defaultPoints: Number(e.target.value) })}
             error={shown.includes('points') && t('questionBank.problem.points')}
           />
-          <div className="@xl:col-span-3">
+          <div className="@md:col-span-2 @xl:col-span-3">
             <TextField
               id="q-tags"
               label={t('questionBank.tags')}
-              hint={t('questionBank.tagsHint')}
+              hint={t('questionBank.tagsHint', { example: TAG_GUIDE_EXAMPLE })}
               value={tagsText}
               onChange={(e) => {
                 setTagsText(e.target.value);
@@ -258,6 +259,7 @@ export function QuestionEditor({
               }}
               error={shown.includes('tags') && t('questionBank.problem.tags')}
             />
+            <TagGuide />
           </div>
         </div>
       </Card>

@@ -68,6 +68,8 @@ Quy tắc suy loại và dựng điều kiện là **một hàm thuần ở `@ex
 - **Đổi tên, gộp tag:** trong hộp danh sách tag, `POST /api/questions/tags/rename` `{ from, to, topicId? }`; đổi sang tên đã có là gộp (không trùng trong một câu). Hộp xác nhận nêu số câu bị đổi.
 - Sửa tag tăng `version` của câu (người đang soạn câu đó được báo phiên bản đã đổi, như mọi lần sửa). Bản chụp trong Bộ đề đã Phát hành không đổi.
 
+**Hướng dẫn đặt tag (28/11/2026, chủ dự án yêu cầu, làm trước phần còn lại của G2):** quy tắc đặt tag nằm ở một chỗ (`@exam/shared`, `tag-guide.ts`) và hiện ở sheet "Hướng dẫn" của file Excel mẫu và file ví dụ (kèm ghi chú ở tiêu đề cột Tags, 8 câu ví dụ đặt tag đúng quy tắc) và dưới ô Tags ở màn soạn câu hỏi (ví dụ ngay trong gợi ý; mục bấm mở, đóng sẵn). `tag-guide.test.ts` giữ cho quy tắc nêu ra khớp cách hệ thống xếp loại.
+
 ## 5. Lát G3 (để sau, Q517)
 
 Chọn ngẫu nhiên N câu đang khớp bộ lọc trong hộp chọn câu; sau đó **ma trận đề** (loại `chương` × loại `mức`, điền số câu từng ô, hệ thống chọn). Thiết kế riêng khi làm.
