@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng
 
-Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản trị viên**, **Người ra đề**, **Người dự thi**. Thuật ngữ in hoa theo [GLOSSARY.md](../../GLOSSARY.md). Các hướng dẫn chuyên đề dưới đây là nền; ba tài liệu trọn bộ theo vai nằm ở mục tiếp theo. Cập nhật đến **bản 0.7.0** (28/11/2026: lọc theo nhiều tag, ô tìm Chủ đề ở mọi chỗ, hộp thêm câu hỏi mới, hướng dẫn đặt tag); ảnh chụp trong tệp Word lấy ở bản này.
+Hướng dẫn viết bằng lời của người dùng, chia theo vai: **Quản trị viên**, **Người ra đề**, **Người dự thi**. Thuật ngữ in hoa theo [GLOSSARY.md](../../GLOSSARY.md). Các hướng dẫn chuyên đề dưới đây là nền; ba tài liệu trọn bộ theo vai nằm ở mục tiếp theo. Cập nhật đến **bản 0.8.0** (28/11/2026: gợi ý tag khi soạn, thêm bỏ tag hàng loạt, đổi tên và gộp tag; bản 0.7.0 thêm lọc nhiều tag, ô tìm Chủ đề, hộp thêm câu mới, hướng dẫn đặt tag); ảnh chụp trong tệp Word lấy ở bản 0.7.0, tệp Word chưa dựng lại cho 0.8.0.
 
 ## Đã có
 
@@ -18,7 +18,7 @@ Ba tài liệu đầy đủ, mỗi vai một tệp, viết từ đầu đến cu
 | Tài liệu | Vai | Nội dung chính | Bản |
 |---|---|---|---|
 | [tai-lieu/nguoi-du-thi.md](tai-lieu/nguoi-du-thi.md) | Người dự thi | Kích hoạt tài khoản, đăng nhập, quên mật khẩu, Vào thi, làm bài trên điện thoại (Từng câu và Cả đề, bốn Loại câu hỏi, câu có mã lệnh, bảng câu, nộp bài), Kết quả và Phúc khảo, sự cố thường gặp | 0.7.0 |
-| [tai-lieu/nguoi-ra-de.md](tai-lieu/nguoi-ra-de.md) | Người ra đề | Lời mời và Yêu cầu cấp tài khoản, Ngân hàng câu hỏi (kể cả mã lệnh), soạn Bộ đề và Rút câu, Phiên thi và Mã đề, theo dõi phòng thi, chấm, Công bố, Phúc khảo | 0.7.0 |
+| [tai-lieu/nguoi-ra-de.md](tai-lieu/nguoi-ra-de.md) | Người ra đề | Lời mời và Yêu cầu cấp tài khoản, Ngân hàng câu hỏi (kể cả mã lệnh), soạn Bộ đề và Rút câu, Phiên thi và Mã đề, theo dõi phòng thi, chấm, Công bố, Phúc khảo | 0.8.0 |
 | [tai-lieu/quan-tri-vien.md](tai-lieu/quan-tri-vien.md) | Quản trị viên | Người dùng, Lời mời, duyệt Yêu cầu cấp tài khoản, Đơn vị, Ủy quyền chấm, nhật ký, Hàng đợi thư, Sao lưu, việc cần làm trước kỳ thi | 0.7.0 |
 
 Còn thiếu: bản PDF (nếu cần, xuất từ tệp Word sau khi chỉnh).
