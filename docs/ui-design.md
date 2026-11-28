@@ -270,6 +270,7 @@ Theo [plan/hop-chon-cau-thiet-ke.md](plan/hop-chon-cau-thiet-ke.md); mẫu đầ
 - Bộ lọc đang bật hiện thành nhãn gỡ được, nên tên dài vẫn đọc đủ dù ô chọn chỉ có một dòng.
 - `TopicCombobox`: ô chọn Chủ đề gõ để tìm (mẫu `combobox` + `listbox`), dùng ở **mọi chỗ chọn một Chủ đề**. Danh sách đang mở thì Esc chỉ đóng danh sách. Trong hộp thoại nhỏ dùng `inline`: danh sách nằm trong dòng chảy (không bị khung hộp cắt) và không đóng khi rời ô, để nút bên dưới không nhảy chỗ lúc đang bấm.
 - Tên Chủ đề dài: ô chọn cho chiếm trọn hàng (màn soạn câu hỏi) thay vì một cột hẹp.
+- Hàng nút của hộp thoại dài: đưa vào `footer` của `Dialog` (đầu và hàng nút đứng yên, chỉ nội dung cuộn). Không dùng `sticky bottom-0` trong nội dung cuộn: phần đệm của khung chừa khe cho dòng đang cuộn lộ ra dưới nút (lỗi thật ở hộp Chọn tag và hộp đối chiếu tài khoản; `dialog-support.ts` giữ).
 - Lớp `hidden` không ghi đè được `inline-flex` của `Button`: muốn ẩn nút theo bề rộng thì bọc ngoài hoặc không dựng.
 
 ## Quyết định (Q71–Q75)
