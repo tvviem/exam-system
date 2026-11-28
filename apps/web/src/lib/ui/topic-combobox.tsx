@@ -1,4 +1,5 @@
-import { useId, useRef, useState } from 'react';
+import { CircleAlert } from 'lucide-react';
+import { type ReactNode, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { rememberTopic, searchTopics, suggestTopics, type TopicHit } from '../topic-search';
 import type { TopicLike } from '../topic-tree';
@@ -44,7 +45,8 @@ interface Section<T> {
 
 /**
  * Ô chọn một Chủ đề, gõ để tìm (docs/plan/hop-chon-cau-thiet-ke.md mục 3): chưa gõ chỉ hiện vài Chủ đề, gõ thì tìm không
- * dấu và theo chữ cái đầu. Bàn phím: mũi tên, Enter, Esc chỉ đóng danh sách. `value` rỗng là "mọi Chủ đề".
+ * dấu và theo chữ cái đầu. Bàn phím: mũi tên, Enter, Esc chỉ đóng danh sách. `value` rỗng là chưa chọn, hay "mọi Chủ đề"
+ * khi có `allLabel`.
  */
 export function TopicCombobox<T extends TopicLike>({
   label,
@@ -52,13 +54,21 @@ export function TopicCombobox<T extends TopicLike>({
   topics,
   value,
   onChange,
+  error,
+  inline = false,
 }: {
   label: string;
-  /** Chữ của lựa chọn không lọc theo Chủ đề. */
-  allLabel: string;
+  /** Chữ của lựa chọn không lọc theo Chủ đề; bỏ trống khi bắt buộc chọn một Chủ đề. */
+  allLabel?: string;
   topics: readonly T[];
   value: string;
   onChange: (topicId: string) => void;
+  error?: ReactNode;
+  /**
+   * Trong hộp thoại: danh sách nằm trong dòng chảy của trang (không bị khung hộp cắt) và không đóng khi rời ô, để các nút
+   * bên dưới không nhảy chỗ ngay lúc đang bấm.
+   */
+  inline?: boolean;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -77,7 +87,7 @@ export function TopicCombobox<T extends TopicLike>({
   const sections: Section<T>[] = found
     ? [{ key: 'found', options: found.hits }]
     : [
-        { key: 'all', options: [null] },
+        { key: 'all', options: allLabel ? [null] : [] },
         {
           key: 'recent',
           heading: t('topicPicker.recent'),
@@ -127,7 +137,7 @@ export function TopicCombobox<T extends TopicLike>({
     document.getElementById(optionId(next))?.scrollIntoView({ block: 'nearest' });
   };
 
-  const selectedName = topics.find((topic) => topic.id === value)?.name ?? allLabel;
+  const selectedName = topics.find((topic) => topic.id === value)?.name ?? allLabel ?? '';
   let index = 0;
 
   return (
@@ -143,14 +153,16 @@ export function TopicCombobox<T extends TopicLike>({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
           aria-activedescendant={open && flat.length > 0 ? optionId(active) : undefined}
           autoComplete="off"
           className={fieldClass}
           placeholder={t('topicPicker.placeholder')}
-          title={selectedName}
+          title={selectedName || undefined}
           value={open ? query : selectedName}
           onFocus={(e) => e.target.select()}
-          onBlur={hide}
+          onBlur={inline ? undefined : hide}
           onClick={() => !open && show()}
           onChange={(e) => {
             // Đang đóng thì chữ trong ô là tên đang chọn: ký tự gõ thêm mới là từ khóa.
@@ -177,7 +189,11 @@ export function TopicCombobox<T extends TopicLike>({
           }}
         />
         {open && (
-          <div className="absolute inset-x-0 top-full z-20 mt-1 rounded-lg border border-border-strong bg-surface-raised p-1 shadow-lg">
+          <div
+            className={`mt-1 rounded-lg border border-border-strong bg-surface-raised p-1 ${
+              inline ? '' : 'absolute inset-x-0 top-full z-20 shadow-lg'
+            }`}
+          >
             <div
               id={listId}
               role="listbox"
@@ -245,6 +261,12 @@ export function TopicCombobox<T extends TopicLike>({
           {open && found ? t('topicPicker.matches', { count: found.total }) : ''}
         </span>
       </div>
+      {error && (
+        <p id={`${id}-error`} className="flex items-center gap-1 text-sm text-danger">
+          <CircleAlert aria-hidden className="size-4 shrink-0" />
+          {error}
+        </p>
+      )}
     </div>
   );
 }

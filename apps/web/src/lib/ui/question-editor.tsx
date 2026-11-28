@@ -32,7 +32,7 @@ import { QuestionView } from './question-view';
 import { StickyActionBar } from './sticky-action-bar';
 import { Tabs } from './tabs';
 import { useToast } from './toast';
-import { TopicOptions } from './topic-options';
+import { TopicCombobox } from './topic-combobox';
 
 // Trình soạn Câu hỏi (docs/plan/slice-2.md, Q119): lưu bằng nút, cảnh báo khi rời trang đang sửa dở,
 // bản đang soạn nhớ trên thiết bị. TipTap tải lười để không nặng trang danh sách.
@@ -207,15 +207,16 @@ export function QuestionEditor({
     <div key={formKey} className="@container flex flex-col gap-4">
       <Card className="flex flex-col gap-4">
         <div className="grid gap-4 @md:grid-cols-2 @xl:grid-cols-3">
-          <SelectField
-            id="q-topic"
-            label={t('questionBank.topic')}
-            value={draft.topicId}
-            onChange={(e) => patch({ topicId: e.target.value })}
-            error={shown.includes('topic') && t('questionBank.problem.topic')}
-          >
-            <TopicOptions topics={activeTopics} />
-          </SelectField>
+          {/* Trọn một hàng: tên Chủ đề dài vẫn đọc được, cả khi ô đóng lẫn trong danh sách. */}
+          <div className="@md:col-span-2 @xl:col-span-3">
+            <TopicCombobox
+              label={t('questionBank.topic')}
+              topics={activeTopics}
+              value={draft.topicId}
+              onChange={(topicId) => patch({ topicId })}
+              error={shown.includes('topic') && t('questionBank.problem.topic')}
+            />
+          </div>
           <SelectField
             id="q-type"
             label={t('questionBank.type')}

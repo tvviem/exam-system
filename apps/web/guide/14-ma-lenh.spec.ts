@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { chooseTopic } from '../e2e/topic-support';
 import { ORIGIN, openPage, shot, signIn } from './support';
 
 // Mã lệnh trong Câu hỏi (tài liệu nguoi-ra-de.md mục 3.4 và nguoi-du-thi.md). Chạy sau cùng, dùng Chủ đề riêng nên không đổi số
@@ -20,7 +21,7 @@ test('Soạn câu hỏi có mã lệnh và xem trên điện thoại', async ({ 
     .getByRole('link', { name: /^Chọn một/ })
     .click();
   await expect(page.getByRole('heading', { name: 'Soạn câu hỏi', level: 1 })).toBeVisible();
-  await page.getByLabel('Chủ đề', { exact: true }).selectOption({ label: 'Lập trình C' });
+  await chooseTopic(page, 'Lập trình C');
 
   const stem = page.getByRole('textbox', { name: 'Phần dẫn' });
   const bar = page.getByRole('toolbar', { name: /Định dạng cho Phần dẫn/ });

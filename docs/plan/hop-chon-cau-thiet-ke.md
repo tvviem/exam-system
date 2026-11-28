@@ -1,6 +1,6 @@
 # Hộp "Thêm câu hỏi vào Bộ đề" mới
 
-**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q520–Q529). Tiến độ: **P1**, **P2** xong về mã; P3 chưa làm. Đi cùng [loc-nhieu-tag-thiet-ke.md](loc-nhieu-tag-thiet-ke.md) (lọc nhiều tag, G1). Quyết định ở mục 7.
+**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q520–Q529). Tiến độ: **P1**, **P2** đã chạy ở prod (27/11/2026); **P3** xong về mã. Đi cùng [loc-nhieu-tag-thiet-ke.md](loc-nhieu-tag-thiet-ke.md) (lọc nhiều tag, G1). Quyết định ở mục 7.
 
 ## 1. Yêu cầu và hiện trạng
 
@@ -86,6 +86,8 @@ Bản phác đo được 7 câu (máy tính) và 5 câu (điện thoại); số 
 **Đã làm ở P1** (`exam-picker-layout.spec.ts`, `topic-search.test.ts`): với Phần dẫn dài hai dòng, thấy trọn **6** câu ở 1366 × 768 và **4** câu ở 390 × 844 (trước: 2 và 0). Khác bản phác ở bốn chỗ nhỏ: số câu ghi cùng nút lật trang ("1–20 / 31"); nhãn bộ lọc hiện cả trên máy tính (gồm tên Chủ đề đầy đủ); điện thoại có từ hai Phần thì ô **Thêm vào Phần** đứng một dòng riêng ở chân hộp; nút **Hủy** chỉ có trên màn rộng.
 
 **Đã làm ở P2** (`tag-filter.test.ts`, `question-tags.int.test.ts`, `tag-facets.test.ts`, `tag-filter.spec.ts`): theo mục 4 và thiết kế tag. Thêm: loại chỉ có một tag thì nằm ở nhóm **Khác** (trừ mức độ); điện thoại hiện tối đa **4** nhãn bộ lọc, còn lại sau nút "+n bộ lọc khác" để danh sách còn chỗ. Ở Ngân hàng câu hỏi, nút **Chọn tag** và các nhãn nằm một hàng riêng dưới thanh lọc.
+
+**Đã làm ở P3** (`topic-nav.spec.ts` E-05, `question-bank.spec.ts`): `TopicCombobox` thay ô chọn gốc ở màn soạn, nhập Excel và hộp chuyển Chủ đề (không có mục "Mọi Chủ đề"). Hai điều thêm: hộp chuyển Chủ đề hiện danh sách trong dòng chảy của hộp; ô Chủ đề ở màn soạn chiếm trọn một hàng. Tiêu đề nhóm trong ô chọn gốc (bản `0.6.1`) không còn: tìm theo tên thay cho duyệt theo nhóm.
 
 ## 7. Quyết định
 

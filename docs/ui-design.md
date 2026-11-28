@@ -268,7 +268,8 @@ Theo [plan/hop-chon-cau-thiet-ke.md](plan/hop-chon-cau-thiet-ke.md); mẫu đầ
 - `Dialog` cỡ `screen`: toàn màn hình dưới 1024 px, gần hết màn hình từ 1024 px; đầu và chân đứng yên, **chỉ danh sách và cột lọc cuộn** (không cuộn cả hộp, không lồng hai vùng cuộn).
 - Màn hẹp: bộ lọc là một màn riêng trong cùng hộp; Esc hay nút Back quay về danh sách trước khi đóng hộp (`onEscape`).
 - Bộ lọc đang bật hiện thành nhãn gỡ được, nên tên dài vẫn đọc đủ dù ô chọn chỉ có một dòng.
-- `TopicCombobox`: ô chọn Chủ đề gõ để tìm (mẫu `combobox` + `listbox`), dùng khi danh sách dài. Danh sách đang mở thì Esc chỉ đóng danh sách.
+- `TopicCombobox`: ô chọn Chủ đề gõ để tìm (mẫu `combobox` + `listbox`), dùng ở **mọi chỗ chọn một Chủ đề**. Danh sách đang mở thì Esc chỉ đóng danh sách. Trong hộp thoại nhỏ dùng `inline`: danh sách nằm trong dòng chảy (không bị khung hộp cắt) và không đóng khi rời ô, để nút bên dưới không nhảy chỗ lúc đang bấm.
+- Tên Chủ đề dài: ô chọn cho chiếm trọn hàng (màn soạn câu hỏi) thay vì một cột hẹp.
 - Lớp `hidden` không ghi đè được `inline-flex` của `Button`: muốn ẩn nút theo bề rộng thì bọc ngoài hoặc không dựng.
 
 ## Quyết định (Q71–Q75)
