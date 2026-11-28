@@ -202,10 +202,12 @@ test('màn soạn câu hỏi chỉ cách đặt tag: ví dụ ngay dưới ô, h
   await expect(page.getByText('Mỗi câu nên có')).toBeHidden(); // đóng sẵn, không chiếm chỗ
   await guide.click();
   // Ô Tags và hướng dẫn rộng trọn hàng, đọc thoải mái.
-  const [field, row] = await tags.evaluate((el) => [
-    el.getBoundingClientRect().width,
-    (el.closest('.grid') as Element).getBoundingClientRect().width,
-  ]);
+  const [field, row] = await page
+    .getByTestId('tag-input')
+    .evaluate((el) => [
+      el.getBoundingClientRect().width,
+      (el.closest('.grid') as Element).getBoundingClientRect().width,
+    ]);
   expect(Math.round(field as number)).toBe(Math.round(row as number));
   for (const title of [
     'Mỗi câu nên có',
@@ -259,4 +261,78 @@ test('hộp "Chọn tag" nhiều tag: cuộn được tới tag cuối, nút Xon
   await noOverflow(page);
   await done.click();
   await expect(chooser).toBeHidden();
+});
+
+test('màn soạn gợi ý tag đang có khi gõ: không dấu ra đúng tag, tag mới vẫn thêm được, lưu cả tag đang gõ dở', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-tag-${p}`);
+  const { topicId } = await seed(page, unique(p));
+  const created = await page.request.post('/api/questions', {
+    headers: { origin: ORIGIN },
+    data: {
+      type: 'essay',
+      topicId,
+      stem: rich('Câu để sửa tag'),
+      defaultPoints: 1,
+      tags: [],
+      payload: { maxLength: 100 },
+    },
+  });
+  const id = (await created.json()).id as string;
+  await page.goto(`/examiner/questions/${id}`);
+  const input = page.getByRole('combobox', { name: 'Tags', exact: true });
+  const list = page.getByRole('listbox', { name: 'Gợi ý tag' });
+  const chip = (tag: string) => page.getByRole('button', { name: `Bỏ tag ${tag}` });
+
+  // Gõ không dấu: tag đang có đứng đầu kèm số câu; Enter chọn.
+  if (p === 'mobile') await input.tap();
+  await input.fill('van dung');
+  await expect(list.getByRole('option').first()).toHaveAccessibleName(/^vận dụng, \d+ câu$/);
+  if (p === 'mobile') {
+    // Vào ô thì ô lên nửa trên màn hình: gợi ý còn chỗ phía trên bàn phím ảo và các thanh ở đáy.
+    const [top, height] = await input.evaluate((el) => [
+      el.getBoundingClientRect().top,
+      window.innerHeight,
+    ]);
+    expect(top).toBeLessThan((height as number) / 3);
+  }
+  await input.press('Enter');
+  await expect(chip('vận dụng')).toBeVisible();
+  await expect(input).toHaveValue('');
+
+  // Chạm một gợi ý.
+  await input.fill('chuong 1');
+  await list.getByRole('option', { name: /^chương 1, / }).click();
+  await expect(chip('chương 1')).toBeVisible();
+
+  // Tag chưa có: "Thêm tag mới" đứng đầu; dấu phẩy cũng thêm đúng chữ đã gõ.
+  await input.fill('Cây AVL');
+  await expect(list.getByRole('option').first()).toHaveAccessibleName('Thêm tag mới “cây avl”');
+  await input.press('Enter');
+  await input.pressSequentially('đệ quy,');
+  await expect(chip('cây avl')).toBeVisible();
+  await expect(chip('đệ quy')).toBeVisible();
+
+  // Backspace ở ô trống bỏ tag cuối; Esc đóng gợi ý.
+  await input.press('Backspace');
+  await expect(chip('đệ quy')).toHaveCount(0);
+  await input.fill('nga');
+  await expect(list).toBeVisible();
+  await input.press('Escape');
+  await expect(list).toBeHidden();
+  if (process.env.SHOTS) {
+    await input.fill('chu');
+    await page.screenshot({ path: `${process.env.SHOTS}/goi-y-tag-${p}.png` });
+  }
+  await noOverflow(page);
+
+  // Còn chữ đang gõ mà bấm Lưu: tag đó được lưu cùng.
+  await input.fill('gõ dở');
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  await expect(page.getByText('Đã lưu Câu hỏi')).toBeVisible();
+  const saved = await (await page.request.get(`/api/questions/${id}`)).json();
+  expect(saved.tags).toEqual(['vận dụng', 'chương 1', 'cây avl', 'gõ dở']);
+  await expect(chip('gõ dở')).toBeVisible();
 });

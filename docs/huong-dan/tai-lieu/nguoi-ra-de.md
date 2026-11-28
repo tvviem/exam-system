@@ -140,7 +140,9 @@ Bấm **Soạn câu hỏi** rồi chọn Loại câu hỏi.
 
 Trình soạn có hai phần: bên trái để soạn, bên phải **Xem thử** đúng như người dự thi sẽ thấy (có công tắc **Hiện Đáp án đúng**).
 
-Phần chung của mọi Loại: chọn **Chủ đề** (gõ để tìm), **Điểm mặc định** (sửa lại được khi đưa vào Bộ đề) và **Tags** (cách nhau bằng dấu phẩy; dùng để tìm và lọc, đặt theo quy tắc ở mục 3.6).
+Phần chung của mọi Loại: chọn **Chủ đề** (gõ để tìm), **Điểm mặc định** (sửa lại được khi đưa vào Bộ đề) và **Tags** (dùng để tìm và lọc, đặt theo quy tắc ở mục 3.6).
+
+**Nhập tag:** gõ trong ô **Tags**, hệ thống **gợi ý tag bạn đã dùng** kèm số câu (không cần gõ dấu; tag của Chủ đề đang chọn đứng trước). Bấm một gợi ý, hoặc gõ tag mới rồi **Enter** hay dấu phẩy. Mỗi tag thành một nhãn; bấm × (hoặc **Backspace** khi ô trống) để bỏ. Gõ không dấu đúng một tag đang có (ví dụ `van dung`) thì **Enter** lấy đúng tag đó (`vận dụng`), tránh sinh tag trùng nghĩa.
 
 #### Chọn một
 

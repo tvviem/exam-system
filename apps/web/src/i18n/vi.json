@@ -501,6 +501,11 @@
     "choose": "Chọn tag",
     "chooseCount": "Chọn tag ({{count}})"
   },
+  "tagInput": {
+    "suggestions": "Gợi ý tag",
+    "remove": "Bỏ tag {{tag}}",
+    "create": "Thêm tag mới “{{tag}}”"
+  },
   "topicPicker": {
     "placeholder": "Gõ để tìm Chủ đề…",
     "recent": "Dùng gần đây",
@@ -1099,7 +1104,7 @@
     "type": "Loại câu hỏi",
     "allTypes": "Mọi loại",
     "tags": "Tags",
-    "tagsHint": "Cách nhau bằng dấu phẩy, tối đa 10 tag. Ví dụ: {{example}}.",
+    "tagsHint": "Chọn gợi ý, hoặc gõ tag mới rồi Enter hay dấu phẩy; tối đa 10 tag. Ví dụ: {{example}}.",
     "search": "Tìm câu hỏi",
     "searchPlaceholder": "Gõ một phần nội dung, không cần dấu",
     "newQuestion": "Soạn câu hỏi",

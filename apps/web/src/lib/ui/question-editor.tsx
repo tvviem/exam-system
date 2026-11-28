@@ -32,6 +32,7 @@ import { QuestionView } from './question-view';
 import { StickyActionBar } from './sticky-action-bar';
 import { Tabs } from './tabs';
 import { TagGuide } from './tag-guide';
+import { TagInput } from './tag-input';
 import { useToast } from './toast';
 import { TopicCombobox } from './topic-combobox';
 
@@ -86,7 +87,6 @@ export function QuestionEditor({
   const [formKey, setFormKey] = useState(0);
   const [tab, setTab] = useState('edit');
   const [showAnswer, setShowAnswer] = useState(true);
-  const [tagsText, setTagsText] = useState(draft.tags.join(', '));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const storageKey = storageKeyOf(question);
   const [stored, setStored] = useState<Draft | null>(null);
@@ -160,7 +160,6 @@ export function QuestionEditor({
     const fresh = await queryClient.fetchQuery({ ...questionQuery(question.id), staleTime: 0 });
     const next = draftFromQuestion(fresh);
     setDraft(next);
-    setTagsText(next.tags.join(', '));
     setBaseline(serialize(next));
     setVersion(fresh.version);
     setFormKey((k) => k + 1);
@@ -195,7 +194,6 @@ export function QuestionEditor({
   const restore = () => {
     if (!stored) return;
     setDraft(stored);
-    setTagsText(stored.tags.join(', '));
     setFormKey((k) => k + 1);
     setStored(null);
   };
@@ -243,20 +241,12 @@ export function QuestionEditor({
             error={shown.includes('points') && t('questionBank.problem.points')}
           />
           <div className="@md:col-span-2 @xl:col-span-3">
-            <TextField
-              id="q-tags"
+            <TagInput
               label={t('questionBank.tags')}
               hint={t('questionBank.tagsHint', { example: TAG_GUIDE_EXAMPLE })}
-              value={tagsText}
-              onChange={(e) => {
-                setTagsText(e.target.value);
-                patch({
-                  tags: e.target.value
-                    .split(',')
-                    .map((tag) => tag.trim())
-                    .filter(Boolean),
-                });
-              }}
+              initial={draft.tags}
+              topicId={draft.topicId}
+              onChange={(tags) => patch({ tags })}
               error={shown.includes('tags') && t('questionBank.problem.tags')}
             />
             <TagGuide />
