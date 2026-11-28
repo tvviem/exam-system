@@ -530,6 +530,10 @@
     "confirm": "Đổi tên",
     "done": "Đã đổi tag ở {{count}} câu"
   },
+  "passwordField": {
+    "show": "Hiện mật khẩu",
+    "hide": "Ẩn mật khẩu"
+  },
   "topicPicker": {
     "placeholder": "Gõ để tìm Chủ đề…",
     "recent": "Dùng gần đây",

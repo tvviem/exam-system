@@ -273,6 +273,15 @@ Theo [plan/hop-chon-cau-thiet-ke.md](plan/hop-chon-cau-thiet-ke.md); mẫu đầ
 - Hàng nút của hộp thoại dài: đưa vào `footer` của `Dialog` (đầu và hàng nút đứng yên, chỉ nội dung cuộn). Không dùng `sticky bottom-0` trong nội dung cuộn: phần đệm của khung chừa khe cho dòng đang cuộn lộ ra dưới nút (lỗi thật ở hộp Chọn tag và hộp đối chiếu tài khoản; `dialog-support.ts` giữ).
 - Lớp `hidden` không ghi đè được `inline-flex` của `Button`: muốn ẩn nút theo bề rộng thì bọc ngoài hoặc không dựng.
 
+## 17. Ô mật khẩu (28/11/2026)
+
+Mọi ô mật khẩu dùng `PasswordField` (`password-fields.test.ts` giữ):
+
+- Nút con mắt trong ô, nhãn **Hiện mật khẩu** / **Ẩn mật khẩu**, vùng bấm 40 đến 48 px, mỗi ô riêng.
+- Mặc định ẩn (chỗ đông người dễ bị nhìn trộm); tự ẩn lại khi gửi biểu mẫu.
+- Không chặn sao chép, dán hay trình quản lý mật khẩu (trợ năng, WCAG 2.2 "Accessible Authentication").
+- Đang hiện thì tắt tự viết hoa, tự sửa chính tả của bàn phím.
+
 ## Quyết định (Q71–Q75)
 
 | Câu | Câu hỏi | Quyết định |

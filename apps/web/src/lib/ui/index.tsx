@@ -22,7 +22,7 @@ function FieldShell({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium text-fg">
+      <label id={`${id}-label`} htmlFor={id} className="text-sm font-medium text-fg">
         {label}
       </label>
       {children}
@@ -49,17 +49,35 @@ export function TextField({
   id,
   hint,
   error,
+  suffix,
   ...input
-}: { label: string; id: string; hint?: ReactNode; error?: ReactNode } & ComponentProps<'input'>) {
+}: {
+  label: string;
+  id: string;
+  hint?: ReactNode;
+  error?: ReactNode;
+  /** Nút nằm trong ô, sát mép phải (ví dụ hiện mật khẩu). */
+  suffix?: ReactNode;
+} & ComponentProps<'input'>) {
+  const field = (
+    <input
+      id={id}
+      className={suffix ? `${fieldClass} pr-13` : fieldClass}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={describedBy(id, hint, error)}
+      {...input}
+    />
+  );
   return (
     <FieldShell id={id} label={label} hint={hint} error={error}>
-      <input
-        id={id}
-        className={fieldClass}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(id, hint, error)}
-        {...input}
-      />
+      {suffix ? (
+        <div className="relative">
+          {field}
+          {suffix}
+        </div>
+      ) : (
+        field
+      )}
     </FieldShell>
   );
 }

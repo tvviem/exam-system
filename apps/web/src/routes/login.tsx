@@ -7,6 +7,7 @@ import { login, meQuery, safeRedirect } from '../lib/auth';
 import { errorMessage } from '../lib/errors';
 import { Card, ErrorMessage, PrimaryButton, TextField } from '../lib/ui';
 import { BrandMark } from '../lib/ui/brand';
+import { PasswordField } from '../lib/ui/password-field';
 import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
 export const Route = createFileRoute('/login')({
@@ -58,10 +59,9 @@ function LoginPage() {
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
           />
-          <TextField
+          <PasswordField
             id="password"
             label={t('login.password')}
-            type="password"
             autoComplete="current-password"
             required
             value={password}

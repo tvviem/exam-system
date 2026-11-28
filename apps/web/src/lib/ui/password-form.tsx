@@ -3,7 +3,8 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { changePassword } from '../auth';
 import { errorMessage } from '../errors';
-import { ErrorMessage, PrimaryButton, TextField } from '.';
+import { ErrorMessage, PrimaryButton } from '.';
+import { PasswordField } from './password-field';
 
 /** Biểu mẫu đổi mật khẩu dùng ở trang bắt buộc đổi (mật khẩu tạm) và ở "Tài khoản của tôi". */
 export function PasswordForm({ onChanged }: { onChanged: () => void | Promise<void> }) {
@@ -31,28 +32,25 @@ export function PasswordForm({ onChanged }: { onChanged: () => void | Promise<vo
 
   return (
     <form className="flex flex-col gap-4" onSubmit={submit}>
-      <TextField
+      <PasswordField
         id="current-password"
         label={t('changePassword.current')}
-        type="password"
         autoComplete="current-password"
         required
         value={current}
         onChange={(e) => setCurrent(e.target.value)}
       />
-      <TextField
+      <PasswordField
         id="new-password"
         label={t('changePassword.new')}
-        type="password"
         autoComplete="new-password"
         required
         value={next}
         onChange={(e) => setNext(e.target.value)}
       />
-      <TextField
+      <PasswordField
         id="confirm-password"
         label={t('changePassword.confirm')}
-        type="password"
         autoComplete="new-password"
         required
         value={confirm}

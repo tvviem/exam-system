@@ -108,6 +108,12 @@ async function occluded(page: import('@playwright/test').Page): Promise<string[]
         if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue;
         const top = document.elementFromPoint(x, y);
         if (!top || top === el || el.contains(top) || top.contains(el)) continue;
+        // Nút cố ý nằm trong chính ô nhập (hiện mật khẩu); ô chừa lề phải cho nút, e2e/password-field kiểm việc đó.
+        if (
+          el.tagName === 'INPUT' &&
+          top.closest('[data-input-suffix]')?.parentElement === el.parentElement
+        )
+          continue;
         // Nhãn bao quanh ô nhập (label > input) và vùng bấm mở rộng là bình thường.
         if (el.closest('label')?.contains(top) || top.closest('label')?.contains(el)) continue;
         // Nội dung thường cuộn xuống dưới thanh đầu trang, thanh tab, thanh hành động dính: bình thường.
