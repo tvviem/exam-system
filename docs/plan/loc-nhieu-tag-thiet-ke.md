@@ -1,6 +1,6 @@
 # Lọc và quản lý theo nhiều tag
 
-**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q516–Q517 và Q520–Q524; thứ tự phát hành ở Q523 được thay bằng Q529 của [hop-chon-cau-thiet-ke.md](hop-chon-cau-thiet-ke.md)). Tiến độ: **G1** và **hướng dẫn đặt tag** đã phát hành ở bản `0.7.0` (28/11/2026); phần còn lại của G2 (mục 4) và G3 chưa làm.
+**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q516–Q517 và Q520–Q524; thứ tự phát hành ở Q523 được thay bằng Q529 của [hop-chon-cau-thiet-ke.md](hop-chon-cau-thiet-ke.md)). Tiến độ: **G1** và **hướng dẫn đặt tag** đã phát hành ở bản `0.7.0` (28/11/2026); **gợi ý tag khi soạn** (G2a) xong về mã (28/11/2026); thêm bỏ hàng loạt, đổi tên và gộp tag (mục 4) và G3 chưa làm.
 
 ## 1. Yêu cầu và hiện trạng
 
@@ -70,6 +70,8 @@ Quy tắc suy loại và dựng điều kiện là **một hàm thuần ở `@ex
 
 **Hướng dẫn đặt tag (28/11/2026, chủ dự án yêu cầu, làm trước phần còn lại của G2):** quy tắc đặt tag nằm ở một chỗ (`@exam/shared`, `tag-guide.ts`) và hiện ở sheet "Hướng dẫn" của file Excel mẫu và file ví dụ (kèm ghi chú ở tiêu đề cột Tags, 8 câu ví dụ đặt tag đúng quy tắc) và dưới ô Tags ở màn soạn câu hỏi (ví dụ ngay trong gợi ý; mục bấm mở, đóng sẵn). `tag-guide.test.ts` giữ cho quy tắc nêu ra khớp cách hệ thống xếp loại.
 
+**G2a đã làm** (`tag-suggest.test.ts`, `tag-filter.spec.ts`): lựa chọn mặc định (Enter) là "Thêm tag mới" với đúng chữ đã gõ, trừ khi chữ đó trùng một tag đang có lúc bỏ dấu (lấy tag đang có). Dấu phẩy và rời ô thêm đúng chữ đã gõ; bấm Lưu khi còn đang gõ vẫn lưu tag đó. Điện thoại: chạm vào ô thì ô cuộn lên sát đầu trang để gợi ý không nằm dưới bàn phím.
+
 ## 5. Lát G3 (để sau, Q517)
 
 Chọn ngẫu nhiên N câu đang khớp bộ lọc trong hộp chọn câu; sau đó **ma trận đề** (loại `chương` × loại `mức`, điền số câu từng ô, hệ thống chọn). Thiết kế riêng khi làm.
@@ -115,3 +117,4 @@ Cùng lần chạy 1.000.000: mục "gợi ý người khi gõ tên rất phổ 
 | Q523 | G1 phát hành trước một mình (không đổi dữ liệu), G2 sau | **Đã đồng ý**, sau thay bằng Q529: G1 phát hành chung `0.7.0` với hộp chọn câu mới |
 | Q524 | Xác nhận ba điểm kiểm thử: hàm thuần, API qua HTTP với PostgreSQL thật, giao diện Playwright | **Đã đồng ý** (27/11/2026) |
 | Q530 | Thêm thuật ngữ **Loại tag** (`TagKind`) vào `GLOSSARY.md` | **Đã đồng ý** (28/11/2026) |
+| Q532 | Gõ dở chưa trùng tag nào thì Enter **thêm tag mới** đúng chữ đã gõ (gợi ý đang có phải bấm hoặc dùng mũi tên để chọn); chỉ khi trùng một tag đang có lúc bỏ dấu mới lấy tag đó | **Đã đồng ý** (28/11/2026) |
