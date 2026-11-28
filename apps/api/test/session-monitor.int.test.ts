@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from './support/app';
 import { sql } from './support/db';
-import { minutes } from './support/fake-clock';
+import { minutes, seconds } from './support/fake-clock';
 import { login } from './support/http';
 import { leaks } from './support/leaks';
 import { openLiveSession } from './support/live-session';
@@ -370,9 +370,11 @@ describe('hiệu năng với 500 người (ngân sách: p95 ≤ 100 ms)', () => 
     console.info(`monitor 504 người: p50 ${timings[4]?.toFixed(0)} ms, p95 ${p95.toFixed(0)} ms`);
     expect(p95).toBeLessThan(100);
 
-    // Heartbeat (ngân sách p95 ≤ 30 ms).
+    // Heartbeat (ngân sách p95 ≤ 30 ms). 100 lần đo để p95 chịu được vài lần máy khựng (20 lần thì chỉ 2 lần khựng đã
+    // trượt, dù p50 khoảng 3 ms). Mỗi nhịp tua đồng hồ giả 1 giây để không chạm giới hạn 30 yêu cầu mỗi 10 giây.
     const beats: number[] = [];
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 100; i++) {
+      t.clock.advance(seconds(1));
       const start = performance.now();
       const res = await beat('an', { events: [{ id: crypto.randomUUID(), type: 'tab_visible' }] });
       beats.push(performance.now() - start);
@@ -380,7 +382,7 @@ describe('hiệu năng với 500 người (ngân sách: p95 ≤ 100 ms)', () => 
     }
     beats.sort((a, b) => a - b);
     const beatP95 = beats[Math.ceil(beats.length * 0.95) - 1] as number;
-    console.info(`heartbeat: p50 ${beats[9]?.toFixed(0)} ms, p95 ${beatP95.toFixed(0)} ms`);
+    console.info(`heartbeat: p50 ${beats[49]?.toFixed(0)} ms, p95 ${beatP95.toFixed(0)} ms`);
     expect(beatP95).toBeLessThan(30);
 
     // Cộng giờ và Buộc nộp cho cả phòng (ngân sách ≤ 300 ms).

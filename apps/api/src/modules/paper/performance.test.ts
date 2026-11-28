@@ -83,14 +83,20 @@ describe('hiệu năng dựng bản xuất', () => {
       sections: [{ title: null, items }],
     };
 
-    const started = performance.now();
-    const { bytes, warnings } = await buildPaperDocument(spec);
-    const elapsed = performance.now() - started;
+    // Dựng ba lần, lấy trung vị: chạy song song với các bài khác thì một lần dựng có thể khựng quá ngân sách.
+    const times: number[] = [];
+    let built: Awaited<ReturnType<typeof buildPaperDocument>> | undefined;
+    for (let i = 0; i < 3; i++) {
+      const started = performance.now();
+      built = await buildPaperDocument(spec);
+      times.push(performance.now() - started);
+    }
+    const elapsed = [...times].sort((a, b) => a - b)[1] as number;
     console.log(
-      `dựng ${items.length} câu, 10 hình, 30 công thức: ${elapsed.toFixed(0)} ms, ${(bytes.length / 1024).toFixed(0)} KB`,
+      `dựng ${items.length} câu, 10 hình, 30 công thức: ${times.map((ms) => ms.toFixed(0)).join(', ')} ms, ${((built?.bytes.length ?? 0) / 1024).toFixed(0)} KB`,
     );
 
-    expect(warnings).toEqual([]);
+    expect(built?.warnings).toEqual([]);
     expect(elapsed).toBeLessThan(BUDGET_MS);
-  });
+  }, 30_000);
 });
