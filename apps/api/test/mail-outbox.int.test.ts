@@ -9,6 +9,7 @@ import { sql } from './support/db';
 import { hours, minutes, seconds } from './support/fake-clock';
 import { TEST_SMTP_SECRET } from './support/fake-mail';
 import { resetState } from './support/reset';
+import { median } from './support/timing';
 import { seedUser } from './support/users';
 
 // PR 7b, hạ tầng gửi email (docs/plan/slice-7b-thiet-ke-kiem-thu.md). Mọi bài đi qua giao diện công khai của
@@ -720,12 +721,17 @@ describe('hiệu năng (AGENTS.md: trên 300 ms đáng xem lại, trên 1 giây 
     });
     try {
       app.clock.set(new Date(Date.now() + 3_600_000)); // sau mọi created_at trong bảng
-      const started = performance.now();
-      await app.app.get(JobRegistry).run('mail.dispatch', {});
-      const elapsed = performance.now() - started;
-      expect(app.mail.sent).toHaveLength(10);
-      // 10 thư gửi + một lần lập kế hoạch cuối thấy hết hạn mức.
-      expect(elapsed / 11).toBeLessThan(50);
+      // Đo ba lượt (mỗi lượt cách một ngày để có lại hạn mức) rồi lấy trung vị: một lượt máy khựng không làm đỏ.
+      const perLoop: number[] = [];
+      for (let round = 1; round <= 3; round++) {
+        const started = performance.now();
+        await app.app.get(JobRegistry).run('mail.dispatch', {});
+        // 10 thư gửi + một lần lập kế hoạch cuối thấy hết hạn mức.
+        perLoop.push((performance.now() - started) / 11);
+        expect(app.mail.sent).toHaveLength(10 * round);
+        app.clock.advance(hours(24) + seconds(1));
+      }
+      expect(median(perLoop)).toBeLessThan(50);
     } finally {
       await app.app.close();
     }
