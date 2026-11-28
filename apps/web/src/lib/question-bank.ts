@@ -108,6 +108,19 @@ export const moveQuestions = (ids: string[], topicId: string) =>
 export const deleteQuestions = (ids: string[]) =>
   apiFetch<{ deleted: number }>('/questions/delete', { method: 'POST', body: { ids } });
 
+export const applyQuestionTags = (ids: string[], add: string[], remove: string[]) =>
+  apiFetch<{ changed: number; skipped: number }>('/questions/tags/apply', {
+    method: 'POST',
+    body: { ids, add, remove },
+  });
+export const renameQuestionTag = (body: {
+  from: string;
+  to: string;
+  /** Bỏ trống là mọi Chủ đề. */
+  topicId?: string;
+  dryRun?: boolean;
+}) => apiFetch<{ changed: number }>('/questions/tags/rename', { method: 'POST', body });
+
 export type { RichText };
 
 export const archiveQuestions = (ids: string[]) =>

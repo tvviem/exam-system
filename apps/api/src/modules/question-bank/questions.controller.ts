@@ -4,6 +4,8 @@ import {
   questionTypeSchema,
   TAG_FILTER_MAX,
   TAG_MATCHES,
+  TAG_MAX_CHARS,
+  TAGS_MAX,
 } from '@exam/shared';
 import {
   Body,
@@ -47,6 +49,25 @@ const versionSchema = z.object({ version: z.number().int().min(1) });
 const idsSchema = z.array(z.uuid()).min(1).max(200);
 const moveSchema = z.strictObject({ ids: idsSchema, topicId: z.uuid() });
 const deleteSchema = z.strictObject({ ids: idsSchema });
+const oneTag = z.string().transform(normalizeTag).pipe(z.string().min(1).max(TAG_MAX_CHARS));
+const tagList = z
+  .array(oneTag)
+  .max(TAGS_MAX)
+  .transform((tags) => [...new Set(tags)]);
+const applyTagsSchema = z
+  .strictObject({ ids: idsSchema, add: tagList, remove: tagList })
+  .refine((body) => body.add.length + body.remove.length > 0, { path: ['add'] })
+  .refine((body) => !body.add.some((tag) => body.remove.includes(tag)), { path: ['remove'] });
+const renameTagSchema = z
+  .strictObject({
+    from: oneTag,
+    to: oneTag,
+    /** Bỏ trống là mọi Chủ đề (Q522). */
+    topicId: z.uuid().optional(),
+    /** Chỉ đếm số câu sẽ đổi, để người dùng xác nhận. */
+    dryRun: z.boolean().default(false),
+  })
+  .refine((body) => body.from !== body.to, { path: ['to'] });
 
 @RequireTag('examiner')
 @Controller('questions')
@@ -78,6 +99,20 @@ export class QuestionsController {
   move(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
     const { ids, topicId } = moveSchema.parse(body ?? {});
     return this.questions.move(user.id, ids, topicId);
+  }
+
+  @Post('tags/apply')
+  @HttpCode(200)
+  applyTags(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
+    const { ids, add, remove } = applyTagsSchema.parse(body ?? {});
+    return this.questions.applyTags(user.id, ids, add, remove);
+  }
+
+  @Post('tags/rename')
+  @HttpCode(200)
+  @HeavyQuery('questions')
+  renameTag(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
+    return this.questions.renameTag(user.id, renameTagSchema.parse(body ?? {}));
   }
 
   @Post('delete')

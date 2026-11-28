@@ -1,6 +1,6 @@
 # Lọc và quản lý theo nhiều tag
 
-**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q516–Q517 và Q520–Q524; thứ tự phát hành ở Q523 được thay bằng Q529 của [hop-chon-cau-thiet-ke.md](hop-chon-cau-thiet-ke.md)). Tiến độ: **G1** và **hướng dẫn đặt tag** đã phát hành ở bản `0.7.0` (28/11/2026); **gợi ý tag khi soạn** (G2a) xong về mã (28/11/2026); thêm bỏ hàng loạt, đổi tên và gộp tag (mục 4) và G3 chưa làm.
+**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q516–Q517 và Q520–Q524; thứ tự phát hành ở Q523 được thay bằng Q529 của [hop-chon-cau-thiet-ke.md](hop-chon-cau-thiet-ke.md)). Tiến độ: **G1** và **hướng dẫn đặt tag** đã phát hành ở bản `0.7.0` (28/11/2026); **G2** (gợi ý khi soạn, thêm bỏ hàng loạt, đổi tên và gộp) xong về mã (28/11/2026); G3 chưa làm.
 
 ## 1. Yêu cầu và hiện trạng
 
@@ -71,6 +71,8 @@ Quy tắc suy loại và dựng điều kiện là **một hàm thuần ở `@ex
 **Hướng dẫn đặt tag (28/11/2026, chủ dự án yêu cầu, làm trước phần còn lại của G2):** quy tắc đặt tag nằm ở một chỗ (`@exam/shared`, `tag-guide.ts`) và hiện ở sheet "Hướng dẫn" của file Excel mẫu và file ví dụ (kèm ghi chú ở tiêu đề cột Tags, 8 câu ví dụ đặt tag đúng quy tắc) và dưới ô Tags ở màn soạn câu hỏi (ví dụ ngay trong gợi ý; mục bấm mở, đóng sẵn). `tag-guide.test.ts` giữ cho quy tắc nêu ra khớp cách hệ thống xếp loại.
 
 **G2a đã làm** (`tag-suggest.test.ts`, `tag-filter.spec.ts`): lựa chọn mặc định (Enter) là "Thêm tag mới" với đúng chữ đã gõ, trừ khi chữ đó trùng một tag đang có lúc bỏ dấu (lấy tag đang có). Dấu phẩy và rời ô thêm đúng chữ đã gõ; bấm Lưu khi còn đang gõ vẫn lưu tag đó. Điện thoại: chạm vào ô thì ô cuộn lên sát đầu trang để gợi ý không nằm dưới bàn phím.
+
+**G2b, G2c đã làm** (`question-tags.int.test.ts`, `tag-filter.spec.ts`): `tags/apply` trả `{ changed, skipped }`, chỉ câu thật sự đổi mới tăng `version`; thêm và bỏ cùng một tag bị từ chối. `tags/rename` có `dryRun` để hộp xác nhận nêu số câu (kể cả câu đã Lưu trữ), đi qua cổng truy vấn nặng. Giao diện: nút **Sửa tag** ở thanh thao tác khi đang chọn câu; đổi tên mở từ hộp **Chọn tag** khi tích đúng một tag (gộp nhiều tag thì đổi lần lượt từng tag). Chưa đo đổi tên ở quy mô rất lớn (một câu lệnh sửa mọi câu mang tag).
 
 ## 5. Lát G3 (để sau, Q517)
 

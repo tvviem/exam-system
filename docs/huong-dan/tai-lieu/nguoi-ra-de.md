@@ -267,6 +267,12 @@ Chọn từ hai tag thì có hai cách khớp:
 
 Dòng **Đang lọc: …** ghi bằng lời điều đang áp dụng.
 
+**Thêm, bỏ tag cho nhiều câu cùng lúc:** tích các câu ở danh sách (tối đa 200 câu một lần), bấm **Sửa tag**. Ở ô **Thêm tag**, gõ rồi chọn như khi soạn câu; ở **Bỏ tag đang có**, tích tag muốn gỡ. Bấm **Cập nhật … câu**. Câu sẽ vượt 10 tag thì được bỏ qua và báo số câu.
+
+**Đổi tên, gộp tag viết lệch:** bấm **Chọn tag**, tích **đúng một** tag, bấm **Đổi tên tag đã tích**, gõ **Tên mới**. Phạm vi mặc định là **Chủ đề đang chọn**; muốn đổi ở **Mọi Chủ đề** phải chọn rõ. Hộp cho biết trước số câu sẽ đổi (kể cả câu đã Lưu trữ). Đặt tên trùng một tag đang có thì **hai tag gộp làm một**.
+
+> Đổi tag không làm thay đổi Bộ đề đã Phát hành (giữ bản chụp). Không có nút hoàn tác: kiểm số câu trước khi bấm.
+
 ![Đang lọc theo nhiều tag](anh:nguoi-ra-de/18-dang-loc-tag)
 
 ## 4. Soạn Bộ đề

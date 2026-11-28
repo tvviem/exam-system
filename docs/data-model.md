@@ -199,7 +199,8 @@ questions (
 -- `updated_at + interval '0'` (cả khi lọc theo tag) để KHÔNG đi dọc chỉ mục này (plan/quy-mo-lon-thiet-ke.md mục 3.3).
 -- Lọc nhiều tag (từ 0.7.0, plan/loc-nhieu-tag-thiet-ke.md): "Loại tag" suy từ chữ của tag, KHÔNG lưu (`tag-filter.ts` ở
 -- @exam/shared). Mỗi nhóm là một điều kiện `tags && ARRAY[...]` (đi chỉ mục GIN), các nhóm nối "và"; tối đa 20 tag.
--- Danh sách tag kèm số câu đếm bằng `unnest(tags)` trên câu của người gọi, tối đa 500 tag.
+-- Danh sách tag kèm số câu đếm bằng `unnest(tags)` trên câu của người gọi, tối đa 500 tag. Thêm/bỏ hàng loạt và đổi
+-- tên tag sửa thẳng cột `tags` trong một giao dịch (tăng `version`); bản chụp ở `exam_items` không đổi.
 -- Tìm kiếm: chuẩn hóa chuỗi tìm bằng cùng hàm rồi LIKE trên search_text (thoát %, _). Khác Người dùng (unaccent lúc truy vấn):
 -- cách này xử lý được cả "đ" và không cần gọi hàm trên từng dòng. `version` tăng mỗi lần sửa nội dung hoặc đổi Chủ đề.
 

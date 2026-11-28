@@ -20,6 +20,7 @@ export function TagInput({
   onChange,
   hint,
   error,
+  inline = false,
 }: {
   label: string;
   /** Tag lúc dựng ô; muốn nạp lại thì dựng ô mới (đổi `key`). */
@@ -29,6 +30,11 @@ export function TagInput({
   onChange: (tags: string[]) => void;
   hint?: ReactNode;
   error?: ReactNode;
+  /**
+   * Trong hộp thoại: gợi ý nằm trong dòng chảy (không bị khung hộp cắt) và không đổi gì khi rời ô, để nút bên dưới không
+   * nhảy chỗ ngay lúc đang bấm (chữ đang gõ vốn đã nằm trong `onChange`).
+   */
+  inline?: boolean;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -60,7 +66,11 @@ export function TagInput({
     const pending = normalizeTag(text);
     if (pending) add([pending]);
   };
-  const choose = (option: TagOption) => add([option.tag]);
+  const choose = (option: TagOption) => {
+    add([option.tag]);
+    // Trong hộp thoại danh sách nằm trong dòng chảy: chọn xong thì gập lại, chừa chỗ cho phần bên dưới.
+    if (inline) setOpen(false);
+  };
   const describedBy = [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].join(' ').trim();
 
   return (
@@ -120,10 +130,14 @@ export function TagInput({
               }
             }}
             onClick={() => setOpen(true)}
-            onBlur={() => {
-              setOpen(false);
-              commit();
-            }}
+            onBlur={
+              inline
+                ? undefined
+                : () => {
+                    setOpen(false);
+                    commit();
+                  }
+            }
             onChange={(e) => {
               const { done, rest } = splitTagText(e.target.value);
               setOpen(true);
@@ -157,7 +171,9 @@ export function TagInput({
             role="listbox"
             tabIndex={-1}
             aria-label={t('tagInput.suggestions')}
-            className="absolute inset-x-0 top-full z-20 mt-1 max-h-[min(20rem,45dvh)] overflow-y-auto rounded-lg border border-border-strong bg-surface-raised p-1 shadow-lg"
+            className={`mt-1 max-h-[min(20rem,45dvh)] overflow-y-auto rounded-lg border border-border-strong bg-surface-raised p-1 ${
+              inline ? '' : 'absolute inset-x-0 top-full z-20 shadow-lg'
+            }`}
             // Giữ con trỏ ở ô nhập khi bấm một gợi ý, nếu không chữ đang gõ được thêm trước.
             onMouseDown={(e) => e.preventDefault()}
           >
