@@ -63,6 +63,23 @@ test('Soạn bốn Loại câu hỏi', async ({ browser }) => {
   await page.getByRole('button', { name: 'Thêm Phương án' }).click();
   await typeIn(page, 'Phương án C', 'Màn hình');
   await page.getByRole('radio', { name: /Phương án B/ }).check();
+  // Tag theo quy tắc, và mục hướng dẫn mở ra
+  await page.getByLabel('Tags', { exact: true }).fill('chương 1, nhận biết, thiết bị');
+  await page.getByText('Cách đặt tag để dễ tìm').click();
+  await shot(page, 'nguoi-ra-de', '23-cach-dat-tag', {
+    full: true,
+    marks: [
+      {
+        at: page.getByLabel('Tags', { exact: true }),
+        text: 'Cách nhau bằng dấu phẩy: chương, mức độ, nội dung',
+      },
+      {
+        at: page.getByText('Cách đặt tag để dễ tìm'),
+        text: 'Bấm để mở hoặc đóng quy tắc đặt tag',
+      },
+    ],
+  });
+  await page.getByText('Cách đặt tag để dễ tìm').click();
   await shot(page, 'nguoi-ra-de', '21-soan-chon-mot', {
     full: true,
     marks: [

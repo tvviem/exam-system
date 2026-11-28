@@ -1,6 +1,6 @@
 # Lọc và quản lý theo nhiều tag
 
-**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q516–Q517 và Q520–Q524; thứ tự phát hành ở Q523 được thay bằng Q529 của [hop-chon-cau-thiet-ke.md](hop-chon-cau-thiet-ke.md)). Tiến độ: **G1** xong về mã (lát P2); G2, G3 chưa làm.
+**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q516–Q517 và Q520–Q524; thứ tự phát hành ở Q523 được thay bằng Q529 của [hop-chon-cau-thiet-ke.md](hop-chon-cau-thiet-ke.md)). Tiến độ: **G1** và **hướng dẫn đặt tag** đã phát hành ở bản `0.7.0` (28/11/2026); phần còn lại của G2 (mục 4) và G3 chưa làm.
 
 ## 1. Yêu cầu và hiện trạng
 

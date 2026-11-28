@@ -290,6 +290,8 @@ Số đo ngày 3/11/2026 (một tiến trình, PostgreSQL thật, máy phát tri
 | Nộp bài | 12 ms | 228 / 326 ms |
 | Danh sách / tìm kiếm Câu hỏi, 20.000 câu của một Người ra đề | 20–25 ms | không đo |
 
+Số đo lọc nhiều tag (27/11/2026, bản 0.7.0, 1.000.000 Câu hỏi của một Người ra đề, `quy-mo-bench`, p50): lọc ba tag 8–238 ms; danh sách tag của một Chủ đề 101 ms, của mọi Chủ đề 400 ms. Hộp thêm câu mở tới khi thấy câu đầu khoảng 0,3 giây trên máy phát triển (đo bằng bài giao diện).
+
 Số đo chấm tự động (6/11/2026, PR 5a, một tiến trình, PostgreSQL thật): chấm 500 Lượt (Bộ đề bốn Loại câu) theo lô 50 mất 0,36 giây, 0,7 ms mỗi Lượt (ngân sách 10 giây và 20 ms); request Nộp bài chỉ thêm một lệnh xếp job Redis, không chờ chấm.
 
 Số đo chấm tay và Kết quả (6/11/2026, PR 5b-1, 500 Lượt đã chấm tự động, PostgreSQL thật): bảng Kết quả 500 người 48 ms, hàng đợi chấm 500 bài 30 ms, mở một bài tự luận 33 ms, lưu điểm một bài 32 ms, Thống kê câu 24 ms.

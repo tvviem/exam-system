@@ -122,13 +122,48 @@ test('Ngân hàng câu hỏi: Chủ đề, nhập Excel, soạn câu, danh sách
         text: 'Chọn Chủ đề ở cột bên trái để chỉ xem câu hỏi của Chủ đề đó',
       },
       { at: page.getByLabel('Tìm câu hỏi'), text: 'Tìm theo một phần nội dung (không cần gõ dấu)' },
-      { at: page.getByLabel('Loại câu hỏi'), text: 'Lọc theo Loại câu hỏi, tag, trạng thái' },
+      { at: page.getByLabel('Loại câu hỏi'), text: 'Lọc theo Loại câu hỏi, Trạng thái' },
+      { at: page.getByRole('button', { name: 'Chọn tag' }), text: 'Lọc theo một hay nhiều tag' },
     ],
   });
   await page.getByLabel('Tìm câu hỏi').fill('mang');
   await expect(page.getByText('Mạng').filter({ visible: true }).first()).toBeVisible();
   await shot(page, 'nguoi-ra-de', '15-tim-khong-dau');
   await page.getByLabel('Tìm câu hỏi').fill('');
+
+  // Lọc theo nhiều tag
+  const size = page.viewportSize() as { width: number; height: number };
+  await page.setViewportSize({ width: size.width, height: 1400 }); // đủ cao để hộp hiện trọn danh sách, không phải cuộn
+  await page.getByRole('button', { name: 'Chọn tag' }).click();
+  const chooser = page.getByRole('dialog', { name: 'Chọn tag' });
+  for (const tag of ['chương 1', 'chương 2', 'nhận biết'])
+    await chooser.getByRole('checkbox', { name: new RegExp(`^${tag}, `) }).check();
+  await shot(page, 'nguoi-ra-de', '17-chon-tag', {
+    marks: [
+      { at: chooser.getByRole('searchbox', { name: 'Tìm tag' }), text: 'Tìm tag, không cần dấu' },
+      {
+        at: chooser.getByRole('radio', { name: 'Khớp tất cả' }),
+        text: 'Cách khớp khi chọn từ hai tag',
+      },
+      {
+        at: chooser.getByRole('checkbox', { name: /^chương 1, / }),
+        text: 'Tích các tag cần lọc (kèm số câu)',
+      },
+    ],
+  });
+  await chooser.getByRole('button', { name: 'Xong' }).click();
+  await page.setViewportSize(size);
+  await expect(page.getByText(/^Đang lọc:/)).toBeVisible();
+  await shot(page, 'nguoi-ra-de', '18-dang-loc-tag', {
+    marks: [
+      { at: page.getByText(/^Đang lọc:/), text: 'Điều đang lọc được ghi bằng chữ' },
+      {
+        at: page.getByRole('button', { name: 'Bỏ lọc: chương 2' }),
+        text: 'Bấm × để gỡ một tag',
+      },
+    ],
+  });
+  await page.goto('/examiner/questions');
 
   // Chọn nhiều câu: thanh thao tác nổi
   await page.reload();

@@ -38,6 +38,23 @@ test('Soạn Bộ đề: tạo, thêm câu, Phần, điểm, rút câu, xem th�
     await addDialog.getByLabel('Loại câu hỏi').selectOption({ label: type });
     await expect(addDialog.getByText(/Chọn cả \d+ câu trên trang này/)).toBeVisible();
   };
+  // Ô Chủ đề gõ để tìm
+  await page.getByRole('button', { name: 'Thêm câu hỏi' }).click();
+  const topicBox = addDialog.getByRole('combobox', { name: 'Chủ đề' });
+  await topicBox.click();
+  await topicBox.fill('tin');
+  await shot(page, 'nguoi-ra-de', '33a-tim-chu-de', {
+    marks: [
+      { at: topicBox, text: 'Gõ một phần tên, không cần dấu, hoặc chữ cái đầu' },
+      {
+        at: addDialog.getByRole('option').first(),
+        text: 'Bấm để chọn (hoặc Enter); số bên phải là số câu',
+      },
+    ],
+  });
+  await topicBox.press('Escape');
+  await addDialog.getByRole('button', { name: 'Đóng' }).click();
+  await expect(addDialog).toBeHidden();
   await addFrom('Chọn một');
   await addDialog.getByText(/Chọn cả \d+ câu trên trang này/).click();
   await shot(page, 'nguoi-ra-de', '33-hop-them-cau', {

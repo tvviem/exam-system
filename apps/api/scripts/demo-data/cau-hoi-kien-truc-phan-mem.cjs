@@ -9,7 +9,7 @@ module.exports = {
       ['Microservices', 'MVC', 'Pipe and Filter', 'Event Sourcing'],
       'B',
       '0,5',
-      'kiến trúc phần mềm, mẫu kiến trúc',
+      'chương 1, nhận biết, mẫu kiến trúc',
     ),
     single(
       'Trong năm nguyên lý SOLID, chữ "S" là viết tắt của nguyên lý nào?',
@@ -21,21 +21,21 @@ module.exports = {
       ],
       'A',
       '0,5',
-      'kiến trúc phần mềm, SOLID',
+      'chương 1, thông hiểu, SOLID',
     ),
     single(
       'Trong kiến trúc phân tầng, tầng nào thường chịu trách nhiệm lưu trữ và truy xuất dữ liệu?',
       ['Tầng trình bày', 'Tầng nghiệp vụ', 'Tầng truy cập dữ liệu', 'Tầng mạng'],
       'C',
       '0,5',
-      'kiến trúc phần mềm, kiến trúc phân tầng',
+      'chương 1, nhận biết, kiến trúc phân tầng',
     ),
     single(
       'Phong cách thiết kế API nào dựa trên tài nguyên và các phương thức HTTP như GET, POST, PUT, DELETE?',
       ['REST', 'SMTP', 'DHCP', 'ARP'],
       'A',
       '0,5',
-      'kiến trúc phần mềm, API',
+      'chương 2, thông hiểu, API',
     ),
     single(
       'Bộ đệm (cache) được đưa vào kiến trúc chủ yếu để làm gì?',
@@ -47,7 +47,7 @@ module.exports = {
       ],
       'A',
       '0,5',
-      'kiến trúc phần mềm, hiệu năng',
+      'chương 2, nhận biết, hiệu năng',
     ),
   ],
 
@@ -64,7 +64,7 @@ module.exports = {
       'A,B,C',
       '1',
       'Tỷ lệ',
-      'kiến trúc phần mềm, thuộc tính chất lượng',
+      'chương 2, thông hiểu, thuộc tính chất lượng',
     ),
     multiple(
       'Chọn các ưu điểm thường được nêu của kiến trúc microservices:',
@@ -78,7 +78,7 @@ module.exports = {
       'A,B,C',
       '1,5',
       'Tỷ lệ',
-      'kiến trúc phần mềm, microservices',
+      'chương 3, nhận biết, microservices',
     ),
     multiple(
       'Chọn các nguyên lý thuộc bộ năm nguyên lý SOLID:',
@@ -92,7 +92,7 @@ module.exports = {
       'A,B,C',
       '1',
       'Đúng hết',
-      'kiến trúc phần mềm, SOLID',
+      'chương 1, thông hiểu, SOLID',
     ),
     multiple(
       'Chọn các loại sơ đồ UML thường dùng để mô tả kiến trúc hệ thống:',
@@ -106,7 +106,7 @@ module.exports = {
       'A,B,C',
       '1',
       'Tỷ lệ',
-      'kiến trúc phần mềm, UML',
+      'chương 3, nhận biết, UML',
     ),
     multiple(
       'Chọn các kỹ thuật giúp tăng tính sẵn sàng và khả năng chịu lỗi của hệ thống:',
@@ -120,7 +120,7 @@ module.exports = {
       'A,B,C',
       '1,5',
       'Đúng hết',
-      'kiến trúc phần mềm, độ tin cậy',
+      'chương 3, thông hiểu, độ tin cậy',
     ),
   ],
 
@@ -136,7 +136,7 @@ module.exports = {
       '1',
       'Tỷ lệ',
       '',
-      'kiến trúc phần mềm, microservices',
+      'chương 3, thông hiểu, microservices',
     ),
     cluster(
       'Về kiến trúc phân tầng, xét các nhận định sau:',
@@ -150,7 +150,7 @@ module.exports = {
       '1',
       'Bậc thang',
       '0; 0,1; 0,25; 0,5; 1',
-      'kiến trúc phần mềm, kiến trúc phân tầng',
+      'chương 1, vận dụng, kiến trúc phân tầng',
     ),
     cluster(
       'Về thiết kế API theo phong cách REST, xét các nhận định sau:',
@@ -164,7 +164,7 @@ module.exports = {
       '1',
       'Tỷ lệ',
       '',
-      'kiến trúc phần mềm, API',
+      'chương 2, thông hiểu, API',
     ),
     cluster(
       'Về mở rộng quy mô hệ thống, xét các nhận định sau:',
@@ -177,7 +177,7 @@ module.exports = {
       '1',
       'Đúng hết',
       '',
-      'kiến trúc phần mềm, khả năng mở rộng',
+      'chương 4, vận dụng, khả năng mở rộng',
     ),
     cluster(
       'Về bảo mật trong thiết kế kiến trúc, xét các nhận định sau:',
@@ -191,7 +191,7 @@ module.exports = {
       '1',
       'Bậc thang',
       '0; 0,2; 0,4; 0,7; 1',
-      'kiến trúc phần mềm, bảo mật',
+      'chương 4, thông hiểu, bảo mật',
     ),
   ],
 
@@ -201,35 +201,35 @@ module.exports = {
       '1500',
       'Mỗi ý đúng 0,25 điểm, tối đa 2 điểm (4 ý cho monolith, 4 ý cho microservices).',
       '2',
-      'kiến trúc phần mềm, microservices',
+      'chương 3, vận dụng, microservices',
     ),
     essay(
       'Trình bày kiến trúc ba tầng (trình bày, nghiệp vụ, dữ liệu): nhiệm vụ của từng tầng và lợi ích của việc tách tầng.',
       '1500',
       'Nhiệm vụ mỗi tầng: 0,5 điểm x 3. Lợi ích của việc tách tầng (dễ thay thế, dễ kiểm thử, dễ phân công): 0,5 điểm.',
       '2',
-      'kiến trúc phần mềm, kiến trúc phân tầng',
+      'chương 1, vận dụng cao, kiến trúc phân tầng',
     ),
     essay(
       'Giải thích nguyên lý trách nhiệm đơn nhất (Single Responsibility). Cho một ví dụ lớp vi phạm nguyên lý này và cách sửa.',
       '1200',
       'Giải thích nguyên lý: 0,5 điểm. Ví dụ vi phạm hợp lý: 0,5 điểm. Cách tách trách nhiệm: 0,5 điểm.',
       '1,5',
-      'kiến trúc phần mềm, SOLID',
+      'chương 1, vận dụng, SOLID',
     ),
     essay(
       'Một hệ thống bán vé trực tuyến có lượng truy cập tăng đột biến vào giờ mở bán. Đề xuất ít nhất ba giải pháp kiến trúc để hệ thống chịu tải và giải thích ngắn gọn từng giải pháp.',
       '2000',
       'Mỗi giải pháp hợp lý kèm giải thích 0,75 điểm, tối đa 2,5 điểm. Ví dụ: cân bằng tải, cache, hàng đợi thông điệp, mở rộng ngang, giới hạn tốc độ.',
       '2,5',
-      'kiến trúc phần mềm, khả năng mở rộng',
+      'chương 4, vận dụng cao, khả năng mở rộng',
     ),
     essay(
       'Mô tả vai trò của bộ đệm (cache) trong kiến trúc hệ thống và nêu hai rủi ro cần quản lý khi dùng cache.',
       '1000',
       'Vai trò (giảm độ trễ, giảm tải nguồn gốc): 0,5 điểm. Mỗi rủi ro (dữ liệu cũ, vô hiệu hóa cache, tốn bộ nhớ...) 0,5 điểm.',
       '1,5',
-      'kiến trúc phần mềm, hiệu năng',
+      'chương 2, vận dụng, hiệu năng',
     ),
   ],
 };

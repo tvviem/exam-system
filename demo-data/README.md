@@ -8,7 +8,7 @@ Các file Excel để dựng nhanh một bộ dữ liệu thử sau khi reset da
 | `cau-hoi-kien-truc-phan-mem.xlsx` | 20 Câu hỏi như trên, tổng 23 điểm | Như trên, vào Chủ đề *Thiết kế kiến trúc hệ thống phần mềm* |
 | `danh-sach-nguoi-du-thi.xlsx` | 5 Người dự thi, lớp `CNTT-K26`, Mã định danh `SV26001` đến `SV26005` | Yêu cầu cấp tài khoản → **Gửi yêu cầu** |
 
-Mỗi sheet câu hỏi dùng đủ các tính năng chấm: Quy tắc chấm Tỷ lệ, Đúng hết, Bậc thang; điểm từ 0,5 đến 2,5; Hướng dẫn chấm ở Tự luận; mỗi câu có 2 tag. Đáp án nằm trong file nên chỉ Người ra đề thấy; Người dự thi không bao giờ thấy.
+Mỗi sheet câu hỏi dùng đủ các tính năng chấm: Quy tắc chấm Tỷ lệ, Đúng hết, Bậc thang; điểm từ 0,5 đến 2,5; Hướng dẫn chấm ở Tự luận; tag theo [quy tắc đặt tag](../docs/huong-dan/tai-lieu/nguoi-ra-de.md): một tag chương, một tag mức độ, một vài tag nội dung (số chương và mức độ chỉ để minh họa). Đáp án nằm trong file nên chỉ Người ra đề thấy; Người dự thi không bao giờ thấy.
 
 ## Kịch bản (khoảng 15 phút)
 
