@@ -110,6 +110,28 @@ export function MatchDialog({
       open
       onClose={onClose}
       title={t('accountRequests.review.title', { n: item.rowNumber, name: item.fullName ?? '—' })}
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          {decidable ? (
+            <>
+              <Button onClick={onClose}>{t('accountRequests.review.later')}</Button>
+              <Button variant="danger-ghost" disabled={busy || deciding} onClick={onReject}>
+                {t('accountRequests.review.rejectRow')}
+              </Button>
+              <Button
+                variant="primary"
+                loading={deciding}
+                disabled={busy || deciding}
+                onClick={onApprove}
+              >
+                {t(restore ? 'accountRequests.review.restore' : 'accountRequests.review.sameUser')}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={onClose}>{t('common.close')}</Button>
+          )}
+        </div>
+      }
     >
       {account && (
         <div className="flex flex-col gap-3 text-sm">
@@ -232,26 +254,6 @@ export function MatchDialog({
         </p>
       )}
       <ErrorMessage>{error}</ErrorMessage>
-      <div className="sticky bottom-0 -mx-5 -mb-1 flex flex-col-reverse gap-2 border-t border-border bg-surface-raised px-5 pt-3 pb-1 sm:flex-row sm:justify-end">
-        {decidable ? (
-          <>
-            <Button onClick={onClose}>{t('accountRequests.review.later')}</Button>
-            <Button variant="danger-ghost" disabled={busy || deciding} onClick={onReject}>
-              {t('accountRequests.review.rejectRow')}
-            </Button>
-            <Button
-              variant="primary"
-              loading={deciding}
-              disabled={busy || deciding}
-              onClick={onApprove}
-            >
-              {t(restore ? 'accountRequests.review.restore' : 'accountRequests.review.sameUser')}
-            </Button>
-          </>
-        ) : (
-          <Button onClick={onClose}>{t('common.close')}</Button>
-        )}
-      </div>
     </Dialog>
   );
 }

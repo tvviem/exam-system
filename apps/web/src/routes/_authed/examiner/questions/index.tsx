@@ -341,13 +341,13 @@ function QuestionBankPage() {
         open={pickingTags}
         onClose={() => setPickingTags(false)}
         title={t('tagFilter.choose')}
-      >
-        <TagFilter counts={tagCounts.data} selected={tags} match={tagMatch} onChange={setTags} />
-        <div className="sticky bottom-0 -mx-5 -mb-5 border-t border-border bg-surface-raised px-5 py-3">
+        footer={
           <PrimaryButton className="w-full" onClick={() => setPickingTags(false)}>
             {t('common.done')}
           </PrimaryButton>
-        </div>
+        }
+      >
+        <TagFilter counts={tagCounts.data} selected={tags} match={tagMatch} onChange={setTags} />
       </Dialog>
       <TopicManager open={managing} onClose={() => setManaging(false)} />
       <TypeChooser

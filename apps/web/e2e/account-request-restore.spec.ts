@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
+import { expectFooterAtBottom } from './dialog-support';
 
 // Yêu cầu cấp tài khoản khớp một tài khoản đã Xóa (docs/plan/yeu-cau-nhieu-giang-vien-thiet-ke.md, E-08): Quản trị viên thấy bảng
 // đối chiếu chi tiết và khôi phục sau khi tick riêng; Người ra đề chỉ thấy "đang chờ Quản trị viên xác nhận".
@@ -105,6 +106,11 @@ test('Khớp tài khoản đã Xóa: Người ra đề chỉ thấy chờ xác n
   await expect(dialog.getByText('Khác').first()).toBeVisible();
   await expect(dialog).toContainText('giữ nguyên lịch sử và điểm cũ');
   await expect(dialog).toContainText(`gửi thư kích hoạt tới kp.moi2.${project}@example.edu.vn`);
+  // Màn thấp: hộp phải cuộn, thanh nút vẫn sát đáy.
+  const size = admin.viewportSize() as { width: number; height: number };
+  await admin.setViewportSize({ width: size.width, height: 520 });
+  await expectFooterAtBottom(dialog, dialog.getByRole('button', { name: 'Để sau' }));
+  await admin.setViewportSize(size);
   await dialog.getByRole('button', { name: 'Khôi phục tài khoản' }).click();
   await expect(
     admin.getByText('Đã khôi phục tài khoản').filter({ visible: true }).first(),

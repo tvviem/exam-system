@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { expectFooterAtBottom } from './dialog-support';
 import { choosePickerTopic } from './topic-support';
 
 // Lọc theo nhiều tag ở hộp chọn câu của Bộ đề và ở Ngân hàng câu hỏi (docs/plan/loc-nhieu-tag-thiet-ke.md).
@@ -216,4 +217,46 @@ test('màn soạn câu hỏi chỉ cách đặt tag: ví dụ ngay dưới ô, h
     await expect(page.getByText(title, { exact: true })).toBeVisible();
   await noOverflow(page);
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/tag-soan-${p}.png` });
+});
+
+test('hộp "Chọn tag" nhiều tag: cuộn được tới tag cuối, nút Xong sát đáy, không gì lộ bên dưới', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-tag-${p}`);
+  const { topicId } = await seed(page, unique(p));
+  // 40 tag không thuộc loại nào, để nhóm "Khác" dài hơn khung sau khi "Xem thêm".
+  for (let q = 0; q < 4; q++) {
+    const res = await page.request.post('/api/questions', {
+      headers: { origin: ORIGIN },
+      data: {
+        type: 'essay',
+        topicId,
+        stem: rich(`Câu nhiều tag ${q}`),
+        defaultPoints: 1,
+        tags: Array.from(
+          { length: 10 },
+          (_, k) => `ý ${String.fromCharCode(97 + q)}${'abcdefghij'[k]}`,
+        ),
+        payload: { maxLength: 100 },
+      },
+    });
+    expect(res.ok(), await res.text()).toBe(true);
+  }
+  await page.goto(`/examiner/questions?topicId=${topicId}`);
+  await page.getByRole('button', { name: 'Chọn tag' }).click();
+  const chooser = page.getByRole('dialog', { name: 'Chọn tag' });
+  await chooser.getByRole('button', { name: /^Xem thêm \d+ tag$/ }).click();
+  const done = chooser.getByRole('button', { name: 'Xong' });
+  await expectFooterAtBottom(chooser, done);
+  const collapse = chooser.getByRole('button', { name: 'Thu gọn' });
+  await collapse.scrollIntoViewIfNeeded();
+  const [last, bar] = [await collapse.boundingBox(), await done.boundingBox()];
+  expect((last?.y ?? 0) + (last?.height ?? 0)).toBeLessThanOrEqual((bar?.y ?? 0) + 1);
+  // Đã cuộn tới cuối: nút đóng ở đầu hộp vẫn thấy.
+  await expect(chooser.getByRole('button', { name: 'Đóng' })).toBeInViewport({ ratio: 1 });
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/chon-tag-${p}.png` });
+  await noOverflow(page);
+  await done.click();
+  await expect(chooser).toBeHidden();
 });

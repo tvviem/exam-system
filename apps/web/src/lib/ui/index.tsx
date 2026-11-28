@@ -263,6 +263,7 @@ export function Dialog({
   size = 'md',
   headerExtra,
   onEscape,
+  footer,
 }: {
   open: boolean;
   onClose: () => void;
@@ -278,6 +279,11 @@ export function Dialog({
   headerExtra?: ReactNode;
   /** Phím Esc hay nút Back của máy; mặc định giống nút đóng. */
   onEscape?: () => void;
+  /**
+   * Hàng nút đứng yên ở đáy hộp (cỡ `md`, `xl`): đầu hộp cũng đứng yên, chỉ phần nội dung ở giữa cuộn. Đừng dùng `sticky` trong nội dung cuộn:
+   * phần đệm của khung chừa một khe cho dòng đang cuộn lộ ra bên dưới.
+   */
+  footer?: ReactNode;
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
@@ -334,18 +340,27 @@ export function Dialog({
             }`
       }`}
     >
-      {open && (
-        <div
-          className={
-            screen
-              ? 'flex h-full flex-col overflow-hidden'
-              : 'flex max-h-[85dvh] flex-col gap-4 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]'
-          }
-        >
-          {header}
-          {children}
-        </div>
-      )}
+      {open &&
+        (footer && !screen ? (
+          <div className="flex max-h-[85dvh] flex-col">
+            <div className="shrink-0 px-5 pt-5 pb-4">{header}</div>
+            <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-4">{children}</div>
+            <div className="shrink-0 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              {footer}
+            </div>
+          </div>
+        ) : (
+          <div
+            className={
+              screen
+                ? 'flex h-full flex-col overflow-hidden'
+                : 'flex max-h-[85dvh] flex-col gap-4 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]'
+            }
+          >
+            {header}
+            {children}
+          </div>
+        ))}
     </dialog>
   );
 }
