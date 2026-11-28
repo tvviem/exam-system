@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { type Account, requestEmailChange, requestEmailVerification } from '../account';
 import { errorMessage } from '../errors';
 import { Badge, Card, ErrorMessage, PrimaryButton, TextField } from '.';
+import { PasswordField } from './password-field';
 
 /**
  * Mục Email ở trang Tài khoản: hiện địa chỉ và trạng thái xác thực, "Gửi thư xác thực" cho email đang lưu, và Đổi email (cần mật
@@ -75,11 +76,10 @@ export function AccountEmailCard({ account }: { account: Account }) {
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
           />
-          <TextField
+          <PasswordField
             id="account-email-password"
             label={t('account.email.currentPassword')}
             hint={t('account.email.currentPasswordHint')}
-            type="password"
             autoComplete="current-password"
             required
             value={password}

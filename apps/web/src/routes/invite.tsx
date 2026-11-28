@@ -17,17 +17,10 @@ import {
   type InvitationPreview,
   invitationPreviewQuery,
 } from '../lib/invitation';
-import {
-  Button,
-  buttonClass,
-  Card,
-  ErrorMessage,
-  PrimaryButton,
-  SelectField,
-  TextField,
-} from '../lib/ui';
+import { Button, buttonClass, Card, ErrorMessage, PrimaryButton, SelectField } from '../lib/ui';
 import { ListSkeleton } from '../lib/ui/admin';
 import { BrandMark } from '../lib/ui/brand';
+import { PasswordField } from '../lib/ui/password-field';
 import { ThemeSwitcher } from '../lib/ui/theme-switcher';
 
 // Trang công khai: người được mời mở liên kết trong thư (mã ở mảnh #, xóa khỏi thanh địa chỉ sau khi đọc), không cần đăng nhập
@@ -137,20 +130,18 @@ function InviteContent({ token, invitation }: { token: string; invitation: Invit
       )}
       {!invitation.accountExists && (
         <>
-          <TextField
+          <PasswordField
             id="invite-password"
             label={t('invite.password')}
             hint={t('invite.passwordHint')}
-            type="password"
             autoComplete="new-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <TextField
+          <PasswordField
             id="invite-password-confirm"
             label={t('invite.confirmPassword')}
-            type="password"
             autoComplete="new-password"
             required
             error={mismatch ? t('invite.passwordMismatch') : undefined}

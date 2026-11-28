@@ -13,9 +13,10 @@ import {
 } from '../auth-links';
 import { errorMessage } from '../errors';
 import { formatWhen } from '../format';
-import { buttonClass, Card, ErrorMessage, PrimaryButton, TextField } from '.';
+import { buttonClass, Card, ErrorMessage, PrimaryButton } from '.';
 import { ListSkeleton } from './admin';
 import { BrandMark } from './brand';
+import { PasswordField } from './password-field';
 import { ThemeSwitcher } from './theme-switcher';
 
 /** Khung trang công khai (cùng kiểu trang đăng nhập): dấu thương hiệu, đổi giao diện, một thẻ nội dung. */
@@ -115,20 +116,18 @@ function PasswordStep({
       <h1 className="mb-2 text-2xl font-semibold">{t(`authLinks.${purpose}.heading`)}</h1>
       <p className="mb-5 text-sm text-fg-muted">{t(`authLinks.${purpose}.intro`)}</p>
       <form className="flex flex-col gap-4" onSubmit={submit}>
-        <TextField
+        <PasswordField
           id="link-password"
           label={t('authLinks.password')}
           hint={t('authLinks.passwordHint')}
-          type="password"
           autoComplete="new-password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <TextField
+        <PasswordField
           id="link-password-confirm"
           label={t('authLinks.confirm')}
-          type="password"
           autoComplete="new-password"
           required
           error={mismatch ? t('authLinks.mismatch') : undefined}
