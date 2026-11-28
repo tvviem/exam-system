@@ -42,10 +42,12 @@ import {
   SelectField,
 } from '../../../../lib/ui';
 import { EmptyState, FilterChip, ListSkeleton, Pagination } from '../../../../lib/ui/admin';
+import { BulkTagDialog } from '../../../../lib/ui/bulk-tag-dialog';
 import { Chip, ChipGroup } from '../../../../lib/ui/chips';
 import { DataList } from '../../../../lib/ui/data-list';
 import { FilterBar } from '../../../../lib/ui/filter-bar';
 import { PageHeader } from '../../../../lib/ui/page-header';
+import { RenameTagDialog } from '../../../../lib/ui/rename-tag-dialog';
 import { StickyActionBar } from '../../../../lib/ui/sticky-action-bar';
 import { TagFilter, TagFilterSummary } from '../../../../lib/ui/tag-filter';
 import { useToast } from '../../../../lib/ui/toast';
@@ -90,11 +92,12 @@ function QuestionBankPage() {
   const [choosingType, setChoosingType] = useState(false);
   const [pickingTopic, setPickingTopic] = useState(false);
   const [pickingTags, setPickingTags] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const tags = search.tag ?? [];
   const tagMatch = search.tagMatch ?? 'all';
   const tagCounts = useQuery({
     ...questionTagsQuery({ topicId: search.topicId, archived: search.archived }),
-    enabled: pickingTags,
+    enabled: pickingTags || renaming !== null,
   });
   // Từ 7 Chủ đề trở lên chip lọc thành ô chọn (điện thoại); từ 9 thì cột bên có ô tìm và vùng cuộn (laptop).
   const topicCount = topics.data?.length ?? 0;
@@ -313,6 +316,7 @@ function QuestionBankPage() {
               />
               {selected.size > 0 && (
                 <BulkBar
+                  topicId={search.topicId ?? ''}
                   items={questions.data.items.filter((item) => selected.has(item.id))}
                   archivedView={Boolean(search.archived)}
                   onDone={() => setSelected(new Set())}
@@ -342,13 +346,39 @@ function QuestionBankPage() {
         onClose={() => setPickingTags(false)}
         title={t('tagFilter.choose')}
         footer={
-          <PrimaryButton className="w-full" onClick={() => setPickingTags(false)}>
-            {t('common.done')}
-          </PrimaryButton>
+          <div className="flex flex-row-reverse gap-2">
+            <PrimaryButton className="flex-1" onClick={() => setPickingTags(false)}>
+              {t('common.done')}
+            </PrimaryButton>
+            {/* Đổi tên làm trên đúng một tag đang tích. */}
+            <Button
+              disabled={tags.length !== 1}
+              title={tags.length === 1 ? undefined : t('renameTag.pickOne')}
+              onClick={() => {
+                setPickingTags(false);
+                setRenaming(tags[0] ?? null);
+              }}
+            >
+              {t('renameTag.open')}
+            </Button>
+          </div>
         }
       >
         <TagFilter counts={tagCounts.data} selected={tags} match={tagMatch} onChange={setTags} />
       </Dialog>
+      {renaming && (
+        <RenameTagDialog
+          from={renaming}
+          topicId={search.topicId}
+          counts={tagCounts.data ?? []}
+          onClose={() => setRenaming(null)}
+          onRenamed={(to) => {
+            setRenaming(null);
+            // Bộ lọc đang chọn đi theo tên mới.
+            setTags([...new Set(tags.map((tag) => (tag === renaming ? to : tag)))], tagMatch);
+          }}
+        />
+      )}
       <TopicManager open={managing} onClose={() => setManaging(false)} />
       <TypeChooser
         open={choosingType}
@@ -517,9 +547,11 @@ function QuestionList({
 
 function BulkBar({
   items,
+  topicId,
   archivedView,
   onDone,
 }: {
+  topicId: string;
   items: QuestionListItem[];
   archivedView: boolean;
   onDone: () => void;
@@ -534,6 +566,7 @@ function BulkBar({
   const [moving, setMoving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [target, setTarget] = useState('');
+  const [tagging, setTagging] = useState(false);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['questions'] });
@@ -580,6 +613,7 @@ function BulkBar({
         {archive.isError && <ErrorMessage>{errorMessage(t, archive.error)}</ErrorMessage>}
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setMoving(true)}>{t('questionBank.moveTopic')}</Button>
+          <Button onClick={() => setTagging(true)}>{t('bulkTags.open')}</Button>
           <Button
             disabled={archive.isPending}
             title={t(archivedView ? 'questionBank.restoreHint' : 'questionBank.archiveHint')}
@@ -596,6 +630,18 @@ function BulkBar({
           <Button onClick={onDone}>{t('questionBank.clearSelection')}</Button>
         </div>
       </StickyActionBar>
+
+      {tagging && (
+        <BulkTagDialog
+          items={items}
+          topicId={topicId}
+          onClose={() => setTagging(false)}
+          onDone={() => {
+            setTagging(false);
+            onDone();
+          }}
+        />
+      )}
 
       <Dialog
         open={moving}

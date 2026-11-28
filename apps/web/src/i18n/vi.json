@@ -506,6 +506,30 @@
     "remove": "Bỏ tag {{tag}}",
     "create": "Thêm tag mới “{{tag}}”"
   },
+  "bulkTags": {
+    "open": "Sửa tag",
+    "title": "Thêm, bỏ tag cho {{count}} câu",
+    "add": "Thêm tag",
+    "remove": "Bỏ tag đang có",
+    "none": "Các câu đã chọn chưa có tag nào.",
+    "apply": "Cập nhật {{count}} câu",
+    "done": "Đã cập nhật tag của {{changed}} câu",
+    "doneSkipped": "Đã cập nhật tag của {{changed}} câu; bỏ qua {{skipped}} câu vì quá 10 tag"
+  },
+  "renameTag": {
+    "open": "Đổi tên tag đã tích",
+    "pickOne": "Tích đúng một tag để đổi tên",
+    "title": "Đổi tên tag “{{tag}}”",
+    "newName": "Tên mới",
+    "noComma": "Tên tag không chứa dấu phẩy.",
+    "scope": "Phạm vi",
+    "thisTopic": "Chỉ trong Chủ đề đang chọn",
+    "allTopics": "Mọi Chủ đề",
+    "preview": "Sẽ đổi {{count}} câu, kể cả câu đã Lưu trữ.",
+    "merge": "Tag “{{tag}}” đã có: hai tag sẽ gộp làm một.",
+    "confirm": "Đổi tên",
+    "done": "Đã đổi tag ở {{count}} câu"
+  },
   "topicPicker": {
     "placeholder": "Gõ để tìm Chủ đề…",
     "recent": "Dùng gần đây",

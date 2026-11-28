@@ -2,6 +2,7 @@ import {
   normalizeForSearch,
   plainTextOf,
   type QuestionInput,
+  TAGS_MAX,
   type TagMatch,
   tagGroups,
 } from '@exam/shared';
@@ -194,6 +195,62 @@ export class QuestionsService {
       if (moved.length !== unique.length) throw new ApiError('NOT_FOUND');
       return { moved: moved.length };
     });
+  }
+
+  /**
+   * Thêm và bỏ tag cho nhiều Câu hỏi trong một giao dịch. Câu sẽ vượt số tag tối đa thì bỏ qua (đếm ở `skipped`); chỉ
+   * câu thật sự đổi mới tăng `version`. Bản chụp trong Bộ đề đã Phát hành không đổi.
+   */
+  applyTags(ownerId: string, ids: string[], add: string[], remove: string[]) {
+    const unique = [...new Set(ids)];
+    // Tag giữ lại theo thứ tự cũ, rồi tới tag thêm chưa có.
+    const next = sql`(ARRAY(SELECT x FROM unnest(${questions.tags}) WITH ORDINALITY AS kept(x, i)
+        WHERE x <> ALL(${textArray(remove)}) ORDER BY i)
+      || ARRAY(SELECT y FROM unnest(${textArray(add)}) WITH ORDINALITY AS added(y, i)
+        WHERE y <> ALL(${questions.tags}) ORDER BY i))`;
+    const tooMany = sql`cardinality(${next}) > ${TAGS_MAX}`;
+    return this.db.transaction(async (tx) => {
+      const mine = and(inArray(questions.id, unique), eq(questions.ownerId, ownerId));
+      const owned = await tx.select({ id: questions.id }).from(questions).where(mine).for('update');
+      if (owned.length !== unique.length) throw new ApiError('NOT_FOUND');
+      const skipped = await tx
+        .select({ id: questions.id })
+        .from(questions)
+        .where(and(mine, tooMany));
+      const changed = await tx
+        .update(questions)
+        .set({ tags: next, version: sql`${questions.version} + 1` })
+        .where(and(mine, sql`NOT (${tooMany})`, sql`${next} <> ${questions.tags}`))
+        .returning({ id: questions.id });
+      return { changed: changed.length, skipped: skipped.length };
+    });
+  }
+
+  /** Đổi tên một tag trên các Câu hỏi của người này; đổi sang tag đã có là gộp. `dryRun` chỉ đếm. */
+  async renameTag(
+    ownerId: string,
+    { from, to, topicId, dryRun }: { from: string; to: string; topicId?: string; dryRun: boolean },
+  ) {
+    const where = and(
+      eq(questions.ownerId, ownerId),
+      topicId ? eq(questions.topicId, topicId) : undefined,
+      sql`${questions.tags} @> ${textArray([from])}`,
+    );
+    if (dryRun) {
+      const [row] = await this.db.select({ total: count() }).from(questions).where(where);
+      return { changed: row?.total ?? 0 };
+    }
+    // Gộp trùng: mỗi tag giữ vị trí xuất hiện đầu tiên.
+    const next = sql`ARRAY(SELECT t FROM (
+        SELECT CASE WHEN x = ${from} THEN ${to}::text ELSE x END AS t, i
+        FROM unnest(${questions.tags}) WITH ORDINALITY AS u(x, i)
+      ) renamed GROUP BY t ORDER BY min(i))`;
+    const changed = await this.db
+      .update(questions)
+      .set({ tags: next, version: sql`${questions.version} + 1` })
+      .where(where)
+      .returning({ id: questions.id });
+    return { changed: changed.length };
   }
 
   async remove(ownerId: string, ids: string[]) {

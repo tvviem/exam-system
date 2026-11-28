@@ -336,3 +336,111 @@ test('màn soạn gợi ý tag đang có khi gõ: không dấu ra đúng tag, ta
   expect(saved.tags).toEqual(['vận dụng', 'chương 1', 'cây avl', 'gõ dở']);
   await expect(chip('gõ dở')).toBeVisible();
 });
+
+test('thêm và bỏ tag cho nhiều câu cùng lúc; câu quá 10 tag được báo', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-tag-${p}`);
+  const { topicId } = await seed(page, unique(p));
+  await page.goto(`/examiner/questions?topicId=${topicId}`);
+  const row = (name: string) => page.getByText(`Câu thẻ ${name}`).filter({ visible: true });
+  await expect(row('A')).toBeVisible();
+  await page
+    .getByRole('checkbox', { name: 'Chọn mọi câu trên trang' })
+    .filter({ visible: true })
+    .check();
+  await page.getByRole('button', { name: 'Sửa tag' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Thêm, bỏ tag cho 4 câu' });
+  const confirm = dialog.getByRole('button', { name: 'Cập nhật 4 câu' });
+  await expect(confirm).toBeDisabled();
+  // Thêm: gõ gợi ý hay tag mới. Bỏ: tích trong các tag mà những câu đã chọn đang có.
+  const add = dialog.getByRole('combobox', { name: 'Thêm tag' });
+  await add.fill('ôn tập');
+  await add.press('Enter');
+  // Trong hộp: chọn xong thì gợi ý gập lại, chừa chỗ cho phần "Bỏ tag".
+  await expect(dialog.getByRole('listbox', { name: 'Gợi ý tag' })).toBeHidden();
+  await dialog.getByRole('checkbox', { name: 'Bỏ tag ngăn xếp' }).check();
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/sua-tag-${p}.png` });
+  await confirm.click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Đã cập nhật tag của 4 câu')).toBeVisible();
+  const tagsOf = async () => {
+    const res = await page.request.get(`/api/questions/tags?topicId=${topicId}`);
+    return Object.fromEntries(
+      ((await res.json()) as { tag: string; count: number }[]).map((r) => [r.tag, r.count]),
+    );
+  };
+  expect(await tagsOf()).toMatchObject({ 'ôn tập': 4 });
+  expect((await tagsOf())['ngăn xếp']).toBeUndefined();
+
+  // Một câu đã đủ 10 tag thì bị bỏ qua và báo.
+  const full = await page.request.post('/api/questions', {
+    headers: { origin: ORIGIN },
+    data: {
+      type: 'essay',
+      topicId,
+      stem: rich('Câu thẻ đầy'),
+      defaultPoints: 1,
+      tags: Array.from({ length: 10 }, (_, k) => `đầy ${k}`),
+      payload: { maxLength: 100 },
+    },
+  });
+  expect(full.ok(), await full.text()).toBe(true);
+  await page.reload();
+  await page
+    .getByRole('checkbox', { name: 'Chọn mọi câu trên trang' })
+    .filter({ visible: true })
+    .check();
+  await page.getByRole('button', { name: 'Sửa tag' }).click();
+  const again = page.getByRole('dialog', { name: 'Thêm, bỏ tag cho 5 câu' });
+  await again.getByRole('combobox', { name: 'Thêm tag' }).fill('kỳ hai');
+  // Đang gõ dở vẫn tính; bấm thẳng nút xác nhận.
+  await again.getByRole('button', { name: 'Cập nhật 5 câu' }).click();
+  await expect(
+    page.getByText('Đã cập nhật tag của 4 câu; bỏ qua 1 câu vì quá 10 tag'),
+  ).toBeVisible();
+  await noOverflow(page);
+});
+
+test('đổi tên tag trong Chủ đề đang chọn, gộp vào tag đã có, xem trước số câu', async ({
+  page,
+}, testInfo) => {
+  const p = testInfo.project.name;
+  await signIn(page, `e2e-tag-${p}`);
+  const { topicId } = await seed(page, unique(p));
+  await page.goto(`/examiner/questions?topicId=${topicId}`);
+  await page.getByRole('button', { name: 'Chọn tag' }).click();
+  const chooser = page.getByRole('dialog', { name: 'Chọn tag' });
+  const rename = chooser.getByRole('button', { name: 'Đổi tên tag đã tích' });
+  await expect(rename).toBeDisabled(); // phải tích đúng một tag
+  await chooser.getByRole('checkbox', { name: /^chương 2, / }).check();
+  await rename.click();
+  const dialog = page.getByRole('dialog', { name: 'Đổi tên tag “chương 2”' });
+  const confirm = dialog.getByRole('button', { name: 'Đổi tên', exact: true });
+  await expect(confirm).toBeDisabled();
+  await expect(dialog.getByRole('radio', { name: 'Chỉ trong Chủ đề đang chọn' })).toBeChecked();
+  await dialog.getByLabel('Tên mới').fill('Chương 1');
+  await expect(dialog.getByText('Sẽ đổi 1 câu, kể cả câu đã Lưu trữ.')).toBeVisible();
+  await expect(dialog.getByText('Tag “chương 1” đã có: hai tag sẽ gộp làm một.')).toBeVisible();
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/doi-tag-${p}.png` });
+  await confirm.click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Đã đổi tag ở 1 câu')).toBeVisible();
+  // Bộ lọc đang chọn đi theo tên mới: A, B, C đều mang "chương 1".
+  await expect(page.getByRole('button', { name: 'Bỏ lọc: chương 1' })).toBeVisible();
+  for (const name of ['A', 'B', 'C'])
+    await expect(page.getByText(`Câu thẻ ${name}`).filter({ visible: true })).toBeVisible();
+
+  // Chưa chọn Chủ đề thì phải chọn rõ "Mọi Chủ đề" mới đổi được (Q522).
+  await page.goto('/examiner/questions?tag=sql');
+  await page.getByRole('button', { name: /^Chọn tag/ }).click();
+  await chooser.getByRole('button', { name: 'Đổi tên tag đã tích' }).click();
+  const all = page.getByRole('dialog', { name: 'Đổi tên tag “sql”' });
+  await all.getByLabel('Tên mới').fill(`sql ${unique(p)}`);
+  await expect(all.getByRole('button', { name: 'Đổi tên', exact: true })).toBeDisabled();
+  await all.getByRole('radio', { name: 'Mọi Chủ đề' }).check();
+  await expect(all.getByRole('button', { name: 'Đổi tên', exact: true })).toBeEnabled();
+  await noOverflow(page);
+  await all.getByRole('button', { name: 'Hủy' }).click();
+});
