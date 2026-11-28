@@ -1,6 +1,6 @@
 # Hộp "Thêm câu hỏi vào Bộ đề" mới
 
-**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q520–Q529). Tiến độ: **P1**, **P2** đã chạy ở prod (27/11/2026); **P3** xong về mã. Đi cùng [loc-nhieu-tag-thiet-ke.md](loc-nhieu-tag-thiet-ke.md) (lọc nhiều tag, G1). Quyết định ở mục 7.
+**Trạng thái: `accepted`** (27/11/2026, chủ dự án đồng ý Q520–Q529). Tiến độ: **P1, P2, P3 đã phát hành ở bản `0.7.0`** (28/11/2026). Đi cùng [loc-nhieu-tag-thiet-ke.md](loc-nhieu-tag-thiet-ke.md) (lọc nhiều tag, G1). Quyết định ở mục 7.
 
 ## 1. Yêu cầu và hiện trạng
 

@@ -73,7 +73,7 @@ Sau khi Yêu cầu cấp tài khoản được duyệt, trang chi tiết **Yêu 
 
 **Chống đoán mật khẩu:**
 - Sai **5 lần liên tiếp** thì **chặn đăng nhập 15 phút** (khóa tạm; khác với "Khóa đăng nhập" do Quản trị viên đặt).
-- Giới hạn **10 lần thử trong 10 phút** cho mỗi tên đăng nhập, và có giới hạn theo địa chỉ IP.
+- Giới hạn **10 lần thử trong 10 phút** cho mỗi cặp (tên đăng nhập, địa chỉ mạng), trần 200 lần cho mỗi tên đăng nhập trên cả hệ thống, và có giới hạn theo địa chỉ IP. Con số 10 chỉnh được bằng `LOGIN_MAX_PER_IDENTIFIER_AND_IP`; **production giữ mặc định**.
 - Thông báo lỗi luôn **chung**: "Tên đăng nhập hoặc mật khẩu không đúng." (không cho biết tài khoản có tồn tại hay không); thời gian phản hồi giữ như nhau.
 - Mọi lần đăng nhập, thành công hay thất bại, ghi vào **Lịch sử đăng nhập** (xóa sau 12 tháng).
 

@@ -166,3 +166,17 @@ Mọi số đều dưới ngân sách phản hồi (1 giây, xuất zip 3 giây)
 ## Quy mô lớn (đo 26/11/2026)
 
 Ở **1.000.000 Câu hỏi của một Người ra đề và 1.000.000 tài khoản** (dữ liệu giả, một tiến trình api, máy phát triển), các trang danh sách và lọc trả lời trong 8–180 ms, tìm Người dùng từ 3 ký tự trong 6–165 ms, và một người tìm dồn dập không làm người khác đứng chờ. Lưu câu trả lời giữa đợt 40 lượt tìm dồn dập chậm nhất khoảng 40–65 ms. Một chỗ còn vượt ngưỡng: gợi ý người khi gõ một tên rất phổ biến (khoảng 0,6–0,7 giây). Một triệu người **dùng cùng lúc** nằm ngoài khả năng hiện tại (đã kiểm 500 người thi cùng lúc). Chi tiết, cách chạy lại và giới hạn: [plan/quy-mo-lon-thiet-ke.md](plan/quy-mo-lon-thiet-ke.md) mục 6.7.
+
+## Lọc nhiều tag (đo 27/11/2026, bản 0.7.0)
+
+1.000.000 Câu hỏi giả của một Người ra đề, mỗi câu ba tag, `quy-mo-bench`, p50, một lần chạy:
+
+| Việc | Đo được | Ngưỡng đặt ra |
+|---|---|---|
+| Lọc ba tag, khớp rộng (hai chương và một mức độ) | 238 ms | 500 ms |
+| Lọc ba tag, khớp hẹp hoặc không câu nào | 8–15 ms | 500 ms |
+| Khớp bất kỳ trong ba tag | 235 ms | 500 ms |
+| Danh sách tag của một Chủ đề; của mọi Chủ đề | 101 ms; 400 ms | 1 giây |
+
+Cùng lần chạy, mục "gợi ý người khi gõ tên rất phổ biến" đo 1.022 ms (ngưỡng 500 ms, đã ghi chưa đạt ở mục Quy mô lớn) và "lưu câu trả lời chậm nhất giữa 40 lượt tìm" 97 ms (ngưỡng 100 ms); hai đường này không đổi mã ở bản 0.7.0 và chưa đo lại.
+

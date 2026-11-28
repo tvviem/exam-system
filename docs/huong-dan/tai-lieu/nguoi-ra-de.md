@@ -20,8 +20,9 @@ Bạn làm theo thứ tự này. Mỗi mục của tài liệu tương ứng m�
 
 | Khái niệm | Ý nghĩa |
 |---|---|
-| **Chủ đề** | Nhóm câu hỏi theo môn hoặc chương (ví dụ "Tin học căn bản"). |
+| **Chủ đề** | Nhóm câu hỏi, thường là một học phần (ví dụ "Tin học căn bản"); chương và mức độ ghi bằng tag. |
 | **Câu hỏi** | Một câu thuộc một trong bốn loại: **Chọn một**, **Chọn nhiều**, **Chùm đúng/sai**, **Tự luận**. |
+| **Tag** và **Loại tag** | Tag là nhãn của câu để tìm lại (`chương 2`, `vận dụng`, `ngăn xếp`). Hệ thống xếp tag vào **Loại tag** theo chữ để lọc (mục 3.6). |
 | **Bộ đề** | Danh sách câu hỏi cố định, có thể chia thành nhiều **Phần**. Khi **Phát hành**, Bộ đề được khóa. |
 | **Phiên thi** | Một buổi thi: dùng một Bộ đề đã phát hành, có Khung giờ, Thời lượng, **Mã vào thi** và **Danh sách dự thi**. |
 | **Mã vào thi** | Mã người dự thi nhập để vào Phiên thi. |
@@ -111,8 +112,8 @@ Quản trị viên duyệt xong, mỗi người mới nhận một **thư kích 
 Cách nhanh nhất khi bạn đã có sẵn bộ câu hỏi.
 
 1. Bấm **Nhập từ Excel**.
-2. Bấm **Tải file mẫu trống** (hoặc **Tải file ví dụ**) để lấy mẫu. Mỗi Loại câu hỏi nằm ở một sheet; sheet **Hướng dẫn** giải thích cách điền.
-3. Chọn **Chủ đề** sẽ chứa các câu.
+2. Bấm **Tải file mẫu trống** (hoặc **Tải file ví dụ**) để lấy mẫu. Mỗi Loại câu hỏi nằm ở một sheet; sheet **Hướng dẫn** giải thích cách điền và có mục **Cách đặt tag để dễ tìm**.
+3. Chọn **Chủ đề** sẽ chứa các câu (gõ một phần tên để tìm).
 4. Chọn file Excel đã điền, bấm **Tải lên và xem trước**.
 
 ![Nhập từ Excel](anh:nguoi-ra-de/12-nhap-excel)
@@ -139,7 +140,7 @@ Bấm **Soạn câu hỏi** rồi chọn Loại câu hỏi.
 
 Trình soạn có hai phần: bên trái để soạn, bên phải **Xem thử** đúng như người dự thi sẽ thấy (có công tắc **Hiện Đáp án đúng**).
 
-Phần chung của mọi Loại: chọn **Chủ đề**, **Điểm mặc định** (sửa lại được khi đưa vào Bộ đề) và **Tags** (cách nhau bằng dấu phẩy; dùng để tìm và lọc).
+Phần chung của mọi Loại: chọn **Chủ đề** (gõ để tìm), **Điểm mặc định** (sửa lại được khi đưa vào Bộ đề) và **Tags** (cách nhau bằng dấu phẩy; dùng để tìm và lọc, đặt theo quy tắc ở mục 3.6).
 
 #### Chọn một
 
@@ -240,6 +241,12 @@ Tick ô bên trái của nhiều câu (hoặc **Chọn mọi câu trên trang**)
 
 Quy tắc này cũng có sẵn khi làm: ở màn soạn câu hỏi, bấm **Cách đặt tag để dễ tìm** dưới ô Tags; trong file Excel mẫu, xem mục cùng tên ở sheet **Hướng dẫn**.
 
+![Cách đặt tag](anh:nguoi-ra-de/23-cach-dat-tag)
+
+**Lọc:** ở Ngân hàng câu hỏi bấm **Chọn tag** (hộp thêm câu của Bộ đề có sẵn danh sách tag ở cột lọc).
+
+![Hộp Chọn tag](anh:nguoi-ra-de/17-chon-tag)
+
 Danh sách tag là các tag **đang có** trong Chủ đề đang chọn (chưa chọn Chủ đề thì của mọi Chủ đề), kèm số câu. Ô **Tìm tag** không cần dấu. Mỗi lần chọn tối đa 20 tag.
 
 Tag được gom theo **loại**, suy từ chính chữ của tag:
@@ -257,6 +264,8 @@ Chọn từ hai tag thì có hai cách khớp:
 - **Khớp bất kỳ**: câu có ít nhất một tag đã chọn.
 
 Dòng **Đang lọc: …** ghi bằng lời điều đang áp dụng.
+
+![Đang lọc theo nhiều tag](anh:nguoi-ra-de/18-dang-loc-tag)
 
 ## 4. Soạn Bộ đề
 
@@ -280,6 +289,8 @@ Bấm **Thêm câu hỏi** (nút luôn nằm ở thanh dưới cùng màn hình,
 - Tick từng câu, hoặc **Chọn cả … câu trên trang này**. Mẹo: tick một câu rồi giữ **Shift** và tick câu khác để chọn cả dải.
 - Bấm **Xem** để mở **Chi tiết câu hỏi** (đề bài, phương án, đáp án đúng đánh dấu bằng màu và dấu ✓) trước khi quyết định.
 - Bấm **Thêm … câu vào Phần …**.
+
+![Tìm Chủ đề trong hộp thêm câu](anh:nguoi-ra-de/33a-tim-chu-de)
 
 ![Hộp thêm câu hỏi](anh:nguoi-ra-de/33-hop-them-cau)
 
